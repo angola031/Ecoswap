@@ -1,0 +1,263 @@
+<!-- ===================================
+     MÓDULO DE AUTENTICACIÓN - ECOSWAP COLOMBIA
+     =================================== -->
+
+<div class="auth-container">
+    <!-- Pantalla de Login -->
+    <div id="loginScreen" class="auth-screen active">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <h1>🌱 EcoSwap Colombia</h1>
+                    <p>Plataforma de Intercambio Sostenible</p>
+                </div>
+            </div>
+
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="loginEmail">Correo Electrónico</label>
+                    <input type="email" id="loginEmail" class="form-control" placeholder="tu@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <div class="password-input">
+                        <input type="password" id="loginPassword" class="form-control" placeholder="Tu contraseña" required>
+                        <button type="button" class="password-toggle" onclick="AuthModule.togglePassword('loginPassword')">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="rememberMe">
+                        <span class="checkmark"></span>
+                        Recordarme
+                    </label>
+                    <a href="#" class="forgot-password" onclick="AuthModule.showForgotPassword()">
+                        ¿Olvidaste tu contraseña?
+                    </a>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full">
+                    Iniciar Sesión
+                </button>
+            </form>
+
+            <div class="auth-divider">
+                <span>o continúa con</span>
+            </div>
+
+            <div class="social-login">
+                <button class="btn btn-social btn-google" onclick="AuthModule.socialLogin('google')">
+                    <i class="icon">🔍</i>
+                    Google
+                </button>
+                <button class="btn btn-social btn-facebook" onclick="AuthModule.socialLogin('facebook')">
+                    <i class="icon">📘</i>
+                    Facebook
+                </button>
+            </div>
+
+            <div class="auth-footer">
+                <p>¿No tienes una cuenta? 
+                    <a href="#" onclick="AuthModule.showRegister()">Regístrate aquí</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla de Registro -->
+    <div id="registerScreen" class="auth-screen">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <h1>🚀 Únete a EcoSwap</h1>
+                    <p>Crea tu cuenta y comienza a intercambiar</p>
+                </div>
+            </div>
+
+            <form id="registerForm" class="auth-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="registerFirstName">Nombre</label>
+                        <input type="text" id="registerFirstName" class="form-control" placeholder="Tu nombre" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerLastName">Apellido</label>
+                        <input type="text" id="registerLastName" class="form-control" placeholder="Tu apellido" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerEmail">Correo Electrónico</label>
+                    <input type="email" id="registerEmail" class="form-control" placeholder="tu@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerPhone">Teléfono</label>
+                    <input type="tel" id="registerPhone" class="form-control" placeholder="+57 300 123 4567" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerLocation">Ubicación</label>
+                    <select id="registerLocation" class="form-control" required>
+                        <option value="">Selecciona tu ciudad</option>
+                        <option value="pereira">Pereira, Risaralda</option>
+                        <option value="bogota">Bogotá D.C.</option>
+                        <option value="medellin">Medellín, Antioquia</option>
+                        <option value="cali">Cali, Valle del Cauca</option>
+                        <option value="barranquilla">Barranquilla, Atlántico</option>
+                        <option value="cartagena">Cartagena, Bolívar</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerPassword">Contraseña</label>
+                    <div class="password-input">
+                        <input type="password" id="registerPassword" class="form-control" placeholder="Crea una contraseña segura" required>
+                        <button type="button" class="password-toggle" onclick="AuthModule.togglePassword('registerPassword')">
+                            👁️
+                        </button>
+                    </div>
+                    <div class="password-strength" id="passwordStrength">
+                        <div class="strength-bar">
+                            <div class="strength-fill" id="strengthFill"></div>
+                        </div>
+                        <span class="strength-text" id="strengthText">Fortaleza de la contraseña</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerConfirmPassword">Confirmar Contraseña</label>
+                    <div class="password-input">
+                        <input type="password" id="registerConfirmPassword" class="form-control" placeholder="Confirma tu contraseña" required>
+                        <button type="button" class="password-toggle" onclick="AuthModule.togglePassword('registerConfirmPassword')">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Intereses (opcional)</label>
+                    <div class="interests-grid">
+                        <label class="interest-item">
+                            <input type="checkbox" value="tecnologia">
+                            <span>🖥️ Tecnología</span>
+                        </label>
+                        <label class="interest-item">
+                            <input type="checkbox" value="ropa">
+                            <span>👕 Ropa</span>
+                        </label>
+                        <label class="interest-item">
+                            <input type="checkbox" value="libros">
+                            <span>📚 Libros</span>
+                        </label>
+                        <label class="interest-item">
+                            <input type="checkbox" value="deportes">
+                            <span>⚽ Deportes</span>
+                        </label>
+                        <label class="interest-item">
+                            <input type="checkbox" value="hogar">
+                            <span>🏠 Hogar</span>
+                        </label>
+                        <label class="interest-item">
+                            <input type="checkbox" value="musica">
+                            <span>🎵 Música</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="agreeTerms" required>
+                        <span class="checkmark"></span>
+                        Acepto los <a href="#" onclick="AuthModule.showTerms()">Términos y Condiciones</a>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="agreePrivacy" required>
+                        <span class="checkmark"></span>
+                        Acepto la <a href="#" onclick="AuthModule.showPrivacy()">Política de Privacidad</a>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="agreeMarketing">
+                        <span class="checkmark"></span>
+                        Quiero recibir noticias y ofertas (opcional)
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full">
+                    Crear Cuenta
+                </button>
+            </form>
+
+            <div class="auth-divider">
+                <span>o regístrate con</span>
+            </div>
+
+            <div class="social-login">
+                <button class="btn btn-social btn-google" onclick="AuthModule.socialLogin('google')">
+                    <i class="icon">🔍</i>
+                    Google
+                </button>
+                <button class="btn btn-social btn-facebook" onclick="AuthModule.socialLogin('facebook')">
+                    <i class="icon">📘</i>
+                    Facebook
+                </button>
+            </div>
+
+            <div class="auth-footer">
+                <p>¿Ya tienes una cuenta? 
+                    <a href="#" onclick="AuthModule.showLogin()">Inicia sesión aquí</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Recuperación de Contraseña -->
+    <div id="forgotPasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Recuperar Contraseña</h2>
+                <button class="modal-close" onclick="AuthModule.closeModal('forgotPasswordModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.</p>
+                <form id="forgotPasswordForm">
+                    <div class="form-group">
+                        <label for="forgotEmail">Correo Electrónico</label>
+                        <input type="email" id="forgotEmail" class="form-control" placeholder="tu@email.com" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Enviar Enlace</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Verificación de Email -->
+    <div id="emailVerificationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Verifica tu Email</h2>
+                <button class="modal-close" onclick="AuthModule.closeModal('emailVerificationModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="verification-content">
+                    <div class="verification-icon">📧</div>
+                    <h3>¡Revisa tu bandeja de entrada!</h3>
+                    <p>Hemos enviado un enlace de verificación a tu correo electrónico.</p>
+                    <p>Haz clic en el enlace para activar tu cuenta.</p>
+                    <div class="verification-actions">
+                        <button class="btn btn-secondary" onclick="AuthModule.resendVerification()">
+                            Reenviar Email
+                        </button>
+                        <button class="btn btn-primary" onclick="AuthModule.closeModal('emailVerificationModal')">
+                            Entendido
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

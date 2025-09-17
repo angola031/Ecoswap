@@ -1,0 +1,510 @@
+<!-- Módulo de Productos -->
+<div id="products" class="mockup-screen">
+    <!-- Header de Productos -->
+    <header class="products-header">
+        <div class="header-content">
+            <h1 class="page-title">Productos EcoSwap</h1>
+            <p class="page-subtitle">Descubre productos sostenibles y únicos</p>
+        </div>
+
+        <!-- Barra de Búsqueda -->
+        <div class="search-section">
+            <div class="search-container">
+                <input type="text" class="search-input" placeholder="Buscar productos...">
+                <button class="search-btn">
+                    <i class="search-icon">🔍</i>
+                </button>
+            </div>
+
+            <!-- Filtros Rápidos -->
+            <div class="quick-filters">
+                <button class="filter-chip active" data-filter="all">Todos</button>
+                <button class="filter-chip" data-filter="electronics">Electrónicos</button>
+                <button class="filter-chip" data-filter="clothing">Ropa</button>
+                <button class="filter-chip" data-filter="home">Hogar</button>
+                <button class="filter-chip" data-filter="books">Libros</button>
+                <button class="filter-chip" data-filter="sports">Deportes</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="products-main">
+        <!-- Sidebar de Filtros -->
+        <aside class="filters-sidebar">
+            <div class="filters-section">
+                <h3 class="filters-title">Filtros</h3>
+
+                <!-- Categorías -->
+                <div class="filter-group">
+                    <h4 class="filter-group-title">Categorías</h4>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="checkbox" value="electronics">
+                            <span class="checkmark"></span>
+                            Electrónicos
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" value="clothing">
+                            <span class="checkmark"></span>
+                            Ropa y Accesorios
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" value="home">
+                            <span class="checkmark"></span>
+                            Hogar y Jardín
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" value="books">
+                            <span class="checkmark"></span>
+                            Libros y Música
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" value="sports">
+                            <span class="checkmark"></span>
+                            Deportes y Aire Libre
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" value="toys">
+                            <span class="checkmark"></span>
+                            Juguetes y Juegos
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Precio -->
+                <div class="filter-group">
+                    <h4 class="filter-group-title">Rango de Precio</h4>
+                    <div class="price-range">
+                        <div class="price-inputs">
+                            <input type="number" class="price-input" placeholder="Min" min="0">
+                            <span class="price-separator">-</span>
+                            <input type="number" class="price-input" placeholder="Max" min="0">
+                        </div>
+                        <div class="price-slider">
+                            <input type="range" class="range-slider" min="0" max="1000" value="500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estado -->
+                <div class="filter-group">
+                    <h4 class="filter-group-title">Estado del Producto</h4>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="checkbox" value="new" checked>
+                            <span class="checkmark"></span>
+                            Nuevo
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" value="like-new">
+                            <span class="checkmark"></span>
+                            Como Nuevo
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" value="good">
+                            <span class="checkmark"></span>
+                            Bueno
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" value="fair">
+                            <span class="checkmark"></span>
+                            Aceptable
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Ubicación -->
+                <div class="filter-group">
+                    <h4 class="filter-group-title">Ubicación</h4>
+                    <div class="location-filter">
+                        <input type="text" class="location-input" placeholder="Ciudad o código postal">
+                        <button class="location-btn">📍</button>
+                    </div>
+                </div>
+
+                <!-- Botones de Filtro -->
+                <div class="filter-actions">
+                    <button class="btn btn-primary apply-filters">Aplicar Filtros</button>
+                    <button class="btn btn-secondary clear-filters">Limpiar</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Lista de Productos -->
+        <section class="products-section">
+            <!-- Controles de Vista -->
+            <div class="view-controls">
+                <div class="view-options">
+                    <button class="view-btn active" data-view="grid">
+                        <i class="view-icon">⊞</i>
+                    </button>
+                    <button class="view-btn" data-view="list">
+                        <i class="view-icon">☰</i>
+                    </button>
+                </div>
+
+                <div class="sort-controls">
+                    <select class="sort-select">
+                        <option value="relevance">Más Relevantes</option>
+                        <option value="price-low">Precio: Menor a Mayor</option>
+                        <option value="price-high">Precio: Mayor a Menor</option>
+                        <option value="date">Más Recientes</option>
+                        <option value="rating">Mejor Valorados</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Grid de Productos -->
+            <div class="products-grid" id="productsGrid">
+                <!-- Producto 1 -->
+                <article class="product-card" data-category="electronics" data-price="150">
+                    <div class="product-image">
+                        <img src="https://via.placeholder.com/300x200/4CAF50/FFFFFF?text=Smartphone"
+                            alt="Smartphone usado">
+                        <div class="product-badges">
+                            <span class="badge badge-new">Nuevo</span>
+                            <span class="badge badge-verified">Verificado</span>
+                        </div>
+                        <button class="favorite-btn" data-product-id="1">❤</button>
+                    </div>
+
+                    <div class="product-info">
+                        <h3 class="product-title">iPhone 12 Pro - Excelente Estado</h3>
+                        <p class="product-description">Smartphone en perfecto estado, solo 6 meses de uso. Incluye
+                            cargador y funda original.</p>
+
+                        <div class="product-meta">
+                            <span class="product-category">Electrónicos</span>
+                            <span class="product-location">📍 Madrid</span>
+                        </div>
+
+                        <div class="product-rating">
+                            <div class="stars">⭐⭐⭐⭐⭐</div>
+                            <span class="rating-count">(24)</span>
+                        </div>
+
+                        <div class="product-price">
+                            <span class="price">€150</span>
+                            <span class="original-price">€200</span>
+                        </div>
+
+                        <div class="product-actions">
+                            <button class="btn btn-primary contact-seller">Contactar</button>
+                            <button class="btn btn-secondary view-details">Ver Detalles</button>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Producto 2 -->
+                <article class="product-card" data-category="clothing" data-price="25">
+                    <div class="product-image">
+                        <img src="https://via.placeholder.com/300x200/2196F3/FFFFFF?text=Camiseta"
+                            alt="Camiseta vintage">
+                        <div class="product-badges">
+                            <span class="badge badge-vintage">Vintage</span>
+                        </div>
+                        <button class="favorite-btn" data-product-id="2">🤍</button>
+                    </div>
+
+                    <div class="product-info">
+                        <h3 class="product-title">Camiseta Vintage 90s - Nike</h3>
+                        <p class="product-description">Camiseta original de los 90s en excelente estado. Coleccionable y
+                            única.</p>
+
+                        <div class="product-meta">
+                            <span class="product-category">Ropa</span>
+                            <span class="product-location">📍 Barcelona</span>
+                        </div>
+
+                        <div class="product-rating">
+                            <div class="stars">⭐⭐⭐⭐</div>
+                            <span class="rating-count">(18)</span>
+                        </div>
+
+                        <div class="product-price">
+                            <span class="price">€25</span>
+                        </div>
+
+                        <div class="product-actions">
+                            <button class="btn btn-primary contact-seller">Contactar</button>
+                            <button class="btn btn-secondary view-details">Ver Detalles</button>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Producto 3 -->
+                <article class="product-card" data-category="home" data-price="80">
+                    <div class="product-image">
+                        <img src="https://via.placeholder.com/300x200/FF9800/FFFFFF?text=Mesa" alt="Mesa de madera">
+                        <div class="product-badges">
+                            <span class="badge badge-eco">Eco</span>
+                        </div>
+                        <button class="favorite-btn" data-product-id="3">🤍</button>
+                    </div>
+
+                    <div class="product-info">
+                        <h3 class="product-title">Mesa de Madera Reciclada</h3>
+                        <p class="product-description">Mesa de comedor hecha con madera 100% reciclada. Diseño único y
+                            sostenible.</p>
+
+                        <div class="product-meta">
+                            <span class="product-category">Hogar</span>
+                            <span class="product-location">📍 Valencia</span>
+                        </div>
+
+                        <div class="product-rating">
+                            <div class="stars">⭐⭐⭐⭐⭐</div>
+                            <span class="rating-count">(31)</span>
+                        </div>
+
+                        <div class="product-price">
+                            <span class="price">€80</span>
+                            <span class="original-price">€120</span>
+                        </div>
+
+                        <div class="product-actions">
+                            <button class="btn btn-primary contact-seller">Contactar</button>
+                            <button class="btn btn-secondary view-details">Ver Detalles</button>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Producto 4 -->
+                <article class="product-card" data-category="books" data-price="15">
+                    <div class="product-image">
+                        <img src="https://via.placeholder.com/300x200/9C27B0/FFFFFF?text=Libro" alt="Libro usado">
+                        <div class="product-badges">
+                            <span class="badge badge-good">Bueno</span>
+                        </div>
+                        <button class="favorite-btn" data-product-id="4">🤍</button>
+                    </div>
+
+                    <div class="product-info">
+                        <h3 class="product-title">El Señor de los Anillos - Trilogía</h3>
+                        <p class="product-description">Edición especial de bolsillo en muy buen estado. Incluye los tres
+                            libros.</p>
+
+                        <div class="product-meta">
+                            <span class="product-category">Libros</span>
+                            <span class="product-location">📍 Sevilla</span>
+                        </div>
+
+                        <div class="product-rating">
+                            <div class="stars">⭐⭐⭐⭐</div>
+                            <span class="rating-count">(12)</span>
+                        </div>
+
+                        <div class="product-price">
+                            <span class="price">€15</span>
+                            <span class="original-price">€25</span>
+                        </div>
+
+                        <div class="product-actions">
+                            <button class="btn btn-primary contact-seller">Contactar</button>
+                            <button class="btn btn-secondary view-details">Ver Detalles</button>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Producto 5 -->
+                <article class="product-card" data-category="sports" data-price="45">
+                    <div class="product-image">
+                        <img src="https://via.placeholder.com/300x200/4CAF50/FFFFFF?text=Bicicleta" alt="Bicicleta">
+                        <div class="product-badges">
+                            <span class="badge badge-like-new">Como Nuevo</span>
+                        </div>
+                        <button class="favorite-btn" data-product-id="5">🤍</button>
+                    </div>
+
+                    <div class="product-info">
+                        <h3 class="product-title">Bicicleta de Montaña - Trek</h3>
+                        <p class="product-description">Bicicleta en perfecto estado, solo 3 meses de uso. Incluye
+                            accesorios.</p>
+
+                        <div class="product-meta">
+                            <span class="product-category">Deportes</span>
+                            <span class="product-location">📍 Bilbao</span>
+                        </div>
+
+                        <div class="product-rating">
+                            <div class="stars">⭐⭐⭐⭐⭐</div>
+                            <span class="rating-count">(28)</span>
+                        </div>
+
+                        <div class="product-price">
+                            <span class="price">€45</span>
+                            <span class="original-price">€80</span>
+                        </div>
+
+                        <div class="product-actions">
+                            <button class="btn btn-primary contact-seller">Contactar</button>
+                            <button class="btn btn-secondary view-details">Ver Detalles</button>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Producto 6 -->
+                <article class="product-card" data-category="toys" data-price="20">
+                    <div class="product-image">
+                        <img src="https://via.placeholder.com/300x200/FF5722/FFFFFF?text=Juguetes" alt="Juguetes">
+                        <div class="product-badges">
+                            <span class="badge badge-fair">Aceptable</span>
+                        </div>
+                        <button class="favorite-btn" data-product-id="6">🤍</button>
+                    </div>
+
+                    <div class="product-info">
+                        <h3 class="product-title">Set de Lego Duplo - Completo</h3>
+                        <p class="product-description">Set completo de Lego Duplo para niños. Algunas piezas con
+                            desgaste normal.</p>
+
+                        <div class="product-meta">
+                            <span class="product-category">Juguetes</span>
+                            <span class="product-location">📍 Málaga</span>
+                        </div>
+
+                        <div class="product-rating">
+                            <div class="stars">⭐⭐⭐</div>
+                            <span class="rating-count">(8)</span>
+                        </div>
+
+                        <div class="product-price">
+                            <span class="price">€20</span>
+                            <span class="original-price">€35</span>
+                        </div>
+
+                        <div class="product-actions">
+                            <button class="btn btn-primary contact-seller">Contactar</button>
+                            <button class="btn btn-secondary view-details">Ver Detalles</button>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Paginación -->
+            <div class="pagination">
+                <button class="pagination-btn prev" disabled>← Anterior</button>
+                <div class="pagination-numbers">
+                    <button class="pagination-number active">1</button>
+                    <button class="pagination-number">2</button>
+                    <button class="pagination-number">3</button>
+                    <span class="pagination-ellipsis">...</span>
+                    <button class="pagination-number">12</button>
+                </div>
+                <button class="pagination-btn next">Siguiente →</button>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- Modal de Detalles del Producto -->
+<div id="productModal" class="modal">
+    <div class="modal-content product-modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Detalles del Producto</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="product-details">
+                <div class="product-gallery">
+                    <div class="main-image">
+                        <img src="" alt="" id="modalMainImage">
+                    </div>
+                    <div class="thumbnail-images">
+                        <img src="" alt="" class="thumbnail active">
+                        <img src="" alt="" class="thumbnail">
+                        <img src="" alt="" class="thumbnail">
+                        <img src="" alt="" class="thumbnail">
+                    </div>
+                </div>
+
+                <div class="product-info-details">
+                    <h3 class="product-title-detail" id="modalProductTitle"></h3>
+                    <div class="product-rating-detail">
+                        <div class="stars">⭐⭐⭐⭐⭐</div>
+                        <span class="rating-count">(24)</span>
+                        <span class="rating-text">Excelente producto</span>
+                    </div>
+
+                    <div class="product-price-detail">
+                        <span class="price" id="modalPrice"></span>
+                        <span class="original-price" id="modalOriginalPrice"></span>
+                        <span class="discount">-25%</span>
+                    </div>
+
+                    <div class="product-description-detail" id="modalDescription"></div>
+
+                    <div class="product-specs">
+                        <h4>Especificaciones</h4>
+                        <ul class="specs-list">
+                            <li><strong>Estado:</strong> <span id="modalCondition"></span></li>
+                            <li><strong>Categoría:</strong> <span id="modalCategory"></span></li>
+                            <li><strong>Ubicación:</strong> <span id="modalLocation"></span></li>
+                            <li><strong>Fecha de publicación:</strong> <span id="modalDate"></span></li>
+                        </ul>
+                    </div>
+
+                    <div class="seller-info">
+                        <h4>Información del Vendedor</h4>
+                        <div class="seller-profile">
+                            <img src="https://via.placeholder.com/50x50/4CAF50/FFFFFF?text=U" alt="Usuario"
+                                class="seller-avatar">
+                            <div class="seller-details">
+                                <span class="seller-name">Usuario123</span>
+                                <div class="seller-rating">⭐⭐⭐⭐⭐ (156)</div>
+                                <span class="seller-status">Vendedor Verificado</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="product-actions-detail">
+                        <button class="btn btn-primary btn-large contact-seller-detail">Contactar Vendedor</button>
+                        <button class="btn btn-secondary btn-large make-offer">Hacer Oferta</button>
+                        <button class="btn btn-outline btn-large add-to-favorites">❤ Añadir a Favoritos</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Contacto -->
+<div id="contactModal" class="modal">
+    <div class="modal-content contact-modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Contactar Vendedor</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+
+        <div class="modal-body">
+            <form class="contact-form">
+                <div class="form-group">
+                    <label for="contactSubject">Asunto</label>
+                    <input type="text" id="contactSubject" class="form-input" placeholder="Sobre el producto...">
+                </div>
+
+                <div class="form-group">
+                    <label for="contactMessage">Mensaje</label>
+                    <textarea id="contactMessage" class="form-textarea" rows="5"
+                        placeholder="Escribe tu mensaje aquí..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="contactOffer">Oferta (opcional)</label>
+                    <div class="offer-input">
+                        <span class="currency">€</span>
+                        <input type="number" id="contactOffer" class="form-input" placeholder="0.00" min="0"
+                            step="0.01">
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary cancel-contact">Cancelar</button>
+                    <button type="submit" class="btn btn-primary send-message">Enviar Mensaje</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

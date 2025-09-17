@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Next.js / Build output
+.next/
+out/
+build/
+dist/
+.cache/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing / Coverage
+coverage/
+
+# Logs / Debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.eslintcache
+
+# OS / Misc
+.DS_Store
+
+# Env files (do not commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Hosting / Platform
+.vercel/
+
+# Supabase local metadata (optional)
+.supabase/
+
+

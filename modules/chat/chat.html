@@ -1,0 +1,286 @@
+<!-- Módulo de Chat -->
+<div id="chat" class="mockup-screen">
+    <!-- Header del Chat -->
+    <header class="chat-header">
+        <div class="header-content">
+            <h1 class="page-title">Chat EcoSwap</h1>
+            <p class="page-subtitle">Conecta y negocia con otros usuarios de la comunidad</p>
+        </div>
+        <!-- Acciones Rápidas -->
+        <div class="chat-actions">
+            <button class="btn btn-primary new-conversation-btn">
+                <i class="icon">💬</i>
+                Nueva Conversación
+            </button>
+            <button class="btn btn-secondary search-conversations-btn">
+                <i class="icon">🔍</i>
+                Buscar
+            </button>
+        </div>
+    </header>
+
+    <!-- Contenido Principal del Chat -->
+    <main class="chat-main">
+        <!-- Lista de Conversaciones -->
+        <aside class="conversations-sidebar">
+            <div class="conversations-header">
+                <h3>Conversaciones</h3>
+                <div class="conversations-filter">
+                    <select id="conversationFilter">
+                        <option value="all">Todas</option>
+                        <option value="unread">No Leídas</option>
+                        <option value="recent">Recientes</option>
+                        <option value="favorites">Favoritas</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Lista de Conversaciones -->
+            <div class="conversations-list" id="conversationsList">
+                <!-- Las conversaciones se cargarán aquí dinámicamente -->
+                <div class="conversation-item skeleton-loading">
+                    <div class="conversation-avatar-placeholder"></div>
+                    <div class="conversation-info">
+                        <div class="conversation-name-placeholder"></div>
+                        <div class="conversation-preview-placeholder"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Área Principal del Chat -->
+        <section class="chat-area">
+            <!-- Estado Inicial - Seleccionar Conversación -->
+            <div class="chat-welcome" id="chatWelcome">
+                <div class="welcome-content">
+                    <div class="welcome-icon">💬</div>
+                    <h2>Bienvenido al Chat de EcoSwap</h2>
+                    <p>Selecciona una conversación para comenzar a chatear o crea una nueva conversación.</p>
+                    <button class="btn btn-primary start-chat-btn">
+                        <i class="icon">🚀</i>
+                        Comenzar a Chatear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Activo (se muestra cuando hay una conversación seleccionada) -->
+            <div class="chat-active" id="chatActive" style="display: none;">
+                <!-- Header del Chat Activo -->
+                <div class="chat-active-header">
+                    <div class="chat-user-info">
+                        <img src="" alt="Usuario" class="chat-user-avatar" id="chatUserAvatar">
+                        <div class="chat-user-details">
+                            <h3 id="chatUserName">Nombre del Usuario</h3>
+                            <span class="chat-user-status" id="chatUserStatus">En línea</span>
+                        </div>
+                    </div>
+                    <div class="chat-header-actions">
+                        <button class="btn btn-icon" title="Información del usuario">
+                            <i class="icon">ℹ️</i>
+                        </button>
+                        <button class="btn btn-icon" title="Más opciones">
+                            <i class="icon">⋮</i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Área de Mensajes -->
+                <div class="messages-area" id="messagesArea">
+                    <div class="messages-container" id="messagesContainer">
+                        <!-- Los mensajes se cargarán aquí dinámicamente -->
+                    </div>
+                </div>
+
+                <!-- Área de Entrada de Mensaje -->
+                <div class="message-input-area">
+                    <form id="messageForm" class="message-form">
+                        <div class="message-input-container">
+                            <button type="button" class="btn btn-icon attachment-btn" title="Adjuntar archivo">
+                                <i class="icon">📎</i>
+                            </button>
+                            <div class="message-input-wrapper">
+                                <textarea id="messageInput" placeholder="Escribe tu mensaje..." rows="1"
+                                    maxlength="1000"></textarea>
+                                <div class="message-actions">
+                                    <button type="button" class="btn btn-icon emoji-btn" title="Emojis">
+                                        <i class="icon">😊</i>
+                                    </button>
+                                    <button type="button" class="btn btn-icon location-btn" title="Compartir ubicación">
+                                        <i class="icon">📍</i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary send-btn" title="Enviar mensaje">
+                                <i class="icon">📤</i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- Modal de Nueva Conversación -->
+<div id="newConversationModal" class="modal">
+    <div class="modal-content new-conversation-modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Nueva Conversación</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="newConversationForm">
+                <div class="form-group">
+                    <label for="conversationType">Tipo de Conversación:</label>
+                    <select id="conversationType" required>
+                        <option value="">Selecciona el tipo</option>
+                        <option value="product">Sobre un Producto</option>
+                        <option value="general">General</option>
+                        <option value="support">Soporte</option>
+                        <option value="trade">Intercambio</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="conversationUser">Usuario:</label>
+                    <div class="user-search-container">
+                        <input type="text" id="conversationUser" placeholder="Buscar usuario..." required>
+                        <div class="user-search-results" id="userSearchResults"></div>
+                    </div>
+                </div>
+                <div class="form-group" id="productSelectionGroup" style="display: none;">
+                    <label for="conversationProduct">Producto:</label>
+                    <select id="conversationProduct">
+                        <option value="">Selecciona un producto</option>
+                        <!-- Los productos se cargarán dinámicamente -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="conversationSubject">Asunto:</label>
+                    <input type="text" id="conversationSubject" placeholder="Asunto de la conversación" required>
+                </div>
+                <div class="form-group">
+                    <label for="conversationMessage">Mensaje Inicial:</label>
+                    <textarea id="conversationMessage" rows="4" placeholder="Escribe tu mensaje inicial..."
+                        required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Iniciar Conversación</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Información del Usuario -->
+<div id="userInfoModal" class="modal">
+    <div class="modal-content user-info-modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Información del Usuario</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="user-profile">
+                <img src="" alt="Usuario" class="user-profile-avatar" id="userProfileAvatar">
+                <div class="user-profile-info">
+                    <h3 id="userProfileName">Nombre del Usuario</h3>
+                    <p class="user-profile-status" id="userProfileStatus">En línea</p>
+                    <p class="user-profile-location" id="userProfileLocation">Madrid, España</p>
+                    <div class="user-profile-rating">
+                        <span class="rating-stars">⭐⭐⭐⭐⭐</span>
+                        <span class="rating-count">(4.8 - 127 reseñas)</span>
+                    </div>
+                </div>
+            </div>
+            <div class="user-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Productos Vendidos</span>
+                    <span class="stat-value" id="userProductsSold">45</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Miembro Desde</span>
+                    <span class="stat-value" id="userMemberSince">Enero 2023</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Respuesta Promedio</span>
+                    <span class="stat-value" id="userResponseTime">2 horas</span>
+                </div>
+            </div>
+            <div class="user-actions">
+                <button class="btn btn-primary" onclick="ChatModule.viewUserProfile()">
+                    <i class="icon">👤</i>
+                    Ver Perfil Completo
+                </button>
+                <button class="btn btn-secondary" onclick="ChatModule.blockUser()">
+                    <i class="icon">🚫</i>
+                    Bloquear Usuario
+                </button>
+                <button class="btn btn-secondary" onclick="ChatModule.reportUser()">
+                    <i class="icon">🚨</i>
+                    Reportar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Emojis -->
+<div id="emojiModal" class="modal emoji-modal">
+    <div class="modal-content emoji-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Emojis</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="emoji-categories">
+                <button class="emoji-category active" data-category="recent">🕒</button>
+                <button class="emoji-category" data-category="smileys">😊</button>
+                <button class="emoji-category" data-category="animals">🐶</button>
+                <button class="emoji-category" data-category="food">🍕</button>
+                <button class="emoji-category" data-category="activities">⚽</button>
+                <button class="emoji-category" data-category="objects">💻</button>
+                <button class="emoji-category" data-category="symbols">❤️</button>
+            </div>
+            <div class="emoji-grid" id="emojiGrid">
+                <!-- Los emojis se cargarán dinámicamente -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Adjuntar Archivo -->
+<div id="attachmentModal" class="modal">
+    <div class="modal-content attachment-modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Adjuntar Archivo</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="attachment-options">
+                <div class="attachment-option">
+                    <input type="file" id="imageAttachment" accept="image/*" style="display: none;">
+                    <label for="imageAttachment" class="attachment-option-label">
+                        <i class="icon">📷</i>
+                        <span>Imagen</span>
+                    </label>
+                </div>
+                <div class="attachment-option">
+                    <input type="file" id="documentAttachment" accept=".pdf,.doc,.docx,.txt" style="display: none;">
+                    <label for="documentAttachment" class="attachment-option-label">
+                        <i class="icon">📄</i>
+                        <span>Documento</span>
+                    </label>
+                </div>
+                <div class="attachment-option">
+                    <button class="attachment-option-label" onclick="ChatModule.shareLocation()">
+                        <i class="icon">📍</i>
+                        <span>Ubicación</span>
+                    </button>
+                </div>
+                <div class="attachment-option">
+                    <button class="attachment-option-label" onclick="ChatModule.shareProduct()">
+                        <i class="icon">🛍️</i>
+                        <span>Producto</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,481 @@
+<!-- ===================================
+     MÓDULO PRINCIPAL - ECOSWAP COLOMBIA
+     =================================== -->
+
+<div class="core-container">
+    <!-- Header Principal -->
+    <header class="main-header">
+        <div class="header-content">
+            <div class="header-left">
+                <div class="logo">
+                    <span class="logo-icon">🌱</span>
+                    <span class="logo-text">EcoSwap Colombia</span>
+                </div>
+                <nav class="main-nav">
+                    <a href="#" class="nav-link active" data-screen="main">Inicio</a>
+                    <a href="#" class="nav-link" data-screen="products">Productos</a>
+                    <a href="#" class="nav-link" data-screen="interactions">Interacciones</a>
+                    <a href="#" class="nav-link" data-screen="chat">Chat</a>
+                    <a href="#" class="nav-link" data-screen="profile">Mi Perfil</a>
+                </nav>
+            </div>
+
+            <div class="header-right">
+                <div class="search-container">
+                    <input type="text" class="search-input" placeholder="Buscar productos, usuarios...">
+                    <button class="search-btn">
+                        <i class="icon">🔍</i>
+                    </button>
+                </div>
+
+                <div class="user-menu">
+                    <button class="user-avatar" onclick="CoreModule.toggleUserMenu()">
+                        <img src="https://via.placeholder.com/40x40/4CAF50/FFFFFF?text=CM" alt="Usuario">
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <div class="user-info">
+                            <img src="https://via.placeholder.com/50x50/4CAF50/FFFFFF?text=CM" alt="Usuario">
+                            <div class="user-details">
+                                <h4>Carlos Mendoza</h4>
+                                <p>Pereira, Colombia</p>
+                            </div>
+                        </div>
+                        <div class="dropdown-actions">
+                            <a href="#" class="dropdown-item" onclick="CoreModule.showScreen('profile')">
+                                <i class="icon">👤</i>
+                                Mi Perfil
+                            </a>
+                            <a href="#" class="dropdown-item" onclick="CoreModule.showScreen('settings')">
+                                <i class="icon">⚙️</i>
+                                Configuración
+                            </a>
+                            <a href="#" class="dropdown-item" onclick="CoreModule.showHelp()">
+                                <i class="icon">❓</i>
+                                Ayuda
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" class="dropdown-item logout" onclick="CoreModule.logout()">
+                                <i class="icon">🚪</i>
+                                Cerrar Sesión
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="main-content">
+        <!-- Pantalla de Inicio -->
+        <div id="homeScreen" class="screen active">
+            <div class="hero-section">
+                <div class="hero-content">
+                    <h1>Bienvenido a EcoSwap Colombia</h1>
+                    <p>La plataforma líder en intercambio y venta de productos de segunda mano en Colombia</p>
+                    <div class="hero-actions">
+                        <button class="btn btn-primary" onclick="CoreModule.showScreen('products')">
+                            <i class="icon">🛍️</i>
+                            Explorar Productos
+                        </button>
+                        <button class="btn btn-secondary" onclick="CoreModule.showScreen('interactions')">
+                            <i class="icon">💬</i>
+                            Ver Actividad
+                        </button>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <div class="hero-placeholder">🌱</div>
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📱</div>
+                        <div class="stat-content">
+                            <h3>1,247</h3>
+                            <p>Productos Disponibles</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-content">
+                            <h3>5,893</h3>
+                            <p>Usuarios Activos</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔄</div>
+                        <div class="stat-content">
+                            <h3>892</h3>
+                            <p>Intercambios Completados</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⭐</div>
+                        <div class="stat-content">
+                            <h3>4.8</h3>
+                            <p>Calificación Promedio</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="features-section">
+                <h2>¿Por qué elegir EcoSwap?</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">♻️</div>
+                        <h3>Sostenibilidad</h3>
+                        <p>Promovemos la economía circular y reducimos el desperdicio</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🤝</div>
+                        <h3>Comunidad</h3>
+                        <p>Conecta con personas que comparten tus valores</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💰</div>
+                        <h3>Ahorro</h3>
+                        <p>Encuentra productos de calidad a precios accesibles</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h3>Seguridad</h3>
+                        <p>Sistema de verificación y calificaciones confiables</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="recent-activity">
+                <h2>Actividad Reciente</h2>
+                <div class="activity-grid">
+                    <div class="activity-card">
+                        <div class="activity-avatar">
+                            <img src="https://via.placeholder.com/50x50/4CAF50/FFFFFF?text=CM" alt="Usuario">
+                        </div>
+                        <div class="activity-content">
+                            <p><strong>Carlos Mendoza</strong> vendió un iPhone 12 Pro</p>
+                            <span class="activity-time">Hace 2 horas</span>
+                        </div>
+                    </div>
+                    <div class="activity-card">
+                        <div class="activity-avatar">
+                            <img src="https://via.placeholder.com/50x50/2196F3/FFFFFF?text=AG" alt="Usuario">
+                        </div>
+                        <div class="activity-content">
+                            <p><strong>Ana García</strong> compró una bicicleta Trek</p>
+                            <span class="activity-time">Hace 4 horas</span>
+                        </div>
+                    </div>
+                    <div class="activity-card">
+                        <div class="activity-avatar">
+                            <img src="https://via.placeholder.com/50x50/FF9800/FFFFFF?text=LR" alt="Usuario">
+                        </div>
+                        <div class="activity-content">
+                            <p><strong>Luis Rodríguez</strong> publicó una mesa vintage</p>
+                            <span class="activity-time">Hace 6 horas</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de Configuración -->
+        <div id="settingsScreen" class="screen">
+            <div class="screen-header">
+                <h1>Configuración</h1>
+                <p>Personaliza tu experiencia en EcoSwap</p>
+            </div>
+
+            <div class="settings-content">
+                <div class="settings-section">
+                    <h3>Perfil</h3>
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label>Nombre</label>
+                            <input type="text" value="Carlos Mendoza" class="form-control">
+                        </div>
+                        <div class="setting-item">
+                            <label>Email</label>
+                            <input type="email" value="carlos.mendoza@email.com" class="form-control">
+                        </div>
+                        <div class="setting-item">
+                            <label>Teléfono</label>
+                            <input type="tel" value="+57 300 123 4567" class="form-control">
+                        </div>
+                        <div class="setting-item">
+                            <label>Ubicación</label>
+                            <select class="form-control">
+                                <option value="pereira" selected>Pereira, Risaralda</option>
+                                <option value="bogota">Bogotá D.C.</option>
+                                <option value="medellin">Medellín, Antioquia</option>
+                                <option value="cali">Cali, Valle del Cauca</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Preferencias</h3>
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label>Idioma</label>
+                            <select class="form-control">
+                                <option value="es" selected>Español</option>
+                                <option value="en">English</option>
+                                <option value="pt">Português</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Moneda</label>
+                            <select class="form-control">
+                                <option value="COP" selected>Pesos Colombianos (COP)</option>
+                                <option value="USD">Dólares (USD)</option>
+                                <option value="EUR">Euros (EUR)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Tema</label>
+                            <select class="form-control">
+                                <option value="auto" selected>Automático</option>
+                                <option value="light">Claro</option>
+                                <option value="dark">Oscuro</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Zona Horaria</label>
+                            <select class="form-control">
+                                <option value="America/Bogota" selected>Colombia (UTC-5)</option>
+                                <option value="America/New_York">Nueva York (UTC-5)</option>
+                                <option value="Europe/Madrid">Madrid (UTC+1)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Notificaciones</h3>
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label>Email</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="emailNotif" checked>
+                                <label for="emailNotif"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Push</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="pushNotif" checked>
+                                <label for="pushNotif"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>SMS</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="smsNotif">
+                                <label for="smsNotif"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="btn btn-primary" onclick="CoreModule.saveSettings()">
+                        Guardar Cambios
+                    </button>
+                    <button class="btn btn-secondary" onclick="CoreModule.resetSettings()">
+                        Restablecer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de Ayuda -->
+        <div id="helpScreen" class="screen">
+            <div class="screen-header">
+                <h1>Centro de Ayuda</h1>
+                <p>Encuentra respuestas a tus preguntas</p>
+            </div>
+
+            <div class="help-content">
+                <div class="help-search">
+                    <input type="text" class="search-input" placeholder="Buscar en la ayuda...">
+                    <button class="search-btn">
+                        <i class="icon">🔍</i>
+                    </button>
+                </div>
+
+                <div class="help-categories">
+                    <div class="help-category">
+                        <h3>🚀 Primeros Pasos</h3>
+                        <div class="help-items">
+                            <a href="#" class="help-item">Cómo crear una cuenta</a>
+                            <a href="#" class="help-item">Configurar tu perfil</a>
+                            <a href="#" class="help-item">Publicar tu primer producto</a>
+                        </div>
+                    </div>
+
+                    <div class="help-category">
+                        <h3>🛍️ Compras y Ventas</h3>
+                        <div class="help-items">
+                            <a href="#" class="help-item">Cómo comprar productos</a>
+                            <a href="#" class="help-item">Vender productos</a>
+                            <a href="#" class="help-item">Negociar precios</a>
+                        </div>
+                    </div>
+
+                    <div class="help-category">
+                        <h3>💬 Comunicación</h3>
+                        <div class="help-items">
+                            <a href="#" class="help-item">Usar el chat</a>
+                            <a href="#" class="help-item">Enviar mensajes</a>
+                            <a href="#" class="help-item">Reportar problemas</a>
+                        </div>
+                    </div>
+
+                    <div class="help-category">
+                        <h3>🔒 Seguridad</h3>
+                        <div class="help-items">
+                            <a href="#" class="help-item">Protección del comprador</a>
+                            <a href="#" class="help-item">Verificación de usuarios</a>
+                            <a href="#" class="help-item">Denuncias y reportes</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="help-contact">
+                    <h3>¿Necesitas más ayuda?</h3>
+                    <p>Nuestro equipo de soporte está aquí para ayudarte</p>
+                    <div class="contact-options">
+                        <button class="btn btn-primary" onclick="CoreModule.contactSupport()">
+                            <i class="icon">📧</i>
+                            Contactar Soporte
+                        </button>
+                        <button class="btn btn-secondary" onclick="CoreModule.openLiveChat()">
+                            <i class="icon">💬</i>
+                            Chat en Vivo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla Acerca de -->
+        <div id="aboutScreen" class="screen">
+            <div class="screen-header">
+                <h1>Acerca de EcoSwap Colombia</h1>
+                <p>Conoce nuestra historia y misión</p>
+            </div>
+
+            <div class="about-content">
+                <div class="about-hero">
+                    <div class="about-text">
+                        <h2>Nuestra Historia</h2>
+                        <p>EcoSwap nació en 2024 con la visión de tres estudiantes universitarios en Pereira, Colombia,
+                            apasionados por la sostenibilidad y la economía circular.</p>
+                        <p>Nos dimos cuenta de que en Colombia había una gran oportunidad para crear una plataforma que
+                            no solo facilitara el intercambio de productos de segunda mano, sino que también promoviera
+                            valores ambientales y comunitarios.</p>
+                    </div>
+                    <div class="about-image">
+                        <div class="about-placeholder">🏔️</div>
+                    </div>
+                </div>
+
+                <div class="mission-vision">
+                    <div class="mission-card">
+                        <h3>🎯 Nuestra Misión</h3>
+                        <p>Promover la economía circular y el consumo sostenible en Colombia, conectando personas que
+                            comparten valores ambientales y creando una comunidad comprometida con el futuro del
+                            planeta.</p>
+                    </div>
+                    <div class="vision-card">
+                        <h3>🌟 Nuestra Visión</h3>
+                        <p>Ser la plataforma líder de intercambio en Latinoamérica, reconocida por su impacto positivo
+                            en el medio ambiente y su contribución a la construcción de comunidades sostenibles.</p>
+                    </div>
+                </div>
+
+                <div class="values-section">
+                    <h2>Nuestros Valores</h2>
+                    <div class="values-grid">
+                        <div class="value-card">
+                            <div class="value-icon">♻️</div>
+                            <h4>Sostenibilidad</h4>
+                            <p>Comprometidos con el medio ambiente y la economía circular</p>
+                        </div>
+                        <div class="value-card">
+                            <div class="value-icon">🤝</div>
+                            <h4>Comunidad</h4>
+                            <p>Construimos conexiones basadas en la confianza y el respeto</p>
+                        </div>
+                        <div class="value-card">
+                            <div class="value-icon">💡</div>
+                            <h4>Innovación</h4>
+                            <p>Buscamos constantemente mejorar la experiencia del usuario</p>
+                        </div>
+                        <div class="value-card">
+                            <div class="value-icon">🔒</div>
+                            <h4>Seguridad</h4>
+                            <p>Protegemos a nuestra comunidad con sistemas robustos</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="team-section">
+                    <h2>Nuestro Equipo</h2>
+                    <div class="team-grid">
+                        <div class="team-member">
+                            <img src="https://via.placeholder.com/120x120/4CAF50/FFFFFF?text=CM" alt="Carlos Mendoza">
+                            <h4>Carlos Mendoza</h4>
+                            <p>CEO & Fundador</p>
+                            <p class="member-location">Pereira, Risaralda</p>
+                        </div>
+                        <div class="team-member">
+                            <img src="https://via.placeholder.com/120x120/2196F3/FFFFFF?text=AG" alt="Ana García">
+                            <h4>Ana García</h4>
+                            <p>CTO & Co-fundadora</p>
+                            <p class="member-location">Bogotá D.C.</p>
+                        </div>
+                        <div class="team-member">
+                            <img src="https://via.placeholder.com/120x120/FF9800/FFFFFF?text=LR" alt="Luis Rodríguez">
+                            <h4>Luis Rodríguez</h4>
+                            <p>CPO & Co-fundador</p>
+                            <p class="member-location">Medellín, Antioquia</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="contact-section">
+                    <h2>Contáctanos</h2>
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <i class="icon">📧</i>
+                            <div>
+                                <h4>Email</h4>
+                                <p>info@ecoswap.co</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <i class="icon">📞</i>
+                            <div>
+                                <h4>Teléfono</h4>
+                                <p>+57 6 123 4567</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <i class="icon">📍</i>
+                            <div>
+                                <h4>Ubicación</h4>
+                                <p>Pereira, Risaralda, Colombia</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
