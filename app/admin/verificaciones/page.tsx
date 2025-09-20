@@ -10,6 +10,10 @@ import UsersSection from '@/components/admin/UsersSection'
 import ProductsSection from '@/components/admin/ProductsSection'
 import MessagesSection from '@/components/admin/MessagesSection'
 import ComplaintsSection from '@/components/admin/ComplaintsSection'
+import NotificationsSection from '@/components/admin/NotificationsSection'
+import IdentityVerificationSection from '@/components/admin/IdentityVerificationSection'
+import VerificationSummary from '@/components/admin/VerificationSummary'
+import DashboardOverview from '@/components/admin/DashboardOverview'
 
 export default function VerificacionesPage() {
     const router = useRouter()
@@ -163,16 +167,31 @@ export default function VerificacionesPage() {
             case 'overview':
                 return (
                     <div className="space-y-6">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Resumen del Dashboard</h2>
-                            <p className="text-gray-600">Vista general de las estadísticas y métricas del sistema</p>
-                        </div>
+                        {/* Resumen General del Dashboard */}
+                        <DashboardOverview 
+                            onViewUsers={() => setActiveSection('users')}
+                            onViewVerifications={() => setActiveSection('identity-verification')}
+                            onViewNotifications={() => setActiveSection('notifications')}
+                        />
+                        
+                        {/* Estadísticas Detalladas */}
                         <DashboardStats />
+                        
+                        {/* Resumen de Verificaciones */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2">
+                                <VerificationSummary onViewDetails={() => setActiveSection('identity-verification')} />
+                            </div>
+                            <div className="lg:col-span-1">
+                                <NotificationsSection userId={user?.id} />
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div className="bg-white shadow rounded-lg p-6">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
                                 <div className="space-y-3">
-                                    <button
+                        <button
                                         onClick={() => setActiveSection('users')}
                                         className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                                     >
@@ -183,8 +202,8 @@ export default function VerificacionesPage() {
                                                 <p className="text-sm text-gray-600">Ver y administrar usuarios registrados</p>
                                             </div>
                                         </div>
-                                    </button>
-                                    <button
+                        </button>
+                        <button
                                         onClick={() => setActiveSection('products')}
                                         className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
                                     >
@@ -195,8 +214,20 @@ export default function VerificacionesPage() {
                                                 <p className="text-sm text-gray-600">Revisar productos pendientes</p>
                                             </div>
                                         </div>
-                                    </button>
-                                    <button
+                        </button>
+                        <button
+                                        onClick={() => setActiveSection('identity-verification')}
+                                        className="w-full text-left p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-2xl">🆔</span>
+                                            <div>
+                                                <p className="font-medium text-gray-900">Validar Identidad</p>
+                                                <p className="text-sm text-gray-600">Revisar documentos de identidad</p>
+                                            </div>
+                                        </div>
+                        </button>
+                        <button
                                         onClick={() => setActiveSection('messages')}
                                         className="w-full text-left p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
                                     >
@@ -207,8 +238,8 @@ export default function VerificacionesPage() {
                                                 <p className="text-sm text-gray-600">Responder consultas y soporte</p>
                                             </div>
                                         </div>
-                                    </button>
-                                    <button
+                        </button>
+                        <button
                                         onClick={() => setActiveSection('complaints')}
                                         className="w-full text-left p-3 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
                                     >
@@ -217,10 +248,22 @@ export default function VerificacionesPage() {
                                             <div>
                                                 <p className="font-medium text-gray-900">Quejas y Reportes</p>
                                                 <p className="text-sm text-gray-600">Gestionar reportes y quejas</p>
-                                            </div>
-                                        </div>
+                    </div>
+                </div>
                                     </button>
-                                </div>
+                                    <button
+                                        onClick={() => setActiveSection('notifications')}
+                                        className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-2xl">🔔</span>
+                                            <div>
+                                                <p className="font-medium text-gray-900">Notificaciones</p>
+                                                <p className="text-sm text-gray-600">Verificaciones y alertas</p>
+                            </div>
+                        </div>
+                                    </button>
+                    </div>
                             </div>
                             <div className="bg-white shadow rounded-lg p-6">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">Administración</h3>
@@ -234,10 +277,10 @@ export default function VerificacionesPage() {
                                             <div>
                                                 <p className="font-medium text-gray-900">Gestionar Administradores</p>
                                                 <p className="text-sm text-gray-600">Crear y administrar cuentas de admin</p>
-                                            </div>
-                                        </div>
+                            </div>
+                        </div>
                                     </button>
-                                </div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -246,10 +289,14 @@ export default function VerificacionesPage() {
                 return <UsersSection />
             case 'products':
                 return <ProductsSection />
+            case 'identity-verification':
+                return <IdentityVerificationSection currentUserId={user?.id} />
             case 'messages':
                 return <MessagesSection />
             case 'complaints':
                 return <ComplaintsSection />
+            case 'notifications':
+                return <NotificationsSection userId={user?.id} />
             case 'admins':
                 return (
                     <div className="bg-white shadow rounded-lg p-6">
@@ -285,7 +332,7 @@ export default function VerificacionesPage() {
                                         <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
+                                </svg>
                                         <span>Cerrando...</span>
                                     </>
                                 ) : (
@@ -316,15 +363,15 @@ export default function VerificacionesPage() {
                     <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
                         <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                             <h3 className="text-lg font-semibold">Gestión de Administradores</h3>
-                            <button
+                                <button
                                 onClick={() => setShowAdminModule(false)}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
                         <div className="p-4">
                             <AdminManagementModule onClose={() => setShowAdminModule(false)} />
                         </div>

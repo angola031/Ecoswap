@@ -13,27 +13,172 @@ export default function VerificacionIdentidadPage() {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
     const [useCamera, setUseCamera] = useState(false)
+    const [cameraStep, setCameraStep] = useState<'frente' | 'reverso' | 'selfie' | null>(null)
     const videoRef = useRef<HTMLVideoElement | null>(null)
     const canvasRef = useRef<HTMLCanvasElement | null>(null)
     const [step, setStep] = useState<0 | 1 | 2>(0)
+    const [stream, setStream] = useState<MediaStream | null>(null)
+    const [cameraError, setCameraError] = useState<string | null>(null)
+    const [isCapturing, setIsCapturing] = useState(false)
 
-    useEffect(() => {
-        let stream: MediaStream | null = null
-        const start = async () => {
-            if (!useCamera) return
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } })
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream
-                    await videoRef.current.play()
+    // Función para inicializar la cámara
+    const initializeCamera = async (facingMode: 'user' | 'environment' = 'user') => {
+        try {
+            setCameraError(null)
+            
+            // Detener stream anterior si existe
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop())
+            }
+
+            // Solicitar acceso a la cámara
+            const newStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: facingMode,
+                    width: { ideal: 1280, min: 640 },
+                    height: { ideal: 720, min: 480 }
                 }
-            } catch (e) { /* ignore */ }
+            })
+
+            setStream(newStream)
+            
+            if (videoRef.current) {
+                videoRef.current.srcObject = newStream
+                await videoRef.current.play()
+            }
+            
+            console.log('📷 Cámara inicializada correctamente')
+        } catch (error: any) {
+            console.error('❌ Error inicializando cámara:', error)
+            setCameraError('No se pudo acceder a la cámara. Verifica los permisos.')
+            
+            if (error.name === 'NotAllowedError') {
+                setCameraError('Permisos de cámara denegados. Por favor, permite el acceso a la cámara.')
+            } else if (error.name === 'NotFoundError') {
+                setCameraError('No se encontró ninguna cámara en el dispositivo.')
+            } else if (error.name === 'NotSupportedError') {
+                setCameraError('Tu navegador no soporta el acceso a la cámara.')
+            }
         }
-        start()
+    }
+
+    // Función para detener la cámara
+    const stopCamera = () => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop())
+            setStream(null)
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null
+        }
+        setCameraError(null)
+    }
+
+    // Función para capturar foto
+    const capturePhoto = async (type: 'frente' | 'reverso' | 'selfie') => {
+        if (!videoRef.current || !stream) return
+
+        setIsCapturing(true)
+        
+        try {
+            const video = videoRef.current
+            const canvas = canvasRef.current || document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
+            
+            if (!ctx) {
+                throw new Error('No se pudo obtener contexto del canvas')
+            }
+
+            // Configurar dimensiones del canvas según el tipo
+            if (type === 'selfie') {
+                // Para selfie, usar formato cuadrado
+                const side = Math.min(video.videoWidth, video.videoHeight)
+                canvas.width = side
+                canvas.height = side
+                
+                // Centrar recorte cuadrado
+                const sx = (video.videoWidth - side) / 2
+                const sy = (video.videoHeight - side) / 2
+                ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side)
+            } else {
+                // Para cédula, mantener proporción y alta calidad
+                canvas.width = video.videoWidth
+                canvas.height = video.videoHeight
+                ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
+            }
+
+            // Convertir a blob
+            const blob = await new Promise<Blob | null>((resolve) => {
+                canvas.toBlob(resolve, 'image/jpeg', 0.9)
+            })
+
+            if (blob) {
+                const fileName = `${type}_${Date.now()}.jpg`
+                const file = new File([blob], fileName, { type: 'image/jpeg' })
+                
+                // Asignar el archivo según el tipo
+                switch (type) {
+                    case 'frente':
+                        setCedulaFrente(file)
+                        break
+                    case 'reverso':
+                        setCedulaReverso(file)
+                        break
+                    case 'selfie':
+                        setSelfie(file)
+                        break
+                }
+
+                console.log(`📸 Foto capturada para ${type}`)
+                
+                // Mostrar vista previa en lugar de cerrar inmediatamente
+                setUseCamera(false)
+                setCameraStep(null)
+                stopCamera()
+                
+                // Mostrar mensaje de éxito
+                setSuccess(`Foto de ${type} capturada exitosamente`)
+                setTimeout(() => setSuccess(null), 3000)
+            }
+        } catch (error) {
+            console.error('❌ Error capturando foto:', error)
+            setError('Error al capturar la foto. Inténtalo de nuevo.')
+        } finally {
+            setIsCapturing(false)
+        }
+    }
+
+    // Función para cambiar entre cámara frontal y trasera
+    const switchCamera = async () => {
+        if (!stream) return
+        
+        const currentTrack = stream.getVideoTracks()[0]
+        const currentFacingMode = currentTrack.getSettings().facingMode
+        const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'
+        
+        await initializeCamera(newFacingMode)
+    }
+
+    // Efecto para manejar la cámara
+    useEffect(() => {
+        if (useCamera && cameraStep) {
+            const facingMode = cameraStep === 'selfie' ? 'user' : 'environment'
+            initializeCamera(facingMode)
+        } else {
+            stopCamera()
+        }
+
         return () => {
-            if (stream) stream.getTracks().forEach(t => t.stop())
+            stopCamera()
         }
-    }, [useCamera])
+    }, [useCamera, cameraStep])
+
+    // Limpiar al desmontar
+    useEffect(() => {
+        return () => {
+            stopCamera()
+        }
+    }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -81,8 +226,41 @@ export default function VerificacionIdentidadPage() {
             if (!resp.ok) {
                 setError(json?.error || 'Error al subir archivos')
             } else {
-                setSuccess('Archivos enviados. Verificaremos tu identidad pronto.')
-                setTimeout(() => router.push('/'), 1500)
+                // Enviar notificación a administradores
+                try {
+                    const notificationResp = await fetch('/api/notifications/admin', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            userId: dbUser.user_id,
+                            userName: `${session.user?.user_metadata?.name || 'Usuario'}`,
+                            userEmail: email,
+                            verificationType: 'identity_verification',
+                            additionalData: {
+                                files_uploaded: 3,
+                                upload_timestamp: new Date().toISOString(),
+                                verification_step: 'documents_submitted'
+                            }
+                        })
+                    })
+
+                    const notificationJson = await notificationResp.json()
+                    
+                    if (notificationResp.ok) {
+                        console.log('✅ Notificación enviada a administradores:', notificationJson)
+                    } else {
+                        console.error('⚠️ Error enviando notificación:', notificationJson)
+                    }
+                } catch (notificationError) {
+                    console.error('⚠️ Error enviando notificación a administradores:', notificationError)
+                    // No fallar el proceso principal por un error de notificación
+                }
+
+                setSuccess('Archivos enviados exitosamente. Los administradores han sido notificados y revisarán tu verificación pronto.')
+                setTimeout(() => router.push('/'), 3000)
             }
         } catch (e: any) {
             setError(e?.message || 'Error del servidor')
@@ -121,81 +299,367 @@ export default function VerificacionIdentidadPage() {
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Frente */}
                     <div className={`${step === 0 ? 'block' : 'hidden'}`}>
-                        <label className="block text-sm font-medium mb-2">Cédula - Frente</label>
-                        <div className="border-2 border-dashed rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                            <div className="relative w-full aspect-[1.586] bg-gray-50 rounded-lg overflow-hidden border">
-                                {/* Marco con proporción de tarjeta (CR80 ~ 1.586:1) */}
-                                <div className="absolute inset-0 pointer-events-none">
-                                    <div className="absolute inset-4 border-2 border-blue-400/60 rounded-md"></div>
-                                    <div className="absolute left-4 top-4 h-10 w-10 rounded-full border-2 border-blue-300/60"></div>
-                                    <div className="absolute right-6 top-4 h-3 w-20 bg-blue-300/20 rounded"></div>
-                                    <div className="absolute right-6 top-8 h-3 w-28 bg-blue-300/20 rounded"></div>
-                                </div>
-                                {cedulaFrente ? (
-                                    <img src={URL.createObjectURL(cedulaFrente)} alt="frente" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-400">Vista previa</div>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <p className="text-sm text-gray-600">Sube una foto nítida de la cara frontal. Evita reflejos, recorta a la tarjeta y centra los datos.</p>
-                                <div className="flex items-center gap-3">
-                                    <label htmlFor="file-frente" className="px-3 py-2 bg-gray-100 border rounded cursor-pointer hover:bg-gray-200 text-sm">Elegir archivo</label>
-                                    <span className="text-sm text-gray-500 truncate max-w-[240px]">
-                                        {cedulaFrente?.name || 'No se ha seleccionado ningún archivo'}
-                                    </span>
-                                    <input id="file-frente" className="hidden" type="file" accept="image/*" onChange={(e) => setCedulaFrente(e.target.files?.[0] || null)} />
-                                </div>
-                                <div className="pt-2 flex justify-end">
-                                    <button type="button" disabled={!cedulaFrente} onClick={() => setStep(1)} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50">Siguiente</button>
-                                </div>
-                            </div>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium">Cédula - Frente</label>
+                            <button 
+                                type="button" 
+                                className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                onClick={() => {
+                                    setCameraStep('frente')
+                                    setUseCamera(true)
+                                }}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Usar cámara
+                            </button>
                         </div>
+
+                        {useCamera && cameraStep === 'frente' ? (
+                            <div className="space-y-4">
+                                <div className="rounded-xl overflow-hidden border relative max-w-2xl mx-auto">
+                                    <video ref={videoRef} className="w-full h-auto" />
+                                    {/* Overlay con guías para cédula */}
+                                    <div className="pointer-events-none absolute inset-0">
+                                        <div className="absolute inset-4 border-2 border-blue-400/60 rounded-md"></div>
+                                        <div className="absolute left-4 top-4 h-10 w-10 rounded-full border-2 border-blue-300/60"></div>
+                                        <div className="absolute right-6 top-4 h-3 w-20 bg-blue-300/20 rounded"></div>
+                                        <div className="absolute right-6 top-8 h-3 w-28 bg-blue-300/20 rounded"></div>
+                                        <div className="absolute bottom-4 left-4 right-4 text-center">
+                                            <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                                                Centra la cédula en el marco azul
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {cameraError && (
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                                        {cameraError}
+                                    </div>
+                                )}
+                                
+                                <div className="flex items-center justify-between">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            setUseCamera(false)
+                                            setCameraStep(null)
+                                            stopCamera()
+                                        }} 
+                                        className="px-4 py-2 border rounded hover:bg-gray-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    
+                                    <div className="flex items-center gap-3">
+                                        <button 
+                                            type="button" 
+                                            onClick={switchCamera}
+                                            className="px-3 py-2 bg-gray-100 border rounded hover:bg-gray-200 text-sm"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                        </button>
+                                        
+                                        <button
+                                            type="button"
+                                            disabled={isCapturing || !stream}
+                                            onClick={() => capturePhoto('frente')}
+                                            className="px-6 py-2 bg-blue-600 text-white rounded disabled:opacity-50 flex items-center gap-2"
+                                        >
+                                            {isCapturing ? (
+                                                <>
+                                                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    Capturando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    </svg>
+                                                    Capturar
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="border-2 border-dashed rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                                <div className="relative w-full aspect-[1.586] bg-gray-50 rounded-lg overflow-hidden border">
+                                    {/* Marco con proporción de tarjeta (CR80 ~ 1.586:1) */}
+                                    <div className="absolute inset-0 pointer-events-none">
+                                        <div className="absolute inset-4 border-2 border-blue-400/60 rounded-md"></div>
+                                        <div className="absolute left-4 top-4 h-10 w-10 rounded-full border-2 border-blue-300/60"></div>
+                                        <div className="absolute right-6 top-4 h-3 w-20 bg-blue-300/20 rounded"></div>
+                                        <div className="absolute right-6 top-8 h-3 w-28 bg-blue-300/20 rounded"></div>
+                                    </div>
+                                    {cedulaFrente ? (
+                                        <img src={URL.createObjectURL(cedulaFrente)} alt="frente" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400">Vista previa</div>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm text-gray-600">Sube una foto nítida de la cara frontal. Evita reflejos, recorta a la tarjeta y centra los datos.</p>
+                                    <div className="flex items-center gap-3 flex-wrap">
+                                        <label htmlFor="file-frente" className="px-3 py-2 bg-gray-100 border rounded cursor-pointer hover:bg-gray-200 text-sm">Elegir archivo</label>
+                                        <button 
+                                            type="button" 
+                                            className="px-3 py-2 bg-blue-100 border border-blue-300 rounded cursor-pointer hover:bg-blue-200 text-blue-700 text-sm flex items-center gap-1"
+                                            onClick={() => {
+                                                setCameraStep('frente')
+                                                setUseCamera(true)
+                                            }}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            Capturar otra vez
+                                        </button>
+                                        <span className="text-sm text-gray-500 truncate max-w-[240px]">
+                                            {cedulaFrente?.name || 'No se ha seleccionado ningún archivo'}
+                                        </span>
+                                        <input id="file-frente" className="hidden" type="file" accept="image/*" onChange={(e) => setCedulaFrente(e.target.files?.[0] || null)} />
+                                    </div>
+                                    <div className="pt-2 flex justify-end">
+                                        <button type="button" disabled={!cedulaFrente} onClick={() => setStep(1)} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50">Siguiente</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Reverso */}
                     <div className={`${step === 1 ? 'block' : 'hidden'}`}>
-                        <label className="block text-sm font-medium mb-2">Cédula - Reverso</label>
-                        <div className="border-2 border-dashed rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                            <div className="relative w-full aspect-[1.586] bg-gray-50 rounded-lg overflow-hidden border">
-                                <div className="absolute inset-0 pointer-events-none">
-                                    <div className="absolute inset-4 border-2 border-green-400/60 rounded-md"></div>
-                                    <div className="absolute left-4 top-4 h-3 w-24 bg-green-300/20 rounded"></div>
-                                    <div className="absolute left-4 top-8 h-3 w-32 bg-green-300/20 rounded"></div>
-                                </div>
-                                {cedulaReverso ? (
-                                    <img src={URL.createObjectURL(cedulaReverso)} alt="reverso" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-400">Vista previa</div>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <p className="text-sm text-gray-600">Sube la cara posterior. Asegúrate que los textos sean legibles.</p>
-                                <div className="flex items-center gap-3">
-                                    <label htmlFor="file-reverso" className="px-3 py-2 bg-gray-100 border rounded cursor-pointer hover:bg-gray-200 text-sm">Elegir archivo</label>
-                                    <span className="text-sm text-gray-500 truncate max-w-[240px]">
-                                        {cedulaReverso?.name || 'No se ha seleccionado ningún archivo'}
-                                    </span>
-                                    <input id="file-reverso" className="hidden" type="file" accept="image/*" onChange={(e) => setCedulaReverso(e.target.files?.[0] || null)} />
-                                </div>
-                                <div className="pt-2 flex justify-between">
-                                    <button type="button" onClick={() => setStep(0)} className="px-4 py-2 border rounded">← Anterior</button>
-                                    <button type="button" disabled={!cedulaReverso} onClick={() => setStep(2)} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50">Siguiente</button>
-                                </div>
-                            </div>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium">Cédula - Reverso</label>
+                            <button 
+                                type="button" 
+                                className="text-sm text-green-600 hover:text-green-700 flex items-center gap-1"
+                                onClick={() => {
+                                    setCameraStep('reverso')
+                                    setUseCamera(true)
+                                }}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Usar cámara
+                            </button>
                         </div>
+
+                        {useCamera && cameraStep === 'reverso' ? (
+                            <div className="space-y-4">
+                                <div className="rounded-xl overflow-hidden border relative max-w-2xl mx-auto">
+                                    <video ref={videoRef} className="w-full h-auto" />
+                                    {/* Overlay con guías para cédula */}
+                                    <div className="pointer-events-none absolute inset-0">
+                                        <div className="absolute inset-4 border-2 border-green-400/60 rounded-md"></div>
+                                        <div className="absolute left-4 top-4 h-3 w-24 bg-green-300/20 rounded"></div>
+                                        <div className="absolute left-4 top-8 h-3 w-32 bg-green-300/20 rounded"></div>
+                                        <div className="absolute bottom-4 left-4 right-4 text-center">
+                                            <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                                                Centra el reverso de la cédula en el marco verde
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {cameraError && (
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                                        {cameraError}
+                                    </div>
+                                )}
+                                
+                                <div className="flex items-center justify-between">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            setUseCamera(false)
+                                            setCameraStep(null)
+                                            stopCamera()
+                                        }} 
+                                        className="px-4 py-2 border rounded hover:bg-gray-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    
+                                    <div className="flex items-center gap-3">
+                                        <button 
+                                            type="button" 
+                                            onClick={switchCamera}
+                                            className="px-3 py-2 bg-gray-100 border rounded hover:bg-gray-200 text-sm"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                        </button>
+                                        
+                                        <button
+                                            type="button"
+                                            disabled={isCapturing || !stream}
+                                            onClick={() => capturePhoto('reverso')}
+                                            className="px-6 py-2 bg-green-600 text-white rounded disabled:opacity-50 flex items-center gap-2"
+                                        >
+                                            {isCapturing ? (
+                                                <>
+                                                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    Capturando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    </svg>
+                                                    Capturar
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="border-2 border-dashed rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                                <div className="relative w-full aspect-[1.586] bg-gray-50 rounded-lg overflow-hidden border">
+                                    <div className="absolute inset-0 pointer-events-none">
+                                        <div className="absolute inset-4 border-2 border-green-400/60 rounded-md"></div>
+                                        <div className="absolute left-4 top-4 h-3 w-24 bg-green-300/20 rounded"></div>
+                                        <div className="absolute left-4 top-8 h-3 w-32 bg-green-300/20 rounded"></div>
+                                    </div>
+                                    {cedulaReverso ? (
+                                        <img src={URL.createObjectURL(cedulaReverso)} alt="reverso" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400">Vista previa</div>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm text-gray-600">Sube la cara posterior. Asegúrate que los textos sean legibles.</p>
+                                    <div className="flex items-center gap-3 flex-wrap">
+                                        <label htmlFor="file-reverso" className="px-3 py-2 bg-gray-100 border rounded cursor-pointer hover:bg-gray-200 text-sm">Elegir archivo</label>
+                                        <button 
+                                            type="button" 
+                                            className="px-3 py-2 bg-green-100 border border-green-300 rounded cursor-pointer hover:bg-green-200 text-green-700 text-sm flex items-center gap-1"
+                                            onClick={() => {
+                                                setCameraStep('reverso')
+                                                setUseCamera(true)
+                                            }}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            Capturar otra vez
+                                        </button>
+                                        <span className="text-sm text-gray-500 truncate max-w-[240px]">
+                                            {cedulaReverso?.name || 'No se ha seleccionado ningún archivo'}
+                                        </span>
+                                        <input id="file-reverso" className="hidden" type="file" accept="image/*" onChange={(e) => setCedulaReverso(e.target.files?.[0] || null)} />
+                                    </div>
+                                    <div className="pt-2 flex justify-between">
+                                        <button type="button" onClick={() => setStep(0)} className="px-4 py-2 border rounded">← Anterior</button>
+                                        <button type="button" disabled={!cedulaReverso} onClick={() => setStep(2)} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50">Siguiente</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Selfie */}
                     <div className={`${step === 2 ? 'block' : 'hidden'}`}>
                         <div className="flex items-center justify-between mb-2">
                             <label className="block text-sm font-medium">Selfie de Verificación</label>
-                            <button type="button" className="text-sm text-blue-600" onClick={() => setUseCamera(!useCamera)}>
-                                {useCamera ? 'Usar archivo' : 'Usar cámara'}
+                            <button 
+                                type="button" 
+                                className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                                onClick={() => {
+                                    setCameraStep('selfie')
+                                    setUseCamera(true)
+                                }}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Usar cámara
                             </button>
                         </div>
 
-                        {!useCamera && (
+                        {useCamera && cameraStep === 'selfie' ? (
+                            <div className="space-y-4">
+                                <div className="rounded-xl overflow-hidden border relative max-w-md mx-auto">
+                                    <video ref={videoRef} className="w-full h-auto" />
+                                    {/* Overlay ovalado para selfie */}
+                                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                        <div className="h-3/4 w-3/4 rounded-full border-4 border-purple-400/70"></div>
+                                    </div>
+                                    <div className="absolute bottom-4 left-4 right-4 text-center">
+                                        <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                                            Centra tu rostro en el marco circular
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {cameraError && (
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                                        {cameraError}
+                                    </div>
+                                )}
+                                
+                                <div className="flex items-center justify-between">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            setUseCamera(false)
+                                            setCameraStep(null)
+                                            stopCamera()
+                                        }} 
+                                        className="px-4 py-2 border rounded hover:bg-gray-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    
+                                    <button
+                                        type="button"
+                                        disabled={isCapturing || !stream}
+                                        onClick={() => capturePhoto('selfie')}
+                                        className="px-6 py-2 bg-purple-600 text-white rounded disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {isCapturing ? (
+                                            <>
+                                                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Capturando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                Capturar Selfie
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
                             <div className="border-2 border-dashed rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                                 <div className="relative w-full aspect-square bg-gray-50 rounded-full overflow-hidden border">
                                     {/* Marco ovalado para rostro */}
@@ -210,50 +674,27 @@ export default function VerificacionIdentidadPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <p className="text-sm text-gray-600">Toma una selfie con buena luz, sin gorros o gafas. Centra tu rostro en el marco.</p>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 flex-wrap">
                                         <label htmlFor="file-selfie" className="px-3 py-2 bg-gray-100 border rounded cursor-pointer hover:bg-gray-200 text-sm">Elegir archivo</label>
+                                        <button 
+                                            type="button" 
+                                            className="px-3 py-2 bg-purple-100 border border-purple-300 rounded cursor-pointer hover:bg-purple-200 text-purple-700 text-sm flex items-center gap-1"
+                                            onClick={() => {
+                                                setCameraStep('selfie')
+                                                setUseCamera(true)
+                                            }}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            Capturar otra vez
+                                        </button>
                                         <span className="text-sm text-gray-500 truncate max-w-[240px]">
                                             {selfie?.name || 'No se ha seleccionado ningún archivo'}
                                         </span>
                                         <input id="file-selfie" className="hidden" type="file" accept="image/*" onChange={(e) => setSelfie(e.target.files?.[0] || null)} />
                                     </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {useCamera && (
-                            <div className="rounded-xl overflow-hidden border relative max-w-md mx-auto">
-                                <video ref={videoRef} className="w-full h-auto" />
-                                {/* Overlay ovalado */}
-                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                                    <div className="h-3/4 w-3/4 rounded-full border-4 border-purple-400/70"></div>
-                                </div>
-                                <div className="p-3 flex items-center justify-between">
-                                    <button type="button" onClick={() => setStep(1)} className="px-4 py-2 border rounded">← Anterior</button>
-                                    <button
-                                        type="button"
-                                        className="px-4 py-2 bg-purple-600 text-white rounded"
-                                        onClick={async () => {
-                                            if (!videoRef.current) return
-                                            const video = videoRef.current
-                                            const canvas = canvasRef.current || document.createElement('canvas')
-                                            canvasRef.current = canvas
-                                            const side = Math.min(video.videoWidth, video.videoHeight)
-                                            canvas.width = side
-                                            canvas.height = side
-                                            const ctx = canvas.getContext('2d')
-                                            if (!ctx) return
-                                            // Centrar recorte cuadrado
-                                            const sx = (video.videoWidth - side) / 2
-                                            const sy = (video.videoHeight - side) / 2
-                                            ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side)
-                                            canvas.toBlob((blob) => {
-                                                if (blob) setSelfie(new File([blob], 'selfie.jpg', { type: 'image/jpeg' }))
-                                            }, 'image/jpeg', 0.9)
-                                        }}
-                                    >
-                                        Capturar
-                                    </button>
                                 </div>
                             </div>
                         )}
@@ -263,6 +704,9 @@ export default function VerificacionIdentidadPage() {
                         {isLoading ? 'Enviando...' : 'Enviar verificación'}
                     </button>
                 </form>
+                
+                {/* Canvas oculto para procesamiento de imágenes */}
+                <canvas ref={canvasRef} className="hidden" />
             </div>
         </div>
     )

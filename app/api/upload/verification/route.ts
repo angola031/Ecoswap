@@ -68,6 +68,15 @@ export async function POST(req: NextRequest) {
                 fecha_expiracion: null
             }, { onConflict: 'usuario_id,tipo_validacion' })
 
+        // Actualizar el usuario para marcar que tiene validación pendiente
+        await supabaseAdmin
+            .from('usuario')
+            .update({ 
+                pediente_validacion: true,
+                fecha_subida_verificacion: new Date().toISOString()
+            })
+            .eq('user_id', userId)
+
         return NextResponse.json({ ok: true, paths })
     } catch (e: any) {
         return NextResponse.json({ error: e?.message || 'Server error' }, { status: 500 })
