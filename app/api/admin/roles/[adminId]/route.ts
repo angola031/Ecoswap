@@ -3,44 +3,101 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 // Middleware para verificar super admin
 async function requireSuperAdmin(req: NextRequest) {
+    console.log('🔍 Verificando super admin en API...')
     const auth = req.headers.get('authorization') || ''
+    console.log('📋 Authorization header:', auth ? 'Presente' : 'Ausente')
+    
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
-    if (!token) return { ok: false, error: 'Unauthorized' as const }
+    console.log('🔑 Token extraído:', token ? 'Presente' : 'Ausente')
+    
+    if (!token) {
+        console.log('❌ No hay token de autorización')
+        return { ok: false, error: 'Unauthorized' as const }
+    }
 
-    if (!supabaseAdmin) return { ok: false, error: 'Database not configured' as const }
+    if (!supabaseAdmin) {
+        console.log('❌ Supabase admin no configurado')
+        return { ok: false, error: 'Database not configured' as const }
+    }
 
+    console.log('🔐 Verificando usuario con token...')
     const { data, error } = await supabaseAdmin.auth.getUser(token)
-    if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
+    
+    if (error) {
+        console.log('❌ Error verificando usuario:', error.message)
+        return { ok: false, error: 'Unauthorized' as const }
+    }
+    
+    if (!data?.user) {
+        console.log('❌ No hay usuario en la respuesta')
+        return { ok: false, error: 'Unauthorized' as const }
+    }
+    
+    console.log('✅ Usuario verificado:', data.user.email)
 
     // Verificar super admin por DB
+    console.log('🔍 Verificando permisos de super admin...')
     let isSuperAdmin = false
     if (data.user.email) {
-        const { data: dbUser } = await supabaseAdmin
+        console.log('📊 Consultando usuario en DB:', data.user.email)
+        const { data: dbUser, error: dbError } = await supabaseAdmin
             .from('usuario')
             .select('user_id, es_admin')
             .eq('email', data.user.email)
             .single()
 
+        if (dbError) {
+            console.log('❌ Error consultando usuario en DB:', dbError.message)
+            return { ok: false, error: 'Database error' as const }
+        }
+
+        console.log('📊 Usuario en DB:', { user_id: dbUser?.user_id, es_admin: dbUser?.es_admin })
+
         if (dbUser?.es_admin) {
+            console.log('🔍 Usuario es admin, verificando roles...')
             // Verificar si tiene rol de super admin
-            const { data: roles } = await supabaseAdmin
+            const { data: roles, error: rolesError } = await supabaseAdmin
                 .from('usuario_rol')
                 .select('rol_id, activo')
                 .eq('usuario_id', dbUser.user_id)
                 .eq('activo', true)
 
+            if (rolesError) {
+                console.log('❌ Error consultando roles:', rolesError.message)
+                return { ok: false, error: 'Database error' as const }
+            }
+
+            console.log('📊 Roles del usuario:', roles)
+
             if (roles && roles.length > 0) {
                 const ids = roles.map(r => r.rol_id)
-                const { data: roleNames } = await supabaseAdmin
+                const { data: roleNames, error: roleNamesError } = await supabaseAdmin
                     .from('rol_usuario')
                     .select('rol_id, nombre, activo')
                     .in('rol_id', ids)
+
+                if (roleNamesError) {
+                    console.log('❌ Error consultando nombres de roles:', roleNamesError.message)
+                    return { ok: false, error: 'Database error' as const }
+                }
+
+                console.log('📊 Nombres de roles:', roleNames)
                 isSuperAdmin = !!(roleNames || []).find(r => r.activo && r.nombre === 'super_admin')
+                console.log('✅ Es super admin:', isSuperAdmin)
+            } else {
+                console.log('⚠️ Usuario no tiene roles activos')
             }
+        } else {
+            console.log('⚠️ Usuario no es admin')
         }
     }
 
-    if (!isSuperAdmin) return { ok: false, error: 'Forbidden - Se requiere rol de Super Admin' as const }
+    if (!isSuperAdmin) {
+        console.log('❌ Usuario no tiene permisos de super admin')
+        return { ok: false, error: 'Forbidden - Se requiere rol de Super Admin' as const }
+    }
+    
+    console.log('✅ Super admin verificado correctamente')
     return { ok: true, user: data.user }
 }
 

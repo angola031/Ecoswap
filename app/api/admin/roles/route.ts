@@ -136,20 +136,80 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Email, nombre, apellido y roles son requeridos' }, { status: 400 })
         }
 
-        // Verificar que el email no esté ya registrado
-        const { data: existingUser } = await supabaseAdmin
+        // Validar email antes de crear el administrador
+        console.log('🔍 Validando email:', email.toLowerCase())
+        
+        // PASO 1: Verificar en tabla usuario
+        const { data: existingUser, error: userCheckError } = await supabaseAdmin
             .from('usuario')
-            .select('user_id, email, es_admin')
+            .select('user_id, email, es_admin, activo, nombre, apellido')
             .eq('email', email.toLowerCase())
             .single()
 
+        if (userCheckError && userCheckError.code !== 'PGRST116') { // PGRST116 = no rows returned
+            console.error('❌ Error verificando usuario existente:', userCheckError)
+            return NextResponse.json({ error: 'Error verificando usuario existente' }, { status: 500 })
+        }
+
         if (existingUser) {
+            console.log('⚠️ Usuario encontrado en base de datos:', {
+                email: existingUser.email,
+                es_admin: existingUser.es_admin,
+                activo: existingUser.activo,
+                nombre: existingUser.nombre
+            })
+            
             if (existingUser.es_admin) {
-                return NextResponse.json({ error: 'Este email ya está registrado como administrador' }, { status: 400 })
+                if (existingUser.activo) {
+                    return NextResponse.json({ 
+                        error: `Este email ya está registrado como administrador activo: ${existingUser.nombre} ${existingUser.apellido}` 
+                    }, { status: 400 })
+                } else {
+                    return NextResponse.json({ 
+                        error: `Este email ya está registrado como administrador inactivo: ${existingUser.nombre} ${existingUser.apellido}. Puedes reactivarlo desde la gestión de administradores.` 
+                    }, { status: 400 })
+                }
             } else {
-                return NextResponse.json({ error: 'Este email ya está registrado como usuario regular' }, { status: 400 })
+                return NextResponse.json({ 
+                    error: `Este email ya está registrado como usuario regular: ${existingUser.nombre} ${existingUser.apellido}. Los usuarios regulares no pueden ser promovidos a administradores desde aquí.` 
+                }, { status: 400 })
             }
         }
+
+        // PASO 2: Verificar en Supabase Auth (por si existe pero no está en nuestra tabla usuario)
+        console.log('🔍 Verificando en Supabase Auth...')
+        try {
+            const { data: authUsers, error: authListError } = await supabaseAdmin.auth.admin.listUsers({
+                page: 1,
+                perPage: 1000 // Obtener muchos usuarios para buscar
+            })
+
+            if (authListError) {
+                console.error('❌ Error listando usuarios de auth:', authListError)
+                // No fallar la creación por esto, solo loggear
+            } else {
+                const existingAuthUser = authUsers?.users?.find(user => 
+                    user.email?.toLowerCase() === email.toLowerCase()
+                )
+
+                if (existingAuthUser) {
+                    console.log('⚠️ Usuario encontrado en Supabase Auth:', {
+                        email: existingAuthUser.email,
+                        created_at: existingAuthUser.created_at,
+                        email_confirmed_at: existingAuthUser.email_confirmed_at
+                    })
+                    
+                    return NextResponse.json({ 
+                        error: `Este email ya existe en el sistema de autenticación. Por favor, contacta al super administrador para resolver esta situación.` 
+                    }, { status: 400 })
+                }
+            }
+        } catch (authError) {
+            console.error('❌ Error verificando en Supabase Auth:', authError)
+            // No fallar la creación por esto, solo loggear
+        }
+
+        console.log('✅ Email validado correctamente, no existe en el sistema')
 
         // Obtener el super admin actual
         const { data: superAdmin } = await supabaseAdmin
@@ -248,8 +308,11 @@ export async function POST(req: NextRequest) {
             })
 
         // Enviar email de invitación si está habilitado
+        let emailEnviado = false
         if (enviarInvitacion) {
             try {
+                console.log('📧 Enviando correo de configuración de contraseña a:', email.toLowerCase())
+                
                 // Obtener nombres de roles para el email
                 const { data: roleNames } = await supabaseAdmin
                     .from('rol_usuario')
@@ -257,21 +320,31 @@ export async function POST(req: NextRequest) {
                     .in('rol_id', roles)
 
                 const roleNamesList = roleNames?.map(r => r.nombre) || ['administrador']
+                console.log('🎯 Roles asignados:', roleNamesList)
+
+                // Construir URL de redirección
+                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+                const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/admin/verificaciones`
+                console.log('🔗 URL de redirección:', redirectUrl)
 
                 // Enviar email de reset de contraseña para que pueda configurar su contraseña
                 const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
                     email.toLowerCase(),
                     {
-                        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/supabase-redirect?type=recovery&next=/admin/verificaciones`
+                        redirectTo: redirectUrl
                     }
                 )
 
                 if (resetError) {
-                    console.error('Error enviando email de configuración de contraseña:', resetError)
-                    // No fallar la creación si el email falla
+                    console.error('❌ Error enviando email de configuración de contraseña:', resetError)
+                    emailEnviado = false
+                } else {
+                    console.log('✅ Email de configuración de contraseña enviado exitosamente a', email.toLowerCase())
+                    emailEnviado = true
                 }
             } catch (error) {
-                console.error('Error enviando email de configuración de contraseña:', error)
+                console.error('❌ Error enviando email de configuración de contraseña:', error)
+                emailEnviado = false
             }
         }
 
@@ -292,7 +365,11 @@ export async function POST(req: NextRequest) {
             admin: {
                 ...newAdmin,
                 roles: roles
-            }
+            },
+            email_enviado: emailEnviado,
+            message: emailEnviado 
+                ? `Administrador creado exitosamente. Se ha enviado un correo a ${email} para configurar su contraseña.`
+                : `Administrador creado exitosamente. ${enviarInvitacion ? 'Error enviando correo de configuración de contraseña.' : 'No se envió correo de invitación.'}`
         })
 
     } catch (error) {

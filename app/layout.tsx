@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
+import SessionManager from '@/components/SessionManager'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -71,6 +72,7 @@ export default function RootLayout({
     return (
         <html lang="es" className="h-full">
             <body className={`${inter.className} h-full`}>
+                <SessionManager />
                 {children}
 
                 {/* Footer Global */}

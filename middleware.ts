@@ -44,6 +44,19 @@ export async function middleware(req: NextRequest) {
         console.log(`   ${c.name}: ${c.value?.substring(0, 30)}...`)
     })
 
+    // Manejar timeout en página principal
+    if (req.nextUrl.pathname === '/' && req.nextUrl.searchParams.get('timeout') === 'true') {
+        console.log('⏰ Timeout detectado en página principal, limpiando sesión del servidor...')
+        try {
+            await supabase.auth.signOut()
+            console.log('✅ Sesión del servidor cerrada por timeout en página principal')
+        } catch (error) {
+            console.log('⚠️ Error cerrando sesión del servidor por timeout:', error)
+        }
+        console.log('⏰ Redirigiendo a login limpio desde página principal')
+        return NextResponse.redirect(new URL('/login', req.url))
+    }
+
     // Solo proteger rutas /admin
     if (req.nextUrl.pathname.startsWith('/admin')) {
         const { data: { session } } = await supabase.auth.getSession()
@@ -75,7 +88,7 @@ export async function middleware(req: NextRequest) {
 
     // Si el usuario está en /login y ya tiene sesión, redirigir según su rol
     if (req.nextUrl.pathname === '/login') {
-        // Si hay parámetro logout=true, limpiar sesión y no redirigir automáticamente
+        // Si hay parámetro logout=true, limpiar sesión y redirigir a login limpio
         if (req.nextUrl.searchParams.get('logout') === 'true') {
             console.log('🚪 Logout detectado, limpiando sesión del servidor...')
             try {
@@ -85,8 +98,22 @@ export async function middleware(req: NextRequest) {
             } catch (error) {
                 console.log('⚠️ Error cerrando sesión del servidor:', error)
             }
-            console.log('🚪 No redirigiendo automáticamente después del logout')
-            return response
+            console.log('🚪 Redirigiendo a login limpio después del logout')
+            return NextResponse.redirect(new URL('/login', req.url))
+        }
+
+        // Si hay parámetro timeout=true, limpiar sesión y redirigir a login limpio
+        if (req.nextUrl.searchParams.get('timeout') === 'true') {
+            console.log('⏰ Timeout detectado, limpiando sesión del servidor...')
+            try {
+                // Intentar cerrar sesión del lado del servidor
+                await supabase.auth.signOut()
+                console.log('✅ Sesión del servidor cerrada por timeout')
+            } catch (error) {
+                console.log('⚠️ Error cerrando sesión del servidor por timeout:', error)
+            }
+            console.log('⏰ Redirigiendo a login limpio después del timeout')
+            return NextResponse.redirect(new URL('/login', req.url))
         }
 
         const { data: { session } } = await supabase.auth.getSession()
@@ -116,5 +143,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/admin/:path*', '/login'],
+    matcher: ['/admin/:path*', '/login', '/'],
 }

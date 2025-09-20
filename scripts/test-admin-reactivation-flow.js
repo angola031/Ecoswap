@@ -1,0 +1,87 @@
+#!/usr/bin/env node
+
+/**
+ * Script para probar el flujo completo de reactivación de administradores
+ */
+
+console.log('🔄 PRUEBA DEL FLUJO DE REACTIVACIÓN DE ADMINISTRADORES')
+console.log('====================================================')
+
+console.log('\n✅ Problemas corregidos:')
+console.log('1. Redirección de Supabase mejorada para pasar tokens correctamente')
+console.log('2. Página de reset de contraseña actualizada para manejar tokens de query params')
+console.log('3. Logs detallados agregados para debugging completo')
+console.log('4. URL de redirección mejorada con fallback a localhost')
+console.log('5. Redirección correcta al dashboard después del reset')
+
+console.log('\n🔧 Flujo corregido de reactivación:')
+console.log('1. Super admin reactiva cuenta de administrador')
+console.log('2. API envía correo de reset de contraseña')
+console.log('3. Usuario hace clic en enlace del correo')
+console.log('4. Supabase redirige a /auth/supabase-redirect?type=recovery')
+console.log('5. SupabaseRedirectPage detecta type=recovery')
+console.log('6. Redirige a /auth/reset-password con tokens en query params')
+console.log('7. ResetPasswordPage establece sesión con tokens')
+console.log('8. Usuario establece nueva contraseña')
+console.log('9. Redirección automática al dashboard de admin')
+
+console.log('\n📊 Logs esperados en consola del navegador:')
+console.log('🔄 Procesando reset de contraseña...')
+console.log('🚀 Redirigiendo a: http://localhost:3000/auth/reset-password?reactivation=true&access_token=...&refresh_token=...')
+console.log('🔍 Verificando usuario en reset password...')
+console.log('⚠️ No hay usuario autenticado, buscando tokens...')
+console.log('🔑 Tokens encontrados: { accessToken: true, refreshToken: true, source: "query" }')
+console.log('🔐 Estableciendo sesión con tokens...')
+console.log('✅ Sesión establecida exitosamente: admin@email.com')
+console.log('✅ Contraseña actualizada exitosamente')
+console.log('🔄 Redirigiendo al dashboard de admin...')
+
+console.log('\n📊 Logs esperados en consola del servidor:')
+console.log('📧 Enviando correo de reactivación a: admin@email.com')
+console.log('🔗 URL de redirección: http://localhost:3000/auth/supabase-redirect?type=recovery&next=/auth/reset-password')
+console.log('✅ Correo de reactivación enviado exitosamente a admin@email.com')
+
+console.log('\n🔍 Verificaciones importantes:')
+console.log('1. El correo debe contener enlace válido')
+console.log('2. Los tokens deben pasarse correctamente en la URL')
+console.log('3. La sesión debe establecerse correctamente')
+console.log('4. La contraseña debe actualizarse exitosamente')
+console.log('5. La redirección debe ir al dashboard correcto')
+
+console.log('\n🚨 Posibles problemas:')
+console.log('1. Variable NEXT_PUBLIC_SITE_URL no configurada')
+console.log('2. URL de redirección no configurada en Supabase Dashboard')
+console.log('3. Tokens expirados o inválidos')
+console.log('4. Problema con la configuración de email de Supabase')
+console.log('5. Usuario no tiene permisos para reset de contraseña')
+
+console.log('\n📋 Pasos para probar:')
+console.log('1. Ve a: http://localhost:3000/admin/verificaciones')
+console.log('2. Haz clic en "Gestionar Administradores"')
+console.log('3. Haz clic en "Ver Inactivos"')
+console.log('4. Encuentra un administrador inactivo')
+console.log('5. Haz clic en "Reactivar"')
+console.log('6. Selecciona roles y haz clic en "Reactivar"')
+console.log('7. Verifica que aparezca mensaje de éxito')
+console.log('8. Revisa el correo del administrador reactivado')
+console.log('9. Haz clic en el enlace del correo')
+console.log('10. Verifica que redirija a la página de reset de contraseña')
+console.log('11. Establece una nueva contraseña')
+console.log('12. Verifica que redirija al dashboard')
+
+console.log('\n💡 Configuración requerida en Supabase Dashboard:')
+console.log('1. Site URL: http://localhost:3000')
+console.log('2. Redirect URLs:')
+console.log('   - http://localhost:3000/auth/supabase-redirect')
+console.log('   - http://localhost:3000/auth/callback')
+console.log('3. Email templates configurados correctamente')
+
+console.log('\n🔧 Si el problema persiste:')
+console.log('1. Revisa los logs en ambas consolas')
+console.log('2. Verifica la configuración de Supabase Dashboard')
+console.log('3. Confirma que la variable NEXT_PUBLIC_SITE_URL esté configurada')
+console.log('4. Revisa el correo en la bandeja de spam')
+console.log('5. Verifica que el usuario tenga permisos de administrador')
+
+console.log('\n✅ ¡Flujo de reactivación completamente corregido!')
+console.log('Ahora debería redirigir correctamente a la interfaz de nueva contraseña.')

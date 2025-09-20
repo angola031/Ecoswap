@@ -18,9 +18,18 @@ export default function SupabaseRedirectPage() {
                 const refreshToken = searchParams.get('refresh_token')
                 const type = searchParams.get('type')
 
-                // Si es un reset de contraseña, redirigir a la página de reset
+                // Si es un reset de contraseña, redirigir a la página de reset con tokens
                 if (type === 'recovery') {
-                    router.replace('/auth/reset-password?reactivation=true')
+                    console.log('🔄 Procesando reset de contraseña...')
+                    
+                    // Construir URL con tokens para la página de reset
+                    const resetUrl = new URL('/auth/reset-password', window.location.origin)
+                    resetUrl.searchParams.set('reactivation', 'true')
+                    if (accessToken) resetUrl.searchParams.set('access_token', accessToken)
+                    if (refreshToken) resetUrl.searchParams.set('refresh_token', refreshToken)
+                    
+                    console.log('🚀 Redirigiendo a:', resetUrl.toString())
+                    router.replace(resetUrl.toString())
                     return
                 }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase-client'
 import { useAdminManagement } from '@/hooks/useAdminQueries'
 
 interface Rol {
@@ -12,6 +12,14 @@ interface Rol {
     activo: boolean
     fecha_asignacion?: string
     asignado_por?: string
+}
+
+interface InterfazPermitida {
+    nombre: string
+    descripcion: string
+    icono: string
+    ruta: string
+    color: string
 }
 
 interface Administrador {
@@ -36,6 +44,7 @@ interface AdminManagementModuleProps {
 export default function AdminManagementModule({ onClose }: AdminManagementModuleProps) {
     // Usar el hook personalizado para obtener datos
     const { admins: administradores, roles, loading, error, refetch } = useAdminManagement()
+    const supabase = createClient()
 
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
@@ -44,6 +53,13 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
     const [processing, setProcessing] = useState(false)
     const [showInactiveAdmins, setShowInactiveAdmins] = useState(false)
     const [inactiveAdmins, setInactiveAdmins] = useState<Administrador[]>([])
+    const [errorMessage, setErrorMessage] = useState<string>('')
+    const [successMessage, setSuccessMessage] = useState<string>('')
+    const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false)
+    const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true)
+    const [userCurrentRoles, setUserCurrentRoles] = useState<string[]>([])
+    const [emailValidationStatus, setEmailValidationStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle')
+    const [emailValidationMessage, setEmailValidationMessage] = useState<string>('')
 
     // Formulario para crear admin
     const [newAdmin, setNewAdmin] = useState({
@@ -62,7 +78,300 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
         motivo: ''
     })
 
-    // Ya no necesitamos loadData, el hook se encarga de cargar los datos
+    // Mapeo de roles a interfaces disponibles
+    const getInterfacesPorRol = (rolNombre: string): InterfazPermitida[] => {
+        const mapeoInterfaces: { [key: string]: InterfazPermitida[] } = {
+            'super_admin': [
+                {
+                    nombre: 'Dashboard Principal',
+                    descripcion: 'Vista general del sistema y estadísticas',
+                    icono: '📊',
+                    ruta: '/admin/verificaciones',
+                    color: 'blue'
+                },
+                {
+                    nombre: 'Gestión de Administradores',
+                    descripcion: 'Crear, editar y gestionar otros administradores',
+                    icono: '👥',
+                    ruta: '/admin/administradores',
+                    color: 'purple'
+                },
+                {
+                    nombre: 'Gestión de Usuarios',
+                    descripcion: 'Ver y gestionar usuarios del sistema',
+                    icono: '👤',
+                    ruta: '/admin/usuarios',
+                    color: 'green'
+                },
+                {
+                    nombre: 'Verificación de Productos',
+                    descripcion: 'Revisar y aprobar productos publicados',
+                    icono: '📦',
+                    ruta: '/admin/productos',
+                    color: 'orange'
+                },
+                {
+                    nombre: 'Gestión de Mensajes',
+                    descripcion: 'Responder mensajes y consultas de usuarios',
+                    icono: '💬',
+                    ruta: '/admin/mensajes',
+                    color: 'cyan'
+                },
+                {
+                    nombre: 'Reportes y Quejas',
+                    descripcion: 'Gestionar reportes y quejas de usuarios',
+                    icono: '⚠️',
+                    ruta: '/admin/reportes',
+                    color: 'red'
+                },
+                {
+                    nombre: 'Configuración del Sistema',
+                    descripcion: 'Configurar parámetros del sistema',
+                    icono: '⚙️',
+                    ruta: '/admin/configuracion',
+                    color: 'gray'
+                }
+            ],
+            'admin': [
+                {
+                    nombre: 'Dashboard Principal',
+                    descripcion: 'Vista general del sistema y estadísticas',
+                    icono: '📊',
+                    ruta: '/admin/verificaciones',
+                    color: 'blue'
+                },
+                {
+                    nombre: 'Gestión de Usuarios',
+                    descripcion: 'Ver y gestionar usuarios del sistema',
+                    icono: '👤',
+                    ruta: '/admin/usuarios',
+                    color: 'green'
+                },
+                {
+                    nombre: 'Verificación de Productos',
+                    descripcion: 'Revisar y aprobar productos publicados',
+                    icono: '📦',
+                    ruta: '/admin/productos',
+                    color: 'orange'
+                },
+                {
+                    nombre: 'Gestión de Mensajes',
+                    descripcion: 'Responder mensajes y consultas de usuarios',
+                    icono: '💬',
+                    ruta: '/admin/mensajes',
+                    color: 'cyan'
+                },
+                {
+                    nombre: 'Reportes y Quejas',
+                    descripcion: 'Gestionar reportes y quejas de usuarios',
+                    icono: '⚠️',
+                    ruta: '/admin/reportes',
+                    color: 'red'
+                }
+            ],
+            'moderador': [
+                {
+                    nombre: 'Dashboard Principal',
+                    descripcion: 'Vista general del sistema y estadísticas',
+                    icono: '📊',
+                    ruta: '/admin/verificaciones',
+                    color: 'blue'
+                },
+                {
+                    nombre: 'Verificación de Productos',
+                    descripcion: 'Revisar y aprobar productos publicados',
+                    icono: '📦',
+                    ruta: '/admin/productos',
+                    color: 'orange'
+                },
+                {
+                    nombre: 'Gestión de Mensajes',
+                    descripcion: 'Responder mensajes y consultas de usuarios',
+                    icono: '💬',
+                    ruta: '/admin/mensajes',
+                    color: 'cyan'
+                }
+            ]
+        }
+
+        return mapeoInterfaces[rolNombre] || []
+    }
+
+    // Función para obtener todas las interfaces de un administrador
+    const getInterfacesAdministrador = (roles: Rol[]): InterfazPermitida[] => {
+        const todasInterfaces: InterfazPermitida[] = []
+        const interfacesUnicas = new Set<string>()
+
+        roles.forEach(rol => {
+            const interfaces = getInterfacesPorRol(rol.nombre)
+            interfaces.forEach(interfaz => {
+                if (!interfacesUnicas.has(interfaz.ruta)) {
+                    interfacesUnicas.add(interfaz.ruta)
+                    todasInterfaces.push(interfaz)
+                }
+            })
+        })
+
+        return todasInterfaces
+    }
+
+    // Función para obtener las interfaces del usuario actual (solo las que puede ver)
+    const getUserCurrentInterfaces = (): InterfazPermitida[] => {
+        return getInterfacesAdministrador(userCurrentRoles.map(roleName => ({ nombre: roleName } as Rol)))
+    }
+
+    // Función para validar email en tiempo real
+    const validateEmail = async (email: string) => {
+        if (!email || email.length < 5) {
+            setEmailValidationStatus('idle')
+            setEmailValidationMessage('')
+            return
+        }
+
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(email)) {
+            setEmailValidationStatus('invalid')
+            setEmailValidationMessage('Formato de email inválido')
+            return
+        }
+
+        setEmailValidationStatus('checking')
+        setEmailValidationMessage('Verificando disponibilidad...')
+
+        try {
+            // Hacer una consulta rápida a la API para verificar si el email existe
+            const { data: { session } } = await supabase.auth.getSession()
+            const token = session?.access_token
+            if (!token) return
+
+            // Usar una consulta simple para verificar existencia
+            const { data: existingUser, error } = await supabase
+                .from('usuario')
+                .select('email, es_admin, activo, nombre, apellido')
+                .eq('email', email.toLowerCase())
+                .single()
+
+            if (error && error.code !== 'PGRST116') {
+                // Error de conexión
+                setEmailValidationStatus('invalid')
+                setEmailValidationMessage('Error verificando email')
+                return
+            }
+
+            if (existingUser) {
+                if (existingUser.es_admin) {
+                    if (existingUser.activo) {
+                        setEmailValidationStatus('invalid')
+                        setEmailValidationMessage(`Ya existe como administrador activo: ${existingUser.nombre} ${existingUser.apellido}`)
+                    } else {
+                        setEmailValidationStatus('invalid')
+                        setEmailValidationMessage(`Ya existe como administrador inactivo: ${existingUser.nombre} ${existingUser.apellido}`)
+                    }
+                } else {
+                    setEmailValidationStatus('invalid')
+                    setEmailValidationMessage(`Ya existe como usuario regular: ${existingUser.nombre} ${existingUser.apellido}`)
+                }
+            } else {
+                setEmailValidationStatus('valid')
+                setEmailValidationMessage('Email disponible')
+            }
+        } catch (error) {
+            console.error('Error validando email:', error)
+            setEmailValidationStatus('invalid')
+            setEmailValidationMessage('Error verificando email')
+        }
+    }
+
+    // Debounced email validation
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (newAdmin.email) {
+                validateEmail(newAdmin.email)
+            }
+        }, 500) // Esperar 500ms después del último cambio
+
+        return () => clearTimeout(timeoutId)
+    }, [newAdmin.email])
+
+    // Verificar permisos del usuario actual
+    useEffect(() => {
+        const checkPermissions = async () => {
+            try {
+                console.log('🔍 Verificando permisos de super admin...')
+                const { data: { session } } = await supabase.auth.getSession()
+                
+                if (!session?.user?.email) {
+                    console.log('❌ No hay sesión activa')
+                    setIsSuperAdmin(false)
+                    setPermissionsLoading(false)
+                    return
+                }
+
+                // Verificar si el usuario actual es super admin
+                const { data: userData, error: userError } = await supabase
+                    .from('usuario')
+                    .select('user_id, es_admin, email')
+                    .eq('email', session.user.email)
+                    .single()
+
+                if (userError || !userData?.es_admin) {
+                    console.log('❌ Usuario no es administrador')
+                    setIsSuperAdmin(false)
+                    setPermissionsLoading(false)
+                    return
+                }
+
+                // Verificar roles del usuario
+                const { data: userRoles, error: rolesError } = await supabase
+                    .from('usuario_rol')
+                    .select('rol_id, activo')
+                    .eq('usuario_id', userData.user_id)
+                    .eq('activo', true)
+
+                if (rolesError || !userRoles || userRoles.length === 0) {
+                    console.log('❌ Usuario no tiene roles activos')
+                    setIsSuperAdmin(false)
+                    setPermissionsLoading(false)
+                    return
+                }
+
+                // Verificar si tiene rol de super admin
+                const roleIds = userRoles.map(r => r.rol_id)
+                const { data: roleNames, error: roleNamesError } = await supabase
+                    .from('rol_usuario')
+                    .select('rol_id, nombre, activo')
+                    .in('rol_id', roleIds)
+                    .eq('activo', true)
+
+                if (roleNamesError || !roleNames) {
+                    console.log('❌ Error obteniendo nombres de roles')
+                    setIsSuperAdmin(false)
+                    setPermissionsLoading(false)
+                    return
+                }
+
+                const hasSuperAdminRole = roleNames.some(r => r.nombre === 'super_admin')
+                const currentUserRoles = roleNames.map(r => r.nombre)
+                
+                console.log('✅ Verificación de permisos completada:', {
+                    isSuperAdmin: hasSuperAdminRole,
+                    userEmail: session.user.email,
+                    roles: currentUserRoles
+                })
+                
+                setIsSuperAdmin(hasSuperAdminRole)
+                setUserCurrentRoles(currentUserRoles)
+            } catch (error) {
+                console.error('❌ Error verificando permisos:', error)
+                setIsSuperAdmin(false)
+            } finally {
+                setPermissionsLoading(false)
+            }
+        }
+
+        checkPermissions()
+    }, [supabase])
 
     const loadInactiveAdmins = async () => {
         try {
@@ -85,7 +394,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
 
     const reactivateAdmin = async () => {
         if (!selectedAdmin || !editAdmin.roles.length) {
-            setError('Debe seleccionar al menos un rol para reactivar')
+            setErrorMessage('Debe seleccionar al menos un rol para reactivar')
             return
         }
 
@@ -124,7 +433,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
             refetch() // Recargar administradores activos
 
         } catch (e: any) {
-            setError(e.message)
+            setErrorMessage(e.message)
         } finally {
             setProcessing(false)
         }
@@ -132,16 +441,37 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
 
     const createAdmin = async () => {
         if (!newAdmin.email || !newAdmin.nombre || !newAdmin.apellido || newAdmin.roles.length === 0) {
-            setError('Todos los campos son requeridos y debe seleccionar al menos un rol')
+            setErrorMessage('Todos los campos son requeridos y debe seleccionar al menos un rol')
+            return
+        }
+
+        // Validar que el email sea válido y disponible
+        if (emailValidationStatus !== 'valid') {
+            if (emailValidationStatus === 'invalid') {
+                setErrorMessage(emailValidationMessage || 'El email no está disponible')
+            } else if (emailValidationStatus === 'checking') {
+                setErrorMessage('Espera a que termine la validación del email')
+            } else {
+                setErrorMessage('Por favor, ingresa un email válido')
+            }
             return
         }
 
         setProcessing(true)
+        setErrorMessage('')
+        setSuccessMessage('')
+        
         try {
+            console.log('🔍 Validando email antes de crear administrador:', newAdmin.email)
+            
             const { data: { session } } = await supabase.auth.getSession()
             const token = session?.access_token
-            if (!token) return
+            if (!token) {
+                setErrorMessage('No hay sesión activa. Por favor, inicia sesión nuevamente.')
+                return
+            }
 
+            console.log('📤 Enviando solicitud de creación de administrador...')
             const res = await fetch('/api/admin/roles', {
                 method: 'POST',
                 headers: {
@@ -152,15 +482,36 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
             })
 
             const data = await res.json()
+            console.log('📊 Respuesta de creación:', { status: res.status, data })
 
-            if (!res.ok) throw new Error(data.error || 'Error creando administrador')
+            if (!res.ok) {
+                // Manejar diferentes tipos de errores
+                if (res.status === 400) {
+                    // Error de validación (email duplicado, campos faltantes, etc.)
+                    throw new Error(data.error || 'Error de validación')
+                } else if (res.status === 401) {
+                    throw new Error('No tienes permisos para crear administradores')
+                } else if (res.status === 403) {
+                    throw new Error('Se requiere rol de Super Administrador')
+                } else {
+                    throw new Error(data.error || 'Error del servidor')
+                }
+            }
 
+            // Mostrar mensaje de éxito con información del correo
+            if (data.email_enviado) {
+                setSuccessMessage(`✅ Administrador creado exitosamente!\n\n👤 ${newAdmin.nombre} ${newAdmin.apellido} (${newAdmin.email})\n📧 Se ha enviado un correo para configurar su contraseña.\n\nEl administrador podrá acceder al sistema una vez que configure su contraseña desde el enlace enviado.`)
+            } else {
+                setSuccessMessage(`✅ Administrador creado exitosamente!\n\n👤 ${newAdmin.nombre} ${newAdmin.apellido} (${newAdmin.email})\n⚠️ No se pudo enviar el correo de configuración de contraseña.\n\nEl administrador deberá contactar al super administrador para obtener acceso al sistema.`)
+            }
+            
             setShowCreateModal(false)
             setNewAdmin({ email: '', nombre: '', apellido: '', telefono: '', roles: [], enviarInvitacion: true })
             refetch() // Usar refetch del hook
 
         } catch (e: any) {
-            setError(e.message)
+            console.error('❌ Error creando administrador:', e)
+            setErrorMessage(e.message || 'Error desconocido al crear administrador')
         } finally {
             setProcessing(false)
         }
@@ -193,34 +544,79 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
             refetch() // Usar refetch del hook
 
         } catch (e: any) {
-            setError(e.message)
+            setErrorMessage(e.message)
         } finally {
             setProcessing(false)
         }
     }
 
     const deleteAdmin = async (adminId: number) => {
-        if (!confirm('¿Estás seguro de que quieres eliminar este administrador?')) return
+        if (!confirm('¿Estás seguro de que quieres desactivar este administrador? Esta acción puede ser revertida más tarde.')) return
 
         setProcessing(true)
+        setErrorMessage('')
+        setSuccessMessage('')
+        
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            const token = session?.access_token
-            if (!token) return
+            console.log('🔍 Verificando sesión antes de eliminar administrador...')
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+            
+            if (sessionError) {
+                console.error('❌ Error obteniendo sesión:', sessionError)
+                setErrorMessage('Error verificando sesión: ' + sessionError.message)
+                return
+            }
+            
+            console.log('📊 Estado de sesión:', { 
+                hasSession: !!session, 
+                hasUser: !!session?.user, 
+                userEmail: session?.user?.email,
+                hasToken: !!session?.access_token 
+            })
+            
+            if (!session) {
+                console.error('❌ No hay sesión activa')
+                setErrorMessage('No hay sesión activa. Por favor, inicia sesión nuevamente.')
+                return
+            }
+            
+            const token = session.access_token
+            if (!token) {
+                console.error('❌ No hay token de acceso')
+                setErrorMessage('No hay token de acceso. Por favor, inicia sesión nuevamente.')
+                return
+            }
+            
+            console.log('✅ Sesión y token verificados correctamente')
+
+            console.log('🗑️ Eliminando administrador:', adminId)
 
             const res = await fetch(`/api/admin/roles/${adminId}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { 
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
             })
 
             const data = await res.json()
+            console.log('📊 Respuesta de eliminación:', { status: res.status, data })
 
-            if (!res.ok) throw new Error(data.error || 'Error eliminando administrador')
+            if (!res.ok) {
+                throw new Error(data.error || `Error del servidor: ${res.status}`)
+            }
 
-            refetch() // Usar refetch del hook
+            setSuccessMessage(data.message || 'Administrador desactivado exitosamente')
+            await refetch() // Usar refetch del hook para actualizar la lista
+
+            // Cerrar modales si están abiertos
+            setShowEditModal(false)
+            setShowReactivateModal(false)
+            setSelectedAdmin(null)
 
         } catch (e: any) {
-            setError(e.message)
+            console.error('❌ Error eliminando administrador:', e)
+            setErrorMessage(e.message || 'Error desconocido al eliminar administrador')
         } finally {
             setProcessing(false)
         }
@@ -262,11 +658,13 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
 
     // El hook se encarga de cargar los datos automáticamente
 
-    if (loading) {
+    if (loading || permissionsLoading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-2 text-gray-600">Cargando administradores...</span>
+                <span className="ml-2 text-gray-600">
+                    {loading ? 'Cargando administradores...' : 'Verificando permisos...'}
+                </span>
             </div>
         )
     }
@@ -276,7 +674,25 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
             {/* Header */}
             <div className="p-4 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-gray-900">Gestión de Administradores</h2>
+                    <div className="flex items-center space-x-3">
+                        <h2 className="text-xl font-semibold text-gray-900">Gestión de Administradores</h2>
+                        {isSuperAdmin && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" clipRule="evenodd" />
+                                </svg>
+                                Super Admin
+                            </span>
+                        )}
+                        {!isSuperAdmin && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                </svg>
+                                Administrador
+                            </span>
+                        )}
+                    </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => {
@@ -289,12 +705,15 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                         >
                             {showInactiveAdmins ? 'Ocultar Inactivos' : 'Ver Inactivos'}
                         </button>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                        >
-                            Nuevo Administrador
-                        </button>
+                        {isSuperAdmin && (
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                                title="Solo Super Administradores pueden crear nuevos administradores"
+                            >
+                                Nuevo Administrador
+                            </button>
+                        )}
                         <button
                             onClick={onClose}
                             className="text-gray-400 hover:text-gray-600"
@@ -312,6 +731,93 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                 {error && (
                     <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
                         {error}
+                    </div>
+                )}
+
+                {errorMessage && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded flex justify-between items-center">
+                        <span>{errorMessage}</span>
+                        <button
+                            onClick={() => setErrorMessage('')}
+                            className="text-red-500 hover:text-red-700"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                )}
+
+                {successMessage && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded flex justify-between items-center">
+                        <span>{successMessage}</span>
+                        <button
+                            onClick={() => setSuccessMessage('')}
+                            className="text-green-500 hover:text-green-700"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                )}
+
+                {/* Interfaces disponibles para el usuario actual */}
+                <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Tus Interfaces Disponibles</h3>
+                    <div className="bg-white p-3 rounded-lg border border-blue-200">
+                        <div className="flex items-center mb-3">
+                            <span className="text-lg mr-2">
+                                {isSuperAdmin ? '⭐' : '👤'}
+                            </span>
+                            <h4 className="text-sm font-medium text-blue-900">
+                                {isSuperAdmin ? 'Super Administrador' : 'Administrador'}
+                            </h4>
+                            <span className="ml-2 text-xs text-gray-500">
+                                ({userCurrentRoles.join(', ')})
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {getUserCurrentInterfaces().map((interfaz, index) => (
+                                <div key={index} className="flex items-center p-2 rounded bg-gray-50 hover:bg-gray-100 transition-colors">
+                                    <span className="text-sm mr-2">{interfaz.icono}</span>
+                                    <div className="flex-1">
+                                        <div className="text-xs font-medium text-gray-900">{interfaz.nombre}</div>
+                                        <div className="text-xs text-gray-500">{interfaz.descripcion}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        {getUserCurrentInterfaces().length === 0 && (
+                            <p className="text-xs text-gray-500 italic">No tienes interfaces asignadas</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Mensaje informativo para usuarios que no son super admin */}
+                {!isSuperAdmin && (
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div className="ml-3">
+                                <h3 className="text-sm font-medium text-blue-800">
+                                    Permisos de Administrador
+                                </h3>
+                                <div className="mt-2 text-sm text-blue-700">
+                                    <p>
+                                        Como administrador, puedes ver y gestionar la información de otros administradores, 
+                                        pero solo los <strong>Super Administradores</strong> pueden crear nuevas cuentas de administrador.
+                                    </p>
+                                    <p className="mt-1">
+                                        Si necesitas crear un nuevo administrador, contacta a un Super Administrador.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -345,6 +851,53 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                                                     </span>
                                                 </div>
                                                 <p className="text-sm text-gray-600 mb-2">{admin.email}</p>
+                                                
+                                                {/* Roles del administrador inactivo */}
+                                                {admin.roles && admin.roles.length > 0 && (
+                                                    <div className="mb-3">
+                                                        <div className="flex flex-wrap gap-1 mb-2">
+                                                            {admin.roles.map((role) => (
+                                                                <span key={role.rol_id} className={`px-2 py-1 rounded text-xs ${getRoleColor(role.nombre)}`}>
+                                                                    {role.nombre.replace('_', ' ')}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                        
+                                                        {/* Interfaces disponibles para este administrador (solo las que el usuario actual puede ver) */}
+                                                        <div className="mb-3">
+                                                            <p className="text-xs font-medium text-gray-700 mb-2">Interfaces Disponibles:</p>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {getInterfacesAdministrador(admin.roles)
+                                                                    .filter(interfaz => 
+                                                                        getUserCurrentInterfaces().some(userInterfaz => 
+                                                                            userInterfaz.ruta === interfaz.ruta
+                                                                        )
+                                                                    )
+                                                                    .map((interfaz, index) => (
+                                                                        <span 
+                                                                            key={index}
+                                                                            className={`px-2 py-1 rounded text-xs bg-${interfaz.color}-100 text-${interfaz.color}-800 border border-${interfaz.color}-200 opacity-75`}
+                                                                            title={interfaz.descripcion}
+                                                                        >
+                                                                            <span className="mr-1">{interfaz.icono}</span>
+                                                                            {interfaz.nombre}
+                                                                        </span>
+                                                                    ))}
+                                                                {getInterfacesAdministrador(admin.roles)
+                                                                    .filter(interfaz => 
+                                                                        getUserCurrentInterfaces().some(userInterfaz => 
+                                                                            userInterfaz.ruta === interfaz.ruta
+                                                                        )
+                                                                    ).length === 0 && (
+                                                                    <span className="text-xs text-gray-500 italic opacity-75">
+                                                                        No hay interfaces visibles para ti
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
                                                 <div className="text-xs text-gray-500 space-y-1">
                                                     <p>Desactivado: {formatTime(admin.fecha_suspension || '')}</p>
                                                     <p>Motivo: {admin.motivo_suspension || 'No especificado'}</p>
@@ -389,7 +942,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                                         {admin.telefono && (
                                             <p className="text-xs text-gray-500 mb-2">📞 {admin.telefono}</p>
                                         )}
-                                        <div className="flex flex-wrap gap-1 mb-2">
+                                        <div className="flex flex-wrap gap-1 mb-3">
                                             {admin.roles.map((role) => (
                                                 <span key={role.rol_id} className={`px-2 py-1 rounded text-xs ${getRoleColor(role.nombre)}`}>
                                                     {role.nombre.replace('_', ' ')}
@@ -400,6 +953,39 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                                                     )}
                                                 </span>
                                             ))}
+                                        </div>
+                                        
+                                        {/* Interfaces disponibles para este administrador (solo las que el usuario actual puede ver) */}
+                                        <div className="mb-3">
+                                            <p className="text-xs font-medium text-gray-700 mb-2">Interfaces Disponibles:</p>
+                                            <div className="flex flex-wrap gap-1">
+                                                {getInterfacesAdministrador(admin.roles)
+                                                    .filter(interfaz => 
+                                                        getUserCurrentInterfaces().some(userInterfaz => 
+                                                            userInterfaz.ruta === interfaz.ruta
+                                                        )
+                                                    )
+                                                    .map((interfaz, index) => (
+                                                        <span 
+                                                            key={index}
+                                                            className={`px-2 py-1 rounded text-xs bg-${interfaz.color}-100 text-${interfaz.color}-800 border border-${interfaz.color}-200`}
+                                                            title={interfaz.descripcion}
+                                                        >
+                                                            <span className="mr-1">{interfaz.icono}</span>
+                                                            {interfaz.nombre}
+                                                        </span>
+                                                    ))}
+                                                {getInterfacesAdministrador(admin.roles)
+                                                    .filter(interfaz => 
+                                                        getUserCurrentInterfaces().some(userInterfaz => 
+                                                            userInterfaz.ruta === interfaz.ruta
+                                                        )
+                                                    ).length === 0 && (
+                                                    <span className="text-xs text-gray-500 italic">
+                                                        No hay interfaces visibles para ti
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="text-xs text-gray-500 space-y-1">
                                             <p>Administrador desde: {formatTime(admin.admin_desde)}</p>
@@ -435,8 +1021,8 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                 )}
             </div>
 
-            {/* Modal para crear administrador */}
-            {showCreateModal && (
+            {/* Modal para crear administrador - Solo visible para super admins */}
+            {showCreateModal && isSuperAdmin && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg w-full max-w-md">
                         <div className="p-4 border-b border-gray-200">
@@ -449,9 +1035,40 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                                     type="email"
                                     value={newAdmin.email}
                                     onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
-                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                    className={`w-full border rounded px-3 py-2 text-sm ${
+                                        emailValidationStatus === 'valid' ? 'border-green-500 bg-green-50' :
+                                        emailValidationStatus === 'invalid' ? 'border-red-500 bg-red-50' :
+                                        emailValidationStatus === 'checking' ? 'border-yellow-500 bg-yellow-50' :
+                                        'border-gray-300'
+                                    }`}
                                     placeholder="admin@ejemplo.com"
                                 />
+                                {emailValidationMessage && (
+                                    <div className={`mt-1 text-xs flex items-center ${
+                                        emailValidationStatus === 'valid' ? 'text-green-600' :
+                                        emailValidationStatus === 'invalid' ? 'text-red-600' :
+                                        emailValidationStatus === 'checking' ? 'text-yellow-600' :
+                                        'text-gray-600'
+                                    }`}>
+                                        {emailValidationStatus === 'checking' && (
+                                            <svg className="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        )}
+                                        {emailValidationStatus === 'valid' && (
+                                            <svg className="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                            </svg>
+                                        )}
+                                        {emailValidationStatus === 'invalid' && (
+                                            <svg className="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                        )}
+                                        {emailValidationMessage}
+                                    </div>
+                                )}
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div>

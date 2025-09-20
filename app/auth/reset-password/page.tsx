@@ -24,26 +24,52 @@ export default function ResetPasswordPage() {
 
         // Obtener información del usuario actual
         const getUserInfo = async () => {
+            console.log('🔍 Verificando usuario en reset password...')
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
+                console.log('✅ Usuario autenticado encontrado:', user.email)
                 setUserInfo(user)
             } else {
-                // Si no hay usuario autenticado, verificar si hay un token en la URL
+                console.log('⚠️ No hay usuario autenticado, buscando tokens...')
+                
+                // Buscar tokens en query parameters (de la reactivación)
+                const accessToken = searchParams.get('access_token')
+                const refreshToken = searchParams.get('refresh_token')
+                
+                // Si no están en query params, buscar en hash (de enlaces directos de Supabase)
                 const hashParams = new URLSearchParams(window.location.hash.substring(1))
-                const accessToken = hashParams.get('access_token')
-                const refreshToken = hashParams.get('refresh_token')
+                const hashAccessToken = hashParams.get('access_token')
+                const hashRefreshToken = hashParams.get('refresh_token')
+                
+                const finalAccessToken = accessToken || hashAccessToken
+                const finalRefreshToken = refreshToken || hashRefreshToken
 
-                if (accessToken && refreshToken) {
+                console.log('🔑 Tokens encontrados:', { 
+                    accessToken: !!finalAccessToken, 
+                    refreshToken: !!finalRefreshToken,
+                    source: accessToken ? 'query' : 'hash'
+                })
+
+                if (finalAccessToken && finalRefreshToken) {
+                    console.log('🔐 Estableciendo sesión con tokens...')
                     // Establecer la sesión con los tokens
                     const { data, error } = await supabase.auth.setSession({
-                        access_token: accessToken,
-                        refresh_token: refreshToken
+                        access_token: finalAccessToken,
+                        refresh_token: finalRefreshToken
                     })
 
+                    if (error) {
+                        console.error('❌ Error estableciendo sesión:', error.message)
+                        setError('Error estableciendo sesión: ' + error.message)
+                        return
+                    }
+
                     if (data.user) {
+                        console.log('✅ Sesión establecida exitosamente:', data.user.email)
                         setUserInfo(data.user)
                     }
                 } else {
+                    console.log('❌ No hay tokens disponibles, redirigiendo al login')
                     // Si no hay tokens y no hay sesión, redirigir al login de admin
                     router.push('/login')
                 }
@@ -78,9 +104,16 @@ export default function ResetPasswordPage() {
                 setError(error.message)
             } else {
                 setSuccess(true)
-                // Redirigir después de 3 segundos
+                console.log('✅ Contraseña actualizada exitosamente')
+                // Redirigir después de 3 segundos al dashboard correcto
                 setTimeout(() => {
-                    router.push('/dashboard')
+                    if (isReactivation) {
+                        console.log('🔄 Redirigiendo al dashboard de admin...')
+                        router.push('/admin/verificaciones')
+                    } else {
+                        console.log('🔄 Redirigiendo al dashboard...')
+                        router.push('/admin/verificaciones')
+                    }
                 }, 3000)
             }
         } catch (err: any) {

@@ -65,27 +65,7 @@ export default function VerificacionesPage() {
         try {
             console.log('🚪 Iniciando logout...')
             
-            // Limpiar localStorage
-            if (typeof window !== 'undefined') {
-                console.log('🧹 Limpiando localStorage...')
-                localStorage.clear()
-                console.log('✅ localStorage limpiado')
-            }
-            
-            // Limpiar cookies de Supabase específicamente
-            console.log('🍪 Limpiando cookies de Supabase...')
-            const supabaseCookies = document.cookie.split(";").filter(c => c.includes('sb-'))
-            supabaseCookies.forEach(cookie => {
-                const cookieName = cookie.split('=')[0].trim()
-                console.log(`🧹 Limpiando cookie: ${cookieName}`)
-                // Limpiar cookie con diferentes paths y dominios
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname};`
-            })
-            console.log('✅ Cookies de Supabase limpiadas')
-            
-            // Cerrar sesión en Supabase
+            // PASO 1: Cerrar sesión en Supabase PRIMERO
             console.log('🔐 Cerrando sesión en Supabase...')
             const { error } = await supabase.auth.signOut()
             
@@ -95,13 +75,75 @@ export default function VerificacionesPage() {
                 console.log('✅ Logout exitoso en Supabase')
             }
             
-            // Forzar redirección inmediata con parámetro de logout
+            // PASO 2: Limpiar localStorage
+            if (typeof window !== 'undefined') {
+                console.log('🧹 Limpiando localStorage...')
+                localStorage.clear()
+                console.log('✅ localStorage limpiado')
+            }
+            
+            // PASO 3: Limpiar TODAS las cookies (no solo las de Supabase)
+            console.log('🍪 Limpiando TODAS las cookies...')
+            
+            // Obtener todas las cookies
+            const allCookies = document.cookie.split(";")
+            console.log(`📋 Total de cookies encontradas: ${allCookies.length}`)
+            
+            allCookies.forEach(cookie => {
+                if (cookie.trim()) {
+                    const cookieName = cookie.split('=')[0].trim()
+                    console.log(`🧹 Limpiando cookie: ${cookieName}`)
+                    
+                    // Limpiar cookie con múltiples configuraciones para asegurar eliminación
+                    const domain = window.location.hostname
+                    const baseDomain = domain.startsWith('www.') ? domain.substring(4) : domain
+                    
+                    // Diferentes configuraciones para asegurar limpieza completa
+                    const cookieConfigs = [
+                        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`,
+                        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${domain};`,
+                        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${domain};`,
+                        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${baseDomain};`,
+                        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${baseDomain};`,
+                        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; secure;`,
+                        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; samesite=strict;`,
+                        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; samesite=lax;`
+                    ]
+                    
+                    cookieConfigs.forEach(config => {
+                        document.cookie = config
+                    })
+                }
+            })
+            
+            console.log('✅ Todas las cookies limpiadas')
+            
+            // PASO 4: Verificar que las cookies se limpiaron
+            const remainingCookies = document.cookie
+            if (remainingCookies) {
+                console.log('⚠️ Cookies restantes después de limpieza:', remainingCookies)
+            } else {
+                console.log('✅ Confirmado: No hay cookies restantes')
+            }
+            
+            // PASO 5: Forzar redirección inmediata
             console.log('🚀 Redirigiendo inmediatamente a /login...')
             window.location.href = '/login?logout=true'
             
         } catch (err) {
             console.error('💥 Error en logout:', err)
-            // Aún así redirigir al login
+            // Aún así limpiar cookies y redirigir
+            try {
+                localStorage.clear()
+                document.cookie.split(";").forEach(cookie => {
+                    const cookieName = cookie.split('=')[0].trim()
+                    if (cookieName) {
+                        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`
+                    }
+                })
+            } catch (cleanupErr) {
+                console.error('Error en limpieza de emergencia:', cleanupErr)
+            }
             window.location.href = '/login?logout=true'
         } finally {
             setLogoutLoading(false)
