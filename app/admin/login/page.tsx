@@ -27,8 +27,41 @@ export default function AdminLoginPage() {
             const user = data.user
             if (!user) throw new Error('No se pudo iniciar sesión')
 
-            const admin = user.user_metadata?.is_admin === true || isEmailAdmin(user.email)
-            if (!admin) {
+            // Verificar admin en la base de datos (igual que el middleware)
+            let isAdmin = false
+            if (user.email) {
+                const { data: dbUser } = await supabase
+                    .from('usuario')
+                    .select('user_id, es_admin')
+                    .eq('email', user.email)
+                    .single()
+
+                if (dbUser?.es_admin) {
+                    isAdmin = true
+                } else if (dbUser?.user_id) {
+                    // Chequear roles
+                    const { data: roles } = await supabase
+                        .from('usuario_rol')
+                        .select('rol_id, activo')
+                        .eq('usuario_id', dbUser.user_id)
+                        .eq('activo', true)
+                    if (roles && roles.length > 0) {
+                        const ids = roles.map(r => r.rol_id)
+                        const { data: roleNames } = await supabase
+                            .from('rol_usuario')
+                            .select('rol_id, nombre, activo')
+                            .in('rol_id', ids)
+                        isAdmin = !!(roleNames || []).find(r => r.activo && ['super_admin', 'admin_validacion', 'admin_soporte', 'moderador'].includes((r.nombre || '').toString()))
+                    }
+                }
+            }
+
+            // Fallback a verificación por metadata o email (para casos especiales)
+            if (!isAdmin) {
+                isAdmin = user.user_metadata?.is_admin === true || isEmailAdmin(user.email)
+            }
+
+            if (!isAdmin) {
                 await supabase.auth.signOut()
                 throw new Error('Tu cuenta no tiene permisos de administrador')
             }

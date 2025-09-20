@@ -1,139 +1,294 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import AdminManagementModule from '@/components/admin/AdminManagementModule'
+import DashboardStats from '@/components/admin/DashboardStats'
+import DashboardNavigation from '@/components/admin/DashboardNavigation'
+import UsersSection from '@/components/admin/UsersSection'
+import ProductsSection from '@/components/admin/ProductsSection'
+import MessagesSection from '@/components/admin/MessagesSection'
+import ComplaintsSection from '@/components/admin/ComplaintsSection'
 
-interface Item {
-    user_id: number
-    email: string
-    nombre: string
-    apellido: string
-    verificado: boolean
-    files: { cedula_frente: string | null; cedula_reverso: string | null; selfie_validacion: string | null }
-}
-
-export default function AdminVerificacionesPage() {
-    const [items, setItems] = useState<Item[]>([])
-    const [filter, setFilter] = useState<'todos' | 'pendiente' | 'en_revision' | 'aprobada' | 'rechazada'>('pendiente')
-    const [error, setError] = useState<string | null>(null)
+export default function VerificacionesPage() {
+    const router = useRouter()
+    const [user, setUser] = useState<any>(null)
     const [loading, setLoading] = useState(true)
+    const [showAdminModule, setShowAdminModule] = useState(false)
+    const [logoutLoading, setLogoutLoading] = useState(false)
+    const [activeSection, setActiveSection] = useState('overview')
 
-    const load = async () => {
-        setLoading(true)
-        setError(null)
-        try {
-            const { data: { session } } = await supabase.auth.getSession()
-            const token = session?.access_token
-            if (!token) { setError('No hay sesión'); setLoading(false); return }
-            const res = await fetch('/api/admin/verificaciones', { headers: { Authorization: `Bearer ${token}` } })
-            const json = await res.json()
-            if (!res.ok) throw new Error(json?.error || 'Error cargando')
-            setItems(json.items || [])
-        } catch (e: any) {
-            setError(e.message)
-        } finally {
+    useEffect(() => {
+        const getUser = async () => {
+            console.log('🔍 Dashboard: Verificando usuario...')
+            const { data: { user } } = await supabase.auth.getUser()
+            console.log('👤 Dashboard: Usuario de auth:', user?.email)
+
+            if (user) {
+                setUser(user)
+
+                // Verificar si es administrador
+                const { data: userData, error: userError } = await supabase
+                    .from('usuario')
+                    .select('es_admin, activo, nombre, apellido')
+                    .eq('email', user.email)
+                    .single()
+
+                console.log('📊 Dashboard: Datos del usuario:', userData)
+                console.log('❌ Dashboard: Error al obtener datos:', userError)
+
+                if (userError) {
+                    console.log('⚠️ Dashboard: Error obteniendo datos del usuario, redirigiendo al login')
+                    router.push('/login')
+                    return
+                }
+
+                if (!userData?.es_admin || !userData?.activo) {
+                    console.log('⚠️ Dashboard: Usuario no es administrador o no está activo, redirigiendo al login')
+                    router.push('/login')
+                    return
+                }
+
+                console.log('✅ Dashboard: Usuario administrador verificado, mostrando dashboard')
+            } else {
+                console.log('⚠️ Dashboard: No hay usuario autenticado, redirigiendo al login')
+                router.push('/login')
+            }
             setLoading(false)
+        }
+        getUser()
+    }, [router])
+
+    const handleLogout = async () => {
+        setLogoutLoading(true)
+        try {
+            console.log('🚪 Iniciando logout...')
+            
+            // Limpiar localStorage
+            if (typeof window !== 'undefined') {
+                console.log('🧹 Limpiando localStorage...')
+                localStorage.clear()
+                console.log('✅ localStorage limpiado')
+            }
+            
+            // Limpiar cookies de Supabase específicamente
+            console.log('🍪 Limpiando cookies de Supabase...')
+            const supabaseCookies = document.cookie.split(";").filter(c => c.includes('sb-'))
+            supabaseCookies.forEach(cookie => {
+                const cookieName = cookie.split('=')[0].trim()
+                console.log(`🧹 Limpiando cookie: ${cookieName}`)
+                // Limpiar cookie con diferentes paths y dominios
+                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`
+                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`
+                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname};`
+            })
+            console.log('✅ Cookies de Supabase limpiadas')
+            
+            // Cerrar sesión en Supabase
+            console.log('🔐 Cerrando sesión en Supabase...')
+            const { error } = await supabase.auth.signOut()
+            
+            if (error) {
+                console.error('❌ Error en logout:', error)
+            } else {
+                console.log('✅ Logout exitoso en Supabase')
+            }
+            
+            // Forzar redirección inmediata con parámetro de logout
+            console.log('🚀 Redirigiendo inmediatamente a /login...')
+            window.location.href = '/login?logout=true'
+            
+        } catch (err) {
+            console.error('💥 Error en logout:', err)
+            // Aún así redirigir al login
+            window.location.href = '/login?logout=true'
+        } finally {
+            setLogoutLoading(false)
         }
     }
 
-    useEffect(() => { load() }, [])
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+            </div>
+        )
+    }
 
-    const act = async (userId: number, action: 'aprobar' | 'rechazar' | 'en_revision') => {
-        const { data: { session } } = await supabase.auth.getSession()
-        const token = session?.access_token
-        const res = await fetch('/api/admin/verificaciones', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ userId, action })
-        })
-        const json = await res.json()
-        if (!res.ok) {
-            alert(json?.error || 'Error')
-        } else {
-            await load()
+    const renderSection = () => {
+        switch (activeSection) {
+            case 'overview':
+                return (
+                    <div className="space-y-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Resumen del Dashboard</h2>
+                            <p className="text-gray-600">Vista general de las estadísticas y métricas del sistema</p>
+                        </div>
+                        <DashboardStats />
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="bg-white shadow rounded-lg p-6">
+                                <h3 className="text-lg font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => setActiveSection('users')}
+                                        className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-2xl">👥</span>
+                                            <div>
+                                                <p className="font-medium text-gray-900">Gestionar Usuarios</p>
+                                                <p className="text-sm text-gray-600">Ver y administrar usuarios registrados</p>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveSection('products')}
+                                        className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-2xl">📦</span>
+                                            <div>
+                                                <p className="font-medium text-gray-900">Verificar Productos</p>
+                                                <p className="text-sm text-gray-600">Revisar productos pendientes</p>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveSection('messages')}
+                                        className="w-full text-left p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-2xl">💬</span>
+                                            <div>
+                                                <p className="font-medium text-gray-900">Mensajes de Clientes</p>
+                                                <p className="text-sm text-gray-600">Responder consultas y soporte</p>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveSection('complaints')}
+                                        className="w-full text-left p-3 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-2xl">⚠️</span>
+                                            <div>
+                                                <p className="font-medium text-gray-900">Quejas y Reportes</p>
+                                                <p className="text-sm text-gray-600">Gestionar reportes y quejas</p>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="bg-white shadow rounded-lg p-6">
+                                <h3 className="text-lg font-medium text-gray-900 mb-4">Administración</h3>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => setShowAdminModule(true)}
+                                        className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-2xl">👨‍💼</span>
+                                            <div>
+                                                <p className="font-medium text-gray-900">Gestionar Administradores</p>
+                                                <p className="text-sm text-gray-600">Crear y administrar cuentas de admin</p>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            case 'users':
+                return <UsersSection />
+            case 'products':
+                return <ProductsSection />
+            case 'messages':
+                return <MessagesSection />
+            case 'complaints':
+                return <ComplaintsSection />
+            case 'admins':
+                return (
+                    <div className="bg-white shadow rounded-lg p-6">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-4">Gestión de Administradores</h2>
+                        <AdminManagementModule onClose={() => setShowAdminModule(false)} />
+                    </div>
+                )
+            default:
+                return <DashboardStats />
         }
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            <div className="max-w-6xl mx-auto">
-                <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-2xl font-bold">Verificaciones de Identidad</h1>
-                    <div className="flex items-center gap-2">
-                        <select className="border rounded px-2 py-1" value={filter} onChange={(e) => setFilter(e.target.value as any)}>
-                            <option value="todos">Todos</option>
-                            <option value="pendiente">Pendiente</option>
-                            <option value="en_revision">En revisión</option>
-                            <option value="aprobada">Aprobada</option>
-                            <option value="rechazada">Rechazada</option>
-                        </select>
-                        <button onClick={load} className="px-3 py-1.5 border rounded">Recargar</button>
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white shadow">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center py-6">
+                        <div className="flex items-center">
+                            <h1 className="text-3xl font-bold text-gray-900">EcoSwap - Dashboard</h1>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                            <span className="text-sm text-gray-700">
+                                Bienvenido, {user?.email}
+                            </span>
+                            <button
+                                onClick={handleLogout}
+                                disabled={logoutLoading}
+                                className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2"
+                            >
+                                {logoutLoading ? (
+                                    <>
+                                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>Cerrando...</span>
+                                    </>
+                                ) : (
+                                    'Cerrar Sesión'
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
-                {error && <div className="p-2 bg-red-50 border border-red-200 text-red-700 mb-3">{error}</div>}
-                {loading ? (
-                    <div>Cargando...</div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {items.filter((it: any) => filter === 'todos' ? true : (it.estado || (it.verificado ? 'aprobada' : 'pendiente')) === filter).map((it: any) => (
-                            <div key={it.user_id} className="bg-white rounded shadow p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div>
-                                        <div className="font-semibold">{it.nombre} {it.apellido}</div>
-                                        <div className="text-sm text-gray-600">{it.email}</div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className={`px-2 py-1 rounded text-sm ${it.estado === 'aprobada' ? 'bg-green-100 text-green-700' : it.estado === 'rechazada' ? 'bg-red-100 text-red-700' : it.estado === 'en_revision' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{it.estado || (it.verificado ? 'aprobada' : 'pendiente')}</span>
-                                        <span className={`px-2 py-1 rounded text-xs ${it.activo ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{it.activo ? 'Activa' : 'Suspendida'}</span>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {['cedula_frente', 'cedula_reverso', 'selfie_validacion'].map((k) => (
-                                        <div key={k} className="border rounded overflow-hidden bg-gray-50">
-                                            {it.files?.[k as keyof Item['files']] ? (
-                                                <img src={it.files[k as keyof Item['files']] as string} className="w-full h-40 object-cover" />
-                                            ) : (
-                                                <div className="w-full h-40 flex items-center justify-center text-gray-400 text-sm">Sin archivo</div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="mt-3 flex flex-col gap-2">
-                                    <textarea id={`motivo-${it.user_id}`} placeholder="Motivo de rechazo (opcional)" className="w-full border rounded px-2 py-1 text-sm" />
-                                    <div className="flex gap-2 justify-end">
-                                        <button onClick={async () => {
-                                            const { data: { session } } = await supabase.auth.getSession()
-                                            const token = session?.access_token
-                                            const res = await fetch('/api/admin/users/status', {
-                                                method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                                                body: JSON.stringify({ userId: it.user_id, action: it.activo ? 'suspender' : 'reactivar' })
-                                            })
-                                            if (res.ok) load(); else alert('Error al cambiar estado')
-                                        }} className={`px-3 py-1.5 rounded ${it.activo ? 'border' : 'bg-green-600 text-white'}`}>{it.activo ? 'Suspender cuenta' : 'Reactivar cuenta'}</button>
-                                        <button onClick={() => act(it.user_id, 'en_revision')} className="px-3 py-1.5 border rounded">En revisión</button>
-                                        <button onClick={async () => {
-                                            const el = document.getElementById(`motivo-${it.user_id}`) as HTMLTextAreaElement | null
-                                            const motivo = el?.value || ''
-                                            const { data: { session } } = await supabase.auth.getSession()
-                                            const token = session?.access_token
-                                            const res = await fetch('/api/admin/verificaciones', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                                                body: JSON.stringify({ userId: it.user_id, action: 'rechazar', motivo })
-                                            })
-                                            if (res.ok) load(); else alert('Error al rechazar')
-                                        }} className="px-3 py-1.5 border rounded">Rechazar</button>
-                                        <button onClick={() => act(it.user_id, 'aprobar')} className="px-3 py-1.5 bg-green-600 text-white rounded">Aprobar</button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+            </header>
+
+            {/* Navigation */}
+            <DashboardNavigation 
+                activeSection={activeSection} 
+                onSectionChange={setActiveSection} 
+            />
+
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+                <div className="px-4 py-6 sm:px-0">
+                    {renderSection()}
+                </div>
+            </main>
+
+            {/* Admin Management Module Modal */}
+            {showAdminModule && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+                        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                            <h3 className="text-lg font-semibold">Gestión de Administradores</h3>
+                            <button
+                                onClick={() => setShowAdminModule(false)}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-4">
+                            <AdminManagementModule onClose={() => setShowAdminModule(false)} />
+                        </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     )
 }
-
-
-

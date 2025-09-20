@@ -1,39 +1,117 @@
 # Dependencies
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Next.js / Build output
+# Next.js
 .next/
 out/
 build/
 dist/
-.cache/
-.turbo/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel
+
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
 
-# Testing / Coverage
-coverage/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Logs / Debug
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
 .eslintcache
 
-# OS / Misc
-.DS_Store
+# Optional REPL history
+.node_repl_history
 
-# Env files (do not commit secrets)
-.env
-.env.local
-.env.*.local
+# Output of 'npm pack'
+*.tgz
 
-# Hosting / Platform
-.vercel/
+# Yarn Integrity file
+.yarn-integrity
 
-# Supabase local metadata (optional)
+# dotenv environment variables file
+.env.test
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local development
+.local
+.cache
+
+# Supabase
 .supabase/
-
-

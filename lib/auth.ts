@@ -8,6 +8,9 @@ export interface User {
     avatar: string
     location: string
     phone?: string
+    isAdmin?: boolean
+    roles?: string[]
+    adminSince?: string | undefined
 }
 
 export interface RegisterData {
@@ -34,6 +37,12 @@ export interface CompleteRegistrationData {
     phone: string
     location: string
     password: string
+}
+
+export interface AdminUser extends User {
+    isAdmin: true
+    roles: string[]
+    adminSince?: string
 }
 
 // Función para registrar un nuevo usuario con Supabase Auth
@@ -306,6 +315,9 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
             ? `${location.ciudad}, ${location.departamento}`
             : 'Colombia'
 
+        // Verificar si es administrador
+        const { isAdmin, roles, adminSince } = await isUserAdmin(user.email)
+
         // Retornar datos del usuario para el frontend
         const userData: User = {
             id: user.user_id.toString(),
@@ -313,7 +325,10 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
             email: user.email,
             avatar: user.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
             location: userLocation,
-            phone: user.telefono
+            phone: user.telefono,
+            isAdmin,
+            roles,
+            adminSince
         }
 
         return { user: userData, error: null }
@@ -452,13 +467,19 @@ export async function getCurrentUser(): Promise<User | null> {
             ? `${location.ciudad}, ${location.departamento}`
             : 'Colombia'
 
+        // Verificar si es administrador
+        const { isAdmin, roles, adminSince } = await isUserAdmin(user.email)
+
         const userData: User = {
             id: user.user_id.toString(),
             name: `${user.nombre} ${user.apellido}`.trim(),
             email: user.email,
             avatar: user.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
             location: userLocation,
-            phone: user.telefono
+            phone: user.telefono,
+            isAdmin,
+            roles,
+            adminSince
         }
 
         // Guardar en localStorage para compatibilidad
@@ -687,6 +708,240 @@ export async function resendConfirmationEmail(email: string): Promise<{ error: s
     } catch (error) {
         console.error('Error al reenviar email:', error)
         return { error: 'Error al reenviar el email de confirmación' }
+    }
+}
+
+// =============================================
+// FUNCIONES DE ADMINISTRACIÓN
+// =============================================
+
+// Función para verificar si un usuario es administrador
+export async function isUserAdmin(email: string): Promise<{ isAdmin: boolean; roles: string[]; adminSince?: string }> {
+    try {
+        // Verificar si es admin por la columna es_admin
+        const { data: dbUser } = await supabase
+            .from('usuario')
+            .select('user_id, es_admin, admin_desde')
+            .eq('email', email)
+            .single()
+
+        if (dbUser?.es_admin) {
+            // Obtener roles del usuario
+            const { data: roles } = await supabase
+                .from('usuario_rol')
+                .select('rol_id, activo')
+                .eq('usuario_id', dbUser.user_id)
+                .eq('activo', true)
+
+            if (roles && roles.length > 0) {
+                const roleIds = roles.map(r => r.rol_id)
+                const { data: roleNames } = await supabase
+                    .from('rol_usuario')
+                    .select('rol_id, nombre, activo')
+                    .in('rol_id', roleIds)
+                    .eq('activo', true)
+
+                const adminRoles = (roleNames || [])
+                    .filter(r => ['super_admin', 'admin_validacion', 'admin_soporte', 'moderador'].includes(r.nombre))
+                    .map(r => r.nombre)
+
+                return {
+                    isAdmin: true,
+                    roles: adminRoles,
+                    adminSince: dbUser.admin_desde || undefined
+                }
+            }
+
+            return {
+                isAdmin: true,
+                roles: ['admin'], // Rol genérico si no tiene roles específicos
+                adminSince: dbUser.admin_desde || undefined
+            }
+        }
+
+        return { isAdmin: false, roles: [] }
+    } catch (error) {
+        console.error('Error verificando admin:', error)
+        return { isAdmin: false, roles: [] }
+    }
+}
+
+// Función para verificar si un usuario es super admin
+export async function isUserSuperAdmin(email: string): Promise<boolean> {
+    try {
+        const { data: dbUser } = await supabase
+            .from('usuario')
+            .select('user_id, es_admin')
+            .eq('email', email)
+            .single()
+
+        if (!dbUser?.es_admin) return false
+
+        // Verificar si tiene rol de super_admin
+        const { data: roles } = await supabase
+            .from('usuario_rol')
+            .select('rol_id, activo')
+            .eq('usuario_id', dbUser.user_id)
+            .eq('activo', true)
+
+        if (roles && roles.length > 0) {
+            const roleIds = roles.map(r => r.rol_id)
+            const { data: roleNames } = await supabase
+                .from('rol_usuario')
+                .select('nombre, activo')
+                .in('rol_id', roleIds)
+                .eq('activo', true)
+
+            return !!(roleNames || []).find(r => r.nombre === 'super_admin')
+        }
+
+        return false
+    } catch (error) {
+        console.error('Error verificando super admin:', error)
+        return false
+    }
+}
+
+// Función para obtener información completa de administrador
+export async function getAdminUser(email: string): Promise<AdminUser | null> {
+    try {
+        const { data: dbUser } = await supabase
+            .from('usuario')
+            .select('*')
+            .eq('email', email)
+            .eq('es_admin', true)
+            .single()
+
+        if (!dbUser) return null
+
+        // Obtener roles del usuario
+        const { data: roles } = await supabase
+            .from('usuario_rol')
+            .select('rol_id, activo')
+            .eq('usuario_id', dbUser.user_id)
+            .eq('activo', true)
+
+        let adminRoles: string[] = []
+        if (roles && roles.length > 0) {
+            const roleIds = roles.map(r => r.rol_id)
+            const { data: roleNames } = await supabase
+                .from('rol_usuario')
+                .select('nombre, activo')
+                .in('rol_id', roleIds)
+                .eq('activo', true)
+
+            adminRoles = (roleNames || [])
+                .filter(r => ['super_admin', 'admin_validacion', 'admin_soporte', 'moderador'].includes(r.nombre))
+                .map(r => r.nombre)
+        }
+
+        // Obtener ubicación
+        const { data: location } = await supabase
+            .from('ubicacion')
+            .select('ciudad, departamento')
+            .eq('user_id', dbUser.user_id)
+            .eq('es_principal', true)
+            .single()
+
+        const userLocation = location
+            ? `${location.ciudad}, ${location.departamento}`
+            : 'Colombia'
+
+        return {
+            id: dbUser.user_id.toString(),
+            name: `${dbUser.nombre} ${dbUser.apellido}`.trim(),
+            email: dbUser.email,
+            avatar: dbUser.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+            location: userLocation,
+            phone: dbUser.telefono,
+            isAdmin: true,
+            roles: adminRoles,
+            adminSince: dbUser.admin_desde || undefined
+        }
+    } catch (error) {
+        console.error('Error obteniendo admin user:', error)
+        return null
+    }
+}
+
+// Función para verificar permisos de administrador
+export async function hasAdminPermission(email: string, permission: string): Promise<boolean> {
+    try {
+        const { isAdmin, roles } = await isUserAdmin(email)
+
+        if (!isAdmin) return false
+
+        // Super admin tiene todos los permisos
+        if (roles.includes('super_admin')) return true
+
+        // Verificar permisos específicos por rol
+        const permissionMap: Record<string, string[]> = {
+            'gestionar_usuarios': ['super_admin', 'admin_validacion'],
+            'gestionar_admins': ['super_admin'],
+            'gestionar_reportes': ['super_admin', 'admin_soporte', 'moderador'],
+            'gestionar_verificaciones': ['super_admin', 'admin_validacion'],
+            'responder_chats': ['super_admin', 'admin_soporte', 'moderador'],
+            'acceso_total': ['super_admin']
+        }
+
+        const allowedRoles = permissionMap[permission] || []
+        return roles.some(role => allowedRoles.includes(role))
+    } catch (error) {
+        console.error('Error verificando permisos:', error)
+        return false
+    }
+}
+
+// Función para login de administrador (con verificación de roles)
+export async function loginAdmin(data: LoginData): Promise<{ user: AdminUser | null; error: string | null }> {
+    try {
+        // Primero hacer login normal
+        const { user, error } = await loginUser(data)
+
+        if (error || !user) {
+            return { user: null, error: error || 'Error al iniciar sesión' }
+        }
+
+        // Verificar si es administrador
+        const { isAdmin, roles, adminSince } = await isUserAdmin(user.email)
+
+        if (!isAdmin) {
+            return { user: null, error: 'No tienes permisos de administrador' }
+        }
+
+        // Retornar como AdminUser
+        const adminUser: AdminUser = {
+            ...user,
+            isAdmin: true,
+            roles,
+            adminSince
+        }
+
+        return { user: adminUser, error: null }
+    } catch (error) {
+        console.error('Error en loginAdmin:', error)
+        return { user: null, error: 'Error interno del servidor' }
+    }
+}
+
+// Función para obtener el usuario actual con información de admin
+export async function getCurrentUserWithAdmin(): Promise<User | null> {
+    try {
+        const user = await getCurrentUser()
+        if (!user) return null
+
+        // Verificar si es admin
+        const { isAdmin, roles, adminSince } = await isUserAdmin(user.email)
+
+        return {
+            ...user,
+            isAdmin,
+            roles,
+            adminSince
+        }
+    } catch (error) {
+        console.error('Error obteniendo usuario con admin:', error)
+        return null
     }
 }
 

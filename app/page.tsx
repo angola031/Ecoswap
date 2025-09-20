@@ -22,6 +22,7 @@ import InteractionsModule from '@/components/interactions/InteractionsModule'
 
 // Tipos
 import { type User, getCurrentUser, logoutUser } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 
 export default function HomePage() {
     const [currentScreen, setCurrentScreen] = useState<'auth' | 'main'>('main')
@@ -36,6 +37,21 @@ export default function HomePage() {
             try {
                 const user = await getCurrentUser()
                 if (user) {
+                    // Verificar si es administrador
+                    const { data: userData } = await supabase
+                        .from('usuario')
+                        .select('es_admin, activo')
+                        .eq('email', user.email)
+                        .single()
+
+                    // Si es administrador activo, redirigir al dashboard
+                    if (userData?.es_admin && userData?.activo) {
+                        console.log('🔑 Página principal: Administrador detectado, redirigiendo al dashboard')
+                        window.location.replace('/admin/verificaciones')
+                        return
+                    }
+                    // Si es cliente, continuar con el flujo normal
+
                     setCurrentUser(user)
                     setIsAuthenticated(true)
                     setCurrentScreen('main')
@@ -192,12 +208,20 @@ export default function HomePage() {
                                     </span>
                                 </div>
                             ) : (
-                                <button
-                                    onClick={() => setCurrentScreen('auth')}
-                                    className="btn-primary"
-                                >
-                                    Iniciar Sesión
-                                </button>
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={() => setCurrentScreen('auth')}
+                                        className="btn-primary"
+                                    >
+                                        Iniciar Sesión
+                                    </button>
+                                    <button
+                                        onClick={() => window.location.href = '/login'}
+                                        className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                                    >
+                                        Login Admin
+                                    </button>
+                                </div>
                             )}
 
                             {isAuthenticated && (
