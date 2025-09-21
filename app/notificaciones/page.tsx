@@ -47,20 +47,29 @@ export default function NotificationsPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-white shadow-sm border-b">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center py-6">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Notificaciones</h1>
-                            <p className="text-sm text-gray-500 mt-1">
-                                Mantente al día con las últimas actualizaciones de tu cuenta
-                            </p>
+                    <div className="flex justify-between items-center py-8">
+                        <div className="flex items-center space-x-4">
+                            <div className="bg-white bg-opacity-20 rounded-full p-3">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 19h6v-6h6v-6h6" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 13h6V7h6V1" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h1 className="text-3xl font-bold">🔔 Notificaciones</h1>
+                                <p className="text-blue-100 mt-1 text-lg">
+                                    Mantente al día con las últimas actualizaciones de tu cuenta
+                                </p>
+                            </div>
                         </div>
                         <button
                             onClick={() => router.push('/')}
-                            className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            className="flex items-center px-6 py-3 text-sm font-medium text-blue-600 bg-white rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-200 shadow-lg"
                         >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
                             Volver al Inicio

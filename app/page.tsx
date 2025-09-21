@@ -21,6 +21,7 @@ import ProductsModule from '@/components/products/ProductsModule'
 import ChatModule from '@/components/chat/ChatModule'
 import ProfileModule from '@/components/profile/ProfileModule'
 import InteractionsModule from '@/components/interactions/InteractionsModule'
+import NotificationToast from '@/components/NotificationToast'
 
 // Tipos
 import { type User, getCurrentUser, logoutUser } from '@/lib/auth'
@@ -228,12 +229,16 @@ export default function HomePage() {
 
                                     <button
                                         onClick={() => window.location.href = '/notificaciones'}
-                                        className="relative flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                                        className={`relative flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                                            unreadCount > 0 
+                                                ? 'text-red-600 hover:text-red-700 hover:bg-red-50 animate-pulse' 
+                                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                        }`}
                                     >
-                                        <BellIcon className="w-5 h-5" />
+                                        <BellIcon className={`w-5 h-5 ${unreadCount > 0 ? 'animate-bounce' : ''}`} />
                                         <span>Notificaciones</span>
                                         {unreadCount > 0 && (
-                                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold shadow-lg animate-pulse">
                                                 {unreadCount > 9 ? '9+' : unreadCount}
                                             </span>
                                         )}
@@ -351,12 +356,16 @@ export default function HomePage() {
 
                             <button
                                 onClick={() => window.location.href = '/notificaciones'}
-                                className="relative flex flex-col items-center space-y-1 p-2 text-gray-500"
+                                className={`relative flex flex-col items-center space-y-1 p-2 transition-all duration-200 ${
+                                    unreadCount > 0 
+                                        ? 'text-red-600 animate-pulse' 
+                                        : 'text-gray-500'
+                                }`}
                             >
-                                <BellIcon className="w-6 h-6" />
+                                <BellIcon className={`w-6 h-6 ${unreadCount > 0 ? 'animate-bounce' : ''}`} />
                                 <span className="text-xs">Notificaciones</span>
                                 {unreadCount > 0 && (
-                                    <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                                    <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg animate-pulse">
                                         {unreadCount > 9 ? '9+' : unreadCount}
                                     </span>
                                 )}
@@ -382,6 +391,11 @@ export default function HomePage() {
                     )}
                 </div>
             </div>
+
+            {/* Componente de notificaciones toast para usuarios autenticados */}
+            {isAuthenticated && currentUser && (
+                <NotificationToast userId={currentUser.id} />
+            )}
         </div>
     )
 }
