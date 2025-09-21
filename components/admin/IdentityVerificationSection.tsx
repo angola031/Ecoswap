@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { getVerificationDocumentUrls } from '@/lib/storage'
 
 interface VerificationRequest {
     validacion_id: number
@@ -43,8 +42,8 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
             setLoading(true)
             setError(null)
 
-            // Buscar usuarios que tienen validación pendiente con sus documentos
-            const { data, error } = await supabase
+            // Buscar usuarios que tienen validaciones pendientes
+            const { data: validationsData, error: validationsError } = await supabase
                 .from('validacion_usuario')
                 .select(`
                     validacion_id,
@@ -54,6 +53,7 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                     fecha_solicitud,
                     notas_admin,
                     motivo_rechazo,
+                    documentos_adjuntos,
                     usuario:usuario_id (
                         user_id,
                         nombre,
@@ -61,41 +61,67 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                         email,
                         telefono,
                         verificado,
-                        cedula_frente_url,
-                        cedula_reverso_url,
-                        selfie_validacion_url
+                        fecha_registro
                     )
                 `)
                 .eq('tipo_validacion', 'identidad')
                 .in('estado', ['pendiente', 'en_revision'])
                 .order('fecha_solicitud', { ascending: false })
 
-            if (error) {
-                console.error('❌ Error obteniendo solicitudes de verificación:', error)
-                setError('Error cargando solicitudes de verificación')
+            if (validationsError) {
+                console.error('❌ Error obteniendo validaciones:', validationsError)
+                setError('Error cargando validaciones de identidad')
                 return
             }
 
-            // Generar URLs públicas para los documentos
-            const formattedRequests = data?.map(user => {
-                const documentUrls = getVerificationDocumentUrls(user.user_id)
+            console.log('📋 Validaciones encontradas:', validationsData?.length || 0)
+
+            // Los datos ya vienen con el JOIN, solo necesitamos transformarlos
+            const data = validationsData || []
+
+            // Transformar los datos para la interfaz
+            const transformedData = data?.map(item => {
+                // Extraer URLs de documentos desde el campo documentos_adjuntos
+                const documentos = item.documentos_adjuntos || {}
+                const bucketName = 'Ecoswap' // Nombre del bucket de Supabase Storage
+                
+                // Función para generar URL pública de Supabase Storage con cache-busting
+                const getStorageUrl = (path: string) => {
+                    if (!path) return null
+                    const { data } = supabase.storage.from(bucketName).getPublicUrl(path)
+                    // Agregar timestamp para evitar cache del navegador
+                    const timestamp = Date.now()
+                    return `${data.publicUrl}?t=${timestamp}`
+                }
                 
                 return {
-                    user_id: user.user_id,
-                    nombre: user.nombre,
-                    apellido: user.apellido,
-                    email: user.email,
-                    telefono: user.telefono,
-                    cedula_frente_url: documentUrls.cedulaFrente,
-                    cedula_reverso_url: documentUrls.cedulaReverso,
-                    selfie_validacion_url: documentUrls.selfieValidacion,
-                    fecha_subida: user.fecha_subida_verificacion,
-                    estado_verificacion: user.estado_verificacion || 'pendiente',
-                    observaciones: user.observaciones_verificacion
+                    validacion_id: item.validacion_id,
+                    user_id: item.usuario?.user_id || item.usuario_id,
+                    nombre: item.usuario?.nombre || '',
+                    apellido: item.usuario?.apellido || '',
+                    email: item.usuario?.email || '',
+                    telefono: item.usuario?.telefono || '',
+                    cedula_frente_url: getStorageUrl(documentos.cedula_frente),
+                    cedula_reverso_url: getStorageUrl(documentos.cedula_reverso),
+                    selfie_validacion_url: getStorageUrl(documentos.selfie_validacion),
+                    fecha_subida: item.fecha_solicitud,
+                    estado_verificacion: item.estado,
+                    observaciones: item.notas_admin
                 }
             }) || []
 
-            setVerificationRequests(formattedRequests)
+            console.log('📋 Datos transformados para UI:', transformedData)
+            
+            // Log de URLs generadas para debugging
+            transformedData.forEach((item, index) => {
+                console.log(`📷 URLs para validación ${item.validacion_id}:`, {
+                    cedula_frente: item.cedula_frente_url,
+                    cedula_reverso: item.cedula_reverso_url,
+                    selfie: item.selfie_validacion_url
+                })
+            })
+            
+            setVerificationRequests(transformedData)
 
         } catch (err) {
             console.error('❌ Error en fetchVerificationRequests:', err)
@@ -150,22 +176,49 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
 
             // Crear notificación para el usuario
             try {
-                await supabase
+                console.log('📧 Enviando notificación al usuario:', {
+                    usuario_id: userId,
+                    decision,
+                    observations,
+                    verificationId
+                })
+
+                const notificationData = {
+                    usuario_id: userId,
+                    titulo: decision === 'aprobado' ? 'Verificación de Identidad Aprobada' : 'Verificación de Identidad Rechazada',
+                    mensaje: decision === 'aprobado' 
+                        ? 'Tu verificación de identidad ha sido aprobada. Ya puedes usar todas las funciones de la plataforma.'
+                        : `Tu verificación de identidad ha sido rechazada.${observations ? ` Motivo: ${observations}` : ''} Por favor, revisa y vuelve a subir los documentos.`,
+                    tipo: decision === 'aprobado' ? 'verificacion_aprobada' : 'verificacion_identidad',
+                    datos_adicionales: {
+                        status: decision === 'aprobado' ? 'approved' : 'rejected',
+                        motivo_rechazo: decision === 'rechazado' ? observations : null,
+                        validacion_id: verificationId,
+                        fecha_revision: new Date().toISOString(),
+                        url_accion: decision === 'aprobado' ? '/?m=profile' : '/verificacion-identidad'
+                    },
+                    leida: false,
+                    fecha_creacion: new Date().toISOString(),
+                    es_push: true,
+                    es_email: false
+                }
+
+                console.log('📧 Datos de notificación:', notificationData)
+
+                const { data: notificationResult, error: notificationError } = await supabase
                     .from('notificacion')
-                    .insert({
-                        user_id: userId,
-                        titulo: decision === 'aprobado' ? 'Verificación de Identidad Aprobada' : 'Verificación de Identidad Rechazada',
-                        mensaje: decision === 'aprobado' 
-                            ? 'Tu verificación de identidad ha sido aprobada. Ya puedes usar todas las funciones de la plataforma.'
-                            : `Tu verificación de identidad ha sido rechazada.${observations ? ` Motivo: ${observations}` : ''} Por favor, revisa y vuelve a subir los documentos.`,
-                        tipo: decision === 'aprobado' ? 'success' : 'error',
-                        es_admin: false,
-                        url_accion: decision === 'aprobado' ? '/?m=profile' : '/verificacion-identidad',
-                        fecha_creacion: new Date().toISOString(),
-                        leida: false
-                    })
+                    .insert(notificationData)
+                    .select()
+
+                if (notificationError) {
+                    console.error('❌ Error enviando notificación al usuario:', notificationError)
+                    alert(`Verificación ${decision === 'aprobado' ? 'aprobada' : 'rechazada'} pero error enviando notificación: ${notificationError.message}`)
+                } else {
+                    console.log('✅ Notificación enviada exitosamente:', notificationResult)
+                }
             } catch (notificationError) {
                 console.error('⚠️ Error enviando notificación al usuario:', notificationError)
+                alert(`Verificación ${decision === 'aprobado' ? 'aprobada' : 'rechazada'} pero error enviando notificación: ${notificationError.message}`)
             }
 
             // Actualizar lista local
@@ -180,6 +233,12 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                         : req
                 )
             )
+
+            // Refrescar los datos para obtener las URLs actualizadas
+            console.log('🔄 Refrescando datos después de procesar validación...')
+            setTimeout(() => {
+                fetchVerificationRequests()
+            }, 1000) // Esperar 1 segundo para que se actualice la BD
 
             setShowModal(false)
             setSelectedRequest(null)
@@ -241,8 +300,12 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                     <h2 className="text-2xl font-bold text-gray-900">Verificación de Identidad</h2>
                     <button
                         onClick={fetchVerificationRequests}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        title="Actualizar lista y refrescar imágenes"
                     >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
                         Actualizar
                     </button>
                 </div>
@@ -359,14 +422,26 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                                 <h3 className="text-lg font-medium text-gray-900">
                                     Revisar Documentos - {selectedRequest.nombre} {selectedRequest.apellido}
                                 </h3>
-                                <button
-                                    onClick={() => setShowModal(false)}
-                                    className="text-gray-400 hover:text-gray-600"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
+                                <div className="flex items-center space-x-2">
+                                    <button
+                                        onClick={fetchVerificationRequests}
+                                        className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                                        title="Refrescar imágenes"
+                                    >
+                                        <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        Refrescar
+                                    </button>
+                                    <button
+                                        onClick={() => setShowModal(false)}
+                                        className="text-gray-400 hover:text-gray-600"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

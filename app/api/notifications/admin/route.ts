@@ -49,12 +49,20 @@ export async function POST(request: NextRequest) {
 
         // Crear notificaciones para cada administrador
         const notifications = admins.map(admin => ({
-            notificacion_x_usuario_id: admin.user_id,
+            usuario_id: admin.user_id,
             titulo: 'Nueva Verificación de Identidad',
             mensaje: `${userName} (${userEmail}) ha subido documentos para verificación de identidad y está esperando revisión.`,
             tipo: 'verificacion_identidad',
-            datos_adicion_leida: false,
-            fecha_creacic_fecha_lectura_es_push: new Date().toISOString(),
+            datos_adicionales: {
+                userId,
+                userName,
+                userEmail,
+                verificationType,
+                additionalData
+            },
+            leida: false,
+            fecha_creacion: new Date().toISOString(),
+            es_push: true,
             es_email: false
         }))
 

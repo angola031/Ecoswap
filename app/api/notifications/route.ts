@@ -69,12 +69,14 @@ export async function POST(request: NextRequest) {
         const { data: notification, error } = await supabase
             .from('notificacion')
             .insert({
-                notificacion_x_usuario_id: userId,
+                usuario_id: userId,
                 titulo,
                 mensaje,
                 tipo,
-                datos_adicion_leida: false,
-                fecha_creacic_fecha_lectura_es_push: new Date().toISOString(),
+                datos_adicionales: additionalData || null,
+                leida: false,
+                fecha_creacion: new Date().toISOString(),
+                es_push: true,
                 es_email: false
             })
             .select()

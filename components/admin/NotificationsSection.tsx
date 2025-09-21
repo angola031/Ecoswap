@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
 interface Notification {
-    notificacion_x_usuario_id: number
+    notificacion_id: number
+    usuario_id: number
     tipo: string
     titulo: string
     mensaje: string
-    datos_adicion_leida: boolean
-    fecha_creacic_fecha_lectura_es_push: string
+    datos_adicionales?: any
+    leida: boolean
+    fecha_creacion: string
+    fecha_lectura?: string
+    es_push: boolean
     es_email: boolean
 }
 
@@ -56,15 +60,19 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
             const { data, error } = await supabase
                 .from('notificacion')
                 .select(`
-                    notificacion_x_usuario_id,
+                    notificacion_id,
+                    usuario_id,
                     tipo,
                     titulo,
                     mensaje,
-                    datos_adicion_leida,
-                    fecha_creacic_fecha_lectura_es_push,
+                    datos_adicionales,
+                    leida,
+                    fecha_creacion,
+                    fecha_lectura,
+                    es_push,
                     es_email
                 `)
-                .order('fecha_creacic_fecha_lectura_es_push', { ascending: false })
+                .order('fecha_creacion', { ascending: false })
                 .limit(20)
 
             if (error) {
@@ -76,7 +84,7 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
             setNotifications(data || [])
             
             // Contar no leídas
-            const unread = data?.filter(n => !n.datos_adicion_leida).length || 0
+            const unread = data?.filter(n => !n.leida).length || 0
             setUnreadCount(unread)
 
         } catch (err) {
@@ -91,8 +99,11 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
         try {
             const { error } = await supabase
                 .from('notificacion')
-                .update({ datos_adicion_leida: true })
-                .eq('notificacion_x_usuario_id', notificationId)
+                .update({ 
+                    leida: true,
+                    fecha_lectura: new Date().toISOString()
+                })
+                .eq('notificacion_id', notificationId)
 
             if (error) {
                 console.error('❌ Error marcando como leída:', error)
@@ -102,8 +113,8 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
             // Actualizar estado local
             setNotifications(prev => 
                 prev.map(n => 
-                    n.notificacion_x_usuario_id === notificationId 
-                        ? { ...n, datos_adicion_leida: true }
+                    n.notificacion_id === notificationId 
+                        ? { ...n, leida: true, fecha_lectura: new Date().toISOString() }
                         : n
                 )
             )
@@ -119,15 +130,18 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
     const markAllAsRead = async () => {
         try {
             const unreadIds = notifications
-                .filter(n => !n.datos_adicion_leida)
-                .map(n => n.notificacion_x_usuario_id)
+                .filter(n => !n.leida)
+                .map(n => n.notificacion_id)
 
             if (unreadIds.length === 0) return
 
             const { error } = await supabase
                 .from('notificacion')
-                .update({ datos_adicion_leida: true })
-                .in('notificacion_x_usuario_id', unreadIds)
+                .update({ 
+                    leida: true,
+                    fecha_lectura: new Date().toISOString()
+                })
+                .in('notificacion_id', unreadIds)
 
             if (error) {
                 console.error('❌ Error marcando todas como leídas:', error)
@@ -136,7 +150,11 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
 
             // Actualizar estado local
             setNotifications(prev => 
-                prev.map(n => ({ ...n, datos_adicion_leida: true }))
+                prev.map(n => ({ 
+                    ...n, 
+                    leida: true, 
+                    fecha_lectura: new Date().toISOString() 
+                }))
             )
             setUnreadCount(0)
 
@@ -252,15 +270,15 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                     {notifications.map((notification) => (
                         <div
-                            key={notification.notificacion_x_usuario_id}
+                            key={notification.notificacion_id}
                             className={`p-3 rounded-lg border transition-colors cursor-pointer ${
-                                notification.datos_adicion_leida 
+                                notification.leida 
                                     ? 'bg-gray-50 border-gray-200' 
                                     : 'bg-blue-50 border-blue-200'
                             }`}
                             onClick={() => {
-                                if (!notification.datos_adicion_leida) {
-                                    markAsRead(notification.notificacion_x_usuario_id)
+                                if (!notification.leida) {
+                                    markAsRead(notification.notificacion_id)
                                 }
                             }}
                         >
@@ -269,21 +287,21 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between">
                                         <h4 className={`text-sm font-medium ${
-                                            notification.datos_adicion_leida ? 'text-gray-700' : 'text-gray-900'
+                                            notification.leida ? 'text-gray-700' : 'text-gray-900'
                                         }`}>
                                             {notification.titulo}
                                         </h4>
-                                        {!notification.datos_adicion_leida && (
+                                        {!notification.leida && (
                                             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                                         )}
                                     </div>
                                     <p className={`text-sm mt-1 ${
-                                        notification.datos_adicion_leida ? 'text-gray-600' : 'text-gray-700'
+                                        notification.leida ? 'text-gray-600' : 'text-gray-700'
                                     }`}>
                                         {notification.mensaje}
                                     </p>
                                     <p className="text-xs text-gray-500 mt-2">
-                                        {formatDate(notification.fecha_creacic_fecha_lectura_es_push)}
+                                        {formatDate(notification.fecha_creacion)}
                                     </p>
                                 </div>
                             </div>

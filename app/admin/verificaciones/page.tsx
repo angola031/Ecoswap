@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import AdminManagementModule from '@/components/admin/AdminManagementModule'
-import DashboardStats from '@/components/admin/DashboardStats'
 import DashboardNavigation from '@/components/admin/DashboardNavigation'
 import UsersSection from '@/components/admin/UsersSection'
 import ProductsSection from '@/components/admin/ProductsSection'
@@ -173,9 +172,6 @@ export default function VerificacionesPage() {
                             onViewVerifications={() => setActiveSection('identity-verification')}
                             onViewNotifications={() => setActiveSection('notifications')}
                         />
-                        
-                        {/* Estadísticas Detalladas */}
-                        <DashboardStats />
                         
                         {/* Resumen de Verificaciones */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
