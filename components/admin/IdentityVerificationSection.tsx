@@ -94,13 +94,16 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                     return `${data.publicUrl}?t=${timestamp}`
                 }
                 
+                // El JOIN puede devolver un array o un objeto, manejamos ambos casos
+                const usuario = Array.isArray(item.usuario) ? item.usuario[0] : item.usuario
+                
                 return {
                     validacion_id: item.validacion_id,
-                    user_id: item.usuario?.user_id || item.usuario_id,
-                    nombre: item.usuario?.nombre || '',
-                    apellido: item.usuario?.apellido || '',
-                    email: item.usuario?.email || '',
-                    telefono: item.usuario?.telefono || '',
+                    user_id: usuario?.user_id || item.usuario_id,
+                    nombre: usuario?.nombre || '',
+                    apellido: usuario?.apellido || '',
+                    email: usuario?.email || '',
+                    telefono: usuario?.telefono || '',
                     cedula_frente_url: getStorageUrl(documentos.cedula_frente),
                     cedula_reverso_url: getStorageUrl(documentos.cedula_reverso),
                     selfie_validacion_url: getStorageUrl(documentos.selfie_validacion),
@@ -391,13 +394,13 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                                             {request.estado_verificacion === 'pendiente' && (
                                                 <>
                                                     <button
-                                                        onClick={() => handleVerificationDecision(request.user_id, 'aprobado')}
+                                                        onClick={() => handleVerificationDecision(request.validacion_id, request.user_id, 'aprobado')}
                                                         className="text-green-600 hover:text-green-900 mr-3"
                                                     >
                                                         Aprobar
                                                     </button>
                                                     <button
-                                                        onClick={() => handleVerificationDecision(request.user_id, 'rechazado')}
+                                                        onClick={() => handleVerificationDecision(request.validacion_id, request.user_id, 'rechazado')}
                                                         className="text-red-600 hover:text-red-900"
                                                     >
                                                         Rechazar
@@ -545,14 +548,14 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                                 {selectedRequest.estado_verificacion === 'pendiente' && (
                                     <>
                                         <button
-                                            onClick={() => handleVerificationDecision(selectedRequest.user_id, 'rechazado')}
+                                            onClick={() => handleVerificationDecision(selectedRequest.validacion_id, selectedRequest.user_id, 'rechazado')}
                                             disabled={processingRequest}
                                             className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 disabled:opacity-50"
                                         >
                                             {processingRequest ? 'Procesando...' : 'Rechazar'}
                                         </button>
                                         <button
-                                            onClick={() => handleVerificationDecision(selectedRequest.user_id, 'aprobado')}
+                                            onClick={() => handleVerificationDecision(selectedRequest.validacion_id, selectedRequest.user_id, 'aprobado')}
                                             disabled={processingRequest}
                                             className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50"
                                         >
