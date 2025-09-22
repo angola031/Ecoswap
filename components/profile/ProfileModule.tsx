@@ -612,7 +612,10 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
                             <h3 className="text-lg font-semibold text-gray-900">Mis Productos</h3>
-                            <button className="btn-primary">
+                            <button 
+                                className="btn-primary"
+                                onClick={() => router.push('/agregar-producto')}
+                            >
                                 <HeartIcon className="w-4 h-4 mr-2" />
                                 Publicar Nuevo Producto
                             </button>

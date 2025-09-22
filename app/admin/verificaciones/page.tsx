@@ -284,7 +284,8 @@ export default function VerificacionesPage() {
             case 'users':
                 return <UsersSection />
             case 'products':
-                return <ProductsSection />
+                console.log('🎯 Dashboard: Renderizando ProductsSection con usuario:', user?.email)
+                return <ProductsSection user={user} />
             case 'identity-verification':
                 return <IdentityVerificationSection currentUserId={user?.id} />
             case 'messages':
@@ -301,7 +302,12 @@ export default function VerificacionesPage() {
                     </div>
                 )
             default:
-                return <DashboardStats />
+                return (
+                    <div className="bg-white shadow rounded-lg p-6">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-4">Dashboard</h2>
+                        <p className="text-gray-600">Selecciona una opción del menú para comenzar.</p>
+                    </div>
+                )
         }
     }
 

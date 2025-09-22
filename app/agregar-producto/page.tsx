@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeftIcon, PhotoIcon, TrashIcon, ExclamationTriangleIcon, CheckCircleIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 interface User {
   id: string
@@ -19,7 +20,7 @@ interface Product {
   description: string
   price: number
   currency: string
-  condition: 'new' | 'like-new' | 'good' | 'fair' | 'poor'
+  condition: 'like-new' | 'good' | 'fair' | 'poor'
   category: string
   images: string[]
   location: string
@@ -37,7 +38,7 @@ export default function AgregarProductoPage() {
     description: '',
     price: '',
     currency: 'COP',
-    condition: 'good' as const,
+    condition: 'like-new' as const,
     category: '',
     location: '',
     tags: '',
@@ -59,7 +60,6 @@ export default function AgregarProductoPage() {
   ]
 
   const conditions = [
-    { value: 'new', label: 'Nuevo', color: 'text-green-600' },
     { value: 'like-new', label: 'Como Nuevo', color: 'text-blue-600' },
     { value: 'good', label: 'Bueno', color: 'text-yellow-600' },
     { value: 'fair', label: 'Aceptable', color: 'text-orange-600' },
@@ -134,16 +134,149 @@ export default function AgregarProductoPage() {
     setIsSubmitting(true)
 
     try {
-      // Simular envío
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Obtener token de autenticación
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        alert('No hay sesión activa. Por favor, inicia sesión.')
+        return
+      }
 
-      // Aquí iría la lógica real de envío
-      console.log('Producto enviado:', { ...formData, images })
+      // Preparar datos para enviar (mapeando a valores válidos en BD)
+      const estadoDb = formData.condition === 'poor' ? 'para_repuestos' : 'usado'
+      const tipoTransaccionDb =
+        formData.publicationType === 'sale' ? 'venta' :
+        formData.publicationType === 'exchange' ? 'intercambio' :
+        formData.publicationType === 'donation' ? 'donacion' : 'intercambio' // 'both' -> 'intercambio'
+
+      const productData = {
+        titulo: formData.title,
+        descripcion: formData.description,
+        precio: formData.publicationType === 'donation' ? null : parseFloat(formData.price),
+        tipo_transaccion: tipoTransaccionDb,
+        estado: estadoDb,
+        categoria_id: null, // Se puede implementar después
+        ubicacion_id: null, // Se puede implementar después
+        precio_negociable: true,
+        condiciones_intercambio: formData.publicationType.includes('exchange') ? 'Intercambio disponible' : null,
+        que_busco_cambio: formData.publicationType.includes('exchange') ? 'Productos de interés' : null
+      }
+
+      // Enviar producto a la API
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(productData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al crear el producto')
+      }
+
+      const result = await response.json()
+      console.log('✅ Formulario: Producto creado:', result)
+      console.log('📦 Formulario: Estructura de respuesta:', {
+        hasProduct: !!result.producto,
+        productId: result.producto?.producto_id,
+        fullResponse: result
+      })
+
+      // Subir imágenes al bucket de Supabase Storage
+      console.log('🖼️ Formulario: Iniciando subida de imágenes')
+      console.log('📊 Formulario: Imágenes a subir:', images.length)
+      console.log('📦 Formulario: Producto ID:', result.producto?.producto_id)
+      
+      if (images.length > 0 && result.producto?.producto_id) {
+        const uploadedImages = []
+        
+        for (let i = 0; i < images.length; i++) {
+          const file = images[i]
+          const fileExt = file.name.split('.').pop()
+          const fileName = `${result.producto.producto_id}_${i + 1}.${fileExt}`
+          
+          // Crear estructura: productos/user_{user_id}/{id_producto}/
+          const filePath = `productos/user_${result.producto.user_id}/${result.producto.producto_id}/${fileName}`
+
+          console.log(`📤 Formulario: Subiendo imagen ${i + 1}:`, { fileName, filePath, fileSize: file.size })
+
+          try {
+            // Subir imagen al bucket
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('Ecoswap')
+              .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+              })
+
+            if (uploadError) {
+              console.error('❌ Formulario: Error subiendo imagen:', uploadError)
+              throw new Error(`Error subiendo imagen ${i + 1}: ${uploadError.message}`)
+            }
+
+            console.log(`✅ Formulario: Imagen ${i + 1} subida a Storage:`, uploadData)
+
+            // Obtener URL pública de la imagen
+            const { data: urlData } = supabase.storage
+              .from('Ecoswap')
+              .getPublicUrl(filePath)
+
+            uploadedImages.push({
+              producto_id: result.producto.producto_id,
+              url_imagen: urlData.publicUrl,
+              es_principal: i === 0, // La primera imagen es principal
+              orden: i + 1
+            })
+
+            console.log(`✅ Formulario: Imagen ${i + 1} URL generada:`, urlData.publicUrl)
+          } catch (imageError) {
+            console.error(`❌ Formulario: Error con imagen ${i + 1}:`, imageError)
+            throw imageError
+          }
+        }
+
+        // Guardar referencias de imágenes en la base de datos
+        if (uploadedImages.length > 0) {
+          console.log('💾 Formulario: Enviando referencias de imágenes a la API:', uploadedImages)
+          
+          const imagesResponse = await fetch('/api/products/images', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              producto_id: result.producto.producto_id,
+              imagenes: uploadedImages
+            })
+          })
+
+          console.log('📡 Formulario: Respuesta de la API de imágenes:', {
+            status: imagesResponse.status,
+            ok: imagesResponse.ok
+          })
+
+          if (!imagesResponse.ok) {
+            const errorData = await imagesResponse.json()
+            console.error('❌ Formulario: Error guardando referencias de imágenes:', errorData)
+            // No lanzamos error aquí porque el producto ya se creó
+          } else {
+            const successData = await imagesResponse.json()
+            console.log('✅ Formulario: Referencias de imágenes guardadas:', successData)
+          }
+        }
+      }
+
+      // Mostrar mensaje de éxito
+      alert('¡Producto enviado exitosamente! Será revisado por nuestros administradores antes de ser publicado.')
 
       // Redirigir a productos
       router.push('/')
     } catch (error) {
       console.error('Error al enviar producto:', error)
+      alert(`Error al enviar el producto: ${error instanceof Error ? error.message : 'Error desconocido'}`)
     } finally {
       setIsSubmitting(false)
     }

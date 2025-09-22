@@ -203,7 +203,10 @@ function HomeScreen({ stats, currentUser }: { stats: any, currentUser: User | nu
           <p className="text-xl mb-6 text-primary-100">
             Intercambia productos en lugar de comprar nuevos. Reduce tu huella de carbono y ahorra dinero.
           </p>
-          <button className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+          <button 
+            className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            onClick={() => window.location.href = '/agregar-producto'}
+          >
             <PlusIcon className="w-5 h-5 inline mr-2" />
             Publicar Producto
           </button>

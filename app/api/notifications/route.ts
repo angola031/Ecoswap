@@ -1,98 +1,101 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
-// GET - Obtener notificaciones para administradores
-export async function GET(request: NextRequest) {
+async function authUser(req: NextRequest) {
+    const auth = req.headers.get('authorization') || ''
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
+    if (!token) return null
+    
+    const { data } = await supabaseAdmin.auth.getUser(token)
+    if (!data?.user) return null
+
+    // Obtener usuario de la base de datos
+    const { data: userData } = await supabaseAdmin
+        .from('usuario')
+        .select('user_id, email')
+        .eq('email', data.user.email)
+        .single()
+
+    return userData || null
+}
+
+export async function GET(req: NextRequest) {
     try {
-        const { searchParams } = new URL(request.url)
-        const isAdmin = searchParams.get('isAdmin') === 'true'
-        const limit = parseInt(searchParams.get('limit') || '10')
-        const offset = parseInt(searchParams.get('offset') || '0')
+        const user = await authUser(req)
+        if (!user) {
+            return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+        }
 
-        let query = supabase
+        const { searchParams } = new URL(req.url)
+        const limit = parseInt(searchParams.get('limit') || '20')
+        const unreadOnly = searchParams.get('unread_only') === 'true'
+
+        let query = supabaseAdmin
             .from('notificacion')
             .select(`
-                *,
-                usuario:user_id (
-                    user_id,
-                    nombre,
-                    apellido,
-                    email,
-                    foto_perfil
-                )
+                notificacion_id,
+                tipo,
+                titulo,
+                mensaje,
+                fecha_creacion,
+                leida,
+                metadata
             `)
+            .eq('usuario_id', user.user_id)
             .order('fecha_creacion', { ascending: false })
-            .range(offset, offset + limit - 1)
 
-        // Si es para administradores, solo mostrar notificaciones de admin
-        if (isAdmin) {
-            query = query.eq('es_admin', true)
+        if (unreadOnly) {
+            query = query.eq('leida', false)
+        }
+
+        if (limit > 0) {
+            query = query.limit(limit)
         }
 
         const { data: notifications, error } = await query
 
         if (error) {
-            console.error('❌ Error obteniendo notificaciones:', error)
-            return NextResponse.json({ error: 'Error obteniendo notificaciones' }, { status: 500 })
+            console.error('Error obteniendo notificaciones:', error)
+            return NextResponse.json({ error: error.message }, { status: 400 })
         }
 
-        return NextResponse.json({ notifications })
+        return NextResponse.json({ notifications: notifications || [] })
 
-    } catch (error) {
-        console.error('❌ Error en GET /api/notifications:', error)
-        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+    } catch (error: any) {
+        console.error('Error en API de notificaciones:', error)
+        return NextResponse.json({ error: error?.message || 'Error interno' }, { status: 500 })
     }
 }
 
-// POST - Crear nueva notificación
-export async function POST(request: NextRequest) {
+export async function PUT(req: NextRequest) {
     try {
-        const body = await request.json()
-        const { 
-            userId, 
-            titulo, 
-            mensaje, 
-            tipo = 'info', 
-            esAdmin = false,
-            urlAccion,
-            datosAdicionales 
-        } = body
-
-        // Validar datos requeridos
-        if (!userId || !titulo || !mensaje) {
-            return NextResponse.json({ 
-                error: 'Faltan datos requeridos: userId, titulo, mensaje' 
-            }, { status: 400 })
+        const user = await authUser(req)
+        if (!user) {
+            return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
         }
 
-        // Crear la notificación
-        const { data: notification, error } = await supabase
+        const body = await req.json()
+        const { notification_ids, mark_as_read } = body
+
+        if (!notification_ids || !Array.isArray(notification_ids)) {
+            return NextResponse.json({ error: 'notification_ids debe ser un array' }, { status: 400 })
+        }
+
+        const { error } = await supabaseAdmin
             .from('notificacion')
-            .insert({
-                usuario_id: userId,
-                titulo,
-                mensaje,
-                tipo,
-                datos_adicionales: additionalData || null,
-                leida: false,
-                fecha_creacion: new Date().toISOString(),
-                es_push: true,
-                es_email: false
-            })
-            .select()
-            .single()
+            .update({ leida: mark_as_read })
+            .eq('usuario_id', user.user_id)
+            .in('notificacion_id', notification_ids)
 
         if (error) {
-            console.error('❌ Error creando notificación:', error)
-            return NextResponse.json({ error: 'Error creando notificación' }, { status: 500 })
+            console.error('Error actualizando notificaciones:', error)
+            return NextResponse.json({ error: error.message }, { status: 400 })
         }
 
-        console.log('✅ Notificación creada:', notification)
+        return NextResponse.json({ success: true })
 
-        return NextResponse.json({ notification })
-
-    } catch (error) {
-        console.error('❌ Error en POST /api/notifications:', error)
-        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+    } catch (error: any) {
+        console.error('Error actualizando notificaciones:', error)
+        return NextResponse.json({ error: error?.message || 'Error interno' }, { status: 500 })
     }
 }

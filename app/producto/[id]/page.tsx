@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeftIcon, PhoneIcon, EnvelopeIcon, CalendarIcon, EyeIcon, ShareIcon, FlagIcon, StarIcon, MapPinIcon, TagIcon, CurrencyDollarIcon, HeartIcon, ChatBubbleLeftRightIcon, UserIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import { useRouter, useParams } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 interface User {
   id: string
@@ -20,21 +21,31 @@ interface User {
 
 interface Product {
   id: string
-  title: string
-  description: string
-  price: number
-  currency: string
-  condition: 'new' | 'like-new' | 'good' | 'fair' | 'poor'
-  category: string
-  images: string[]
-  location: string
-  owner: User
-  tags: string[]
-  specifications?: Record<string, string>
-  createdAt: string
-  status: 'available' | 'pending' | 'sold'
-  views: number
-  likes: number
+  titulo: string
+  descripcion: string
+  precio: number
+  estado: string
+  tipo_transaccion: string
+  precio_negociable: boolean
+  condiciones_intercambio?: string
+  que_busco_cambio?: string
+  fecha_creacion: string
+  categoria_nombre: string
+  usuario: {
+    user_id: number
+    nombre: string
+    apellido: string
+    email: string
+    foto_perfil?: string
+    calificacion_promedio: number
+    total_intercambios: number
+  }
+  ubicacion: {
+    ciudad: string
+    departamento: string
+  }
+  imagenes: string[]
+  total_productos_usuario: number
 }
 
 export default function ProductDetailPage() {
@@ -44,79 +55,69 @@ export default function ProductDetailPage() {
 
   const [product, setProduct] = useState<Product | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isInterested, setIsInterested] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
   const [showContactInfo, setShowContactInfo] = useState(false)
   const [activeTab, setActiveTab] = useState<'details' | 'specifications' | 'seller'>('details')
-
-  // Mock product data - en una app real esto vendría de una API
-  const mockProduct: Product = {
-    id: '1',
-    title: 'iPhone 12 Pro - Excelente Estado',
-    description: 'iPhone 12 Pro de 128GB en excelente estado. Incluye cargador original y funda de silicona. Perfecto para intercambio. El dispositivo funciona perfectamente, sin rayones ni daños. Incluye todos los accesorios originales y está desbloqueado para cualquier operador.',
-    price: 2500000,
-    currency: 'COP',
-    condition: 'good',
-    category: 'Electrónicos',
-    images: [
-      'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1601972599720-36938d4ecd31?w=800&h=600&fit=crop'
-    ],
-    location: 'Pereira, Risaralda',
-    owner: {
-      id: '1',
-      name: 'Carlos Rodríguez',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
-      rating: 4.8,
-      phone: '+57 300 123 4567',
-      email: 'carlos.rodriguez@email.com',
-      memberSince: '2024',
-      totalProducts: 12,
-      totalSales: 8
-    },
-    tags: ['tecnología', 'smartphone', 'apple', 'usado', 'intercambio'],
-    specifications: {
-      'Marca': 'Apple',
-      'Modelo': 'iPhone 12 Pro',
-      'Almacenamiento': '128GB',
-      'Color': 'Gris Espacial',
-      'Estado': 'Excelente',
-      'Incluye': 'Cargador, Funda, Caja Original'
-    },
-    createdAt: '2024-01-15',
-    status: 'available',
-    views: 156,
-    likes: 23
-  }
+  const [stats, setStats] = useState({
+    views: 0,
+    likes: 0
+  })
 
   useEffect(() => {
     const loadProduct = async () => {
+      if (!productId) return
+
       setIsLoading(true)
+      setError(null)
 
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      try {
+        // Obtener producto desde la API
+        const response = await fetch(`/api/products/${productId}`)
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('Producto no encontrado')
+          }
+          throw new Error('Error al cargar el producto')
+        }
 
-      // En una app real, aquí harías fetch del producto por ID
-      setProduct(mockProduct)
-      setIsLoading(false)
+        const { product } = await response.json()
+        setProduct(product)
+
+        // Obtener estadísticas del producto
+        try {
+          const statsResponse = await fetch(`/api/products/${productId}/stats`)
+          if (statsResponse.ok) {
+            const { stats: productStats } = await statsResponse.json()
+            setStats(productStats)
+          }
+        } catch (statsError) {
+          console.warn('No se pudieron cargar las estadísticas:', statsError)
+        }
+
+      } catch (error) {
+        console.error('Error cargando producto:', error)
+        setError(error instanceof Error ? error.message : 'Error desconocido')
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    if (productId) {
-      loadProduct()
-    }
+    loadProduct()
   }, [productId])
 
   const nextImage = () => {
-    if (product) {
-      setCurrentImageIndex((prev) => (prev + 1) % product.images.length)
+    if (product && product.imagenes.length > 0) {
+      setCurrentImageIndex((prev) => (prev + 1) % product.imagenes.length)
     }
   }
 
   const prevImage = () => {
-    if (product) {
-      setCurrentImageIndex((prev) => (prev - 1 + product.images.length) % product.images.length)
+    if (product && product.imagenes.length > 0) {
+      setCurrentImageIndex((prev) => (prev - 1 + product.imagenes.length) % product.imagenes.length)
     }
   }
 
@@ -133,8 +134,8 @@ export default function ProductDetailPage() {
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
-        title: product?.title,
-        text: product?.description,
+        title: product?.titulo,
+        text: product?.descripcion,
         url: window.location.href
       })
     } else {
@@ -149,11 +150,8 @@ export default function ProductDetailPage() {
     alert('Función de reporte en desarrollo')
   }
 
-  const formatPrice = (price: number, currency: string) => {
-    if (currency === 'COP') {
-      return `COP$ ${price.toLocaleString('es-CO')}`
-    }
-    return `${currency} ${price.toLocaleString()}`
+  const formatPrice = (price: number) => {
+    return `COP$ ${price.toLocaleString('es-CO')}`
   }
 
   const getConditionLabel = (condition: string) => {
@@ -198,6 +196,23 @@ export default function ProductDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={() => router.back()}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Volver
+          </button>
+        </div>
       </div>
     )
   }
@@ -259,27 +274,35 @@ export default function ProductDetailPage() {
           <div className="space-y-4">
             {/* Imagen Principal */}
             <div className="relative bg-white rounded-lg overflow-hidden shadow-sm">
-              <img
-                src={product.images[currentImageIndex]}
-                alt={product.title}
-                className="w-full h-96 object-cover"
-              />
+              {product.imagenes.length > 0 ? (
+                <img
+                  src={product.imagenes[currentImageIndex]}
+                  alt={product.titulo}
+                  className="w-full h-96 object-cover"
+                />
+              ) : (
+                <div className="w-full h-96 bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-500 text-lg">Sin imágenes</span>
+                </div>
+              )}
 
               {/* Indicador de imagen */}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                <div className="flex space-x-2">
-                  {product.images.map((_, index) => (
-                    <div
-                      key={index}
-                      className={`w-2 h-2 rounded-full ${index === currentImageIndex ? 'bg-white' : 'bg-white/50'
-                        }`}
-                    />
-                  ))}
+              {product.imagenes.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                  <div className="flex space-x-2">
+                    {product.imagenes.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`w-2 h-2 rounded-full ${index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                          }`}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Botones de navegación */}
-              {product.images.length > 1 && (
+              {product.imagenes.length > 1 && (
                 <>
                   <button
                     onClick={prevImage}
@@ -302,9 +325,9 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Miniaturas */}
-            {product.images.length > 1 && (
+            {product.imagenes.length > 1 && (
               <div className="grid grid-cols-5 gap-2">
-                {product.images.map((image, index) => (
+                {product.imagenes.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
@@ -313,7 +336,7 @@ export default function ProductDetailPage() {
                   >
                     <img
                       src={image}
-                      alt={`${product.title} ${index + 1}`}
+                      alt={`${product.titulo} ${index + 1}`}
                       className="w-full h-20 object-cover"
                     />
                   </button>
@@ -329,33 +352,40 @@ export default function ProductDetailPage() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getConditionColor(product.condition)}`}>
-                      {getConditionLabel(product.condition)}
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getConditionColor(product.estado)}`}>
+                      {getConditionLabel(product.estado)}
                     </span>
                     <span className="text-sm text-gray-500">
-                      {getCategoryLabel(product.category)}
+                      {product.categoria_nombre}
+                    </span>
+                    <span className="text-sm text-blue-600 font-medium">
+                      {product.tipo_transaccion === 'venta' ? 'Venta' :
+                       product.tipo_transaccion === 'intercambio' ? 'Intercambio' :
+                       product.tipo_transaccion === 'donacion' ? 'Donación' : 'Mixto'}
                     </span>
                   </div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.title}</h1>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.titulo}</h1>
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <span>Publicado el {new Date(product.createdAt).toLocaleDateString('es-CO')}</span>
+                    <span>Publicado el {new Date(product.fecha_creacion).toLocaleDateString('es-CO')}</span>
                     <div className="flex items-center space-x-1">
                       <EyeIcon className="w-4 h-4" />
-                      <span>{product.views} vistas</span>
+                      <span>{stats.views} vistas</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Precio */}
-              <div className="text-3xl font-bold text-blue-600 mb-4">
-                {formatPrice(product.price, product.currency)}
-              </div>
+              {product.precio && (
+                <div className="text-3xl font-bold text-blue-600 mb-4">
+                  {formatPrice(product.precio)}
+                </div>
+              )}
 
               {/* Ubicación */}
               <div className="flex items-center text-gray-600 mb-4">
                 <MapPinIcon className="w-5 h-5 mr-2" />
-                <span>{product.location}</span>
+                <span>{product.ubicacion.ciudad}, {product.ubicacion.departamento}</span>
               </div>
 
               {/* Acciones */}
@@ -414,21 +444,28 @@ export default function ProductDetailPage() {
                 {activeTab === 'details' && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900">Descripción</h3>
-                    <p className="text-gray-700 leading-relaxed">{product.description}</p>
+                    <p className="text-gray-700 leading-relaxed">{product.descripcion}</p>
 
-                    {product.tags.length > 0 && (
+                    {/* Información de intercambio */}
+                    {product.condiciones_intercambio && (
                       <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Etiquetas</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {product.tags.map((tag, index) => (
-                            <span
-                              key={index}
-                              className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
+                        <h4 className="font-medium text-gray-900 mb-2">Condiciones de Intercambio</h4>
+                        <p className="text-gray-700">{product.condiciones_intercambio}</p>
+                      </div>
+                    )}
+
+                    {product.que_busco_cambio && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Qué busco a cambio</h4>
+                        <p className="text-gray-700">{product.que_busco_cambio}</p>
+                      </div>
+                    )}
+
+                    {product.precio_negociable && (
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <p className="text-blue-800 text-sm">
+                          💡 El precio es negociable. ¡Ponte en contacto para acordar!
+                        </p>
                       </div>
                     )}
                   </div>
@@ -436,19 +473,39 @@ export default function ProductDetailPage() {
 
                 {activeTab === 'specifications' && (
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Especificaciones Técnicas</h3>
-                    {product.specifications && Object.keys(product.specifications).length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {Object.entries(product.specifications).map(([key, value]) => (
-                          <div key={key} className="border-b border-gray-100 pb-2">
-                            <dt className="text-sm font-medium text-gray-500">{key}</dt>
-                            <dd className="text-sm text-gray-900">{value}</dd>
-                          </div>
-                        ))}
+                    <h3 className="text-lg font-semibold text-gray-900">Información del Producto</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="border-b border-gray-100 pb-2">
+                        <dt className="text-sm font-medium text-gray-500">Estado</dt>
+                        <dd className="text-sm text-gray-900">{getConditionLabel(product.estado)}</dd>
                       </div>
-                    ) : (
-                      <p className="text-gray-500">No hay especificaciones disponibles para este producto.</p>
-                    )}
+                      <div className="border-b border-gray-100 pb-2">
+                        <dt className="text-sm font-medium text-gray-500">Tipo de Transacción</dt>
+                        <dd className="text-sm text-gray-900">
+                          {product.tipo_transaccion === 'venta' ? 'Venta' :
+                           product.tipo_transaccion === 'intercambio' ? 'Intercambio' :
+                           product.tipo_transaccion === 'donacion' ? 'Donación' : 'Mixto'}
+                        </dd>
+                      </div>
+                      <div className="border-b border-gray-100 pb-2">
+                        <dt className="text-sm font-medium text-gray-500">Categoría</dt>
+                        <dd className="text-sm text-gray-900">{product.categoria_nombre}</dd>
+                      </div>
+                      <div className="border-b border-gray-100 pb-2">
+                        <dt className="text-sm font-medium text-gray-500">Ubicación</dt>
+                        <dd className="text-sm text-gray-900">{product.ubicacion.ciudad}, {product.ubicacion.departamento}</dd>
+                      </div>
+                      {product.precio && (
+                        <div className="border-b border-gray-100 pb-2">
+                          <dt className="text-sm font-medium text-gray-500">Precio</dt>
+                          <dd className="text-sm text-gray-900">{formatPrice(product.precio)}</dd>
+                        </div>
+                      )}
+                      <div className="border-b border-gray-100 pb-2">
+                        <dt className="text-sm font-medium text-gray-500">Precio Negociable</dt>
+                        <dd className="text-sm text-gray-900">{product.precio_negociable ? 'Sí' : 'No'}</dd>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -458,21 +515,23 @@ export default function ProductDetailPage() {
 
                     <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                       <img
-                        src={product.owner.avatar}
-                        alt={product.owner.name}
+                        src={product.usuario.foto_perfil || '/default-avatar.png'}
+                        alt={`${product.usuario.nombre} ${product.usuario.apellido}`}
                         className="w-16 h-16 rounded-full object-cover"
                       />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{product.owner.name}</h4>
+                        <h4 className="font-semibold text-gray-900">
+                          {product.usuario.nombre} {product.usuario.apellido}
+                        </h4>
                         <div className="flex items-center space-x-2 text-sm text-gray-600 mb-2">
                           <StarIcon className="w-4 h-4 text-yellow-400" />
-                          <span>{product.owner.rating}</span>
+                          <span>{product.usuario.calificacion_promedio.toFixed(1)}</span>
                           <span>•</span>
-                          <span>Miembro desde {product.owner.memberSince}</span>
+                          <span>{product.usuario.total_intercambios} intercambios</span>
                         </div>
                         <div className="flex space-x-4 text-sm text-gray-600">
-                          <span>{product.owner.totalProducts} productos</span>
-                          <span>{product.owner.totalSales} ventas</span>
+                          <span>{product.total_productos_usuario} productos</span>
+                          <span>Miembro verificado</span>
                         </div>
                       </div>
                     </div>
@@ -490,21 +549,13 @@ export default function ProductDetailPage() {
                         </button>
                       ) : (
                         <div className="space-y-3 p-4 bg-blue-50 rounded-lg">
-                          {product.owner.phone && (
-                            <div className="flex items-center space-x-3">
-                              <PhoneIcon className="w-5 h-5 text-blue-600" />
-                              <span className="text-gray-900">{product.owner.phone}</span>
-                            </div>
-                          )}
-                          {product.owner.email && (
-                            <div className="flex items-center space-x-3">
-                              <EnvelopeIcon className="w-5 h-5 text-blue-600" />
-                              <span className="text-gray-900">{product.owner.email}</span>
-                            </div>
-                          )}
+                          <div className="flex items-center space-x-3">
+                            <EnvelopeIcon className="w-5 h-5 text-blue-600" />
+                            <span className="text-gray-900">{product.usuario.email}</span>
+                          </div>
                           <div className="flex items-center space-x-3">
                             <MapPinIcon className="w-5 h-5 text-blue-600" />
-                            <span className="text-gray-900">{product.location}</span>
+                            <span className="text-gray-900">{product.ubicacion.ciudad}, {product.ubicacion.departamento}</span>
                           </div>
                         </div>
                       )}

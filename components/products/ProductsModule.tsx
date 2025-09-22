@@ -62,16 +62,56 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high' | 'popular'>('newest')
 
-    // Cargar productos mockup
+    // Cargar productos desde la API
     useEffect(() => {
         const loadProducts = async () => {
             setIsLoading(true)
 
-            // Simular delay de API
-            await new Promise(resolve => setTimeout(resolve, 1000))
-
-            const mockProducts: Product[] = [
-                {
+            try {
+                // Llamar a la API de productos públicos
+                const response = await fetch('/api/products/public?limit=20')
+                
+                if (!response.ok) {
+                    throw new Error('Error al cargar productos')
+                }
+                
+                const { products } = await response.json()
+                
+                // Transformar los datos de la API al formato esperado
+                const transformedProducts: Product[] = products.map((p: any) => ({
+                    id: p.producto_id.toString(),
+                    title: p.titulo,
+                    description: p.descripcion,
+                    category: p.categoria_nombre || 'Sin categoría',
+                    condition: p.estado || 'usado',
+                    price: p.precio || 0,
+                    currency: 'COP',
+                    location: `${p.ciudad || ''}, ${p.departamento || ''}`.trim(),
+                    images: [], // Se puede implementar después
+                    owner: {
+                        id: p.user_id.toString(),
+                        name: p.usuario_nombre || 'Usuario',
+                        avatar: p.usuario_foto || '/default-avatar.png',
+                        rating: p.usuario_calificacion || 0,
+                        email: '',
+                        memberSince: '2024-01-01',
+                        totalProducts: 1,
+                        totalSales: 0
+                    },
+                    createdAt: p.fecha_creacion,
+                    views: 0,
+                    likes: 0,
+                    status: 'available',
+                    tags: [],
+                    specifications: {}
+                }))
+                
+                setProducts(transformedProducts)
+            } catch (error) {
+                console.error('Error cargando productos:', error)
+                // Fallback a datos mock si hay error
+                const mockProducts: Product[] = [
+                    {
                     id: '1',
                     title: 'iPhone 12 Pro - Excelente Estado',
                     description: 'iPhone 12 Pro de 128GB en excelente estado. Incluye cargador original y funda de silicona. Perfecto para intercambio.',
@@ -238,8 +278,10 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                 }
             ]
 
-            setProducts(mockProducts)
-            setFilteredProducts(mockProducts)
+                setProducts(mockProducts)
+                setFilteredProducts(mockProducts)
+            }
+            
             setIsLoading(false)
         }
 
