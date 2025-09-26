@@ -86,6 +86,10 @@ export default function ProductDetailPage() {
 
         const { product } = await response.json()
         setProduct(product)
+        // Prefijar vistas con el valor en BD si viene
+        if (typeof product.visualizaciones === 'number') {
+          setStats(prev => ({ ...prev, views: product.visualizaciones }))
+        }
 
         // Obtener estadísticas del producto
         try {

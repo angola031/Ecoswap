@@ -82,6 +82,7 @@ export async function GET(
             fecha_creacion: product.fecha_creacion,
             categoria_nombre: product.categoria_nombre,
             especificaciones: specifications,
+            visualizaciones: product.visualizaciones ?? 0,
             usuario: {
                 user_id: product.user_id,
                 nombre: product.usuario_nombre,
