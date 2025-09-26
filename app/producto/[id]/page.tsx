@@ -130,9 +130,24 @@ export default function ProductDetailPage() {
     // Aquí iría la lógica para mostrar interés en el producto
   }
 
-  const handleLike = () => {
-    setIsLiked(!isLiked)
-    // Aquí iría la lógica para dar like al producto
+  const handleLike = async () => {
+    if (!product) return
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        alert('Inicia sesión para dar me gusta')
+        return
+      }
+      const method = isLiked ? 'DELETE' : 'POST'
+      const res = await fetch(`/api/products/${product.id}/like`, {
+        method,
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      })
+      if (res.ok) {
+        setIsLiked(!isLiked)
+        setStats(prev => ({ ...prev, likes: Math.max(0, prev.likes + (isLiked ? -1 : 1)) }))
+      }
+    } catch {}
   }
 
   const handleShare = () => {
