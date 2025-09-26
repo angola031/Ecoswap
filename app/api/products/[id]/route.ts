@@ -40,6 +40,22 @@ export async function GET(
             imageUrls = images.map(img => img.url_imagen)
         }
 
+        // Obtener especificaciones técnicas normalizadas
+        let specifications: Record<string, string> = {}
+        try {
+            const { data: specRows } = await supabaseAdmin
+                .from('producto_especificacion')
+                .select('clave, valor')
+                .eq('producto_id', productId)
+            if (Array.isArray(specRows)) {
+                for (const r of specRows) {
+                    const k = String((r as any)?.clave || '').trim()
+                    const v = String((r as any)?.valor || '').trim()
+                    if (k && v) specifications[k] = v
+                }
+            }
+        } catch {}
+
         // Obtener estadísticas del usuario
         const { data: userStats } = await supabaseAdmin
             .from('producto')
@@ -65,6 +81,7 @@ export async function GET(
             que_busco_cambio: product.que_busco_cambio,
             fecha_creacion: product.fecha_creacion,
             categoria_nombre: product.categoria_nombre,
+            especificaciones: specifications,
             usuario: {
                 user_id: product.user_id,
                 nombre: product.usuario_nombre,

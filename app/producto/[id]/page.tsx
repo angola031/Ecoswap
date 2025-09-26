@@ -505,6 +505,20 @@ export default function ProductDetailPage() {
                         <dt className="text-sm font-medium text-gray-500">Precio Negociable</dt>
                         <dd className="text-sm text-gray-900">{product.precio_negociable ? 'Sí' : 'No'}</dd>
                       </div>
+                      {/* Especificaciones técnicas si existen */}
+                      {product.especificaciones && Object.keys(product.especificaciones).length > 0 && (
+                        <div className="md:col-span-2 mt-2">
+                          <h4 className="font-medium text-gray-900 mb-2">Especificaciones Técnicas</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {Object.entries(product.especificaciones).map(([k, v]) => (
+                              <div key={k} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                <span className="text-sm text-gray-600">{k}</span>
+                                <span className="text-sm text-gray-900 font-medium">{v as string}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
