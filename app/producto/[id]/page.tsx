@@ -61,6 +61,7 @@ export default function ProductDetailPage() {
   const [isLiked, setIsLiked] = useState(false)
   const [showContactInfo, setShowContactInfo] = useState(false)
   const [activeTab, setActiveTab] = useState<'details' | 'specifications' | 'seller'>('details')
+  const [isOwner, setIsOwner] = useState(false)
   const [stats, setStats] = useState({
     views: 0,
     likes: 0
@@ -102,10 +103,13 @@ export default function ProductDetailPage() {
           console.warn('No se pudieron cargar las estadísticas:', statsError)
         }
 
-        // Consultar si el usuario ya dio like
+        // Consultar si el usuario ya dio like y si es dueño
         try {
           const { data: { session } } = await supabase.auth.getSession()
           if (session?.access_token) {
+            if (product?.usuario?.email && session.user?.email) {
+              setIsOwner(product.usuario.email === session.user.email)
+            }
             const likeRes = await fetch(`/api/products/${productId}/like`, {
               headers: { Authorization: `Bearer ${session.access_token}` }
             })
@@ -425,20 +429,20 @@ export default function ProductDetailPage() {
               <div className="flex space-x-3">
                 <button
                   onClick={handleInterest}
-                  disabled={product.usuario.user_id === (await (await supabase.auth.getSession()).data.session)?.user?.id as any}
-                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${product.usuario.user_id === (await (await supabase.auth.getSession()).data.session)?.user?.id as any
+                  disabled={isOwner}
+                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${isOwner
                       ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                       : isInterested
                         ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                 >
-                  {product.usuario.user_id === (await (await supabase.auth.getSession()).data.session)?.user?.id as any ? 'Tu publicación' : isInterested ? 'Interesado ✓' : 'Me Interesa'}
+                  {isOwner ? 'Tu publicación' : (isInterested ? 'Interesado ✓' : 'Me Interesa')}
                 </button>
                 <button
                   onClick={handleLike}
-                  disabled={product.usuario.user_id === (await (await supabase.auth.getSession()).data.session)?.user?.id as any}
-                  className={`p-3 rounded-lg border transition-colors ${product.usuario.user_id === (await (await supabase.auth.getSession()).data.session)?.user?.id as any
+                  disabled={isOwner}
+                  className={`p-3 rounded-lg border transition-colors ${isOwner
                       ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
                       : isLiked
                         ? 'border-red-500 text-red-600 bg-red-50'
