@@ -804,19 +804,13 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             <>
                                                 <button
                                                     onClick={() => router.push(`/editar-producto/${product.id}`)}
-                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
-                                                >
-                                                    Editar
-                                                </button>
-                                                <button
-                                                    onClick={() => router.push(`/editar-producto/${product.id}`)}
                                                     className="px-3 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
                                                 >
-                                                    Reenviar validación
+                                                    Editar y Reenviar validación
                                                 </button>
                                                 <button
                                                     onClick={() => deleteProduct(product.id)}
-                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 col-span-2"
+                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
                                                     disabled={deletingId === product.id}
                                                 >
                                                     {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
