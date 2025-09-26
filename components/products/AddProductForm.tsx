@@ -82,6 +82,9 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
         specifications: {} as Record<string, string>
     })
     const [isPublishing, setIsPublishing] = useState(false)
+    const [showSpecifications, setShowSpecifications] = useState(false)
+    const [specKey, setSpecKey] = useState('')
+    const [specValue, setSpecValue] = useState('')
     const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
     const handlePublishProduct = async (e: React.FormEvent) => {
@@ -179,9 +182,14 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
             currency: 'COP',
             location: '',
             images: [],
-            exchangeType: 'sale'
+            exchangeType: 'sale',
+            tags: '',
+            specifications: {}
         })
         setFormErrors({})
+        setShowSpecifications(false)
+        setSpecKey('')
+        setSpecValue('')
     }
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -442,6 +450,94 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
                                 <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
                                 {formErrors.location}
                             </p>
+                        )}
+                    </div>
+
+                    {/* Etiquetas */}
+                    <div>
+                        <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
+                            Etiquetas
+                        </label>
+                        <input
+                            id="tags"
+                            type="text"
+                            value={publishForm.tags as string}
+                            onChange={(e) => updatePublishForm('tags', e.target.value)}
+                            className="input-field"
+                            placeholder="Ej: tecnología, smartphone, apple, usado"
+                        />
+                        <p className="text-sm text-gray-600 mt-1">Separa las etiquetas con comas</p>
+                    </div>
+
+                    {/* Especificaciones Técnicas */}
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <label className="block text-sm font-medium text-gray-700">
+                                Especificaciones Técnicas
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => setShowSpecifications(!showSpecifications)}
+                                className="text-sm text-primary-600 hover:text-primary-700"
+                            >
+                                {showSpecifications ? 'Ocultar' : 'Agregar'}
+                            </button>
+                        </div>
+                        {showSpecifications && (
+                            <div className="space-y-4 p-4 bg-gray-50 rounded-md">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <input
+                                        type="text"
+                                        value={specKey}
+                                        onChange={(e) => setSpecKey(e.target.value)}
+                                        placeholder="Ej: Marca, Modelo, Color..."
+                                        className="input-field"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={specValue}
+                                        onChange={(e) => setSpecValue(e.target.value)}
+                                        placeholder="Ej: Apple, iPhone 12, Negro..."
+                                        className="input-field"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const k = specKey.trim();
+                                        const v = specValue.trim();
+                                        if (!k || !v) return;
+                                        const next = { ...(publishForm.specifications || {}), [k]: v };
+                                        updatePublishForm('specifications', next)
+                                        setSpecKey('')
+                                        setSpecValue('')
+                                    }}
+                                    className="text-sm text-primary-600 hover:text-primary-700"
+                                >
+                                    Agregar especificación
+                                </button>
+
+                                {publishForm.specifications && Object.keys(publishForm.specifications).length > 0 && (
+                                    <div className="space-y-2">
+                                        {Object.entries(publishForm.specifications).map(([k, v]) => (
+                                            <div key={k} className="flex items-center justify-between p-2 bg-white rounded border">
+                                                <span className="text-sm"><strong>{k}:</strong> {v as string}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const next = { ...(publishForm.specifications || {}) } as Record<string, string>;
+                                                        delete next[k];
+                                                        updatePublishForm('specifications', next)
+                                                    }}
+                                                    className="text-red-600 hover:text-red-700"
+                                                >
+                                                    <XMarkIcon className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
 
