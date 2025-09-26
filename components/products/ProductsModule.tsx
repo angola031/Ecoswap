@@ -499,12 +499,9 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                         key={product.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow ${currentUser && product.owner?.id === currentUser.id ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                        onClick={(e) => {
-                            if (currentUser && product.owner?.id === currentUser.id) return
-                            openProductDetail(product)
-                        }}
-                        title={currentUser && product.owner?.id === currentUser.id ? 'Tu publicación (interacciones deshabilitadas)' : undefined}
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                        onClick={() => openProductDetail(product)}
+                        title={currentUser && product.owner?.id === currentUser.id ? 'Tu publicación (interacciones deshabilitadas en el detalle)' : undefined}
                     >
                         {/* Imagen del producto */}
                         <div className="relative h-48 bg-gray-100">
