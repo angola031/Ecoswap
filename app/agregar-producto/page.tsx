@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeftIcon, PhotoIcon, TrashIcon, ExclamationTriangleIcon, CheckCircleIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
@@ -38,13 +38,28 @@ export default function AgregarProductoPage() {
     description: '',
     price: '',
     currency: 'COP',
-    condition: 'like-new' as const,
+    condition: 'like-new' as 'like-new' | 'good' | 'fair' | 'used' | 'parts',
     category: '',
     location: '',
     tags: '',
     publicationType: 'sale' as 'sale' | 'exchange' | 'donation' | 'both',
     specifications: {} as Record<string, string>
   })
+  const [userLocations, setUserLocations] = useState<Array<{ ubicacion_id: number, ciudad: string, departamento: string }>>([])
+  const [selectedUbicacionId, setSelectedUbicacionId] = useState<number | ''>('')
+  const [showLocationModal, setShowLocationModal] = useState(false)
+  const [newLocation, setNewLocation] = useState({
+    pais: 'Colombia',
+    departamento: '',
+    ciudad: '',
+    barrio: '',
+    es_principal: false,
+  })
+  const [deps, setDeps] = useState<Array<{ id:number, nombre:string }>>([])
+  const [munis, setMunis] = useState<Array<{ id:number, nombre:string }>>([])
+  const [selectedDepId, setSelectedDepId] = useState<number | ''>('')
+  const [selectedMuniName, setSelectedMuniName] = useState('')
+  const [localColData, setLocalColData] = useState<null | { departamentos: Array<{ nombre: string, municipios: string[] }> }>(null)
   const [images, setImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -54,16 +69,22 @@ export default function AgregarProductoPage() {
   const [specValue, setSpecValue] = useState('')
 
   const categories = [
-    'Electrónicos', 'Ropa y Accesorios', 'Hogar y Jardín', 'Deportes',
-    'Libros y Música', 'Juguetes y Juegos', 'Automotriz', 'Salud y Belleza',
-    'Arte y Artesanías', 'Otros'
+    'Electrónicos',
+    'Libros y Medios',
+    'Ropa y Accesorios',
+    'Hogar y Jardín',
+    'Deportes y Ocio',
+    'Juguetes y Juegos',
+    'Vehículos',
+    'Instrumentos Musicales'
   ]
 
   const conditions = [
     { value: 'like-new', label: 'Como Nuevo', color: 'text-blue-600' },
     { value: 'good', label: 'Bueno', color: 'text-yellow-600' },
     { value: 'fair', label: 'Aceptable', color: 'text-orange-600' },
-    { value: 'poor', label: 'Usado', color: 'text-red-600' }
+    { value: 'used', label: 'Usado', color: 'text-red-600' },
+    { value: 'parts', label: 'Para Repuestos', color: 'text-red-700' }
   ]
 
   const handleInputChange = (field: string, value: string) => {
@@ -82,6 +103,142 @@ export default function AgregarProductoPage() {
     const newPreviews = files.map(file => URL.createObjectURL(file))
     setImagePreviews(prev => [...prev, ...newPreviews])
   }
+
+  // Cargar ubicaciones del usuario para el enfoque híbrido (ubicacion_id + snapshots)
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        const { supabase } = await import('@/lib/supabase')
+        const { data: { session } } = await supabase.auth.getSession()
+        const email = session?.user?.email
+        if (!email) return
+
+        const { data: usuario } = await supabase
+          .from('usuario')
+          .select('user_id')
+          .eq('email', email)
+          .single()
+        if (!usuario) return
+
+        const { data: ubicaciones } = await supabase
+          .from('ubicacion')
+          .select('ubicacion_id, ciudad, departamento, es_principal')
+          .eq('user_id', usuario.user_id)
+          .order('es_principal', { ascending: false })
+
+        const items = (ubicaciones || []).map((u: any) => ({
+          ubicacion_id: u.ubicacion_id,
+          ciudad: u.ciudad,
+          departamento: u.departamento
+        }))
+        setUserLocations(items)
+        // seleccionar principal si existe
+        const principal = (ubicaciones || []).find((u: any) => u.es_principal)
+        if (principal) setSelectedUbicacionId(principal.ubicacion_id)
+      } catch {
+        // ignore
+      }
+    }
+    loadLocations()
+  }, [])
+
+  // Cargar departamentos (al abrir modal) y municipios cuando cambie el depto
+  useEffect(() => {
+    const loadDeps = async () => {
+      if (!showLocationModal) return
+      try {
+        const normalizeColData = (raw: any) => {
+          // Caso 1: { departamentos: [{ nombre, municipios: [...] }] }
+          if (raw && Array.isArray(raw.departamentos)) {
+            return {
+              departamentos: raw.departamentos.map((d: any) => ({
+                nombre: String(d.nombre ?? d.departamento ?? d.name ?? ''),
+                municipios: Array.isArray(d.municipios)
+                  ? d.municipios.map((m: any) => String(m?.nombre ?? m?.municipio ?? m))
+                  : Array.isArray(d.ciudades)
+                    ? d.ciudades.map((m: any) => String(m?.nombre ?? m?.ciudad ?? m))
+                    : []
+              }))
+            }
+          }
+          // Caso 2: array en raíz: [{ departamento, municipios/ciudades }]
+          if (Array.isArray(raw)) {
+            return {
+              departamentos: raw.map((d: any) => ({
+                nombre: String(d.nombre ?? d.departamento ?? d.name ?? ''),
+                municipios: Array.isArray(d.municipios)
+                  ? d.municipios.map((m: any) => String(m?.nombre ?? m?.municipio ?? m))
+                  : Array.isArray(d.ciudades)
+                    ? d.ciudades.map((m: any) => String(m?.nombre ?? m?.ciudad ?? m))
+                    : []
+              }))
+            }
+          }
+          return null
+        }
+        // 1) Intentar cargar desde JSON estático en /public/data/colombia.json
+        try {
+          const res = await fetch('/data/colombia.json')
+          if (res.ok) {
+            const raw = await res.json()
+            const json = normalizeColData(raw)
+            if (json && Array.isArray(json.departamentos)) {
+              setLocalColData(json)
+              setDeps(json.departamentos.map((d: any, idx: number) => ({ id: idx + 1, nombre: String(d.nombre) })))
+              return
+            }
+          }
+        } catch {}
+        // Fallback 1: /colombia.json en la raíz pública
+        try {
+          const res2 = await fetch('/colombia.json')
+          if (res2.ok) {
+            const raw2 = await res2.json()
+            const json2 = normalizeColData(raw2)
+            if (json2 && Array.isArray(json2.departamentos)) {
+              setLocalColData(json2)
+              setDeps(json2.departamentos.map((d: any, idx: number) => ({ id: idx + 1, nombre: String(d.nombre) })))
+              return
+            }
+          }
+        } catch {}
+
+        // 2) Fallback: cargar desde tablas Supabase si existen
+        try {
+          const { supabase } = await import('@/lib/supabase')
+          const { data } = await supabase.from('departamento').select('departamento_id, nombre').order('nombre')
+          setDeps((data || []).map((d:any)=>({ id:d.departamento_id, nombre:d.nombre })))
+        } catch {}
+      } catch {}
+    }
+    loadDeps()
+  }, [showLocationModal])
+
+  useEffect(() => {
+    const loadMunis = async () => {
+      if (!selectedDepId) { setMunis([]); return }
+      try {
+        // 1) Si hay datos locales cargados, usarlos
+        if (localColData) {
+          const dep = localColData.departamentos[(Number(selectedDepId) - 1)]
+          const list = Array.isArray(dep?.municipios) ? dep.municipios : []
+          setMunis(list.map((n: string, idx: number) => ({ id: idx + 1, nombre: String(n) })))
+          return
+        }
+        // 2) Fallback a Supabase
+        try {
+          const { supabase } = await import('@/lib/supabase')
+          const { data } = await supabase
+            .from('municipio')
+            .select('municipio_id, nombre')
+            .eq('departamento_id', selectedDepId)
+            .order('nombre')
+          setMunis((data||[]).map((m:any)=>({ id:m.municipio_id, nombre:m.nombre })))
+        } catch {}
+      } catch {}
+    }
+    loadMunis()
+  }, [selectedDepId])
 
   const removeImage = (index: number) => {
     const newImages = images.filter((_, i) => i !== index)
@@ -119,7 +276,7 @@ export default function AgregarProductoPage() {
       if (!formData.price || parseFloat(formData.price) <= 0) errors.price = 'El precio debe ser mayor a 0'
     }
     if (!formData.category) errors.category = 'Selecciona una categoría'
-    if (!formData.location.trim()) errors.location = 'La ubicación es requerida'
+    if (!selectedUbicacionId) errors.location = 'La ubicación es requerida'
     if (images.length === 0) errors.images = 'Al menos una imagen es requerida'
 
     setFormErrors(errors)
@@ -142,7 +299,10 @@ export default function AgregarProductoPage() {
       }
 
       // Preparar datos para enviar (mapeando a valores válidos en BD)
-      const estadoDb = formData.condition === 'poor' ? 'para_repuestos' : 'usado'
+      const estadoDb =
+        formData.condition === 'parts' ? 'para_repuestos' :
+        formData.condition === 'used' ? 'usado' :
+        'usado'
       const tipoTransaccionDb =
         formData.publicationType === 'sale' ? 'venta' :
         formData.publicationType === 'exchange' ? 'intercambio' :
@@ -155,10 +315,12 @@ export default function AgregarProductoPage() {
         tipo_transaccion: tipoTransaccionDb,
         estado: estadoDb,
         categoria_id: null, // Se puede implementar después
-        ubicacion_id: null, // Se puede implementar después
+        ubicacion_id: selectedUbicacionId || null,
         precio_negociable: true,
         condiciones_intercambio: formData.publicationType.includes('exchange') ? 'Intercambio disponible' : null,
-        que_busco_cambio: formData.publicationType.includes('exchange') ? 'Productos de interés' : null
+        que_busco_cambio: formData.publicationType.includes('exchange') ? 'Productos de interés' : null,
+        etiquetas: formData.tags,
+        especificaciones: formData.specifications
       }
 
       // Enviar producto a la API
@@ -491,17 +653,28 @@ export default function AgregarProductoPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ubicación *
-                </label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.location ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                  placeholder="Ej: Bogotá, Colombia"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ubicación *</label>
+                <select
+                  value={selectedUbicacionId}
+                  onChange={(e) => setSelectedUbicacionId(e.target.value ? Number(e.target.value) : '')}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.location ? 'border-red-300' : 'border-gray-300'}`}
+                >
+                  <option value="">Selecciona una ubicación</option>
+                  {userLocations.map(u => (
+                    <option key={u.ubicacion_id} value={u.ubicacion_id}>
+                      {u.ciudad}, {u.departamento}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationModal(true)}
+                    className="text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    + Nueva ubicación
+                  </button>
+                </div>
                 {formErrors.location && (
                   <p className="text-red-600 text-sm mt-1">{formErrors.location}</p>
                 )}
@@ -510,9 +683,7 @@ export default function AgregarProductoPage() {
 
             {/* Etiquetas */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Etiquetas
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Etiquetas</label>
               <input
                 type="text"
                 value={formData.tags}
@@ -520,9 +691,7 @@ export default function AgregarProductoPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Ej: tecnología, smartphone, apple, usado"
               />
-              <p className="text-sm text-gray-600 mt-1">
-                Separa las etiquetas con comas para facilitar la búsqueda
-              </p>
+              <p className="text-sm text-gray-600 mt-1">Separa las etiquetas con comas para facilitar la búsqueda</p>
             </div>
 
             {/* Especificaciones */}
@@ -675,6 +844,112 @@ export default function AgregarProductoPage() {
           </form>
         </motion.div>
       </div>
+
+      {/* Modal Nueva Ubicación */}
+      {showLocationModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowLocationModal(false)}>
+          <div className="bg-white rounded-lg w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Nueva ubicación</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">País</label>
+                  <input value={newLocation.pais} onChange={(e)=>setNewLocation({...newLocation,pais:e.target.value})} className="w-full px-3 py-2 border rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">Departamento</label>
+                  <select
+                    value={selectedDepId}
+                    onChange={(e)=>{
+                      const val = e.target.value? Number(e.target.value): ''
+                      setSelectedDepId(val)
+                      setNewLocation({...newLocation, departamento: '', ciudad: ''})
+                    }}
+                    className="w-full px-3 py-2 border rounded-md"
+                  >
+                    <option value="">Selecciona departamento</option>
+                    {deps.map(d=> (
+                      <option key={d.id} value={d.id}>{d.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">Municipio / Ciudad</label>
+                  <select
+                    value={newLocation.ciudad}
+                    onChange={(e)=>{ setSelectedMuniName(e.target.value); setNewLocation({...newLocation, ciudad:e.target.value}) }}
+                    className="w-full px-3 py-2 border rounded-md"
+                    disabled={!selectedDepId}
+                  >
+                    <option value="">Selecciona municipio</option>
+                    {munis.map(m=> (
+                      <option key={m.id} value={m.nombre}>{m.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">Barrio</label>
+                  <input value={newLocation.barrio} onChange={(e)=>setNewLocation({...newLocation,barrio:e.target.value})} className="w-full px-3 py-2 border rounded-md" />
+                </div>
+                
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" checked={newLocation.es_principal} onChange={(e)=>setNewLocation({...newLocation,es_principal:e.target.checked})} />
+                Marcar como principal
+              </label>
+            </div>
+            <div className="px-6 py-4 border-t flex justify-end gap-2">
+              <button onClick={()=>setShowLocationModal(false)} className="px-4 py-2 border rounded-md">Cancelar</button>
+              <button
+                onClick={async ()=>{
+                  try{
+                    const { supabase } = await import('@/lib/supabase')
+                    const { data: { session } } = await supabase.auth.getSession()
+                    if(!session?.user?.email){ setShowLocationModal(false); return }
+                    const { data: usuario } = await supabase.from('usuario').select('user_id').eq('email', session.user.email).single()
+                    if(!usuario){ setShowLocationModal(false); return }
+                    const payload:any = {
+                      user_id: usuario.user_id,
+                      pais: newLocation.pais || 'Colombia',
+                      departamento: (deps.find(d=>d.id===selectedDepId)?.nombre || newLocation.departamento || '').trim(),
+                      ciudad: selectedMuniName ? selectedMuniName.trim() : newLocation.ciudad.trim(),
+                      barrio: newLocation.barrio || null,
+                      es_principal: newLocation.es_principal
+                    }
+                    // Resolver ids si existen catlogos en BD
+                    let depId = null, muniId = null
+                    try {
+                      const currentDepName = (deps.find(d=>d.id===selectedDepId)?.nombre || '').trim()
+                      if (currentDepName) {
+                        const { data: drow } = await supabase.from('departamento').select('departamento_id').eq('nombre', currentDepName).single()
+                        depId = drow?.departamento_id || null
+                        if (depId && selectedMuniName) {
+                          const { data: mrow } = await supabase.from('municipio').select('municipio_id').eq('departamento_id', depId).eq('nombre', selectedMuniName.trim()).single()
+                          muniId = mrow?.municipio_id || null
+                        }
+                      }
+                    } catch {}
+                    if (depId) payload.departamento_id = depId
+                    if (muniId) payload.municipio_id = muniId
+
+                    const { data, error } = await supabase.from('ubicacion').insert(payload).select('ubicacion_id, ciudad, departamento').single()
+                    if(!error && data){
+                      setUserLocations(prev=>[{ ubicacion_id: data.ubicacion_id, ciudad: data.ciudad, departamento: data.departamento }, ...prev])
+                      setSelectedUbicacionId(data.ubicacion_id)
+                    }
+                  }catch{}
+                  setShowLocationModal(false)
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Guardar ubicación
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

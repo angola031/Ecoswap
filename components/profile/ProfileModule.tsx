@@ -72,6 +72,8 @@ interface UserProduct {
     price: number
     currency: string
     status: string
+    validationStatus: 'pending' | 'approved' | 'rejected'
+    transactionType?: 'venta' | 'intercambio' | 'donacion' | 'mixto'
     views: number
     likes: number
     createdAt: string
@@ -207,12 +209,55 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
                 setProfileData(profile)
 
-                // Placeholders hasta conectar tablas reales
-                const mockUserProducts: UserProduct[] = []
+                // Cargar productos del usuario (incluye pendientes, aprobados y rechazados)
+                const { data: productsData, error: productsError } = await supabase
+                    .from('producto')
+                    .select(`
+                        producto_id,
+                        titulo,
+                        descripcion,
+                        precio,
+                        estado,
+                        tipo_transaccion,
+                        estado_validacion,
+                        fecha_creacion,
+                        imagenes:imagen_producto(
+                            url_imagen,
+                            es_principal,
+                            orden
+                        )
+                    `)
+                    .eq('user_id', dbUser.user_id)
+                    .order('fecha_creacion', { ascending: false })
+
+                if (productsError) {
+                    // Si hay error, dejamos la lista vacía
+                    console.warn('Perfil: error obteniendo productos del usuario', productsError)
+                }
+
+                const transformed: UserProduct[] = (productsData || []).map((p: any) => {
+                    const principal = Array.isArray(p.imagenes)
+                        ? [...p.imagenes].sort((a, b) => (a.es_principal === b.es_principal ? (a.orden || 0) - (b.orden || 0) : a.es_principal ? -1 : 1))[0]
+                        : undefined
+                    return {
+                        id: String(p.producto_id),
+                        title: p.titulo,
+                        image: principal?.url_imagen || '/default-product.png',
+                        price: p.precio || 0,
+                        currency: 'COP',
+                        status: p.estado === 'usado' || p.estado === 'nuevo' ? 'available' : 'available',
+                        validationStatus: (p.estado_validacion || 'pending') as 'pending' | 'approved' | 'rejected',
+                        transactionType: p.tipo_transaccion || 'mixto',
+                        views: 0,
+                        likes: 0,
+                        createdAt: p.fecha_creacion || new Date().toISOString()
+                    }
+                })
+
                 const mockUserReviews: UserReview[] = []
                 const mockUserActivities: UserActivity[] = []
 
-                setUserProducts(mockUserProducts)
+                setUserProducts(transformed)
                 setUserReviews(mockUserReviews)
                 setUserActivities(mockUserActivities)
                 setIsLoading(false)
@@ -643,9 +688,16 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         <span className="text-xl font-bold text-primary-600">
                                             {formatPrice(product.price, product.currency)}
                                         </span>
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(product.status)}`}>
-                                            {getStatusLabel(product.status)}
+                                        <div className="flex items-center gap-2">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.validationStatus === 'approved' ? 'bg-green-100 text-green-800' : product.validationStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                                                {product.validationStatus === 'approved' ? 'Aprobado' : product.validationStatus === 'pending' ? 'Pendiente' : 'Rechazado'}
+                                            </span>
+                                            {product.transactionType && (
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800`}>
+                                                    {product.transactionType === 'venta' ? 'Venta' : product.transactionType === 'intercambio' ? 'Intercambio' : product.transactionType === 'donacion' ? 'Donación' : 'Mixto'}
                                         </span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center justify-between text-sm text-gray-500">
@@ -658,6 +710,18 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             <span>{product.likes}</span>
                                         </div>
                                     </div>
+
+                                    {/* Acciones */}
+                                    {product.validationStatus === 'rejected' && (
+                                        <div className="mt-3">
+                                            <button
+                                                onClick={() => router.push(`/editar-producto/${product.id}`)}
+                                                className="w-full px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+                                            >
+                                                Editar y reenviar a validación
+                                            </button>
+                                        </div>
+                                    )}
                                 </motion.div>
                             ))}
                         </div>

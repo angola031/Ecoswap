@@ -77,7 +77,7 @@ export function useNotifications() {
     useEffect(() => {
         fetchUnreadCount()
 
-        // Suscripción en tiempo real a cambios en notificaciones
+        // Suscripción en tiempo real a cambios en notificaciones (incremental)
         const setupRealtimeSubscription = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return
@@ -95,18 +95,64 @@ export function useNotifications() {
                 .on(
                     'postgres_changes',
                     {
-                        event: '*',
+                        event: 'INSERT',
                         schema: 'public',
                         table: 'notificacion',
                         filter: `usuario_id=eq.${userData.user_id}`
                     },
-                    () => {
-                        fetchUnreadCount()
+                    (payload: any) => {
+                        const newRow = payload?.new
+                        if (newRow && newRow.leida === false) {
+                            setNotificationCount(prev => ({
+                                unreadCount: prev.unreadCount + 1,
+                                loading: false,
+                                error: null
+                            }))
+                        }
+                    }
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'notificacion',
+                        filter: `usuario_id=eq.${userData.user_id}`
+                    },
+                    (payload: any) => {
+                        const oldRow = payload?.old
+                        const newRow = payload?.new
+                        if (!oldRow || !newRow) {
+                            fetchUnreadCount()
+                            return
+                        }
+                        // De no leída -> leída
+                        if (oldRow.leida === false && newRow.leida === true) {
+                            setNotificationCount(prev => ({
+                                unreadCount: Math.max(0, prev.unreadCount - 1),
+                                loading: false,
+                                error: null
+                            }))
+                        }
+                        // De leída -> no leída (caso raro)
+                        if (oldRow.leida === true && newRow.leida === false) {
+                            setNotificationCount(prev => ({
+                                unreadCount: prev.unreadCount + 1,
+                                loading: false,
+                                error: null
+                            }))
+                        }
                     }
                 )
                 .subscribe()
 
+            // Polling de respaldo por si Realtime se desconecta
+            const intervalId = setInterval(() => {
+                fetchUnreadCount()
+            }, 30000)
+
             return () => {
+                clearInterval(intervalId)
                 supabase.removeChannel(channel)
             }
         }

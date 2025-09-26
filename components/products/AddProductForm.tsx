@@ -55,6 +55,19 @@ interface AddProductFormProps {
 }
 
 export default function AddProductForm({ currentUser, isOpen, onClose, onProductAdded }: AddProductFormProps) {
+    const categories = [
+        'Electrónicos', 'Computadores', 'Telefonía', 'Electrodomésticos', 'Audio y Video',
+        'Ropa y Accesorios', 'Relojes y Joyería',
+        'Hogar y Jardín', 'Cocina', 'Muebles', 'Decoración', 'Jardinería',
+        'Deportes', 'Ciclismo', 'Camping y Aire Libre', 'Fitness',
+        'Libros y Música', 'Instrumentos Musicales', 'Cine y Series',
+        'Juguetes y Juegos', 'Videojuegos', 'Coleccionables', 'Antigüedades',
+        'Automotriz', 'Motos', 'Herramientas',
+        'Salud y Belleza', 'Cuidado Personal',
+        'Bebés y Niños', 'Mascotas', 'Oficina', 'Arte y Artesanías',
+        'Fotografía y Cámaras', 'Drones',
+        'Otros'
+    ]
     const [publishForm, setPublishForm] = useState({
         title: '',
         description: '',
@@ -64,7 +77,9 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
         currency: 'COP',
         location: '',
         images: [] as File[],
-        exchangeType: 'sale' // 'sale', 'exchange', 'donation', 'both'
+        exchangeType: 'sale', // 'sale', 'exchange', 'donation', 'both'
+        tags: '',
+        specifications: {} as Record<string, string>
     })
     const [isPublishing, setIsPublishing] = useState(false)
     const [formErrors, setFormErrors] = useState<Record<string, string>>({})
@@ -123,7 +138,29 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
             specifications: {}
         }
 
-        // Notificar al componente padre
+        // Enviar a API normalizada (producto + etiquetas + especificaciones)
+        try {
+            const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession()
+            const token = session?.access_token
+            if (token) {
+                const payload: any = {
+                    titulo: publishForm.title,
+                    descripcion: publishForm.description,
+                    tipo_transaccion: publishForm.exchangeType === 'sale' ? 'venta' : publishForm.exchangeType === 'exchange' ? 'intercambio' : publishForm.exchangeType === 'donation' ? 'donacion' : 'intercambio',
+                    estado: publishForm.condition === 'parts' ? 'para_repuestos' : 'usado',
+                    precio: publishForm.exchangeType === 'donation' ? null : parseFloat(publishForm.price),
+                    etiquetas: publishForm.tags,
+                    especificaciones: publishForm.specifications
+                }
+                await fetch('/api/products', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+            }
+        } catch {}
+
+        // Notificar al componente padre (mock)
         onProductAdded(newProduct)
 
         // Cerrar modal y resetear formulario
@@ -289,33 +326,28 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
 
                     {/* Categoría y Estado */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-                                Categoría *
-                            </label>
-                            <select
-                                id="category"
-                                value={publishForm.category}
-                                onChange={(e) => updatePublishForm('category', e.target.value)}
-                                className={`input-field ${formErrors.category ? 'border-red-500' : ''}`}
-                            >
-                                <option value="">Selecciona una categoría</option>
-                                <option value="electronics">Electrónicos</option>
-                                <option value="sports">Deportes</option>
-                                <option value="music">Música</option>
-                                <option value="books">Libros</option>
-                                <option value="furniture">Muebles</option>
-                                <option value="clothing">Ropa</option>
-                                <option value="home">Hogar</option>
-                                <option value="other">Otros</option>
-                            </select>
-                            {formErrors.category && (
-                                <p className="text-red-500 text-sm mt-1 flex items-center">
-                                    <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
-                                    {formErrors.category}
-                                </p>
-                            )}
-                        </div>
+                    <div>
+                        <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+                            Categoría *
+                        </label>
+                        <select
+                            id="category"
+                            value={publishForm.category}
+                            onChange={(e) => updatePublishForm('category', e.target.value)}
+                            className={`input-field ${formErrors.category ? 'border-red-500' : ''}`}
+                        >
+                            <option value="">Selecciona una categoría</option>
+                            {categories.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+                        {formErrors.category && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center">
+                                <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
+                                {formErrors.category}
+                            </p>
+                        )}
+                    </div>
 
                         <div>
                             <label htmlFor="condition" className="block text-sm font-medium text-gray-700 mb-2">
