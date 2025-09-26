@@ -240,6 +240,9 @@ export default function EditProductPage() {
                     precio: form.tipo_transaccion === 'donacion' ? null : (form.precio ? parseFloat(form.precio) : null),
                     estado: estadoDb,
                     tipo_transaccion: form.tipo_transaccion,
+                    // Actualizar columnas planas (si existen)
+                    etiquetas: (tags || '').trim(),
+                    especificaciones: specifications && Object.keys(specifications).length > 0 ? specifications : null,
                     // Reiniciar validación para revisión nuevamente
                     estado_validacion: 'pending',
                     comentarios_validacion: null,
@@ -250,6 +253,51 @@ export default function EditProductPage() {
                 .eq('producto_id', productId)
 
             if (error) throw error
+
+            // Sincronizar tablas normalizadas: TAGS
+            try {
+                const rawTags = (tags || '')
+                    .split(',')
+                    .map(t => t.trim())
+                    .filter(t => t.length > 0)
+                const uniqueTags = Array.from(new Set(rawTags))
+                if (uniqueTags.length > 0) {
+                    // upsert catálogo de tags
+                    await supabase
+                        .from('tag')
+                        .upsert(uniqueTags.map(nombre => ({ nombre })), { onConflict: 'nombre' })
+
+                    // obtener ids
+                    const { data: tagRows } = await supabase
+                        .from('tag')
+                        .select('tag_id, nombre')
+                        .in('nombre', uniqueTags)
+
+                    const tagIds = (tagRows || []).map((r: any) => r.tag_id)
+
+                    // reemplazar relaciones
+                    await supabase.from('producto_tag').delete().eq('producto_id', productId)
+                    if (tagIds.length > 0) {
+                        await supabase.from('producto_tag').insert(
+                            tagIds.map((idNum: number) => ({ producto_id: Number(productId), tag_id: idNum }))
+                        )
+                    }
+                } else {
+                    // si no hay tags, limpiar relaciones
+                    await supabase.from('producto_tag').delete().eq('producto_id', productId)
+                }
+            } catch {}
+
+            // Sincronizar tablas normalizadas: ESPECIFICACIONES
+            try {
+                await supabase.from('producto_especificacion').delete().eq('producto_id', productId)
+                const entries = Object.entries(specifications || {})
+                    .filter(([k, v]) => String(k).trim().length > 0 && String(v).trim().length > 0)
+                    .map(([k, v]) => ({ producto_id: Number(productId), clave: String(k).trim(), valor: String(v).trim() }))
+                if (entries.length > 0) {
+                    await supabase.from('producto_especificacion').insert(entries)
+                }
+            } catch {}
 
             // Si hay imágenes nuevas, subirlas a Storage y registrar en BD
             if (images.length > 0) {
