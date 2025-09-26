@@ -425,18 +425,24 @@ export default function ProductDetailPage() {
               <div className="flex space-x-3">
                 <button
                   onClick={handleInterest}
-                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${isInterested
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  disabled={product.usuario.user_id === (await (await supabase.auth.getSession()).data.session)?.user?.id as any}
+                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${product.usuario.user_id === (await (await supabase.auth.getSession()).data.session)?.user?.id as any
+                      ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                      : isInterested
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                 >
-                  {isInterested ? 'Interesado ✓' : 'Me Interesa'}
+                  {product.usuario.user_id === (await (await supabase.auth.getSession()).data.session)?.user?.id as any ? 'Tu publicación' : isInterested ? 'Interesado ✓' : 'Me Interesa'}
                 </button>
                 <button
                   onClick={handleLike}
-                  className={`p-3 rounded-lg border transition-colors ${isLiked
-                      ? 'border-red-500 text-red-600 bg-red-50'
-                      : 'border-gray-300 text-gray-600 hover:border-red-500 hover:text-red-600'
+                  disabled={product.usuario.user_id === (await (await supabase.auth.getSession()).data.session)?.user?.id as any}
+                  className={`p-3 rounded-lg border transition-colors ${product.usuario.user_id === (await (await supabase.auth.getSession()).data.session)?.user?.id as any
+                      ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                      : isLiked
+                        ? 'border-red-500 text-red-600 bg-red-50'
+                        : 'border-gray-300 text-gray-600 hover:border-red-500 hover:text-red-600'
                     }`}
                 >
                   {isLiked ? <HeartIconSolid className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}

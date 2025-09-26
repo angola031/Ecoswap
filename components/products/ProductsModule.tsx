@@ -379,7 +379,12 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
 
     // Funciones para navegación
     const openProductDetail = (product: Product) => {
-        router.push(`/producto/${product.id}`)
+        // Si es del usuario, llevar a editar; si no, al detalle público
+        if (currentUser && product.owner?.id === currentUser.id) {
+            router.push(`/editar-producto/${product.id}`)
+        } else {
+            router.push(`/producto/${product.id}`)
+        }
     }
 
 
@@ -520,6 +525,11 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                                     {getConditionLabel(product.condition)}
                                 </span>
                             </div>
+                            {currentUser && product.owner?.id === currentUser.id && (
+                                <span className="absolute top-2 left-2 px-2 py-1 rounded-full text-[11px] font-medium bg-gray-900/80 text-white">
+                                    Tu publicación
+                                </span>
+                            )}
                         </div>
 
                         {/* Información del producto */}
@@ -569,6 +579,16 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                                     <span>{product.likes}</span>
                                 </div>
                             </div>
+                            {currentUser && product.owner?.id === currentUser.id && (
+                                <div className="mt-3">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); router.push(`/editar-producto/${product.id}`) }}
+                                        className="w-full px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                    >
+                                        Editar publicación
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 ))}
