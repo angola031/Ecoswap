@@ -314,7 +314,8 @@ export default function AgregarProductoPage() {
         precio: formData.publicationType === 'donation' ? null : parseFloat(formData.price),
         tipo_transaccion: tipoTransaccionDb,
         estado: estadoDb,
-        categoria_id: null, // Se puede implementar después
+        categoria_id: null, // prioridad al nombre si existe
+        categoria_nombre: formData.category || null,
         ubicacion_id: selectedUbicacionId || null,
         precio_negociable: true,
         condiciones_intercambio: formData.publicationType.includes('exchange') ? 'Intercambio disponible' : null,

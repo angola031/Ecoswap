@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
 
         const {
             categoria_id,
+            categoria_nombre,
             ubicacion_id,
             titulo,
             descripcion,
@@ -73,9 +74,38 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // Resolver categoria_id si solo llega categoria_nombre
+        let resolvedCategoriaId: number | null = categoria_id || null
+        try {
+            if (!resolvedCategoriaId && categoria_nombre && typeof categoria_nombre === 'string') {
+                const nombreCat = categoria_nombre.trim()
+                if (nombreCat.length > 0) {
+                    // Intentar insertar; si ya existe por UNIQUE(nombre), ignorar error duplicado
+                    const insertRes = await supabaseAdmin
+                        .from('categoria')
+                        .insert({ nombre: nombreCat })
+                        .select('categoria_id, nombre')
+                        .single()
+                    if (insertRes.data?.categoria_id) {
+                        resolvedCategoriaId = insertRes.data.categoria_id
+                    } else {
+                        // Buscar existente
+                        const { data: existing } = await supabaseAdmin
+                            .from('categoria')
+                            .select('categoria_id')
+                            .eq('nombre', nombreCat)
+                            .single()
+                        resolvedCategoriaId = existing?.categoria_id ?? null
+                    }
+                }
+            }
+        } catch (catErr) {
+            console.warn('⚠️ API Products: no se pudo resolver categoria:', catErr)
+        }
+
         const payload: any = {
             user_id: u.user_id,
-            categoria_id: categoria_id || null,
+            categoria_id: resolvedCategoriaId || null,
             ubicacion_id: ubicacion_id || null,
             titulo,
             descripcion,
