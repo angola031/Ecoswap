@@ -456,7 +456,14 @@ export default function ProductDetailPage() {
                 >
                   {isLiked ? <HeartIconSolid className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
                 </button>
-                <button className="p-3 rounded-lg border border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors">
+                <button
+                  disabled={isOwner}
+                  className={`p-3 rounded-lg border transition-colors ${isOwner
+                    ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                    : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600'
+                  }`}
+                  title={isOwner ? 'No puedes enviarte mensajes a ti mismo' : undefined}
+                >
                   <ChatBubbleLeftRightIcon className="w-5 h-5" />
                 </button>
               </div>
