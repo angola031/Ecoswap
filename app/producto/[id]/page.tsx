@@ -509,9 +509,9 @@ export default function ProductDetailPage() {
                       {product.especificaciones && Object.keys(product.especificaciones).length > 0 && (
                         <div className="md:col-span-2 mt-2">
                           <h4 className="font-medium text-gray-900 mb-2">Especificaciones Técnicas</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 gap-2">
                             {Object.entries(product.especificaciones).map(([k, v]) => (
-                              <div key={k} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                              <div key={k} className="grid grid-cols-2 gap-4 p-2 bg-gray-50 rounded">
                                 <span className="text-sm text-gray-600">{k}</span>
                                 <span className="text-sm text-gray-900 font-medium">{v as string}</span>
                               </div>
