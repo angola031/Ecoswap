@@ -75,8 +75,13 @@ export default function ProductDetailPage() {
       setError(null)
 
       try {
+        // Obtener token si hay sesión para que la API identifique al viewer (y no cuente vistas si es dueño)
+        const { data: { session } } = await supabase.auth.getSession()
+        const headers: Record<string, string> = {}
+        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+
         // Obtener producto desde la API
-        const response = await fetch(`/api/products/${productId}`)
+        const response = await fetch(`/api/products/${productId}`, { headers })
         
         if (!response.ok) {
           if (response.status === 404) {

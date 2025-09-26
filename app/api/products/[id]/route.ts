@@ -63,12 +63,25 @@ export async function GET(
             .eq('user_id', product.user_id)
             .eq('estado_validacion', 'approved')
 
-        // Incrementar contador de vistas (solo en una fuente para no duplicar):
-        // Preferimos columna producto.visualizaciones += 1
-        await supabaseAdmin
-            .from('producto')
-            .update({ visualizaciones: (product.visualizaciones || 0) + 1 })
-            .eq('producto_id', Number(productId))
+        // Incrementar contador de vistas si el viewer NO es el dueño
+        try {
+            const auth = req.headers.get('authorization') || ''
+            const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+            let isOwner = false
+            if (token) {
+                const { data } = await supabaseAdmin.auth.getUser(token)
+                const email = data?.user?.email
+                if (email) {
+                    isOwner = email === product.usuario_email
+                }
+            }
+            if (!isOwner) {
+                await supabaseAdmin
+                    .from('producto')
+                    .update({ visualizaciones: (product.visualizaciones || 0) + 1 })
+                    .eq('producto_id', Number(productId))
+            }
+        } catch {}
 
         // Formatear la respuesta
         const formattedProduct = {
