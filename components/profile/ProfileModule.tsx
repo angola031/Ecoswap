@@ -785,23 +785,10 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
                                     {/* Acciones por estado */}
                                     <div className="mt-3 grid grid-cols-2 gap-2">
-                                        {/* Siempre permitir editar */}
-                                        <button
-                                            onClick={() => router.push(`/editar-producto/${product.id}`)}
-                                            className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
-                                        >
-                                            Editar
-                                        </button>
-
-                                        {/* Pendiente o Rechazado: Reenviar validación y Eliminar */}
-                                        {(product.validationStatus === 'pending' || product.validationStatus === 'rejected') && (
+                                        {/* Pendiente: solo Eliminar */}
+                                        {product.validationStatus === 'pending' && (
                                             <>
-                                                <button
-                                                    onClick={() => router.push(`/editar-producto/${product.id}`)}
-                                                    className="px-3 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
-                                                >
-                                                    Reenviar validación
-                                                </button>
+                                                <div></div>
                                                 <button
                                                     onClick={() => deleteProduct(product.id)}
                                                     className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
@@ -812,9 +799,40 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             </>
                                         )}
 
-                                        {/* Aprobado + Activo: Pausar y Eliminar */}
+                                        {/* Rechazado: Editar + Reenviar + Eliminar */}
+                                        {product.validationStatus === 'rejected' && (
+                                            <>
+                                                <button
+                                                    onClick={() => router.push(`/editar-producto/${product.id}`)}
+                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                >
+                                                    Editar
+                                                </button>
+                                                <button
+                                                    onClick={() => router.push(`/editar-producto/${product.id}`)}
+                                                    className="px-3 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
+                                                >
+                                                    Reenviar validación
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteProduct(product.id)}
+                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 col-span-2"
+                                                    disabled={deletingId === product.id}
+                                                >
+                                                    {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {/* Aprobado + Activo: Editar + Pausar + Eliminar */}
                                         {product.validationStatus === 'approved' && product.publicationState !== 'pausado' && (
                                             <>
+                                                <button
+                                                    onClick={() => router.push(`/editar-producto/${product.id}`)}
+                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                >
+                                                    Editar
+                                                </button>
                                                 <button
                                                     onClick={() => pauseOrResumeProduct(product.id, true)}
                                                     className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
@@ -824,7 +842,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                                 </button>
                                                 <button
                                                     onClick={() => deleteProduct(product.id)}
-                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 col-span-2"
                                                     disabled={deletingId === product.id}
                                                 >
                                                     {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
@@ -832,9 +850,15 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             </>
                                         )}
 
-                                        {/* Aprobado + Pausado: Reanudar y Eliminar */}
+                                        {/* Aprobado + Pausado: Editar + Reanudar + Eliminar */}
                                         {product.validationStatus === 'approved' && product.publicationState === 'pausado' && (
                                             <>
+                                                <button
+                                                    onClick={() => router.push(`/editar-producto/${product.id}`)}
+                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                >
+                                                    Editar
+                                                </button>
                                                 <button
                                                     onClick={() => pauseOrResumeProduct(product.id, false)}
                                                     className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
@@ -844,7 +868,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                                 </button>
                                                 <button
                                                     onClick={() => deleteProduct(product.id)}
-                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 col-span-2"
                                                     disabled={deletingId === product.id}
                                                 >
                                                     {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
