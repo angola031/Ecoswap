@@ -11,6 +11,7 @@ import {
     FunnelIcon
 } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 interface User {
     id: string
@@ -78,7 +79,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                 const { products } = await response.json()
                 
                 // Transformar los datos de la API al formato esperado
-                const transformedProducts: Product[] = products.map((p: any) => ({
+                let transformedProducts: Product[] = products.map((p: any) => ({
                     id: p.producto_id.toString(),
                     title: p.titulo,
                     description: p.descripcion,
@@ -87,7 +88,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                     price: p.precio || 0,
                     currency: 'COP',
                     location: `${p.ciudad || ''}, ${p.departamento || ''}`.trim(),
-                    images: [], // Se puede implementar después
+                    images: [],
                     owner: {
                         id: p.user_id.toString(),
                         name: p.usuario_nombre || 'Usuario',
@@ -105,6 +106,34 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                     tags: [],
                     specifications: {}
                 }))
+
+                // Cargar imagen principal por producto desde Supabase
+                try {
+                    const ids = transformedProducts.map(p => Number(p.id))
+                    if (ids.length > 0) {
+                        const { data: imgs } = await supabase
+                            .from('imagen_producto')
+                            .select('producto_id, url_imagen, es_principal, orden')
+                            .in('producto_id', ids)
+                            .order('es_principal', { ascending: false })
+                            .order('orden', { ascending: true })
+
+                        const firstByProduct = new Map<number, string>()
+                        ;(imgs || []).forEach((row: any) => {
+                            const pid = Number(row.producto_id)
+                            if (!firstByProduct.has(pid)) {
+                                firstByProduct.set(pid, row.url_imagen)
+                            }
+                        })
+
+                        transformedProducts = transformedProducts.map(p => ({
+                            ...p,
+                            images: firstByProduct.has(Number(p.id)) ? [firstByProduct.get(Number(p.id)) as string] : []
+                        }))
+                    }
+                } catch (_) {
+                    // Si falla, seguimos con imágenes vacías y se mostrará placeholder
+                }
                 
                 setProducts(transformedProducts)
             } catch (error) {
@@ -453,11 +482,17 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                     >
                         {/* Imagen del producto */}
                         <div className="relative h-48 bg-gray-100">
-                            <img
-                                src={product.images[0]}
-                                alt={product.title}
-                                className="w-full h-full object-cover"
-                            />
+                            {product.images && product.images[0] ? (
+                                <img
+                                    src={product.images[0]}
+                                    alt={product.title}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+                                    Sin imagen
+                                </div>
+                            )}
                             <div className="absolute top-2 right-2">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getConditionColor(product.condition)}`}>
                                     {getConditionLabel(product.condition)}
