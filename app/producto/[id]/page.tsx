@@ -435,8 +435,9 @@ export default function ProductDetailPage() {
                 <button
                   onClick={handleInterest}
                   disabled={isOwner}
+                  aria-disabled={isOwner}
                   className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${isOwner
-                      ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                      ? 'bg-gray-400 text-white cursor-not-allowed pointer-events-none'
                       : isInterested
                         ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -447,8 +448,9 @@ export default function ProductDetailPage() {
                 <button
                   onClick={handleLike}
                   disabled={isOwner}
+                  aria-disabled={isOwner}
                   className={`p-3 rounded-lg border transition-colors ${isOwner
-                      ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                      ? 'border-gray-400 text-gray-300 bg-gray-100 cursor-not-allowed pointer-events-none'
                       : isLiked
                         ? 'border-red-500 text-red-600 bg-red-50'
                         : 'border-gray-300 text-gray-600 hover:border-red-500 hover:text-red-600'
@@ -458,8 +460,9 @@ export default function ProductDetailPage() {
                 </button>
                 <button
                   disabled={isOwner}
+                  aria-disabled={isOwner}
                   className={`p-3 rounded-lg border transition-colors ${isOwner
-                    ? 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                    ? 'border-gray-400 text-gray-300 bg-gray-100 cursor-not-allowed pointer-events-none'
                     : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600'
                   }`}
                   title={isOwner ? 'No puedes enviarte mensajes a ti mismo' : undefined}
