@@ -128,15 +128,45 @@ export default function EditProductPage() {
                     setCategory('')
                 }
 
-                // Etiquetas: si existe una columna 'etiquetas' (string separado por comas)
-                if (typeof (data as any)?.etiquetas === 'string') {
+                // Etiquetas: usar columna plana si existe; si no, cargar desde tablas normalizadas
+                if (typeof (data as any)?.etiquetas === 'string' && (data as any).etiquetas.trim().length > 0) {
                     setTags((data as any).etiquetas)
+                } else {
+                    try {
+                        const { data: rels } = await supabase
+                            .from('producto_tag')
+                            .select('tag_id')
+                            .eq('producto_id', productId)
+                        const tagIds = (rels || []).map((r: any) => r.tag_id)
+                        if (tagIds.length > 0) {
+                            const { data: tagRows } = await supabase
+                                .from('tag')
+                                .select('nombre, tag_id')
+                                .in('tag_id', tagIds)
+                            const names = (tagRows || []).map((t: any) => String(t.nombre)).filter(Boolean)
+                            if (names.length > 0) setTags(names.join(', '))
+                        }
+                    } catch {}
                 }
 
-                // Especificaciones: si existe una columna 'especificaciones' (JSON)
+                // Especificaciones: usar columna plana si existe; si no, cargar desde 'producto_especificacion'
                 const espec = (data as any)?.especificaciones
-                if (espec && typeof espec === 'object') {
+                if (espec && typeof espec === 'object' && Object.keys(espec).length > 0) {
                     setSpecifications(espec)
+                } else {
+                    try {
+                        const { data: specRows } = await supabase
+                            .from('producto_especificacion')
+                            .select('clave, valor')
+                            .eq('producto_id', productId)
+                        const specObj: Record<string, string> = {}
+                        ;(specRows || []).forEach((row: any) => {
+                            const k = String(row?.clave || '').trim()
+                            const v = String(row?.valor || '').trim()
+                            if (k && v) specObj[k] = v
+                        })
+                        if (Object.keys(specObj).length > 0) setSpecifications(specObj)
+                    } catch {}
                 }
 
                 setLocation('')
