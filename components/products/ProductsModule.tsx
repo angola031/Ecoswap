@@ -135,6 +135,28 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                     // Si falla, seguimos con imágenes vacías y se mostrará placeholder
                 }
                 
+                // Cargar estadísticas (vistas/likes) para cada producto en paralelo
+                try {
+                    const statsResults = await Promise.all(
+                        transformedProducts.map(async (p) => {
+                            try {
+                                const res = await fetch(`/api/products/${p.id}/stats`)
+                                if (!res.ok) return { id: p.id, views: 0, likes: 0 }
+                                const { stats } = await res.json()
+                                return { id: p.id, views: Number(stats?.views || 0), likes: Number(stats?.likes || 0) }
+                            } catch {
+                                return { id: p.id, views: 0, likes: 0 }
+                            }
+                        })
+                    )
+                    const idToStats = new Map(statsResults.map(s => [s.id, s]))
+                    transformedProducts = transformedProducts.map(p => ({
+                        ...p,
+                        views: idToStats.get(p.id)?.views ?? p.views,
+                        likes: idToStats.get(p.id)?.likes ?? p.likes,
+                    }))
+                } catch {}
+
                 setProducts(transformedProducts)
             } catch (error) {
                 console.error('Error cargando productos:', error)

@@ -773,14 +773,14 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                     </div>
 
                                     <div className="flex items-center justify-between text-sm text-gray-500">
-                                        <div className="flex items-center space-x-1">
-                                            <EyeIcon className="w-4 h-4" />
-                                            <span>{product.views}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-1">
-                                            <HeartIcon className="w-4 h-4" />
-                                            <span>{product.likes}</span>
-                                        </div>
+                                <div className="flex items-center space-x-1">
+                                    <EyeIcon className="w-4 h-4" />
+                                    <span>{product.views ?? 0}</span>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                    <HeartIcon className="w-4 h-4" />
+                                    <span>{product.likes ?? 0}</span>
+                                </div>
                                     </div>
 
                                     {/* Acciones por estado */}
