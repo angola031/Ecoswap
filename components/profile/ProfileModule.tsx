@@ -736,6 +736,11 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.validationStatus === 'approved' ? 'bg-green-100 text-green-800' : product.validationStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
                                                 {product.validationStatus === 'approved' ? 'Aprobado' : product.validationStatus === 'pending' ? 'Pendiente' : 'Rechazado'}
                                             </span>
+                                            {product.publicationState === 'pausado' && (
+                                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-800">
+                                                    Pausado
+                                                </span>
+                                            )}
                                             {product.transactionType && (
                                                 <span className={`px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800`}>
                                                     {product.transactionType === 'venta' ? 'Venta' : product.transactionType === 'intercambio' ? 'Intercambio' : product.transactionType === 'donacion' ? 'Donación' : 'Mixto'}
