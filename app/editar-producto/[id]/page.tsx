@@ -151,22 +151,37 @@ export default function EditProductPage() {
 
                 // Especificaciones: usar columna plana si existe; si no, cargar desde 'producto_especificacion'
                 const espec = (data as any)?.especificaciones
+                let loadedSpecs: Record<string, string> | null = null
                 if (espec && typeof espec === 'object' && Object.keys(espec).length > 0) {
-                    setSpecifications(espec)
-                } else {
+                    loadedSpecs = espec as Record<string, string>
+                } else if (typeof espec === 'string') {
+                    try {
+                        const parsed = JSON.parse(espec)
+                        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                            loadedSpecs = parsed as Record<string, string>
+                        }
+                    } catch {}
+                }
+
+                if (!loadedSpecs) {
                     try {
                         const { data: specRows } = await supabase
                             .from('producto_especificacion')
                             .select('clave, valor')
-                            .eq('producto_id', productId)
+                            .eq('producto_id', Number(productId))
                         const specObj: Record<string, string> = {}
                         ;(specRows || []).forEach((row: any) => {
                             const k = String(row?.clave || '').trim()
                             const v = String(row?.valor || '').trim()
                             if (k && v) specObj[k] = v
                         })
-                        if (Object.keys(specObj).length > 0) setSpecifications(specObj)
+                        if (Object.keys(specObj).length > 0) loadedSpecs = specObj
                     } catch {}
+                }
+
+                if (loadedSpecs) {
+                    setSpecifications(loadedSpecs)
+                    setShowSpecifications(true)
                 }
 
                 setLocation('')
