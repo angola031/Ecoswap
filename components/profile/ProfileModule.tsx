@@ -220,6 +220,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         estado,
                         tipo_transaccion,
                         estado_validacion,
+                        estado_publicacion,
                         fecha_creacion,
                         imagenes:imagen_producto(
                             url_imagen,
@@ -299,6 +300,47 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
             sold: 'Vendido'
         }
         return labels[status as keyof typeof labels] || status
+    }
+
+    // Acciones sobre productos: pausar/reanudar y eliminar
+    const [pausingId, setPausingId] = useState<string | null>(null)
+    const [deletingId, setDeletingId] = useState<string | null>(null)
+
+    const pauseOrResumeProduct = async (productId: string, pause: boolean) => {
+        try {
+            setPausingId(productId)
+            const { error } = await supabase
+                .from('producto')
+                .update({ estado_publicacion: pause ? 'pausado' : 'activo', fecha_actualizacion: new Date().toISOString() })
+                .eq('producto_id', Number(productId))
+            if (error) throw error
+            setUserProducts(prev => prev.map(p => p.id === productId ? { ...p } : p))
+        } catch (_) {
+            alert('No se pudo actualizar el estado de publicación')
+        } finally {
+            setPausingId(null)
+        }
+    }
+
+    const deleteProduct = async (productId: string) => {
+        const yes = confirm('¿Seguro que deseas eliminar este producto y su publicación? Esta acción no se puede deshacer.')
+        if (!yes) return
+        try {
+            setDeletingId(productId)
+            // Eliminar imágenes asociadas primero (por integridad visual en UI); en BD hay FK con ON DELETE no especificado, así que borramos manualmente.
+            await supabase.from('imagen_producto').delete().eq('producto_id', Number(productId))
+            // Eliminar relaciones normalizadas
+            await supabase.from('producto_tag').delete().eq('producto_id', Number(productId))
+            await supabase.from('producto_especificacion').delete().eq('producto_id', Number(productId))
+            // Eliminar producto
+            const { error } = await supabase.from('producto').delete().eq('producto_id', Number(productId))
+            if (error) throw error
+            setUserProducts(prev => prev.filter(p => p.id !== productId))
+        } catch (_) {
+            alert('No se pudo eliminar el producto')
+        } finally {
+            setDeletingId(null)
+        }
     }
 
     if (isLoading) {
@@ -722,6 +764,36 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             </button>
                                         </div>
                                     )}
+
+                                    <div className="mt-3 grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={() => router.push(`/editar-producto/${product.id}`)}
+                                            className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                        >
+                                            Editar
+                                        </button>
+                                        <button
+                                            onClick={() => pauseOrResumeProduct(product.id, true)}
+                                            className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                            disabled={pausingId === product.id}
+                                        >
+                                            {pausingId === product.id ? 'Actualizando…' : 'Pausar'}
+                                        </button>
+                                        <button
+                                            onClick={() => pauseOrResumeProduct(product.id, false)}
+                                            className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                            disabled={pausingId === product.id}
+                                        >
+                                            {pausingId === product.id ? 'Actualizando…' : 'Reanudar'}
+                                        </button>
+                                        <button
+                                            onClick={() => deleteProduct(product.id)}
+                                            className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+                                            disabled={deletingId === product.id}
+                                        >
+                                            {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
+                                        </button>
+                                    </div>
                                 </motion.div>
                             ))}
                         </div>
