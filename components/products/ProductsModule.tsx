@@ -379,12 +379,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
 
     // Funciones para navegación
     const openProductDetail = (product: Product) => {
-        // Si es del usuario, llevar a editar; si no, al detalle público
-        if (currentUser && product.owner?.id === currentUser.id) {
-            router.push(`/editar-producto/${product.id}`)
-        } else {
-            router.push(`/producto/${product.id}`)
-        }
+        router.push(`/producto/${product.id}`)
     }
 
 
