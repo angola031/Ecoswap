@@ -63,10 +63,12 @@ export async function GET(
             .eq('user_id', product.user_id)
             .eq('estado_validacion', 'approved')
 
-        // Incrementar contador de vistas
-        await supabaseAdmin.rpc('increment_product_views', {
-            p_producto_id: parseInt(productId)
-        })
+        // Incrementar contador de vistas (solo en una fuente para no duplicar):
+        // Preferimos columna producto.visualizaciones += 1
+        await supabaseAdmin
+            .from('producto')
+            .update({ visualizaciones: (product.visualizaciones || 0) + 1 })
+            .eq('producto_id', Number(productId))
 
         // Formatear la respuesta
         const formattedProduct = {

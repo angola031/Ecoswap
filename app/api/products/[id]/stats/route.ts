@@ -36,7 +36,9 @@ export async function GET(
             .select('favorito_id', { count: 'exact', head: true })
             .eq('producto_id', Number(productId))
 
-        const totalViews = baseViews + sumDailyViews
+        // Evitar doble conteo: si mantenemos un contador en producto.visualizaciones,
+        // úsalo como fuente principal. Si está en 0 (no usado), caer a la suma diaria.
+        const totalViews = baseViews > 0 ? baseViews : sumDailyViews
 
         return NextResponse.json({
             stats: {
