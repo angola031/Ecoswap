@@ -44,6 +44,26 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 }
 
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const productoId = Number(params.id)
+    if (!productoId) return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
+    const userId = await getAuthUserId(req)
+    if (!userId) return NextResponse.json({ liked: false })
+
+    const { data } = await supabaseAdmin
+      .from('favorito')
+      .select('favorito_id')
+      .eq('usuario_id', userId)
+      .eq('producto_id', productoId)
+      .maybeSingle()
+
+    return NextResponse.json({ liked: !!data })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'Server error' }, { status: 500 })
+  }
+}
+
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const productoId = Number(params.id)

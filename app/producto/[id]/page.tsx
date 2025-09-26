@@ -102,6 +102,20 @@ export default function ProductDetailPage() {
           console.warn('No se pudieron cargar las estadísticas:', statsError)
         }
 
+        // Consultar si el usuario ya dio like
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.access_token) {
+            const likeRes = await fetch(`/api/products/${productId}/like`, {
+              headers: { Authorization: `Bearer ${session.access_token}` }
+            })
+            if (likeRes.ok) {
+              const json = await likeRes.json()
+              if (typeof json?.liked === 'boolean') setIsLiked(json.liked)
+            }
+          }
+        } catch {}
+
       } catch (error) {
         console.error('Error cargando producto:', error)
         setError(error instanceof Error ? error.message : 'Error desconocido')
