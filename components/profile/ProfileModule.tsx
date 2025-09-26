@@ -77,6 +77,7 @@ interface UserProduct {
     views: number
     likes: number
     createdAt: string
+    publicationState?: 'activo' | 'pausado' | 'intercambiado' | 'eliminado'
 }
 
 interface UserReview {
@@ -251,7 +252,8 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         transactionType: p.tipo_transaccion || 'mixto',
                         views: 0,
                         likes: 0,
-                        createdAt: p.fecha_creacion || new Date().toISOString()
+                        createdAt: p.fecha_creacion || new Date().toISOString(),
+                        publicationState: (p.estado_publicacion || 'activo') as any
                     }
                 })
 
@@ -753,46 +755,74 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         </div>
                                     </div>
 
-                                    {/* Acciones */}
-                                    {product.validationStatus === 'rejected' && (
-                                        <div className="mt-3">
-                                            <button
-                                                onClick={() => router.push(`/editar-producto/${product.id}`)}
-                                                className="w-full px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
-                                            >
-                                                Editar y reenviar a validación
-                                            </button>
-                                        </div>
-                                    )}
-
+                                    {/* Acciones por estado */}
                                     <div className="mt-3 grid grid-cols-2 gap-2">
+                                        {/* Siempre permitir editar */}
                                         <button
                                             onClick={() => router.push(`/editar-producto/${product.id}`)}
                                             className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
                                         >
                                             Editar
                                         </button>
-                                        <button
-                                            onClick={() => pauseOrResumeProduct(product.id, true)}
-                                            className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
-                                            disabled={pausingId === product.id}
-                                        >
-                                            {pausingId === product.id ? 'Actualizando…' : 'Pausar'}
-                                        </button>
-                                        <button
-                                            onClick={() => pauseOrResumeProduct(product.id, false)}
-                                            className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
-                                            disabled={pausingId === product.id}
-                                        >
-                                            {pausingId === product.id ? 'Actualizando…' : 'Reanudar'}
-                                        </button>
-                                        <button
-                                            onClick={() => deleteProduct(product.id)}
-                                            className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
-                                            disabled={deletingId === product.id}
-                                        >
-                                            {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
-                                        </button>
+
+                                        {/* Pendiente o Rechazado: Reenviar validación y Eliminar */}
+                                        {(product.validationStatus === 'pending' || product.validationStatus === 'rejected') && (
+                                            <>
+                                                <button
+                                                    onClick={() => router.push(`/editar-producto/${product.id}`)}
+                                                    className="px-3 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
+                                                >
+                                                    Reenviar validación
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteProduct(product.id)}
+                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+                                                    disabled={deletingId === product.id}
+                                                >
+                                                    {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {/* Aprobado + Activo: Pausar y Eliminar */}
+                                        {product.validationStatus === 'approved' && product.publicationState !== 'pausado' && (
+                                            <>
+                                                <button
+                                                    onClick={() => pauseOrResumeProduct(product.id, true)}
+                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                    disabled={pausingId === product.id}
+                                                >
+                                                    {pausingId === product.id ? 'Actualizando…' : 'Pausar'}
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteProduct(product.id)}
+                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+                                                    disabled={deletingId === product.id}
+                                                >
+                                                    {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {/* Aprobado + Pausado: Reanudar y Eliminar */}
+                                        {product.validationStatus === 'approved' && product.publicationState === 'pausado' && (
+                                            <>
+                                                <button
+                                                    onClick={() => pauseOrResumeProduct(product.id, false)}
+                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                    disabled={pausingId === product.id}
+                                                >
+                                                    {pausingId === product.id ? 'Actualizando…' : 'Reanudar'}
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteProduct(product.id)}
+                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+                                                    disabled={deletingId === product.id}
+                                                >
+                                                    {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </motion.div>
                             ))}
