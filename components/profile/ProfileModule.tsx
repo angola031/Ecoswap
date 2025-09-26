@@ -329,6 +329,29 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
         if (!yes) return
         try {
             setDeletingId(productId)
+            // Intentar eliminar archivos del bucket de Storage bajo productos/user_{user_id}/{producto_id}/
+            try {
+                const { data: prodRow } = await supabase
+                    .from('producto')
+                    .select('user_id')
+                    .eq('producto_id', Number(productId))
+                    .single()
+                const userIdForPath = (prodRow as any)?.user_id
+                if (userIdForPath) {
+                    const dir = `productos/user_${userIdForPath}/${productId}`
+                    const { data: files } = await supabase.storage
+                        .from('Ecoswap')
+                        .list(dir, { limit: 1000, offset: 0 })
+                    if (Array.isArray(files) && files.length > 0) {
+                        const paths = files.map(f => `${dir}/${f.name}`)
+                        await supabase.storage.from('Ecoswap').remove(paths)
+                    }
+                    // Intento de remover carpeta (no es obligatorio)
+                    await supabase.storage.from('Ecoswap').remove([dir])
+                }
+            } catch (_) {
+                // Continuar aun si falla limpieza de Storage
+            }
             // Eliminar imágenes asociadas primero (por integridad visual en UI); en BD hay FK con ON DELETE no especificado, así que borramos manualmente.
             await supabase.from('imagen_producto').delete().eq('producto_id', Number(productId))
             // Eliminar relaciones normalizadas
