@@ -58,14 +58,14 @@ export async function POST(request: NextRequest) {
     console.log('📞 Consultando BD...')
     console.log('📞 Tabla: usuario, Campo: telefono, Valor:', cleanPhone)
     
-    const { data: existingUser, error } = await supabase
+    const { data: existingUsers, error } = await supabase
       .from('usuario')
       .select('user_id, telefono, activo')
       .eq('telefono', cleanPhone)
-      .maybeSingle()
     
     console.log('📞 Resultado de BD:', { 
-      existingUser, 
+      existingUsers, 
+      count: existingUsers?.length || 0,
       error: error ? {
         message: error.message,
         code: error.code,
@@ -81,16 +81,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Si existe un usuario con ese teléfono
-    if (existingUser) {
-      console.log('📞 Teléfono encontrado:', existingUser)
-      return NextResponse.json({
-        exists: true,
-        active: existingUser.activo,
-        message: existingUser.activo 
-          ? 'Este número de teléfono ya está registrado.'
-          : 'Este número de teléfono está asociado a una cuenta desactivada.'
-      })
+    // Si existen usuarios con ese teléfono
+    if (existingUsers && existingUsers.length > 0) {
+      console.log('📞 Teléfonos encontrados:', existingUsers.length)
+      
+      // Verificar si hay al menos un usuario activo
+      const activeUser = existingUsers.find(user => user.activo)
+      
+      if (activeUser) {
+        console.log('📞 Usuario activo encontrado:', activeUser)
+        return NextResponse.json({
+          exists: true,
+          active: true,
+          message: 'Este número de teléfono ya está registrado.'
+        })
+      } else {
+        console.log('📞 Solo usuarios inactivos encontrados')
+        return NextResponse.json({
+          exists: true,
+          active: false,
+          message: 'Este número de teléfono está asociado a una cuenta desactivada.'
+        })
+      }
     }
 
     // El teléfono no existe
