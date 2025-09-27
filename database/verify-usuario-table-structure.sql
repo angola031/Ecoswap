@@ -48,7 +48,7 @@ SELECT
     auth_user_id,
     verificado,
     activo,
-    created_at
+    fecha_registro
 FROM usuario 
 LIMIT 5;
 
@@ -66,3 +66,50 @@ SELECT
 FROM usuario 
 GROUP BY email 
 HAVING COUNT(*) > 1;
+
+-- 7. Verificar si hay teléfonos duplicados
+SELECT 
+    telefono,
+    COUNT(*) as cantidad
+FROM usuario 
+WHERE telefono IS NOT NULL 
+    AND telefono != ''
+GROUP BY telefono 
+HAVING COUNT(*) > 1;
+
+-- 8. Verificar usuarios recientes (últimos 7 días)
+SELECT 
+    user_id,
+    nombre,
+    apellido,
+    email,
+    telefono,
+    auth_user_id,
+    verificado,
+    activo,
+    fecha_registro
+FROM usuario 
+WHERE fecha_registro >= CURRENT_DATE - INTERVAL '7 days'
+ORDER BY fecha_registro DESC;
+
+-- 9. Verificar estructura de tabla auth.users (si es accesible)
+SELECT 
+    column_name,
+    data_type,
+    is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'users' 
+    AND table_schema = 'auth'
+ORDER BY ordinal_position;
+
+-- 10. Verificar si hay usuarios en auth.users sin correspondencia en usuario
+SELECT 
+    au.id as auth_user_id,
+    au.email as auth_email,
+    au.email_confirmed_at,
+    u.user_id,
+    u.email as usuario_email
+FROM auth.users au
+LEFT JOIN public.usuario u ON au.id = u.auth_user_id
+WHERE u.user_id IS NULL
+LIMIT 10;
