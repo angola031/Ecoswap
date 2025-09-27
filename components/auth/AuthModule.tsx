@@ -300,7 +300,6 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
       const data = await response.json()
       return data
     } catch (error) {
-      console.error('Error checking phone:', error)
       return { exists: false, error: true }
     }
   }
@@ -335,11 +334,8 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
 
     // Validar teléfono en tiempo real cuando se cambia
     if (field === 'phone') {
-      console.log('📱 Campo teléfono cambiado:', value)
-      
       // Validar formato primero
       const isValidFormat = isValidPhoneFormat(value)
-      console.log('📱 Formato válido:', isValidFormat)
       
       setPhoneValidation(prev => ({ 
         ...prev, 
@@ -349,13 +345,10 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
       
       // Solo validar existencia si el formato es válido y tiene exactamente 10 dígitos
       const cleanPhone = value.replace(/[\s\-\(\)]/g, '')
-      console.log('📱 Teléfono limpio:', cleanPhone, 'Longitud:', cleanPhone.length)
       
       if (isValidFormat && cleanPhone.length === 10) {
-        console.log('📱 Llamando validatePhone...')
         validatePhone(value)
       } else if (!isValidFormat && value.length > 0) {
-        console.log('📱 Formato inválido, mostrando error')
         setPhoneValidation(prev => ({ 
           ...prev, 
           checking: false, 
@@ -363,7 +356,6 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
           message: 'Formato de teléfono inválido. Debe ser un número colombiano de 10 dígitos que empiece con 3.'
         }))
       } else if (value.length === 0) {
-        console.log('📱 Campo vacío, limpiando validación')
         setPhoneValidation({ checking: false, exists: false, message: '', isValidFormat: true })
       }
     }
@@ -475,11 +467,8 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
 
   // Función para validar teléfono en tiempo real
   const validatePhone = async (phone: string) => {
-    console.log('🔍 Validando teléfono:', phone)
-    
     // No validar si el formato no es válido
     if (!isValidPhoneFormat(phone)) {
-      console.log('❌ Formato de teléfono inválido')
       setPhoneValidation({ 
         checking: false, 
         exists: false, 
@@ -489,7 +478,6 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
       return
     }
 
-    console.log('✅ Formato válido, verificando en BD...')
     setPhoneValidation(prev => ({ 
       ...prev, 
       checking: true, 
@@ -500,10 +488,8 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
 
     try {
       const result = await checkPhoneExists(phone)
-      console.log('📞 Resultado de verificación:', result)
 
       if (result.error) {
-        console.log('❌ Error en verificación')
         setPhoneValidation({ 
           checking: false, 
           exists: false, 
@@ -514,7 +500,6 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
       }
 
       if (result.exists) {
-        console.log('⚠️ Teléfono ya existe')
         setPhoneValidation({
           checking: false,
           exists: true,
@@ -522,7 +507,6 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
           isValidFormat: true
         })
       } else {
-        console.log('✅ Teléfono disponible')
         setPhoneValidation({ 
           checking: false, 
           exists: false, 
@@ -531,7 +515,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
         })
       }
     } catch (error) {
-      console.error('❌ Error en validación de teléfono:', error)
+      console.error('Error en validación de teléfono:', error)
       setPhoneValidation({ 
         checking: false, 
         exists: false, 
