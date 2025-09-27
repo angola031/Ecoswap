@@ -72,8 +72,8 @@ export async function registerUser(data: RegisterData): Promise<{ user: User | n
 
         if (authCheckError) {
             console.error('Error verificando usuarios de auth:', authCheckError)
-        } else {
-            const existingAuthUser = authUsers.users.find(user => user.email === data.email)
+        } else if (authUsers) {
+            const existingAuthUser = authUsers.users.find((user: any) => user.email === data.email)
             if (existingAuthUser) {
                 if (existingAuthUser.email_confirmed_at) {
                     return { user: null, error: 'Este correo electrónico ya está registrado. Inicia sesión en su lugar.' }
@@ -246,67 +246,99 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
           throw insertErrorMinimal
         }
         
-        return newUserMinimal
-      }
-      
-      return newUser
-      
-    } catch (error) {
-      console.error('Error completo en creación de usuario:', error)
-      throw error
-    }
-
-    // Crear ubicación principal del usuario
-    const locationParts = registerData.location.split(', ')
-    const ciudad = locationParts[0] || ''
-    const departamento = locationParts[1] || ''
-    
-
-    const ubicacionData = {
-        user_id: newUser.user_id,
-        pais: 'Colombia',
-        departamento,
-        ciudad,
-        barrio: null,
-        latitud: null,
-        longitud: null,
-        es_principal: true
-    }
-    
-    const { error: ubicacionError } = await supabase
-      .from('ubicacion')
-      .insert(ubicacionData)
-    
-    if (ubicacionError) {
-      console.error('Error al crear ubicación:', ubicacionError)
-      // No lanzar error aquí, solo loggear, ya que el usuario ya se creó
-    }
-
-    // Crear configuración por defecto del usuario
-    await supabase
-        .from('configuracion_usuario')
-        .insert({
-            usuario_id: newUser.user_id,
+        // Crear ubicación y configuración para usuario con campos mínimos
+        const locationParts = registerData.location.split(', ')
+        const ciudad = locationParts[0] || ''
+        const departamento = locationParts[1] || ''
+        
+        const ubicacionData = {
+            user_id: newUserMinimal.user_id,
+            pais: 'Colombia',
+            departamento,
+            ciudad,
+            barrio: null,
+            latitud: null,
+            longitud: null,
+            es_principal: true
+        }
+        
+        await supabase.from('ubicacion').insert(ubicacionData)
+        await supabase.from('configuracion_usuario').insert({
+            usuario_id: newUserMinimal.user_id,
             notif_nuevas_propuestas: true,
             notif_mensajes: true,
             notif_actualizaciones: false,
             notif_newsletter: true,
             perfil_publico: true,
             mostrar_ubicacion_exacta: false,
-            mostrar_telefono: false,
-            recibir_mensajes_desconocidos: true,
-            distancia_maxima_km: 50,
-            categorias_interes: null
+            mostrar_telefono: false
         })
 
-    // Retornar datos del usuario para el frontend
-    return {
-        id: newUser.user_id.toString(),
-        name: `${nombre} ${apellido}`.trim(),
-        email: newUser.email,
-        avatar: newUser.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-        location: registerData.location,
-        phone: newUser.telefono
+        return {
+            id: newUserMinimal.user_id.toString(),
+            name: `${newUserMinimal.nombre} ${newUserMinimal.apellido}`.trim(),
+            email: newUserMinimal.email,
+            avatar: newUserMinimal.foto_perfil || '/default-avatar.png',
+            location: registerData.location,
+            phone: newUserMinimal.telefono || undefined,
+            isAdmin: newUserMinimal.es_admin,
+            adminSince: newUserMinimal.admin_desde?.toISOString()
+        }
+      }
+      
+      // Crear ubicación principal del usuario
+      const locationParts = registerData.location.split(', ')
+      const ciudad = locationParts[0] || ''
+      const departamento = locationParts[1] || ''
+      
+      const ubicacionData = {
+          user_id: newUser.user_id,
+          pais: 'Colombia',
+          departamento,
+          ciudad,
+          barrio: null,
+          latitud: null,
+          longitud: null,
+          es_principal: true
+      }
+      
+      const { error: ubicacionError } = await supabase
+        .from('ubicacion')
+        .insert(ubicacionData)
+      
+      if (ubicacionError) {
+        console.error('Error al crear ubicación:', ubicacionError)
+        // No lanzar error aquí, solo loggear, ya que el usuario ya se creó
+      }
+
+      // Crear configuración por defecto del usuario
+      await supabase
+          .from('configuracion_usuario')
+          .insert({
+              usuario_id: newUser.user_id,
+              notif_nuevas_propuestas: true,
+              notif_mensajes: true,
+              notif_actualizaciones: false,
+              notif_newsletter: true,
+              perfil_publico: true,
+              mostrar_ubicacion_exacta: false,
+              mostrar_telefono: false
+          })
+
+      return {
+          id: newUser.user_id.toString(),
+          name: `${newUser.nombre} ${newUser.apellido}`.trim(),
+          email: newUser.email,
+          avatar: newUser.foto_perfil || '/default-avatar.png',
+          location: registerData.location,
+          phone: newUser.telefono || undefined,
+          isAdmin: newUser.es_admin,
+          adminSince: newUser.admin_desde?.toISOString()
+      }
+      
+    } catch (error) {
+      console.error('Error completo en creación de usuario:', error)
+      throw error
     }
 }
 
@@ -413,13 +445,21 @@ async function createUserProfileFromAuth(authUser: any): Promise<User> {
             eco_puntos: 0,
             verificado: true,
             activo: true,
-            ultima_conexion: new Date().toISOString()
+            ultima_conexion: new Date().toISOString(),
+            auth_user_id: authUser.id // Agregar el auth_user_id requerido
         })
         .select()
         .single()
 
     if (insertError) {
         console.error('Error al crear perfil desde auth:', insertError)
+        console.error('Datos que se intentaron insertar:', {
+            nombre,
+            apellido,
+            email: authUser.email,
+            telefono: authUser.user_metadata?.phone || null,
+            auth_user_id: authUser.id
+        })
         throw insertError
     }
 
@@ -429,7 +469,7 @@ async function createUserProfileFromAuth(authUser: any): Promise<User> {
         const ciudad = locationParts[0] || ''
         const departamento = locationParts[1] || ''
 
-        await supabase
+        const { error: ubicacionError } = await supabase
             .from('ubicacion')
             .insert({
                 user_id: newUser.user_id,
@@ -441,10 +481,14 @@ async function createUserProfileFromAuth(authUser: any): Promise<User> {
                 longitud: null,
                 es_principal: true
             })
+        
+        if (ubicacionError) {
+            console.error('Error al crear ubicación:', ubicacionError)
+        }
     }
 
     // Crear configuración por defecto
-    await supabase
+    const { error: configError } = await supabase
         .from('configuracion_usuario')
         .insert({
             usuario_id: newUser.user_id,
@@ -459,6 +503,10 @@ async function createUserProfileFromAuth(authUser: any): Promise<User> {
             distancia_maxima_km: 50,
             categorias_interes: null
         })
+    
+    if (configError) {
+        console.error('Error al crear configuración:', configError)
+    }
 
     return {
         id: newUser.user_id.toString(),
