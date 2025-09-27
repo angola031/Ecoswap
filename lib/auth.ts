@@ -188,49 +188,127 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
     const apellido = nameParts.slice(1).join(' ') || ''
 
     // Crear el usuario en la tabla USUARIO (usando la estructura existente)
-    const { data: newUser, error: insertError } = await supabase
-        .from('usuario')
-        .insert({
-            nombre,
-            apellido,
-            email: authUser.email,
-            telefono: registerData.phone,
-            password_hash: 'supabase_auth', // Marcador para indicar que usa Supabase Auth
-            fecha_nacimiento: null,
-            biografia: null,
-            foto_perfil: null,
-            calificacion_promedio: 0.00,
-            total_intercambios: 0,
-            eco_puntos: 0,
-            verificado: false, // Verificado por Supabase Auth
-            activo: true,
-            ultima_conexion: new Date().toISOString()
-        })
-        .select()
-        .single()
+    // Campos mínimos requeridos según el esquema
+    const userData: any = {
+        nombre: nombre || 'Usuario',
+        apellido: apellido || 'Sin Apellido',
+        email: authUser.email,
+        password_hash: 'supabase_auth',
+        telefono: registerData.phone || null,
+        verificado: true,
+        activo: true,
+        auth_user_id: authUser.id
+    }
+    
+    // Campos opcionales que pueden no existir en la tabla
+    try {
+        userData.fecha_nacimiento = null
+        userData.biografia = null
+        userData.foto_perfil = null
+        userData.calificacion_promedio = 0.00
+        userData.total_intercambios = 0
+        userData.eco_puntos = 0
+        userData.ultima_conexion = new Date().toISOString()
+    } catch (e) {
+        console.log('⚠️ Algunos campos opcionales no se pudieron agregar:', e)
+    }
+    
+    console.log('👤 Creando usuario:', userData)
+    
+    try {
+        const { data: newUser, error: insertError } = await supabase
+            .from('usuario')
+            .insert(userData)
+            .select()
+            .single()
 
-    if (insertError) {
-        console.error('Error al crear perfil de usuario:', insertError)
-        throw insertError
+        if (insertError) {
+            console.error('❌ Error al crear perfil de usuario:', insertError)
+            console.error('❌ Detalles del error:', {
+                message: insertError.message,
+                details: insertError.details,
+                hint: insertError.hint,
+                code: insertError.code
+            })
+            
+            // Intentar inserción con campos mínimos
+            console.log('🔄 Intentando inserción con campos mínimos...')
+            const minimalUserData = {
+                nombre: nombre || 'Usuario',
+                apellido: apellido || 'Sin Apellido',
+                email: authUser.email,
+                password_hash: 'supabase_auth',
+                telefono: registerData.phone || null,
+                verificado: true,
+                activo: true,
+                auth_user_id: authUser.id
+            }
+            
+            const { data: newUserMinimal, error: insertErrorMinimal } = await supabase
+                .from('usuario')
+                .insert(minimalUserData)
+                .select()
+                .single()
+                
+            if (insertErrorMinimal) {
+                console.error('❌ Error también con campos mínimos:', insertErrorMinimal)
+                throw insertErrorMinimal
+            }
+            
+            console.log('✅ Usuario creado con campos mínimos:', newUserMinimal)
+            return newUserMinimal
+        }
+        
+        console.log('✅ Usuario creado exitosamente:', newUser)
+        return newUser
+        
+    } catch (error) {
+        console.error('❌ Error completo en creación de usuario:', error)
+        throw error
     }
 
     // Crear ubicación principal del usuario
     const locationParts = registerData.location.split(', ')
     const ciudad = locationParts[0] || ''
     const departamento = locationParts[1] || ''
+    
+    console.log('📍 Creando ubicación:', {
+      location: registerData.location,
+      ciudad,
+      departamento,
+      parts: locationParts
+    })
 
-    await supabase
+    const ubicacionData = {
+        user_id: newUser.user_id,
+        pais: 'Colombia',
+        departamento,
+        ciudad,
+        barrio: null,
+        latitud: null,
+        longitud: null,
+        es_principal: true
+    }
+    
+    console.log('📍 Creando ubicación:', ubicacionData)
+    
+    const { error: ubicacionError } = await supabase
         .from('ubicacion')
-        .insert({
-            user_id: newUser.user_id,
-            pais: 'Colombia',
-            departamento,
-            ciudad,
-            barrio: null,
-            latitud: null,
-            longitud: null,
-            es_principal: true
+        .insert(ubicacionData)
+    
+    if (ubicacionError) {
+        console.error('❌ Error al crear ubicación:', ubicacionError)
+        console.error('❌ Detalles del error de ubicación:', {
+            message: ubicacionError.message,
+            details: ubicacionError.details,
+            hint: ubicacionError.hint,
+            code: ubicacionError.code
         })
+        // No lanzar error aquí, solo loggear, ya que el usuario ya se creó
+        console.log('⚠️ Usuario creado pero ubicación no se pudo crear')
+    } else {
+        console.log('✅ Ubicación creada exitosamente')
+    }
 
     // Crear configuración por defecto del usuario
     await supabase

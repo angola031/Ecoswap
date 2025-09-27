@@ -46,6 +46,7 @@ interface Product {
   }
   imagenes: string[]
   total_productos_usuario: number
+  especificaciones?: Record<string, string>
 }
 
 export default function ProductDetailPage() {
@@ -62,6 +63,7 @@ export default function ProductDetailPage() {
   const [showContactInfo, setShowContactInfo] = useState(false)
   const [activeTab, setActiveTab] = useState<'details' | 'specifications' | 'seller'>('details')
   const [isOwner, setIsOwner] = useState(false)
+  const [ownerCheckComplete, setOwnerCheckComplete] = useState(false)
   const [stats, setStats] = useState({
     views: 0,
     likes: 0
@@ -97,6 +99,75 @@ export default function ProductDetailPage() {
           setStats(prev => ({ ...prev, views: product.visualizaciones }))
         }
 
+        // VERIFICACIÓN INMEDIATA DEL PROPIETARIO
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          // Debug logs solo en desarrollo
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Debug completo de verificación:', {
+              hasSession: !!session?.access_token,
+              sessionUser: session?.user,
+              productUsuario: product?.usuario,
+              productOwnerEmail: product?.usuario?.email,
+              currentUserEmail: session?.user?.email,
+              emailMatch: product?.usuario?.email === session?.user?.email
+            })
+          }
+          
+          let isProductOwner = false
+          
+          // Método 1: Comparar por email (si está disponible)
+          if (session?.access_token && product?.usuario?.email && session.user?.email) {
+            isProductOwner = product.usuario.email === session.user.email
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🔍 Verificando por email:', {
+                productOwnerEmail: product.usuario.email,
+                currentUserEmail: session.user.email,
+                isOwner: isProductOwner
+              })
+            }
+          } 
+          // Método 2: Comparar por user_id (fallback)
+          else if (session?.access_token && product?.usuario?.user_id) {
+            try {
+              // Obtener el user_id del usuario actual desde la base de datos
+              const { data: currentUser } = await supabase
+                .from('usuario')
+                .select('user_id')
+                .eq('email', session.user.email)
+                .single()
+              
+              if (currentUser) {
+                isProductOwner = currentUser.user_id === product.usuario.user_id
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🔍 Verificando por user_id:', {
+                    productUserId: product.usuario.user_id,
+                    currentUserId: currentUser.user_id,
+                    isOwner: isProductOwner
+                  })
+                }
+              }
+            } catch (dbError) {
+              console.error('Error obteniendo user_id:', dbError)
+            }
+          }
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Resultado final de verificación:', {
+              isOwner: isProductOwner,
+              method: product?.usuario?.email ? 'email' : 'user_id'
+            })
+          }
+          
+          setIsOwner(isProductOwner)
+          setOwnerCheckComplete(true)
+          
+        } catch (error) {
+          console.error('Error en verificación inmediata:', error)
+          setIsOwner(false)
+          setOwnerCheckComplete(true)
+        }
+
         // Obtener estadísticas del producto
         try {
           const statsResponse = await fetch(`/api/products/${productId}/stats`)
@@ -108,22 +179,27 @@ export default function ProductDetailPage() {
           console.warn('No se pudieron cargar las estadísticas:', statsError)
         }
 
-        // Consultar si el usuario ya dio like y si es dueño
+        // Cargar estado de like solo si NO es el dueño
         try {
           const { data: { session } } = await supabase.auth.getSession()
-          if (session?.access_token) {
-            if (product?.usuario?.email && session.user?.email) {
-              setIsOwner(product.usuario.email === session.user.email)
-            }
-            const likeRes = await fetch(`/api/products/${productId}/like`, {
-              headers: { Authorization: `Bearer ${session.access_token}` }
-            })
-            if (likeRes.ok) {
-              const json = await likeRes.json()
-              if (typeof json?.liked === 'boolean') setIsLiked(json.liked)
+          if (session?.access_token && product?.usuario?.email && session.user?.email) {
+            const isProductOwner = product.usuario.email === session.user.email
+            if (!isProductOwner) {
+              const likeRes = await fetch(`/api/products/${productId}/like`, {
+                headers: { Authorization: `Bearer ${session.access_token}` }
+              })
+              if (likeRes.ok) {
+                const json = await likeRes.json()
+                if (typeof json?.liked === 'boolean') setIsLiked(json.liked)
+              }
+            } else {
+              // Si es el dueño, asegurar que no tenga like activo
+              setIsLiked(false)
             }
           }
-        } catch {}
+        } catch (error) {
+          console.error('Error cargando estado de like:', error)
+        }
 
       } catch (error) {
         console.error('Error cargando producto:', error)
@@ -148,13 +224,30 @@ export default function ProductDetailPage() {
     }
   }
 
-  const handleInterest = () => {
+  const handleInterest = async () => {
+    if (isOwner) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚫 Usuario dueño intentando mostrar interés en su propio producto')
+      }
+      alert('No puedes mostrar interés en tu propia publicación')
+      return
+    }
+    
     setIsInterested(!isInterested)
     // Aquí iría la lógica para mostrar interés en el producto
   }
 
   const handleLike = async () => {
     if (!product) return
+    
+    if (isOwner) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚫 Usuario dueño intentando dar like a su propio producto')
+      }
+      alert('No puedes dar me gusta a tu propia publicación')
+      return
+    }
+    
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
@@ -170,7 +263,9 @@ export default function ProductDetailPage() {
         setIsLiked(!isLiked)
         setStats(prev => ({ ...prev, likes: Math.max(0, prev.likes + (isLiked ? -1 : 1)) }))
       }
-    } catch {}
+    } catch (error) {
+      console.error('Error al dar like:', error)
+    }
   }
 
   const handleShare = () => {
@@ -190,6 +285,20 @@ export default function ProductDetailPage() {
   const handleReport = () => {
     // Aquí iría la lógica para reportar el producto
     alert('Función de reporte en desarrollo')
+  }
+
+  const handleChat = () => {
+    if (isOwner) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚫 Usuario dueño intentando chatear consigo mismo')
+      }
+      alert('No puedes enviarte mensajes a ti mismo')
+      return
+    }
+    
+    // Aquí iría la lógica para iniciar un chat con el vendedor
+    // Por ejemplo, redirigir a una página de chat o abrir un modal
+    alert('Función de chat en desarrollo')
   }
 
   const formatPrice = (price: number) => {
@@ -430,6 +539,7 @@ export default function ProductDetailPage() {
                 <span>{product.ubicacion.ciudad}, {product.ubicacion.departamento}</span>
               </div>
 
+              
               {/* Acciones */}
               <div className="flex space-x-3">
                 <button
@@ -459,13 +569,14 @@ export default function ProductDetailPage() {
                   {isLiked ? <HeartIconSolid className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
                 </button>
                 <button
+                  onClick={handleChat}
                   disabled={isOwner}
                   aria-disabled={isOwner}
                   className={`p-3 rounded-lg border transition-colors ${isOwner
                     ? 'border-gray-400 text-gray-300 bg-gray-100 cursor-not-allowed pointer-events-none'
                     : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600'
                   }`}
-                  title={isOwner ? 'No puedes enviarte mensajes a ti mismo' : undefined}
+                  title={isOwner ? 'No puedes enviarte mensajes a ti mismo' : 'Iniciar chat con el vendedor'}
                 >
                   <ChatBubbleLeftRightIcon className="w-5 h-5" />
                 </button>
@@ -642,3 +753,4 @@ export default function ProductDetailPage() {
     </div>
   )
 }
+

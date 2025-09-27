@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Validación Teléfono</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 3px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Prueba de Validación de Teléfono</h1>
+    
+    <div class="test-section">
+        <h3>1. Probar Conexión a BD</h3>
+        <button onclick="testConnection()">Probar Conexión</button>
+        <div id="connection-result" class="result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Probar Validación de Teléfono</h3>
+        <input type="text" id="phone-input" placeholder="3001234567" value="3001234567">
+        <button onclick="testPhoneValidation()">Validar Teléfono</button>
+        <div id="phone-result" class="result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Probar con Teléfono Existente</h3>
+        <input type="text" id="existing-phone" placeholder="Ingresa un teléfono existente">
+        <button onclick="testExistingPhone()">Validar Teléfono Existente</button>
+        <div id="existing-result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        async function testConnection() {
+            const resultDiv = document.getElementById('connection-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '🔄 Probando conexión...';
+            
+            try {
+                const response = await fetch('/api/auth/check-phone', {
+                    method: 'GET'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `✅ ${data.message}<br>Datos de muestra: ${JSON.stringify(data.sampleData)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Error: ${data.error}<br>Código: ${data.code}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Error de conexión: ${error.message}`;
+            }
+        }
+        
+        async function testPhoneValidation() {
+            const phone = document.getElementById('phone-input').value;
+            const resultDiv = document.getElementById('phone-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `🔄 Validando teléfono: ${phone}...`;
+            
+            try {
+                const response = await fetch('/api/auth/check-phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+                
+                const data = await response.json();
+                
+                if (data.exists) {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `⚠️ Teléfono ya existe: ${data.message}`;
+                } else {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `✅ Teléfono disponible: ${data.message || 'No hay mensaje'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        async function testExistingPhone() {
+            const phone = document.getElementById('existing-phone').value;
+            if (!phone) {
+                alert('Por favor ingresa un teléfono');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('existing-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `🔄 Validando teléfono existente: ${phone}...`;
+            
+            try {
+                const response = await fetch('/api/auth/check-phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+                
+                const data = await response.json();
+                
+                if (data.exists) {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `⚠️ Teléfono encontrado: ${data.message}<br>Activo: ${data.active}`;
+                } else {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `✅ Teléfono no encontrado (disponible)`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

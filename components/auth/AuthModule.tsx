@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   EyeIcon,
@@ -33,7 +33,21 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
     checking: boolean
     exists: boolean
     message: string
-  }>({ checking: false, exists: false, message: '' })
+    isValidFormat: boolean
+  }>({ checking: false, exists: false, message: '', isValidFormat: true })
+  
+  const [phoneValidation, setPhoneValidation] = useState<{
+    checking: boolean
+    exists: boolean
+    message: string
+    isValidFormat: boolean
+  }>({ checking: false, exists: false, message: '', isValidFormat: true })
+  
+  // Estados para ubicaciones de Colombia
+  const [departamentos, setDepartamentos] = useState<Array<{id: number, departamento: string, ciudades: string[]}>>([])
+  const [ciudades, setCiudades] = useState<string[]>([])
+  const [selectedDepartamento, setSelectedDepartamento] = useState<string>('')
+  const [selectedCiudad, setSelectedCiudad] = useState<string>('')
 
   // Estados del formulario de login
   const [loginForm, setLoginForm] = useState({
@@ -55,6 +69,23 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
   const [forgotPasswordForm, setForgotPasswordForm] = useState({
     email: ''
   })
+
+  // Cargar datos de Colombia al montar el componente
+  useEffect(() => {
+    const loadColombiaData = async () => {
+      try {
+        const response = await fetch('/data/colombia.json')
+        if (response.ok) {
+          const data = await response.json()
+          setDepartamentos(data)
+        }
+      } catch (error) {
+        console.error('Error cargando datos de Colombia:', error)
+      }
+    }
+    
+    loadColombiaData()
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,9 +138,30 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
       return
     }
 
+    // Verificar formato de email
+    if (!emailValidation.isValidFormat) {
+      setError('Por favor ingresa un formato de correo electrónico válido')
+      setIsLoading(false)
+      return
+    }
+
     // Verificar si el email ya existe
     if (emailValidation.exists) {
       setError(emailValidation.message)
+      setIsLoading(false)
+      return
+    }
+
+    // Verificar formato de teléfono
+    if (!phoneValidation.isValidFormat) {
+      setError('Por favor ingresa un formato de teléfono válido')
+      setIsLoading(false)
+      return
+    }
+
+    // Verificar si el teléfono ya existe
+    if (phoneValidation.exists) {
+      setError(phoneValidation.message)
       setIsLoading(false)
       return
     }
@@ -206,24 +258,177 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
     setLoginForm(prev => ({ ...prev, [field]: value }))
   }
 
+  // Función para validar formato de email
+  const isValidEmailFormat = (email: string): boolean => {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+    return emailRegex.test(email)
+  }
+
+  // Función para validar formato de teléfono colombiano
+  const isValidPhoneFormat = (phone: string): boolean => {
+    // Remover espacios, guiones y paréntesis
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '')
+    
+    // Si está vacío, es válido (no mostrar error)
+    if (cleanPhone.length === 0) return true
+    
+    // Si tiene menos de 3 dígitos, es válido (pero no completo)
+    if (cleanPhone.length < 3) return true
+    
+    // Si empieza con 3 y tiene entre 3-10 dígitos, es válido
+    if (cleanPhone.startsWith('3') && cleanPhone.length <= 10 && /^[0-9]+$/.test(cleanPhone)) {
+      return true
+    }
+    
+    // Si no empieza con 3 o tiene más de 10 dígitos, es inválido
+    return false
+  }
+
+  // Función para verificar si el teléfono ya existe
+  const checkPhoneExists = async (phone: string) => {
+    try {
+      const response = await fetch('/api/auth/check-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone })
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al verificar teléfono')
+      }
+
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('Error checking phone:', error)
+      return { exists: false, error: true }
+    }
+  }
+
   const updateRegisterForm = (field: string, value: string) => {
     setRegisterForm(prev => ({ ...prev, [field]: value }))
 
     // Validar email en tiempo real cuando se cambia
-    if (field === 'email' && value.length > 5) {
-      validateEmail(value)
+    if (field === 'email') {
+      // Validar formato primero
+      const isValidFormat = isValidEmailFormat(value)
+      setEmailValidation(prev => ({ 
+        ...prev, 
+        isValidFormat,
+        message: isValidFormat ? prev.message : 'Formato de correo electrónico inválido'
+      }))
+      
+      // Solo validar existencia si el formato es válido y tiene más de 5 caracteres
+      if (isValidFormat && value.length > 5) {
+        validateEmail(value)
+      } else if (!isValidFormat && value.length > 0) {
+        setEmailValidation(prev => ({ 
+          ...prev, 
+          checking: false, 
+          exists: false, 
+          message: 'Formato de correo electrónico inválido'
+        }))
+      } else if (value.length === 0) {
+        setEmailValidation({ checking: false, exists: false, message: '', isValidFormat: true })
+      }
+    }
+
+    // Validar teléfono en tiempo real cuando se cambia
+    if (field === 'phone') {
+      console.log('📱 Campo teléfono cambiado:', value)
+      
+      // Validar formato primero
+      const isValidFormat = isValidPhoneFormat(value)
+      console.log('📱 Formato válido:', isValidFormat)
+      
+      setPhoneValidation(prev => ({ 
+        ...prev, 
+        isValidFormat,
+        message: isValidFormat ? prev.message : 'Formato de teléfono inválido. Debe ser un número colombiano de 10 dígitos que empiece con 3.'
+      }))
+      
+      // Solo validar existencia si el formato es válido y tiene exactamente 10 dígitos
+      const cleanPhone = value.replace(/[\s\-\(\)]/g, '')
+      console.log('📱 Teléfono limpio:', cleanPhone, 'Longitud:', cleanPhone.length)
+      
+      if (isValidFormat && cleanPhone.length === 10) {
+        console.log('📱 Llamando validatePhone...')
+        validatePhone(value)
+      } else if (!isValidFormat && value.length > 0) {
+        console.log('📱 Formato inválido, mostrando error')
+        setPhoneValidation(prev => ({ 
+          ...prev, 
+          checking: false, 
+          exists: false, 
+          message: 'Formato de teléfono inválido. Debe ser un número colombiano de 10 dígitos que empiece con 3.'
+        }))
+      } else if (value.length === 0) {
+        console.log('📱 Campo vacío, limpiando validación')
+        setPhoneValidation({ checking: false, exists: false, message: '', isValidFormat: true })
+      }
+    }
+  }
+
+  // Manejar selección de departamento
+  const handleDepartamentoChange = (departamento: string) => {
+    setSelectedDepartamento(departamento)
+    setSelectedCiudad('')
+    
+    // Encontrar el departamento seleccionado y cargar sus ciudades
+    const dept = departamentos.find(d => d.departamento === departamento)
+    if (dept) {
+      setCiudades(dept.ciudades)
+    } else {
+      setCiudades([])
+    }
+    
+    // Actualizar el formulario con la ubicación completa
+    if (departamento) {
+      updateRegisterForm('location', departamento)
+    }
+  }
+
+  // Manejar selección de ciudad
+  const handleCiudadChange = (ciudad: string) => {
+    setSelectedCiudad(ciudad)
+    
+    // Actualizar el formulario con la ubicación completa
+    if (ciudad && selectedDepartamento) {
+      updateRegisterForm('location', `${ciudad}, ${selectedDepartamento}`)
     }
   }
 
   // Función para validar email en tiempo real
   const validateEmail = async (email: string) => {
-    setEmailValidation({ checking: true, exists: false, message: '' })
+    // No validar si el formato no es válido
+    if (!isValidEmailFormat(email)) {
+      setEmailValidation({ 
+        checking: false, 
+        exists: false, 
+        message: 'Formato de correo electrónico inválido',
+        isValidFormat: false
+      })
+      return
+    }
+
+    setEmailValidation(prev => ({ 
+      ...prev, 
+      checking: true, 
+      exists: false, 
+      message: '',
+      isValidFormat: true
+    }))
 
     try {
       const { exists, verified, active, error } = await checkEmailExists(email)
 
       if (error) {
-        setEmailValidation({ checking: false, exists: false, message: '' })
+        setEmailValidation({ 
+          checking: false, 
+          exists: false, 
+          message: '',
+          isValidFormat: true
+        })
         return
       }
 
@@ -232,26 +437,107 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
           setEmailValidation({
             checking: false,
             exists: true,
-            message: 'Este correo ya está registrado y verificado. Inicia sesión en su lugar.'
+            message: 'Este correo ya está registrado y verificado. Inicia sesión en su lugar.',
+            isValidFormat: true
           })
         } else if (!verified && active) {
           setEmailValidation({
             checking: false,
             exists: true,
-            message: 'Este correo ya está registrado pero no verificado. Revisa tu email.'
+            message: 'Este correo ya está registrado pero no verificado. Revisa tu email.',
+            isValidFormat: true
           })
         } else {
           setEmailValidation({
             checking: false,
             exists: true,
-            message: 'Esta cuenta está desactivada. Contacta al soporte.'
+            message: 'Esta cuenta está desactivada. Contacta al soporte.',
+            isValidFormat: true
           })
         }
       } else {
-        setEmailValidation({ checking: false, exists: false, message: '' })
+        setEmailValidation({ 
+          checking: false, 
+          exists: false, 
+          message: '',
+          isValidFormat: true
+        })
       }
     } catch (error) {
-      setEmailValidation({ checking: false, exists: false, message: '' })
+      setEmailValidation({ 
+        checking: false, 
+        exists: false, 
+        message: '',
+        isValidFormat: true
+      })
+    }
+  }
+
+  // Función para validar teléfono en tiempo real
+  const validatePhone = async (phone: string) => {
+    console.log('🔍 Validando teléfono:', phone)
+    
+    // No validar si el formato no es válido
+    if (!isValidPhoneFormat(phone)) {
+      console.log('❌ Formato de teléfono inválido')
+      setPhoneValidation({ 
+        checking: false, 
+        exists: false, 
+        message: 'Formato de teléfono inválido. Debe ser un número colombiano de 10 dígitos que empiece con 3.',
+        isValidFormat: false
+      })
+      return
+    }
+
+    console.log('✅ Formato válido, verificando en BD...')
+    setPhoneValidation(prev => ({ 
+      ...prev, 
+      checking: true, 
+      exists: false, 
+      message: '',
+      isValidFormat: true
+    }))
+
+    try {
+      const result = await checkPhoneExists(phone)
+      console.log('📞 Resultado de verificación:', result)
+
+      if (result.error) {
+        console.log('❌ Error en verificación')
+        setPhoneValidation({ 
+          checking: false, 
+          exists: false, 
+          message: '',
+          isValidFormat: true
+        })
+        return
+      }
+
+      if (result.exists) {
+        console.log('⚠️ Teléfono ya existe')
+        setPhoneValidation({
+          checking: false,
+          exists: true,
+          message: result.message || 'Este número de teléfono ya está registrado.',
+          isValidFormat: true
+        })
+      } else {
+        console.log('✅ Teléfono disponible')
+        setPhoneValidation({ 
+          checking: false, 
+          exists: false, 
+          message: '',
+          isValidFormat: true
+        })
+      }
+    } catch (error) {
+      console.error('❌ Error en validación de teléfono:', error)
+      setPhoneValidation({ 
+        checking: false, 
+        exists: false, 
+        message: '',
+        isValidFormat: true
+      })
     }
   }
 
@@ -453,7 +739,8 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                   <div className="relative">
                     <EnvelopeIcon className={`w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 ${emailValidation.checking ? 'text-blue-400' :
                       emailValidation.exists ? 'text-red-400' :
-                        registerForm.email.length > 5 ? 'text-green-400' : 'text-gray-400'
+                        !emailValidation.isValidFormat && registerForm.email.length > 0 ? 'text-red-400' :
+                          registerForm.email.length > 5 && !emailValidation.exists && emailValidation.isValidFormat ? 'text-green-400' : 'text-gray-400'
                       }`} />
                     <input
                       id="register-email"
@@ -461,7 +748,8 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                       value={registerForm.email}
                       onChange={(e) => updateRegisterForm('email', e.target.value)}
                       className={`input-field pl-10 ${emailValidation.exists ? 'border-red-300 focus:border-red-500' :
-                        registerForm.email.length > 5 && !emailValidation.exists ? 'border-green-300 focus:border-green-500' : ''
+                        !emailValidation.isValidFormat && registerForm.email.length > 0 ? 'border-red-300 focus:border-red-500' :
+                          registerForm.email.length > 5 && !emailValidation.exists && emailValidation.isValidFormat ? 'border-green-300 focus:border-green-500' : ''
                         }`}
                       placeholder="tu@email.com"
                       required
@@ -473,7 +761,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                     )}
                   </div>
                   {emailValidation.message && (
-                    <p className={`mt-1 text-sm ${emailValidation.exists ? 'text-red-600' : 'text-green-600'
+                    <p className={`mt-1 text-sm ${emailValidation.exists || !emailValidation.isValidFormat ? 'text-red-600' : 'text-green-600'
                       }`}>
                       {emailValidation.message}
                     </p>
@@ -485,42 +773,84 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                     Teléfono
                   </label>
                   <div className="relative">
-                    <PhoneIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                    <PhoneIcon className={`w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 ${phoneValidation.checking ? 'text-blue-400' :
+                      phoneValidation.exists ? 'text-red-400' :
+                        !phoneValidation.isValidFormat && registerForm.phone.length > 0 ? 'text-red-400' :
+                          registerForm.phone.length === 10 && !phoneValidation.exists && phoneValidation.isValidFormat ? 'text-green-400' : 'text-gray-400'
+                      }`} />
                     <input
                       id="register-phone"
                       type="tel"
                       value={registerForm.phone}
                       onChange={(e) => updateRegisterForm('phone', e.target.value)}
-                      className="input-field pl-10"
-                      placeholder="+57 300 123 4567"
+                      className={`input-field pl-10 ${phoneValidation.exists ? 'border-red-300 focus:border-red-500' :
+                        !phoneValidation.isValidFormat && registerForm.phone.length > 0 ? 'border-red-300 focus:border-red-500' :
+                          registerForm.phone.length === 10 && !phoneValidation.exists && phoneValidation.isValidFormat ? 'border-green-300 focus:border-green-500' : ''
+                        }`}
+                      placeholder="300 123 4567"
                       required
                     />
+                    {phoneValidation.checking && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
                   </div>
+                  {phoneValidation.message && (
+                    <p className={`mt-1 text-sm ${phoneValidation.exists || !phoneValidation.isValidFormat ? 'text-red-600' : 'text-green-600'
+                      }`}>
+                      {phoneValidation.message}
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <label htmlFor="register-location" className="block text-sm font-medium text-gray-700 mb-2">
-                    Ciudad
+                  <label htmlFor="register-departamento" className="block text-sm font-medium text-gray-700 mb-2">
+                    Departamento
                   </label>
                   <div className="relative">
                     <MapPinIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                     <select
-                      id="register-location"
-                      value={registerForm.location}
-                      onChange={(e) => updateRegisterForm('location', e.target.value)}
+                      id="register-departamento"
+                      value={selectedDepartamento}
+                      onChange={(e) => handleDepartamentoChange(e.target.value)}
                       className="input-field pl-10"
                       required
                     >
-                      <option value="">Selecciona una ciudad</option>
-                      <option value="Pereira, Risaralda">Pereira, Risaralda</option>
-                      <option value="Bogotá D.C.">Bogotá D.C.</option>
-                      <option value="Medellín, Antioquia">Medellín, Antioquia</option>
-                      <option value="Cali, Valle del Cauca">Cali, Valle del Cauca</option>
-                      <option value="Barranquilla, Atlántico">Barranquilla, Atlántico</option>
-                      <option value="Cartagena, Bolívar">Cartagena, Bolívar</option>
+                      <option value="">Selecciona un departamento</option>
+                      {departamentos.map((dept) => (
+                        <option key={dept.id} value={dept.departamento}>
+                          {dept.departamento}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
+
+                {selectedDepartamento && (
+                  <div>
+                    <label htmlFor="register-ciudad" className="block text-sm font-medium text-gray-700 mb-2">
+                      Ciudad
+                    </label>
+                    <div className="relative">
+                      <MapPinIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                      <select
+                        id="register-ciudad"
+                        value={selectedCiudad}
+                        onChange={(e) => handleCiudadChange(e.target.value)}
+                        className="input-field pl-10"
+                        required
+                      >
+                        <option value="">Selecciona una ciudad</option>
+                        {ciudades.map((ciudad) => (
+                          <option key={ciudad} value={ciudad}>
+                            {ciudad}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label htmlFor="register-password" className="block text-sm font-medium text-gray-700 mb-2">
