@@ -45,6 +45,7 @@ interface ChatInfo {
   product: {
     id: string
     title: string
+    imageUrl?: string
   }
 }
 
@@ -77,37 +78,7 @@ export default function ChatPage() {
           return
         }
 
-        // Obtener información del chat
-        const chatResponse = await fetch(`/api/chat/${chatId}/info`, {
-          headers: { Authorization: `Bearer ${session.access_token}` }
-        })
-        
-        if (chatResponse.ok) {
-          const chatData = await chatResponse.json()
-          setChatInfo(chatData)
-        }
-
-        // Obtener mensajes
-        const messagesResponse = await fetch(`/api/chat/${chatId}/messages?limit=100`, {
-          headers: { Authorization: `Bearer ${session.access_token}` }
-        })
-        
-        if (messagesResponse.ok) {
-          const messagesData = await messagesResponse.json()
-          setMessages(messagesData.items || [])
-          
-          // Marcar mensajes como leídos
-          await fetch(`/api/chat/${chatId}/mark-read`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}` 
-            },
-            body: JSON.stringify({})
-          })
-        }
-
-        // Obtener usuario actual
+        // Obtener usuario actual primero
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           const { data: usuario } = await supabase
@@ -115,14 +86,80 @@ export default function ChatPage() {
             .select('user_id, nombre, apellido, foto_perfil')
             .eq('auth_user_id', user.id)
             .single()
+          setCurrentUser(usuario)
+        }
+
+        // Intentar obtener información del chat
+        try {
+          const chatResponse = await fetch(`/api/chat/${chatId}/info`, {
+            headers: { Authorization: `Bearer ${session.access_token}` }
+          })
           
-          if (usuario) {
-            setCurrentUser(usuario)
+          if (chatResponse.ok) {
+            const chatData = await chatResponse.json()
+            setChatInfo(chatData)
+          } else {
+            // Si no se puede cargar la info del chat, crear una interfaz básica
+            console.log('No se pudo cargar info del chat, creando interfaz básica')
+            setChatInfo({
+              chatId: chatId,
+              seller: {
+                id: 'unknown',
+                name: 'Vendedor',
+                lastName: '',
+                avatar: null
+              },
+              product: {
+                id: 'unknown',
+                title: 'Producto',
+                imageUrl: null
+              }
+            })
           }
+        } catch (error) {
+          console.log('Error cargando info del chat:', error)
+          // Crear interfaz básica si hay error
+          setChatInfo({
+            chatId: chatId,
+            seller: {
+              id: 'unknown',
+              name: 'Vendedor',
+              lastName: '',
+              avatar: null
+            },
+            product: {
+              id: 'unknown',
+              title: 'Producto',
+              imageUrl: null
+            }
+          })
+        }
+
+        // Intentar obtener mensajes
+        try {
+          const messagesResponse = await fetch(`/api/chat/${chatId}/messages?limit=100`, {
+            headers: { Authorization: `Bearer ${session.access_token}` }
+          })
+          
+          if (messagesResponse.ok) {
+            const messagesData = await messagesResponse.json()
+            setMessages(messagesData.items || [])
+            
+            // Marcar mensajes como leídos
+            if (messagesData.items?.length > 0) {
+              await fetch(`/api/chat/${chatId}/mark-read`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${session.access_token}` }
+              })
+            }
+          }
+        } catch (error) {
+          console.log('Error cargando mensajes:', error)
+          // Continuar sin mensajes si hay error
         }
 
       } catch (error) {
-        console.error('Error cargando chat:', error)
+        console.error('Error general cargando chat:', error)
       } finally {
         setIsLoading(false)
       }
@@ -131,10 +168,67 @@ export default function ChatPage() {
     loadChat()
   }, [chatId, router])
 
-  // Auto-scroll al final de los mensajes
+  // Auto-scroll al final cuando hay nuevos mensajes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Enviar mensaje
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || isSending || !chatId) return
+
+    setIsSending(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+
+      const response = await fetch(`/api/chat/${chatId}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          content: newMessage.trim(),
+          type: 'texto'
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setMessages(prev => [...prev, result.data])
+        setNewMessage('')
+        
+        // Auto-scroll al final
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        }, 100)
+      } else {
+        const error = await response.json()
+        console.error('Error enviando mensaje:', error)
+      }
+    } catch (error) {
+      console.error('Error enviando mensaje:', error)
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  // Manejar tecla Enter
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
+  }
+
+  // Seleccionar imagen
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleImageUpload(file)
+    }
+  }
 
   // Subir imagen
   const handleImageUpload = async (file: File) => {
@@ -194,63 +288,6 @@ export default function ChatPage() {
     }
   }
 
-  // Manejar selección de imagen
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      handleImageUpload(file)
-    }
-  }
-
-  // Enviar mensaje
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || isSending || !chatId) return
-
-    setIsSending(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) return
-
-      const response = await fetch(`/api/chat/${chatId}/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          content: newMessage.trim(),
-          type: 'texto'
-        })
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setMessages(prev => [...prev, result.data])
-        setNewMessage('')
-        
-        // Auto-scroll al final
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-        }, 100)
-      } else {
-        const error = await response.json()
-        console.error('Error enviando mensaje:', error)
-      }
-    } catch (error) {
-      console.error('Error enviando mensaje:', error)
-    } finally {
-      setIsSending(false)
-    }
-  }
-
-  // Manejar tecla Enter
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
-    }
-  }
-
   // Formatear tiempo
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp)
@@ -267,23 +304,24 @@ export default function ChatPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Cargando chat...</p>
         </div>
       </div>
     )
   }
 
+  // Si no hay chatInfo, mostrar interfaz básica
   if (!chatInfo) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Chat no encontrado</h1>
           <button
             onClick={() => router.push('/')}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Volver al inicio
           </button>
