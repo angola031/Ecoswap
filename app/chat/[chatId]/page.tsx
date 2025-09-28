@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import AuthGuard from '@/components/auth/AuthGuard'
 import { motion } from 'framer-motion'
 import {
   ArrowLeftIcon,
@@ -42,11 +43,26 @@ interface ChatInfo {
     lastName: string
     avatar?: string
   }
-  product: {
+  offeredProduct: {
     id: string
     title: string
+    precio?: number
+    tipo_transaccion?: string
+    condiciones_intercambio?: string
+    que_busco_cambio?: string
+    precio_negociable?: boolean
     imageUrl?: string
   }
+  requestedProduct?: {
+    id: string
+    title: string
+    precio?: number
+    tipo_transaccion?: string
+    condiciones_intercambio?: string
+    que_busco_cambio?: string
+    precio_negociable?: boolean
+    imageUrl?: string
+  } | null
 }
 
 export default function ChatPage() {
@@ -61,6 +77,7 @@ export default function ChatPage() {
   const [isSending, setIsSending] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isUserOnline, setIsUserOnline] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -71,12 +88,15 @@ export default function ChatPage() {
     const loadChat = async () => {
       if (!chatId) return
       
+      // Verificar autenticación primero
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        console.log('❌ [Chat] No hay sesión - redirigiendo al login')
+        router.push('/login')
+        return
+      }
+      
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) {
-          router.push('/')
-          return
-        }
 
         // Obtener usuario actual primero
         const { data: { user } } = await supabase.auth.getUser()
@@ -143,7 +163,25 @@ export default function ChatPage() {
           
           if (messagesResponse.ok) {
             const messagesData = await messagesResponse.json()
-            setMessages(messagesData.items || [])
+            
+            // Transformar mensajes de la API al formato esperado
+            const transformedMessages = (messagesData.items || []).map((msg: any) => ({
+              id: msg.mensaje_id?.toString() || '',
+              senderId: msg.usuario_id?.toString() || '',
+              content: msg.contenido || '',
+              timestamp: msg.fecha_envio || '',
+              isRead: msg.leido || false,
+              type: msg.tipo || 'texto',
+              imageUrl: msg.archivo_url || undefined,
+              sender: {
+                id: msg.usuario?.user_id?.toString() || '',
+                name: msg.usuario?.nombre || 'Usuario',
+                lastName: msg.usuario?.apellido || '',
+                avatar: msg.usuario?.foto_perfil || undefined
+              }
+            }))
+            
+            setMessages(transformedMessages)
             
             // Marcar mensajes como leídos
             if (messagesData.items?.length > 0) {
@@ -153,6 +191,134 @@ export default function ChatPage() {
               })
             }
           }
+
+          // Configurar tiempo real para nuevos mensajes y presencia
+          const channel = supabase
+            .channel(`chat-${chatId}`, {
+              config: {
+                broadcast: { self: false },
+                presence: { key: `user-${currentUser?.user_id}` }
+              }
+            })
+            // Detectar presencia del otro usuario
+            .on('presence', { event: 'sync' }, () => {
+              const presenceState = channel.presenceState()
+              const otherUserId = chatInfo?.seller?.id
+              if (otherUserId && presenceState[`user-${otherUserId}`]) {
+                setIsUserOnline(true)
+              } else {
+                setIsUserOnline(false)
+              }
+            })
+            .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+              const otherUserId = chatInfo?.seller?.id
+              if (otherUserId && key === `user-${otherUserId}`) {
+                setIsUserOnline(true)
+              }
+            })
+            .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+              const otherUserId = chatInfo?.seller?.id
+              if (otherUserId && key === `user-${otherUserId}`) {
+                setIsUserOnline(false)
+              }
+            })
+            .on('postgres_changes', {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'mensaje',
+              filter: `chat_id=eq.${chatId}`
+            }, async (payload) => {
+              console.log('🔔 Nuevo mensaje recibido:', payload)
+              
+              // Obtener información completa del mensaje con usuario
+              const { data: newMessageData } = await supabase
+                .from('mensaje')
+                .select(`
+                  mensaje_id,
+                  contenido,
+                  tipo,
+                  archivo_url,
+                  fecha_envio,
+                  leido,
+                  usuario_id,
+                  usuario (
+                    user_id,
+                    nombre,
+                    apellido,
+                    foto_perfil
+                  )
+                `)
+                .eq('mensaje_id', payload.new.mensaje_id)
+                .single()
+
+              if (newMessageData) {
+                // Transformar mensaje al formato esperado
+                const transformedMessage = {
+                  id: newMessageData.mensaje_id?.toString() || '',
+                  senderId: newMessageData.usuario_id?.toString() || '',
+                  content: newMessageData.contenido || '',
+                  timestamp: newMessageData.fecha_envio || '',
+                  isRead: newMessageData.leido || false,
+                  type: newMessageData.tipo || 'texto',
+                  imageUrl: newMessageData.archivo_url || undefined,
+                  sender: {
+                    id: newMessageData.usuario?.user_id?.toString() || '',
+                    name: newMessageData.usuario?.nombre || 'Usuario',
+                    lastName: newMessageData.usuario?.apellido || '',
+                    avatar: newMessageData.usuario?.foto_perfil || undefined
+                  }
+                }
+
+                setMessages(prev => {
+                  // Evitar duplicados
+                  const exists = prev.some(msg => msg.id === transformedMessage.id)
+                  if (exists) return prev
+                  return [...prev, transformedMessage]
+                })
+
+                // Mostrar notificación si el mensaje es de otro usuario
+                const isFromOtherUser = transformedMessage.senderId !== currentUser?.user_id?.toString()
+                if (isFromOtherUser) {
+                  // Mostrar notificación de mensaje recibido
+                  await (window as any).Swal.fire({
+                    title: 'Nuevo Mensaje',
+                    text: `${transformedMessage.sender.name}: ${transformedMessage.content.slice(0, 50)}${transformedMessage.content.length > 50 ? '...' : ''}`,
+                    icon: 'info',
+                    timer: 3000,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                  })
+                }
+
+                // Auto-scroll al final
+                setTimeout(() => {
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+                }, 100)
+              }
+            })
+            .subscribe(async (status) => {
+              if (status === 'SUBSCRIBED') {
+                // Suscribir al usuario actual para presencia
+                if (currentUser?.user_id) {
+                  await channel.track({
+                    user_id: currentUser.user_id,
+                    name: `${currentUser.nombre} ${currentUser.apellido}`,
+                    online_at: new Date().toISOString()
+                  })
+                }
+              }
+            })
+
+          // Guardar referencia del canal para limpiarlo después
+          return () => {
+            if (currentUser?.user_id) {
+              channel.untrack()
+            }
+            supabase.removeChannel(channel)
+          }
+
         } catch (error) {
           console.log('Error cargando mensajes:', error)
           // Continuar sin mensajes si hay error
@@ -165,7 +331,8 @@ export default function ChatPage() {
       }
     }
 
-    loadChat()
+    const cleanup = loadChat()
+    return cleanup
   }, [chatId, router])
 
   // Auto-scroll al final cuando hay nuevos mensajes
@@ -177,10 +344,39 @@ export default function ChatPage() {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || isSending || !chatId) return
 
+    // Crear mensaje optimista inmediatamente
+    const optimisticMessage = {
+      id: `temp-${Date.now()}`, // ID temporal
+      senderId: String(currentUser?.user_id || ''),
+      content: newMessage.trim(),
+      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      isRead: false,
+      type: 'texto',
+      sender: {
+        id: String(currentUser?.user_id || ''),
+        name: currentUser?.nombre || 'Usuario',
+        lastName: currentUser?.apellido || '',
+        avatar: currentUser?.foto_perfil || undefined
+      }
+    }
+
+    // Actualizar inmediatamente la interfaz (actualización optimista)
+    setMessages(prev => [...prev, optimisticMessage])
+    setNewMessage('')
     setIsSending(true)
+
+    // Auto-scroll inmediato
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, 50)
+
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) return
+      if (!session?.access_token) {
+        console.log('❌ [Chat] No hay sesión - redirigiendo al login')
+        router.push('/login')
+        return
+      }
 
       const response = await fetch(`/api/chat/${chatId}/send`, {
         method: 'POST',
@@ -196,19 +392,57 @@ export default function ChatPage() {
 
       if (response.ok) {
         const result = await response.json()
-        setMessages(prev => [...prev, result.data])
-        setNewMessage('')
         
-        // Auto-scroll al final
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-        }, 100)
+        // Transformar el mensaje al formato esperado
+        const realMessage = {
+          id: result.data.id?.toString() || '',
+          senderId: result.data.sender?.id?.toString() || '',
+          content: result.data.content || '',
+          timestamp: result.data.timestamp || '',
+          isRead: result.data.isRead || false,
+          type: result.data.type || 'texto',
+          imageUrl: result.data.imageUrl || undefined,
+          sender: {
+            id: result.data.sender?.id?.toString() || '',
+            name: result.data.sender?.name || 'Usuario',
+            lastName: result.data.sender?.lastName || '',
+            avatar: result.data.sender?.avatar || undefined
+          }
+        }
+        
+        // Reemplazar mensaje temporal con el real
+        setMessages(prev => prev.map(msg => msg.id === optimisticMessage.id ? realMessage : msg))
+        
       } else {
         const error = await response.json()
         console.error('Error enviando mensaje:', error)
+        
+        // Revertir mensaje optimista si falla
+        setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id))
+        
+        // Mostrar error si no se pudo enviar
+        await (window as any).Swal.fire({
+          title: 'Error',
+          text: 'No se pudo enviar el mensaje. Inténtalo de nuevo.',
+          icon: 'error',
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#3B82F6'
+        })
       }
     } catch (error) {
       console.error('Error enviando mensaje:', error)
+      
+      // Revertir mensaje optimista si hay excepción
+      setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id))
+      
+      // Mostrar error si hay excepción
+      await (window as any).Swal.fire({
+        title: 'Error',
+        text: 'Ocurrió un error al enviar el mensaje. Inténtalo de nuevo.',
+        icon: 'error',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#3B82F6'
+      })
     } finally {
       setIsSending(false)
     }
@@ -290,7 +524,13 @@ export default function ChatPage() {
 
   // Formatear tiempo
   const formatTime = (timestamp: string) => {
+    if (!timestamp) return 'Sin fecha'
+    
     const date = new Date(timestamp)
+    if (isNaN(date.getTime())) {
+      return 'Fecha inválida'
+    }
+    
     return date.toLocaleTimeString('es-CO', { 
       hour: '2-digit', 
       minute: '2-digit' 
@@ -358,7 +598,8 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <AuthGuard>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header mejorado */}
       <div className="bg-white shadow-lg border-b border-gray-200 px-4 py-4">
         <div className="flex items-center justify-between">
@@ -373,7 +614,7 @@ export default function ChatPage() {
             <div className="flex items-center space-x-3">
               <div className="relative">
                 <UserAvatar user={chatInfo.seller} size="w-12 h-12" />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                <div className={`absolute -bottom-1 -right-1 w-4 h-4 border-2 border-white rounded-full ${isUserOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
               </div>
               
               <div>
@@ -381,7 +622,9 @@ export default function ChatPage() {
                   {chatInfo.seller.name} {chatInfo.seller.lastName}
                 </h1>
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-green-600 font-medium">● En línea</span>
+                  <span className={`text-sm font-medium ${isUserOnline ? 'text-green-600' : 'text-gray-400'}`}>
+                    ● {isUserOnline ? 'En línea' : 'Desconectado'}
+                  </span>
                   <span className="text-sm text-gray-500">•</span>
                   <span className="text-sm text-gray-500">Vendedor</span>
                 </div>
@@ -405,10 +648,10 @@ export default function ChatPage() {
         {/* Información del producto mejorada */}
         <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
           <div className="flex items-center space-x-4">
-            {chatInfo.product.imageUrl ? (
+            {chatInfo.offeredProduct.imageUrl ? (
               <img
-                src={chatInfo.product.imageUrl}
-                alt={chatInfo.product.title}
+                src={chatInfo.offeredProduct.imageUrl}
+                alt={chatInfo.offeredProduct.title}
                 className="w-16 h-16 rounded-xl object-cover shadow-md"
                 onError={(e) => {
                   // Si la imagen falla, mostrar icono por defecto
@@ -418,7 +661,7 @@ export default function ChatPage() {
                 }}
               />
             ) : null}
-            <div className={`w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center shadow-md ${chatInfo.product.imageUrl ? 'hidden' : ''}`}>
+            <div className={`w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center shadow-md ${chatInfo.offeredProduct.imageUrl ? 'hidden' : ''}`}>
               <ShoppingBagIcon className="w-8 h-8 text-gray-500" />
             </div>
             <div className="flex-1">
@@ -430,14 +673,14 @@ export default function ChatPage() {
                   💬 Conversación activa
                 </span>
               </div>
-              <h3 className="font-bold text-gray-900 text-base mb-1">{chatInfo.product.title}</h3>
+              <h3 className="font-bold text-gray-900 text-base mb-1">{chatInfo.offeredProduct.title}</h3>
               <p className="text-sm text-gray-600">
                 Intercambio en proceso con <span className="font-semibold text-blue-600">{chatInfo.seller.name}</span>
               </p>
             </div>
             <div className="flex flex-col space-y-2">
               <button 
-                onClick={() => router.push(`/producto/${chatInfo.product.id}`)}
+                onClick={() => router.push(`/producto/${chatInfo.offeredProduct.id}`)}
                 className="p-2 hover:bg-blue-100 rounded-lg transition-colors group"
                 title="Ver producto"
               >
@@ -470,16 +713,16 @@ export default function ChatPage() {
             </h3>
             <p className="text-gray-600 mb-4 max-w-md">
               Comienza a chatear con <span className="font-semibold text-blue-600">{chatInfo.seller.name}</span> sobre 
-              <span className="font-semibold text-gray-800"> "{chatInfo.product.title}"</span>
+              <span className="font-semibold text-gray-800"> "{chatInfo.offeredProduct.title}"</span>
             </p>
             
             {/* Información del producto en la pantalla de bienvenida */}
             <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 max-w-md shadow-sm">
               <div className="flex items-center space-x-3">
-                {chatInfo.product.imageUrl ? (
+                {chatInfo.offeredProduct.imageUrl ? (
                   <img
-                    src={chatInfo.product.imageUrl}
-                    alt={chatInfo.product.title}
+                    src={chatInfo.offeredProduct.imageUrl}
+                    alt={chatInfo.offeredProduct.title}
                     className="w-12 h-12 rounded-lg object-cover"
                   />
                 ) : (
@@ -489,10 +732,10 @@ export default function ChatPage() {
                 )}
                 <div className="flex-1">
                   <h4 className="font-semibold text-gray-900 text-sm">Producto en conversación</h4>
-                  <p className="text-sm text-gray-600 truncate">{chatInfo.product.title}</p>
+                  <p className="text-sm text-gray-600 truncate">{chatInfo.offeredProduct.title}</p>
                 </div>
                 <button 
-                  onClick={() => router.push(`/producto/${chatInfo.product.id}`)}
+                  onClick={() => router.push(`/producto/${chatInfo.offeredProduct.id}`)}
                   className="p-1 hover:bg-gray-100 rounded transition-colors"
                   title="Ver producto completo"
                 >
@@ -500,6 +743,42 @@ export default function ChatPage() {
                 </button>
               </div>
             </div>
+            
+            {/* Información del producto solicitado si existe */}
+            {chatInfo.requestedProduct && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 max-w-md shadow-sm">
+                <div className="flex items-center space-x-3">
+                  {chatInfo.requestedProduct.imageUrl ? (
+                    <img
+                      src={chatInfo.requestedProduct.imageUrl}
+                      alt={chatInfo.requestedProduct.title}
+                      className="w-12 h-12 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 bg-orange-200 rounded-lg flex items-center justify-center">
+                      <ShoppingBagIcon className="w-6 h-6 text-orange-600" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="text-xs font-medium text-orange-800 bg-orange-200 px-2 py-1 rounded-full">
+                        Producto Solicitado
+                      </span>
+                    </div>
+                    <h4 className="font-semibold text-gray-900 text-sm">Intercambio por:</h4>
+                    <p className="text-sm text-gray-600 truncate">{chatInfo.requestedProduct.title}</p>
+                  </div>
+                  <button 
+                    onClick={() => router.push(`/producto/${chatInfo.requestedProduct.id}`)}
+                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                    title="Ver producto completo"
+                  >
+                    <EyeIcon className="w-4 h-4 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+            )}
+            
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 max-w-lg shadow-sm">
               <div className="flex items-start space-x-3">
                 <div className="bg-blue-500 rounded-full p-2">
@@ -642,6 +921,7 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </AuthGuard>
   )
 }

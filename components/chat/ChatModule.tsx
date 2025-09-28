@@ -16,14 +16,15 @@ import {
 } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 
+
 interface User {
   id: string
   name: string
   email: string
   avatar: string
   location: string
+  user_id?: string // Agregado para consistencia
 }
-
 interface ChatModuleProps {
   currentUser: User | null
 }
@@ -53,6 +54,12 @@ interface ChatMessage {
   reactions?: Record<string, number>
   myReaction?: string
   replyToId?: string
+  sender?: {
+    id: string
+    name: string
+    lastName: string
+    avatar?: string
+  }
 }
 
 interface ChatConversation {
@@ -62,6 +69,69 @@ interface ChatConversation {
   lastMessageTime: string
   unreadCount: number
   messages: ChatMessage[]
+}
+
+// Función para formatear precio
+const formatPrice = (precio: number | null, tipoTransaccion: string | null, condicionesIntercambio: string | null, queBuscoCambio: string | null, precioNegociable: boolean | null) => {
+  if (tipoTransaccion === 'cambio') {
+    return condicionesIntercambio || queBuscoCambio || 'Intercambio'
+  } else if (precio) {
+    const formattedPrice = new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(precio)
+    return precioNegociable ? `${formattedPrice} (Negociable)` : formattedPrice
+  }
+  return 'Precio no especificado'
+}
+
+// Función para renderizar información de producto
+const renderProductInfo = (product: any, label: string) => {
+  if (!product) return null
+  
+  return (
+    <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <div className="flex items-center space-x-3">
+        <div className="relative">
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.title}
+              className="w-12 h-12 rounded-lg object-cover border border-blue-200"
+              onError={(e) => {
+                // Si falla la imagen, mostrar icono por defecto
+                e.currentTarget.style.display = 'none'
+                e.currentTarget.nextElementSibling?.classList.remove('hidden')
+              }}
+            />
+          ) : null}
+          <div className={`w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center border border-blue-200 ${product.imageUrl ? 'hidden' : ''}`}>
+            <span className="text-blue-600 text-lg">📦</span>
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2 mb-1">
+            <span className="text-xs font-medium text-blue-800 bg-blue-200 px-2 py-1 rounded-full">
+              {label}
+            </span>
+          </div>
+          <p className="text-sm font-medium text-blue-900 truncate">
+            {product.title}
+          </p>
+          <p className="text-xs text-blue-700">
+            {formatPrice(
+              product.precio,
+              product.tipo_transaccion,
+              product.condiciones_intercambio,
+              product.que_busco_cambio,
+              product.precio_negociable
+            )}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function ChatModule({ currentUser }: ChatModuleProps) {
@@ -79,16 +149,37 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const [openReactionsFor, setOpenReactionsFor] = useState<string | null>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [offeredProduct, setOfferedProduct] = useState<any>(null)
+  const [requestedProduct, setRequestedProduct] = useState<any>(null)
+// Estado para manejar conexión realtime
+const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
 
+// Función auxiliar para obtener ID consistente del usuario
+const getCurrentUserId = () => {
+  return String(currentUser?.user_id || currentUser?.id || '')
+}
   // Cargar conversaciones reales
   useEffect(() => {
     const loadConversations = async () => {
       setIsLoading(true)
       try {
         const { data: { session } } = await supabase.auth.getSession()
+        console.log('🔐 [ChatModule] Cargando conversaciones - Sesión:', session ? 'Sí' : 'No')
+        console.log('🔐 [ChatModule] Usuario:', session?.user?.email)
+        
         const token = session?.access_token
+        if (!token) {
+          console.log('❌ [ChatModule] No hay token para cargar conversaciones')
+          console.log('🔄 [ChatModule] Redirigiendo al login...')
+          // Redirigir al login si no hay sesión
+          router.push('/login')
+          return
+        }
+        
         const res = await fetch('/api/chat/conversations', { headers: { Authorization: `Bearer ${token}` } })
         const json = await res.json()
+        console.log('📨 [ChatModule] Respuesta conversaciones:', { status: res.status, ok: res.ok, json })
+        
         if (!res.ok) throw new Error(json?.error || 'Error cargando chats')
         const list: ChatConversation[] = (json.items || []).map((c: any) => ({
           id: String(c.id),
@@ -99,8 +190,12 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
           messages: []
         }))
         setConversations(list)
-        if (list.length > 0) setSelectedConversation(list[0])
-      } catch {
+        // Solo seleccionar el primer chat si no hay uno seleccionado
+        if (list.length > 0 && !selectedConversation) {
+          setSelectedConversation(list[0])
+        }
+      } catch (error) {
+        console.error('❌ [ChatModule] Error cargando conversaciones:', error)
         setConversations([])
       } finally {
         setIsLoading(false)
@@ -115,22 +210,75 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
       if (!selectedConversation) return
       try {
         const chatId = Number(selectedConversation.id)
+        console.log('🔄 [ChatModule] Cargando mensajes para chat:', chatId)
         if (!chatId) return
+        
         const { data: { session } } = await supabase.auth.getSession()
+        console.log('🔐 [ChatModule] Sesión actual:', session ? 'Sí' : 'No')
+        console.log('🔐 [ChatModule] Usuario:', session?.user?.email)
+        console.log('🔐 [ChatModule] Token:', session?.access_token ? 'Presente' : 'Ausente')
+        console.log('🔐 [ChatModule] Usuario actual del componente:', currentUser?.email)
+        
         const token = session?.access_token
-        if (!token) return
+        if (!token) {
+          console.log('❌ [ChatModule] No hay token de sesión - usuario no autenticado')
+          console.log('🔄 [ChatModule] Redirigiendo al login...')
+          router.push('/login')
+          return
+        }
+        
+        console.log('📡 [ChatModule] Haciendo petición a API...')
         const res = await fetch(`/api/chat/${chatId}/messages?limit=100`, { headers: { Authorization: `Bearer ${token}` } })
         const json = await res.json()
+        
+        console.log('📨 [ChatModule] Respuesta de API:', { 
+          status: res.status, 
+          ok: res.ok, 
+          json: {
+            items: json.items?.length || 0,
+            firstMessage: json.items?.[0],
+            lastMessage: json.items?.[json.items?.length - 1]
+          }
+        })
+        
         if (!res.ok) throw new Error(json?.error || 'Error cargando mensajes')
-        const messages: ChatMessage[] = (json.items || []).map((m: any) => ({
-          id: String(m.mensaje_id),
-          senderId: String(m.usuario_id),
-          content: m.contenido || '',
-          timestamp: new Date(m.fecha_envio).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-          isRead: m.leido,
-          type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
-          metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
-        }))
+        
+        const messages: ChatMessage[] = (json.items || [])
+          .filter((m: any) => {
+            // Filtrar mensajes que contienen información del producto
+            const content = m.contenido || ''
+            return !content.includes('Producto Ofrecido') && 
+                   !content.includes('Producto Solicitado') &&
+                   !content.includes('$') && 
+                   !content.includes('Negociable') &&
+                   !content.includes('tablet xiomi') &&
+                   content.trim().length > 0
+          })
+          .map((m: any) => ({
+            id: String(m.mensaje_id),
+            senderId: String(m.usuario_id),
+            content: m.contenido || '',
+            timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              day: '2-digit',
+              month: '2-digit'
+            }),
+            isRead: m.leido,
+            type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
+            metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
+            sender: {
+              id: String(m.usuario?.user_id || m.usuario_id),
+              name: m.usuario?.nombre || 'Usuario',
+              lastName: m.usuario?.apellido || '',
+              avatar: m.usuario?.foto_perfil || undefined
+            }
+          }))
+        
+        console.log('💬 [ChatModule] Mensajes transformados:', messages.length, 'mensajes')
+        console.log('💬 [ChatModule] Primer mensaje:', messages[0])
+        console.log('💬 [ChatModule] Último mensaje:', messages[messages.length - 1])
+        
         setSelectedConversation(prev => prev ? { ...prev, messages } : prev)
         setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, messages } : c))
 
@@ -139,108 +287,288 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
         if (readRes.ok) {
           setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, unreadCount: 0 } : c))
         }
-      } catch {
-        // noop
+      } catch (error) {
+        console.error('❌ [ChatModule] Error cargando mensajes:', error)
       }
     }
     loadMessages()
   }, [selectedConversation?.id])
 
-  // Realtime: suscripción a nuevos mensajes del chat seleccionado
+  // Cargar información del producto cuando se selecciona un chat
   useEffect(() => {
+    const loadProductInfo = async () => {
+      if (!selectedConversation?.id) {
+        setOfferedProduct(null)
+        setRequestedProduct(null)
+        return
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) return
+
+        const response = await fetch(`/api/chat/${selectedConversation.id}/info`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setOfferedProduct(data.offeredProduct)
+          setRequestedProduct(data.requestedProduct)
+          console.log('📦 [ChatModule] Información de productos cargada:', {
+            offered: data.offeredProduct,
+            requested: data.requestedProduct
+          })
+        }
+      } catch (error) {
+        console.error('❌ [ChatModule] Error cargando información de productos:', error)
+      }
+    }
+
+    loadProductInfo()
+  }, [selectedConversation?.id])
+
+  // ✅ REALTIME MEJORADO: Suscripción más robusta
+  useEffect(() => {
+    // Limpiar canal anterior
+    if (realtimeChannel) {
+      supabase.removeChannel(realtimeChannel)
+      setRealtimeChannel(null)
+    }
+
     const chatId = Number(selectedConversation?.id)
     if (!chatId) return
+
+    console.log('🔗 [ChatModule] Configurando realtime para chat:', chatId)
+
     const channel = supabase
-      .channel(`realtime:chat:${chatId}`)
+      .channel(`chat_${chatId}`, {
+        config: {
+          broadcast: { self: true }, // ✅ Permitir recibir nuestros propios mensajes
+          presence: { key: getCurrentUserId() }
+        }
+      })
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
-        table: 'MENSAJE',
+        table: 'mensaje',
         filter: `chat_id=eq.${chatId}`
       }, (payload: any) => {
+        console.log('📨 [ChatModule] Nuevo mensaje realtime:', payload)
+        
         const m = payload.new
         if (!m) return
+
+        // Evitar duplicados
+        const messageId = String(m.mensaje_id)
+        const messageExists = selectedConversation?.messages.some(msg => msg.id === messageId)
+        if (messageExists) {
+          console.log('⚠️ [ChatModule] Mensaje ya existe, ignorando:', messageId)
+          return
+        }
+
         const incoming: ChatMessage = {
-          id: String(m.mensaje_id),
+          id: messageId,
           senderId: String(m.usuario_id),
           content: m.contenido || '',
-          timestamp: new Date(m.fecha_envio).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+          timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit'
+          }),
           isRead: m.leido,
           type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
-          metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
+          metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
+          sender: {
+            id: String(m.usuario_id),
+            name: 'Usuario', // Se puede mejorar obteniendo info del usuario
+            lastName: '',
+            avatar: undefined
+          }
         }
-        setSelectedConversation(prev => prev ? { ...prev, messages: [...prev.messages, incoming], lastMessage: incoming.content || incoming.type, lastMessageTime: incoming.timestamp } : prev)
-        setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, lastMessage: incoming.content || incoming.type, lastMessageTime: incoming.timestamp } : c))
+
+        console.log('✅ [ChatModule] Agregando mensaje realtime:', incoming)
+
+        // Actualizar conversación seleccionada
+        setSelectedConversation(prev => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            messages: [...prev.messages, incoming],
+            lastMessage: incoming.content || incoming.type,
+            lastMessageTime: incoming.timestamp
+          }
+        })
+
+        // Actualizar lista de conversaciones
+        setConversations(prev => prev.map(c => c.id === String(chatId) ? {
+          ...c,
+          lastMessage: incoming.content || incoming.type,
+          lastMessageTime: incoming.timestamp,
+          // Solo incrementar unread si no es nuestro mensaje
+          unreadCount: incoming.senderId !== getCurrentUserId() ? (c.unreadCount || 0) + 1 : c.unreadCount
+        } : c))
       })
-      .subscribe()
+      .subscribe((status) => {
+        console.log('🔌 [ChatModule] Estado realtime:', status)
+      })
 
-    return () => { supabase.removeChannel(channel) }
-  }, [selectedConversation?.id])
+    setRealtimeChannel(channel)
 
-  // Scroll automático al final de los mensajes
+    return () => {
+      console.log('🔌 [ChatModule] Limpiando canal realtime')
+      supabase.removeChannel(channel)
+      setRealtimeChannel(null)
+    }
+  }, [selectedConversation?.id, getCurrentUserId()])
+
+  // Scroll automático mejorado
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const scrollToBottom = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'end' 
+        })
+      }
+    }
+    
+    // Delay para asegurar que el DOM se haya actualizado
+    const timeoutId = setTimeout(scrollToBottom, 100)
+    return () => clearTimeout(timeoutId)
   }, [selectedConversation?.messages])
 
+  // ✅ ENVÍO DE MENSAJES MEJORADO
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return
     
-    // Verificar si el usuario está verificado
-    const { isUserVerified } = await import('@/lib/auth')
-    const isVerified = await isUserVerified()
+    const messageContent = newMessage.trim()
+    const tempId = `temp-${Date.now()}-${Math.random()}`
+    const currentUserId = getCurrentUserId()
     
-    if (!isVerified) {
-      // Mostrar mensaje de verificación requerida
-      const result = await (window as any).Swal.fire({
-        title: 'Verificación Requerida',
-        text: 'Por favor, primero verifica tu cuenta para poder enviar mensajes.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ir a Verificación',
-        cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#3B82F6',
-        cancelButtonColor: '#6B7280'
-      })
-      
-      if (result.isConfirmed) {
-        router.push('/verificacion-identidad')
+    // Crear mensaje optimista
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      senderId: currentUserId,
+      content: messageContent,
+      timestamp: new Date().toLocaleString('es-CO', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        day: '2-digit',
+        month: '2-digit'
+      }),
+      isRead: false,
+      type: 'text',
+      sender: {
+        id: currentUserId,
+        name: currentUser?.name || 'Usuario',
+        lastName: currentUser?.apellido || '',
+        avatar: currentUser?.avatar || undefined
       }
-      return
     }
+
+    // Limpiar input inmediatamente
+    setNewMessage('')
+    setReplyToMessageId(null)
+
+    // Actualización optimista
+    const updatedConversation = {
+      ...selectedConversation,
+      messages: [...selectedConversation.messages, optimisticMessage],
+      lastMessage: optimisticMessage.content,
+      lastMessageTime: optimisticMessage.timestamp
+    }
+    
+    setSelectedConversation(updatedConversation)
+    setConversations(prev => prev.map(conv => 
+      conv.id === selectedConversation.id ? updatedConversation : conv
+    ))
     
     try {
       const chatId = Number(selectedConversation.id)
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       if (!token) return
+      
+      console.log('📤 [ChatModule] Enviando mensaje:', messageContent)
+      
       const res = await fetch(`/api/chat/${chatId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ contenido: newMessage, tipo: 'texto' })
+        headers: { 
+          'Content-Type': 'application/json', 
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          contenido: messageContent, 
+          tipo: 'texto' 
+        })
       })
+      
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Error al enviar')
-      const m = json.message
-      const message: ChatMessage = {
-        id: String(m.mensaje_id),
-        senderId: String(m.usuario_id),
-        content: m.contenido || '',
-        timestamp: new Date(m.fecha_envio).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-        isRead: m.leido,
-        type: 'text'
+      
+      console.log('✅ [ChatModule] Mensaje enviado exitosamente:', json.message)
+      
+      // Reemplazar mensaje temporal con el real
+      const realMessage: ChatMessage = {
+        id: String(json.message.mensaje_id),
+        senderId: String(json.message.usuario_id),
+        content: json.message.contenido || '',
+        timestamp: new Date(json.message.fecha_envio).toLocaleString('es-CO', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          day: '2-digit',
+          month: '2-digit'
+        }),
+        isRead: json.message.leido,
+        type: 'text',
+        sender: optimisticMessage.sender
       }
-      const updatedConversation = {
-        ...selectedConversation,
-        messages: [...selectedConversation.messages, message],
-        lastMessage: message.content,
-        lastMessageTime: message.timestamp
+      
+      // Actualizar mensaje optimista con datos reales
+      setSelectedConversation(prev => prev ? {
+        ...prev,
+        messages: prev.messages.map(msg => 
+          msg.id === tempId ? realMessage : msg
+        ),
+        lastMessage: realMessage.content,
+        lastMessageTime: realMessage.timestamp
+      } : prev)
+      
+      setConversations(prev => prev.map(conv => 
+        conv.id === selectedConversation.id ? {
+          ...conv,
+          lastMessage: realMessage.content,
+          lastMessageTime: realMessage.timestamp
+        } : conv
+      ))
+      
+    } catch (error) {
+      console.error('❌ [ChatModule] Error enviando mensaje:', error)
+      
+      // Revertir mensaje optimista en caso de error
+      setSelectedConversation(prev => prev ? {
+        ...prev,
+        messages: prev.messages.filter(msg => msg.id !== tempId)
+      } : prev)
+      
+      // Mostrar error al usuario
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Error',
+          text: 'No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.',
+          icon: 'error',
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#3B82F6'
+        })
+      } else {
+        alert('Error: No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.')
       }
-      setSelectedConversation(updatedConversation)
-      setConversations(prev => prev.map(conv => conv.id === selectedConversation.id ? updatedConversation : conv))
-      setNewMessage('')
-      setReplyToMessageId(null)
-    } catch {
-      // noop
+      
+      // Restaurar el mensaje en el input
+      setNewMessage(messageContent)
     }
   }
 
@@ -317,7 +645,12 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
       id: Date.now().toString(),
       senderId: currentUser?.id || '1',
       content: '',
-      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toLocaleString('es-CO', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        day: '2-digit',
+        month: '2-digit'
+      }),
       isRead: false,
       type: 'image',
       metadata: { imageUrl: url }
@@ -340,7 +673,12 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
       id: Date.now().toString(),
       senderId: currentUser?.id || '1',
       content: '',
-      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toLocaleString('es-CO', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        day: '2-digit',
+        month: '2-digit'
+      }),
       isRead: false,
       type: 'file',
       metadata: { fileName: file.name, fileSize: `${Math.round(file.size / 1024)} KB` }
@@ -438,43 +776,51 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
         {selectedConversation ? (
           <>
             {/* Header del chat */}
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <img
-                    src={selectedConversation.user.avatar}
-                    alt={selectedConversation.user.name}
-                    className="w-10 h-10 rounded-full"
-                  />
-                  <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${selectedConversation.user.isOnline ? 'bg-green-500' : 'bg-gray-400'
-                    }`}></div>
-                </div>
+            <div className="border-b border-gray-200">
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <img
+                      src={selectedConversation.user.avatar}
+                      alt={selectedConversation.user.name}
+                      className="w-10 h-10 rounded-full"
+                    />
+                    <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${selectedConversation.user.isOnline ? 'bg-green-500' : 'bg-gray-400'
+                      }`}></div>
+                  </div>
 
-                <div>
-                  <h3 className="font-medium text-gray-900">
-                    {selectedConversation.user.name}
-                  </h3>
-                  <div className="flex items-center space-x-1 text-sm text-gray-500">
-                    <MapPinIcon className="w-3 h-3" />
-                    <span>{selectedConversation.user.location}</span>
-                    <span>•</span>
-                    <span>
-                      {selectedConversation.user.isOnline ? 'En línea' : selectedConversation.user.lastSeen}
-                    </span>
+                  <div>
+                    <h3 className="font-medium text-gray-900">
+                      {selectedConversation.user.name}
+                    </h3>
+                    <div className="flex items-center space-x-1 text-sm text-gray-500">
+                      <MapPinIcon className="w-3 h-3" />
+                      <span>{selectedConversation.user.location}</span>
+                      <span>•</span>
+                      <span>
+                        {selectedConversation.user.isOnline ? 'En línea' : selectedConversation.user.lastSeen}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center space-x-2">
-                <button onClick={() => setShowProfile(true)} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <PhoneIcon className="w-5 h-5" />
-                </button>
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <VideoCameraIcon className="w-5 h-5" />
-                </button>
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <EllipsisVerticalIcon className="w-5 h-5" />
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button onClick={() => setShowProfile(true)} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <PhoneIcon className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <VideoCameraIcon className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <EllipsisVerticalIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Información de productos */}
+              <div className="px-4 pb-3 space-y-2">
+                {offeredProduct && renderProductInfo(offeredProduct, 'Producto Ofrecido')}
+                {requestedProduct && renderProductInfo(requestedProduct, 'Producto Solicitado')}
               </div>
             </div>
 
@@ -491,9 +837,18 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
                     }`}>
                     {!isOwnMessage(message) && (
                       <img
-                        src={selectedConversation.user.avatar}
-                        alt={selectedConversation.user.name}
+                        src={message.sender?.avatar || selectedConversation.user.avatar}
+                        alt={message.sender?.name || selectedConversation.user.name}
                         className="w-8 h-8 rounded-full mb-2"
+                        onError={(e) => {
+                          // Si falla la imagen, mostrar iniciales
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const fallback = document.createElement('div');
+                          fallback.className = 'w-8 h-8 rounded-full mb-2 bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-600';
+                          fallback.textContent = (message.sender?.name || selectedConversation.user.name).charAt(0).toUpperCase();
+                          target.parentNode?.insertBefore(fallback, target.nextSibling);
+                        }}
                       />
                     )}
 

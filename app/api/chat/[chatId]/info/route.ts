@@ -51,9 +51,24 @@ export async function GET(
           usuario_propone_id,
           usuario_recibe_id,
           producto_ofrecido_id,
-          producto (
+          producto_solicitado_id,
+          producto_ofrecido:producto!intercambio_producto_ofrecido_id_fkey (
             producto_id,
-            titulo
+            titulo,
+            precio,
+            tipo_transaccion,
+            condiciones_intercambio,
+            que_busco_cambio,
+            precio_negociable
+          ),
+          producto_solicitado:producto!intercambio_producto_solicitado_id_fkey (
+            producto_id,
+            titulo,
+            precio,
+            tipo_transaccion,
+            condiciones_intercambio,
+            que_busco_cambio,
+            precio_negociable
           ),
           usuario_propone:usuario!intercambio_usuario_propone_id_fkey (
             user_id,
@@ -73,7 +88,7 @@ export async function GET(
       .eq('activo', true)
       .single()
 
-    // Obtener imagen principal del producto
+    // Obtener imagen principal del producto ofrecido
     let productImageUrl = null
     if (chat?.intercambio?.producto_ofrecido_id) {
       const { data: productImage } = await supabaseAdmin
@@ -84,6 +99,19 @@ export async function GET(
         .single()
       
       productImageUrl = productImage?.url_imagen || null
+    }
+
+    // Obtener imagen principal del producto solicitado
+    let requestedProductImageUrl = null
+    if (chat?.intercambio?.producto_solicitado_id) {
+      const { data: requestedProductImage } = await supabaseAdmin
+        .from('imagen_producto')
+        .select('url_imagen')
+        .eq('producto_id', chat.intercambio.producto_solicitado_id)
+        .eq('es_principal', true)
+        .single()
+      
+      requestedProductImageUrl = requestedProductImage?.url_imagen || null
     }
 
     if (chatError || !chat) {
@@ -108,11 +136,26 @@ export async function GET(
         lastName: otherUser.apellido,
         avatar: otherUser.foto_perfil
       },
-      product: {
-        id: intercambio.producto.producto_id,
-        title: intercambio.producto.titulo,
+      offeredProduct: {
+        id: intercambio.producto_ofrecido.producto_id,
+        title: intercambio.producto_ofrecido.titulo,
+        precio: intercambio.producto_ofrecido.precio,
+        tipo_transaccion: intercambio.producto_ofrecido.tipo_transaccion,
+        condiciones_intercambio: intercambio.producto_ofrecido.condiciones_intercambio,
+        que_busco_cambio: intercambio.producto_ofrecido.que_busco_cambio,
+        precio_negociable: intercambio.producto_ofrecido.precio_negociable,
         imageUrl: productImageUrl
       },
+      requestedProduct: intercambio.producto_solicitado ? {
+        id: intercambio.producto_solicitado.producto_id,
+        title: intercambio.producto_solicitado.titulo,
+        precio: intercambio.producto_solicitado.precio,
+        tipo_transaccion: intercambio.producto_solicitado.tipo_transaccion,
+        condiciones_intercambio: intercambio.producto_solicitado.condiciones_intercambio,
+        que_busco_cambio: intercambio.producto_solicitado.que_busco_cambio,
+        precio_negociable: intercambio.producto_solicitado.precio_negociable,
+        imageUrl: requestedProductImageUrl
+      } : null,
       createdAt: chat.fecha_creacion
     })
 
