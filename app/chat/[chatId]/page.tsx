@@ -388,27 +388,51 @@ export default function ChatPage() {
           </div>
         </div>
         
-        {/* Información del producto */}
-        <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-          <div className="flex items-center space-x-3">
+        {/* Información del producto mejorada */}
+        <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
+          <div className="flex items-center space-x-4">
             {chatInfo.product.imageUrl ? (
               <img
                 src={chatInfo.product.imageUrl}
                 alt={chatInfo.product.title}
-                className="w-12 h-12 rounded-lg object-cover"
+                className="w-16 h-16 rounded-xl object-cover shadow-md"
               />
             ) : (
-              <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                <ShoppingBagIcon className="w-6 h-6 text-gray-400" />
+              <div className="w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center shadow-md">
+                <ShoppingBagIcon className="w-8 h-8 text-gray-500" />
               </div>
             )}
             <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 text-sm">Producto en conversación</h3>
-              <p className="text-sm text-gray-600 truncate">{chatInfo.product.title}</p>
+              <div className="flex items-center space-x-2 mb-1">
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  📦 Producto
+                </span>
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  💬 Conversación activa
+                </span>
+              </div>
+              <h3 className="font-bold text-gray-900 text-base mb-1">{chatInfo.product.title}</h3>
+              <p className="text-sm text-gray-600">
+                Intercambio en proceso con <span className="font-semibold text-blue-600">{chatInfo.seller.name}</span>
+              </p>
             </div>
-            <button className="p-2 hover:bg-blue-100 rounded-lg transition-colors">
-              <EyeIcon className="w-4 h-4 text-blue-600" />
-            </button>
+            <div className="flex flex-col space-y-2">
+              <button 
+                onClick={() => router.push(`/producto/${chatInfo.product.id}`)}
+                className="p-2 hover:bg-blue-100 rounded-lg transition-colors group"
+                title="Ver producto"
+              >
+                <EyeIcon className="w-5 h-5 text-blue-600 group-hover:text-blue-700" />
+              </button>
+              <button 
+                className="p-2 hover:bg-green-100 rounded-lg transition-colors group"
+                title="Marcar como favorito"
+              >
+                <svg className="w-5 h-5 text-green-600 group-hover:text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -425,10 +449,38 @@ export default function ChatPage() {
             <h3 className="text-2xl font-bold text-gray-900 mb-3">
               ¡Conversación iniciada! 🎉
             </h3>
-            <p className="text-gray-600 mb-6 max-w-md">
+            <p className="text-gray-600 mb-4 max-w-md">
               Comienza a chatear con <span className="font-semibold text-blue-600">{chatInfo.seller.name}</span> sobre 
               <span className="font-semibold text-gray-800"> "{chatInfo.product.title}"</span>
             </p>
+            
+            {/* Información del producto en la pantalla de bienvenida */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 max-w-md shadow-sm">
+              <div className="flex items-center space-x-3">
+                {chatInfo.product.imageUrl ? (
+                  <img
+                    src={chatInfo.product.imageUrl}
+                    alt={chatInfo.product.title}
+                    className="w-12 h-12 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                    <ShoppingBagIcon className="w-6 h-6 text-gray-400" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900 text-sm">Producto en conversación</h4>
+                  <p className="text-sm text-gray-600 truncate">{chatInfo.product.title}</p>
+                </div>
+                <button 
+                  onClick={() => router.push(`/producto/${chatInfo.product.id}`)}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                  title="Ver producto completo"
+                >
+                  <EyeIcon className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+            </div>
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 max-w-lg shadow-sm">
               <div className="flex items-start space-x-3">
                 <div className="bg-blue-500 rounded-full p-2">

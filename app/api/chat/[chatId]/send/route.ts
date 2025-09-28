@@ -113,17 +113,30 @@ export async function POST(
       ? intercambio.usuario_recibe_id 
       : intercambio.usuario_propone_id
 
+    // Obtener información del producto para la notificación
+    const { data: productInfo } = await supabaseAdmin
+      .from('producto')
+      .select('titulo, imagenes (url_imagen)')
+      .eq('producto_id', intercambio.producto_ofrecido_id)
+      .single()
+
     await supabaseAdmin
       .from('notificacion')
       .insert({
         usuario_id: otherUserId,
-        tipo: 'mensaje',
-        titulo: 'Nuevo mensaje',
-        mensaje: `Tienes un nuevo mensaje de ${newMessage.usuario?.nombre} ${newMessage.usuario?.apellido}`,
+        tipo: 'nuevo_mensaje',
+        titulo: `Mensaje sobre "${productInfo?.titulo || 'producto'}"`,
+        mensaje: `${newMessage.usuario?.nombre || 'Usuario'} ${newMessage.usuario?.apellido || ''}: ${newMessage.contenido}`,
         datos_adicionales: {
           chat_id: chatId,
           mensaje_id: newMessage.mensaje_id,
-          sender_id: userId
+          sender_id: userId,
+          sender_name: newMessage.usuario?.nombre || 'Usuario',
+          sender_lastname: newMessage.usuario?.apellido || '',
+          product_id: intercambio.producto_ofrecido_id,
+          product_title: productInfo?.titulo || 'Producto',
+          product_image: productInfo?.imagenes?.[0]?.url_imagen || null,
+          message_type: 'new_message'
         },
         leida: false,
         fecha_creacion: new Date().toISOString()

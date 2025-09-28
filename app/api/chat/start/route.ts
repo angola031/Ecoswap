@@ -161,18 +161,29 @@ export async function POST(req: NextRequest) {
       .update({ ultimo_mensaje: new Date().toISOString() })
       .eq('chat_id', newChat.chat_id)
 
-    // Crear notificación para el vendedor
+    // Obtener información del comprador para la notificación
+    const { data: buyer } = await supabaseAdmin
+      .from('usuario')
+      .select('nombre, apellido')
+      .eq('user_id', userId)
+      .single()
+
+    // Crear notificación detallada para el vendedor
     await supabaseAdmin
       .from('notificacion')
       .insert({
         usuario_id: sellerId,
-        tipo: 'mensaje',
-        titulo: 'Nuevo chat iniciado',
-        mensaje: `Un usuario ha iniciado una conversación sobre tu producto "${product.titulo}"`,
+        tipo: 'nuevo_mensaje',
+        titulo: `Nuevo chat sobre "${product.titulo}"`,
+        mensaje: `${buyer?.nombre || 'Un usuario'} ${buyer?.apellido || ''} ha iniciado una conversación sobre tu producto "${product.titulo}". ¡Responde para cerrar el intercambio!`,
         datos_adicionales: {
           chat_id: newChat.chat_id,
           sender_id: userId,
-          product_id: productId
+          sender_name: buyer?.nombre || 'Usuario',
+          sender_lastname: buyer?.apellido || '',
+          product_id: productId,
+          product_title: product.titulo,
+          message_type: 'chat_started'
         },
         leida: false,
         fecha_creacion: new Date().toISOString()
