@@ -153,6 +153,8 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const [requestedProduct, setRequestedProduct] = useState<any>(null)
 // Estado para manejar conexión realtime
 const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
+// Estado para controlar scroll manual
+const [isUserScrolling, setIsUserScrolling] = useState(false)
 
 // Función auxiliar para obtener ID consistente del usuario
 const getCurrentUserId = () => {
@@ -245,14 +247,13 @@ const getCurrentUserId = () => {
         
         const messages: ChatMessage[] = (json.items || [])
           .filter((m: any) => {
-            // Filtrar mensajes que contienen información del producto
+            // Filtrar solo mensajes que son claramente de información del producto
             const content = m.contenido || ''
-            return !content.includes('Producto Ofrecido') && 
-                   !content.includes('Producto Solicitado') &&
-                   !content.includes('$') && 
-                   !content.includes('Negociable') &&
-                   !content.includes('tablet xiomi') &&
-                   content.trim().length > 0
+            // Solo filtrar si el mensaje completo parece ser información del producto
+            const isProductInfo = content.includes('Producto Ofrecido') && 
+                                 content.includes('$') && 
+                                 content.includes('Negociable')
+            return !isProductInfo && content.trim().length > 0
           })
           .map((m: any) => ({
             id: String(m.mensaje_id),
@@ -278,6 +279,8 @@ const getCurrentUserId = () => {
         console.log('💬 [ChatModule] Mensajes transformados:', messages.length, 'mensajes')
         console.log('💬 [ChatModule] Primer mensaje:', messages[0])
         console.log('💬 [ChatModule] Último mensaje:', messages[messages.length - 1])
+        console.log('💬 [ChatModule] Usuario actual:', currentUser)
+        console.log('💬 [ChatModule] ID del usuario actual:', getCurrentUserId())
         
         setSelectedConversation(prev => prev ? { ...prev, messages } : prev)
         setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, messages } : c))
@@ -308,9 +311,14 @@ const getCurrentUserId = () => {
         const token = session?.access_token
         if (!token) return
 
+        console.log('📡 [ChatModule] Obteniendo info del chat:', selectedConversation.id)
+        console.log('🔐 [ChatModule] Token para info:', token ? `${token.substring(0, 20)}...` : 'Vacío')
+        
         const response = await fetch(`/api/chat/${selectedConversation.id}/info`, {
           headers: { Authorization: `Bearer ${token}` }
         })
+        
+        console.log('📨 [ChatModule] Respuesta info:', { status: response.status, ok: response.ok })
         
         if (response.ok) {
           const data = await response.json()
@@ -424,8 +432,11 @@ const getCurrentUserId = () => {
     }
   }, [selectedConversation?.id, getCurrentUserId()])
 
-  // Scroll automático mejorado
+  // Scroll automático mejorado - solo cuando se agregan nuevos mensajes
   useEffect(() => {
+    // Solo hacer scroll automático si hay mensajes y el usuario no está haciendo scroll manual
+    if (!selectedConversation?.messages || selectedConversation.messages.length === 0 || isUserScrolling) return
+    
     const scrollToBottom = () => {
       if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ 
@@ -438,7 +449,7 @@ const getCurrentUserId = () => {
     // Delay para asegurar que el DOM se haya actualizado
     const timeoutId = setTimeout(scrollToBottom, 100)
     return () => clearTimeout(timeoutId)
-  }, [selectedConversation?.messages])
+  }, [selectedConversation?.messages?.length, isUserScrolling]) // Dependencias actualizadas
 
   // ✅ ENVÍO DE MENSAJES MEJORADO
   const handleSendMessage = async () => {
@@ -485,6 +496,16 @@ const getCurrentUserId = () => {
     setConversations(prev => prev.map(conv => 
       conv.id === selectedConversation.id ? updatedConversation : conv
     ))
+    
+    // Scroll suave solo para mensajes nuevos
+    setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'end' 
+        })
+      }
+    }, 100)
     
     try {
       const chatId = Number(selectedConversation.id)
@@ -584,7 +605,8 @@ const getCurrentUserId = () => {
   }
 
   const isOwnMessage = (message: ChatMessage) => {
-    return message.senderId === currentUser?.id
+    const currentUserId = getCurrentUserId()
+    return message.senderId === currentUserId
   }
 
   const handleInputChange = (value: string) => {
@@ -825,8 +847,26 @@ const getCurrentUserId = () => {
             </div>
 
             {/* Mensajes */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {selectedConversation.messages.map((message) => (
+            <div 
+              className="flex-1 overflow-y-auto p-4 space-y-4 relative"
+              onScroll={(e) => {
+                const target = e.target as HTMLDivElement
+                const isAtBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 10
+                setIsUserScrolling(!isAtBottom)
+              }}
+            >
+              {selectedConversation.messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-gray-500">
+                    <ChatBubbleLeftRightIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <p>No hay mensajes en esta conversación</p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Debug: {selectedConversation.messages.length} mensajes cargados
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                selectedConversation.messages.map((message) => (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}
@@ -935,7 +975,8 @@ const getCurrentUserId = () => {
                     </div>
                   </div>
                 </motion.div>
-              ))}
+                ))
+              )}
               {isTyping && (
                 <div className="flex justify-start">
                   <div className="max-w-xs lg:max-w-md order-1">
@@ -955,6 +996,29 @@ const getCurrentUserId = () => {
                 </div>
               )}
               <div ref={messagesEndRef} />
+              
+              {/* Botón para scroll al final cuando el usuario está scrolleando manualmente */}
+              {isUserScrolling && (
+                <div className="absolute bottom-20 right-4">
+                  <button
+                    onClick={() => {
+                      if (messagesEndRef.current) {
+                        messagesEndRef.current.scrollIntoView({ 
+                          behavior: 'smooth', 
+                          block: 'end' 
+                        })
+                      }
+                      setIsUserScrolling(false)
+                    }}
+                    className="bg-primary-600 text-white p-2 rounded-full shadow-lg hover:bg-primary-700 transition-colors"
+                    title="Ir al final"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Input de mensaje */}

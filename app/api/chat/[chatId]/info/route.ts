@@ -4,22 +4,49 @@ import { supabaseAdmin } from '@/lib/supabase'
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
   const auth = req.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
-  if (!token) return null
+  
+  console.log('🔐 [API Info] Authorization header:', auth ? 'Presente' : 'Ausente')
+  console.log('🔐 [API Info] Token:', token ? `${token.substring(0, 20)}...` : 'Vacío')
+  
+  if (!token) {
+    console.log('❌ [API Info] No hay token')
+    return null
+  }
   
   try {
-    const { data } = await supabaseAdmin.auth.getUser(token)
-    const authUserId = data?.user?.id
-    if (!authUserId) return null
+    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    console.log('🔐 [API Info] Auth response:', { data: !!data, error: !!error })
     
-    const { data: usuario } = await supabaseAdmin
+    if (error) {
+      console.error('❌ [API Info] Error de autenticación:', error)
+      return null
+    }
+    
+    const authUserId = data?.user?.id
+    console.log('🔐 [API Info] Auth user ID:', authUserId)
+    
+    if (!authUserId) {
+      console.log('❌ [API Info] No auth user ID')
+      return null
+    }
+    
+    const { data: usuario, error: usuarioError } = await supabaseAdmin
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', authUserId)
       .single()
     
+    console.log('🔐 [API Info] Usuario query:', { usuario, usuarioError })
+    
+    if (usuarioError) {
+      console.error('❌ [API Info] Error obteniendo usuario:', usuarioError)
+      return null
+    }
+    
+    console.log('✅ [API Info] User ID obtenido:', usuario?.user_id)
     return usuario?.user_id ?? null
   } catch (error) {
-    console.error('Error obteniendo user_id:', error)
+    console.error('❌ [API Info] Error obteniendo user_id:', error)
     return null
   }
 }
