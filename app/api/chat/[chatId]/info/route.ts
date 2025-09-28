@@ -30,16 +30,37 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
       return null
     }
     
-    const { data: usuario, error: usuarioError } = await supabaseAdmin
+    // Primero intentar con auth_user_id
+    let { data: usuario, error: usuarioError } = await supabaseAdmin
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', authUserId)
       .single()
     
-    console.log('🔐 [API Info] Usuario query:', { usuario, usuarioError })
+    console.log('🔐 [API Info] Usuario query (auth_user_id):', { usuario, usuarioError })
     
-    if (usuarioError) {
+    // Si no se encuentra con auth_user_id, intentar con el email
+    if (usuarioError && data?.user?.email) {
+      console.log('🔄 [API Info] Intentando con email:', data.user.email)
+      
+      const { data: usuarioByEmail, error: emailError } = await supabaseAdmin
+        .from('usuario')
+        .select('user_id')
+        .eq('email', data.user.email)
+        .single()
+      
+      console.log('🔐 [API Info] Usuario query (email):', { usuarioByEmail, emailError })
+      
+      if (!emailError && usuarioByEmail) {
+        usuario = usuarioByEmail
+        usuarioError = null
+      }
+    }
+    
+    if (usuarioError || !usuario) {
       console.error('❌ [API Info] Error obteniendo usuario:', usuarioError)
+      console.log('🔍 [API Info] Auth user ID buscado:', authUserId)
+      console.log('🔍 [API Info] Email del usuario:', data?.user?.email)
       return null
     }
     
