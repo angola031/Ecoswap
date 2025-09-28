@@ -49,7 +49,22 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
 
         let query = supabaseAdmin
             .from('mensaje')
-            .select('mensaje_id, chat_id, usuario_id, contenido, tipo, archivo_url, leido, fecha_envio')
+            .select(`
+                mensaje_id, 
+                chat_id, 
+                usuario_id, 
+                contenido, 
+                tipo, 
+                archivo_url, 
+                leido, 
+                fecha_envio,
+                usuario (
+                    user_id,
+                    nombre,
+                    apellido,
+                    foto_perfil
+                )
+            `)
             .eq('chat_id', chatId)
             .order('mensaje_id', { ascending: false })
             .limit(limit)

@@ -90,6 +90,7 @@ export async function POST(
         leido,
         usuario_id,
         usuario (
+          user_id,
           nombre,
           apellido,
           foto_perfil

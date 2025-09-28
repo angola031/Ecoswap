@@ -73,6 +73,19 @@ export async function GET(
       .eq('activo', true)
       .single()
 
+    // Obtener imagen principal del producto
+    let productImageUrl = null
+    if (chat?.intercambio?.producto_ofrecido_id) {
+      const { data: productImage } = await supabaseAdmin
+        .from('imagen_producto')
+        .select('url_imagen')
+        .eq('producto_id', chat.intercambio.producto_ofrecido_id)
+        .eq('es_principal', true)
+        .single()
+      
+      productImageUrl = productImage?.url_imagen || null
+    }
+
     if (chatError || !chat) {
       return NextResponse.json({ error: 'Chat no encontrado' }, { status: 404 })
     }
@@ -97,7 +110,8 @@ export async function GET(
       },
       product: {
         id: intercambio.producto.producto_id,
-        title: intercambio.producto.titulo
+        title: intercambio.producto.titulo,
+        imageUrl: productImageUrl
       },
       createdAt: chat.fecha_creacion
     })

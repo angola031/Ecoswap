@@ -65,6 +65,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Producto no encontrado o no pertenece al vendedor' }, { status: 404 })
     }
 
+    // Obtener imagen principal del producto
+    let productImageUrl = null
+    const { data: productImage } = await supabaseAdmin
+      .from('imagen_producto')
+      .select('url_imagen')
+      .eq('producto_id', product.producto_id)
+      .eq('es_principal', true)
+      .single()
+    
+    productImageUrl = productImage?.url_imagen || null
+
     // Buscar si ya existe un intercambio entre estos usuarios para este producto
     const { data: existingIntercambio, error: intercambioError } = await supabaseAdmin
       .from('intercambio')
@@ -118,10 +129,11 @@ export async function POST(req: NextRequest) {
           apellido: seller.apellido,
           foto_perfil: seller.foto_perfil
         },
-        product: {
-          id: product.producto_id,
-          titulo: product.titulo
-        }
+                product: {
+                  id: product.producto_id,
+                  titulo: product.titulo,
+                  imageUrl: productImageUrl
+                }
       })
     }
 
@@ -201,7 +213,8 @@ export async function POST(req: NextRequest) {
       },
       product: {
         id: product.producto_id,
-        titulo: product.titulo
+        titulo: product.titulo,
+        imageUrl: productImageUrl
       }
     })
 

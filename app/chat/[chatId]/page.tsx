@@ -306,11 +306,14 @@ export default function ChatPage() {
   const UserAvatar = ({ user, size = 'w-6 h-6' }: { user: any, size?: string }) => {
     const [imageError, setImageError] = useState(false)
     
-    if (user?.avatar && !imageError) {
+    // Usar foto_perfil del esquema de base de datos
+    const avatarUrl = user?.foto_perfil || user?.avatar
+    
+    if (avatarUrl && !imageError) {
       return (
         <img
-          src={user.avatar}
-          alt={`${user.name || 'Usuario'} ${user.lastName || ''}`}
+          src={avatarUrl}
+          alt={`${user?.nombre || user?.name || 'Usuario'} ${user?.apellido || user?.lastName || ''}`}
           className={`${size} rounded-full object-cover border border-gray-200`}
           onError={() => setImageError(true)}
         />
@@ -320,7 +323,7 @@ export default function ChatPage() {
     return (
       <div className={`${size} rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center border border-gray-200`}>
         <span className="text-xs font-medium text-white">
-          {(user?.name || 'U').charAt(0).toUpperCase()}
+          {(user?.nombre || user?.name || 'U').charAt(0).toUpperCase()}
         </span>
       </div>
     )
@@ -368,23 +371,10 @@ export default function ChatPage() {
             </button>
             
             <div className="flex items-center space-x-3">
-              {chatInfo.seller.avatar ? (
-                <div className="relative">
-                  <img
-                    src={chatInfo.seller.avatar}
-                    alt={`${chatInfo.seller.name} ${chatInfo.seller.lastName}`}
-                    className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
-                  />
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
-                </div>
-              ) : (
-                <div className="relative">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-md">
-                    <UserIcon className="w-7 h-7 text-white" />
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
-                </div>
-              )}
+              <div className="relative">
+                <UserAvatar user={chatInfo.seller} size="w-12 h-12" />
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+              </div>
               
               <div>
                 <h1 className="font-bold text-lg text-gray-900">
@@ -420,12 +410,17 @@ export default function ChatPage() {
                 src={chatInfo.product.imageUrl}
                 alt={chatInfo.product.title}
                 className="w-16 h-16 rounded-xl object-cover shadow-md"
+                onError={(e) => {
+                  // Si la imagen falla, mostrar icono por defecto
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.nextElementSibling?.classList.remove('hidden');
+                }}
               />
-            ) : (
-              <div className="w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center shadow-md">
-                <ShoppingBagIcon className="w-8 h-8 text-gray-500" />
-              </div>
-            )}
+            ) : null}
+            <div className={`w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center shadow-md ${chatInfo.product.imageUrl ? 'hidden' : ''}`}>
+              <ShoppingBagIcon className="w-8 h-8 text-gray-500" />
+            </div>
             <div className="flex-1">
               <div className="flex items-center space-x-2 mb-1">
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
