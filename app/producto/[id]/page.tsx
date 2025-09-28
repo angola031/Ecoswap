@@ -499,15 +499,62 @@ export default function ProductDetailPage() {
       return
     }
     
-    // Aquí iría la lógica para iniciar un chat con el vendedor
-    // Por ejemplo, redirigir a una página de chat o abrir un modal
-    await (window as any).Swal.fire({
-      title: 'Función en desarrollo',
-      text: 'La función de chat estará disponible próximamente',
-      icon: 'info',
-      confirmButtonText: 'Entendido',
-      confirmButtonColor: '#3B82F6'
-    })
+    // Iniciar chat con el vendedor
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        await (window as any).Swal.fire({
+          title: 'Sesión requerida',
+          text: 'Inicia sesión para enviar mensajes',
+          icon: 'warning',
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#3B82F6'
+        })
+        return
+      }
+
+      console.log('🔍 DEBUG: Iniciando chat con vendedor...', {
+        sellerId: product.usuario.user_id,
+        productId: product.id
+      })
+
+      const response = await fetch('/api/chat/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          sellerId: product.usuario.user_id,
+          productId: product.id
+        })
+      })
+
+      const result = await response.json()
+      console.log('🔍 DEBUG: Respuesta de iniciar chat:', result)
+
+      if (response.ok) {
+        // Redirigir al chat
+        router.push(`/chat/${result.chatId}`)
+      } else {
+        await (window as any).Swal.fire({
+          title: 'Error',
+          text: result.error || 'Error iniciando chat',
+          icon: 'error',
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#3B82F6'
+        })
+      }
+    } catch (error) {
+      console.error('Error iniciando chat:', error)
+      await (window as any).Swal.fire({
+        title: 'Error',
+        text: 'Error iniciando chat. Inténtalo de nuevo.',
+        icon: 'error',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#3B82F6'
+      })
+    }
   }
 
   const formatPrice = (price: number) => {
