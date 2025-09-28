@@ -302,6 +302,30 @@ export default function ChatPage() {
     return message.senderId === currentUser?.user_id?.toString()
   }
 
+  // Componente de avatar con fallback
+  const UserAvatar = ({ user, size = 'w-6 h-6' }: { user: any, size?: string }) => {
+    const [imageError, setImageError] = useState(false)
+    
+    if (user?.avatar && !imageError) {
+      return (
+        <img
+          src={user.avatar}
+          alt={`${user.name || 'Usuario'} ${user.lastName || ''}`}
+          className={`${size} rounded-full object-cover border border-gray-200`}
+          onError={() => setImageError(true)}
+        />
+      )
+    }
+    
+    return (
+      <div className={`${size} rounded-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center border border-gray-200`}>
+        <span className="text-xs font-medium text-white">
+          {(user?.name || 'U').charAt(0).toUpperCase()}
+        </span>
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
@@ -511,13 +535,9 @@ export default function ChatPage() {
             <div className={`max-w-xs lg:max-w-md ${isMyMessage(message) ? 'order-2' : 'order-1'}`}>
               {!isMyMessage(message) && (
                 <div className="flex items-center space-x-2 mb-2">
-                  <img
-                    src={message.sender.avatar || '/default-avatar.png'}
-                    alt={`${message.sender.name} ${message.sender.lastName}`}
-                    className="w-6 h-6 rounded-full object-cover border border-gray-200"
-                  />
+                  <UserAvatar user={message.sender} size="w-6 h-6" />
                   <span className="text-xs font-medium text-gray-700">
-                    {message.sender.name}
+                    {message.sender?.name || 'Usuario'}
                   </span>
                 </div>
               )}
