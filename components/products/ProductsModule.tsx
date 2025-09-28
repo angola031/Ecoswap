@@ -63,6 +63,37 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high' | 'popular'>('newest')
 
+    const handlePublishProduct = async () => {
+        // Verificar si el usuario está verificado
+        console.log('🔍 DEBUG: Verificando estado del usuario desde ProductsModule...')
+        const { isUserVerified } = await import('@/lib/auth')
+        const isVerified = await isUserVerified()
+        console.log('🔍 DEBUG: Usuario verificado desde ProductsModule:', isVerified)
+        
+        if (!isVerified) {
+            console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde ProductsModule...')
+            // Mostrar mensaje de verificación requerida
+            const result = await (window as any).Swal.fire({
+                title: 'Verificación Requerida',
+                text: 'Por favor, primero verifica tu cuenta para poder publicar productos.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ir a Verificación',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#3B82F6',
+                cancelButtonColor: '#6B7280'
+            })
+            
+            if (result.isConfirmed) {
+                router.push('/verificacion-identidad')
+            }
+            return
+        }
+
+        // Si está verificado, redirigir a agregar producto
+        router.push('/agregar-producto')
+    }
+
     // Cargar productos desde la API
     useEffect(() => {
         const loadProducts = async () => {
@@ -432,7 +463,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                 </div>
 
                 <button
-                    onClick={() => router.push('/agregar-producto')}
+                    onClick={handlePublishProduct}
                     className="btn-primary flex items-center space-x-2"
                 >
                     <PlusIcon className="w-5 h-5" />

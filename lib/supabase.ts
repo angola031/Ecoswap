@@ -26,6 +26,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
                 }
             }
         }
+    },
+    global: {
+        headers: {
+            'Referrer-Policy': 'strict-origin-when-cross-origin'
+        }
     }
 })
 

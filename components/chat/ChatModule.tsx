@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
   ChatBubbleLeftRightIcon,
@@ -64,6 +65,7 @@ interface ChatConversation {
 }
 
 export default function ChatModule({ currentUser }: ChatModuleProps) {
+  const router = useRouter()
   const [conversations, setConversations] = useState<ChatConversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<ChatConversation | null>(null)
   const [newMessage, setNewMessage] = useState('')
@@ -182,6 +184,30 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return
+    
+    // Verificar si el usuario está verificado
+    const { isUserVerified } = await import('@/lib/auth')
+    const isVerified = await isUserVerified()
+    
+    if (!isVerified) {
+      // Mostrar mensaje de verificación requerida
+      const result = await (window as any).Swal.fire({
+        title: 'Verificación Requerida',
+        text: 'Por favor, primero verifica tu cuenta para poder enviar mensajes.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ir a Verificación',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#3B82F6',
+        cancelButtonColor: '#6B7280'
+      })
+      
+      if (result.isConfirmed) {
+        router.push('/verificacion-identidad')
+      }
+      return
+    }
+    
     try {
       const chatId = Number(selectedConversation.id)
       const { data: { session } } = await supabase.auth.getSession()

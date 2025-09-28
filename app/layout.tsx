@@ -71,6 +71,9 @@ export default function RootLayout({
 }) {
     return (
         <html lang="es" className="h-full">
+            <head>
+                <script src="/data/sweetalert2.all.min.js"></script>
+            </head>
             <body className={`${inter.className} h-full`}>
                 <SessionManager />
                 {children}

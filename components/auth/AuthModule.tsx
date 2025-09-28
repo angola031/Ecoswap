@@ -57,7 +57,8 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
 
   // Estados del formulario de registro
   const [registerForm, setRegisterForm] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     location: '',
@@ -167,15 +168,29 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
     }
 
     try {
-      const registerData: RegisterData = {
-        name: registerForm.name,
+      const registerData = {
+        firstName: registerForm.firstName,
+        lastName: registerForm.lastName,
         email: registerForm.email,
         phone: registerForm.phone,
         location: registerForm.location,
         password: registerForm.password
       }
 
+      console.log('🔍 DEBUG: Frontend - Iniciando proceso de registro')
+      console.log('🔍 DEBUG: Frontend - Datos del formulario:', registerData)
+      console.log('🔍 DEBUG: Frontend - Estado de validaciones:', {
+        emailValidation,
+        phoneValidation
+      })
+
       const { user, error: registerError, needsVerification } = await registerUser(registerData)
+      
+      console.log('🔍 DEBUG: Frontend - Resultado del registro:', {
+        user,
+        error: registerError,
+        needsVerification
+      })
 
       if (registerError) {
         setError(registerError)
@@ -211,14 +226,22 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
     setSuccess(null)
 
     try {
-      const { user, error } = await completeRegistrationWithCode({
+      const verificationData = {
         email: pendingEmail,
         code: verificationCode,
-        name: registerForm.name,
+        firstName: registerForm.firstName,
+        lastName: registerForm.lastName,
         phone: registerForm.phone,
         location: registerForm.location,
         password: registerForm.password
-      })
+      }
+      
+      console.log('🔍 DEBUG: Frontend - Iniciando verificación de código')
+      console.log('🔍 DEBUG: Frontend - Datos de verificación:', verificationData)
+      
+      const { user, error } = await completeRegistrationWithCode(verificationData)
+      
+      console.log('🔍 DEBUG: Frontend - Resultado de verificación:', { user, error })
 
       if (error) {
         setError(error)
@@ -698,21 +721,41 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                 onSubmit={handleRegister}
                 className="space-y-4"
               >
-                <div>
-                  <label htmlFor="register-name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Nombre Completo
-                  </label>
-                  <div className="relative">
-                    <UserIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                    <input
-                      id="register-name"
-                      type="text"
-                      value={registerForm.name}
-                      onChange={(e) => updateRegisterForm('name', e.target.value)}
-                      className="input-field pl-10"
-                      placeholder="Tu nombre completo"
-                      required
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="register-firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                      Nombre
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                      <input
+                        id="register-firstName"
+                        type="text"
+                        value={registerForm.firstName}
+                        onChange={(e) => updateRegisterForm('firstName', e.target.value)}
+                        className="input-field pl-10"
+                        placeholder="Tu nombre"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="register-lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                      Apellido
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                      <input
+                        id="register-lastName"
+                        type="text"
+                        value={registerForm.lastName}
+                        onChange={(e) => updateRegisterForm('lastName', e.target.value)}
+                        className="input-field pl-10"
+                        placeholder="Tu apellido"
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
 

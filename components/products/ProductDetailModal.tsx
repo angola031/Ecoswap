@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
     XMarkIcon,
@@ -61,6 +62,7 @@ interface ProductDetailModalProps {
 }
 
 export default function ProductDetailModal({ product, isOpen, onClose, currentUser }: ProductDetailModalProps) {
+    const router = useRouter()
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
     const [isInterested, setIsInterested] = useState(false)
     const [isLiked, setIsLiked] = useState(false)
@@ -81,12 +83,58 @@ export default function ProductDetailModal({ product, isOpen, onClose, currentUs
         )
     }
 
-    const handleInterest = () => {
+    const handleInterest = async () => {
+        // Verificar si el usuario está verificado
+        const { isUserVerified } = await import('@/lib/auth')
+        const isVerified = await isUserVerified()
+        
+        if (!isVerified) {
+            // Mostrar mensaje de verificación requerida
+            const result = await (window as any).Swal.fire({
+                title: 'Verificación Requerida',
+                text: 'Por favor, primero verifica tu cuenta para poder dar "Me interesa" a productos.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ir a Verificación',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#3B82F6',
+                cancelButtonColor: '#6B7280'
+            })
+            
+            if (result.isConfirmed) {
+                router.push('/verificacion-identidad')
+            }
+            return
+        }
+
         setIsInterested(!isInterested)
         // Aquí se podría implementar la lógica para contactar al vendedor
     }
 
-    const handleLike = () => {
+    const handleLike = async () => {
+        // Verificar si el usuario está verificado
+        const { isUserVerified } = await import('@/lib/auth')
+        const isVerified = await isUserVerified()
+        
+        if (!isVerified) {
+            // Mostrar mensaje de verificación requerida
+            const result = await (window as any).Swal.fire({
+                title: 'Verificación Requerida',
+                text: 'Por favor, primero verifica tu cuenta para poder dar like a productos.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ir a Verificación',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#3B82F6',
+                cancelButtonColor: '#6B7280'
+            })
+            
+            if (result.isConfirmed) {
+                router.push('/verificacion-identidad')
+            }
+            return
+        }
+
         setIsLiked(!isLiked)
         // Aquí se podría implementar la lógica para dar like al producto
     }
@@ -101,14 +149,36 @@ export default function ProductDetailModal({ product, isOpen, onClose, currentUs
         } else {
             // Fallback para navegadores que no soportan Web Share API
             navigator.clipboard.writeText(window.location.href)
-            alert('Enlace copiado al portapapeles')
+            (window as any).Swal.fire({
+                title: 'Enlace Copiado',
+                text: 'El enlace se ha copiado al portapapeles',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            })
         }
     }
 
-    const handleReport = () => {
-        if (confirm('¿Estás seguro de que quieres reportar este producto?')) {
+    const handleReport = async () => {
+        const result = await Swal.fire({
+            title: 'Reportar Producto',
+            text: '¿Estás seguro de que quieres reportar este producto?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, Reportar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#EF4444',
+            cancelButtonColor: '#6B7280'
+        })
+        
+        if (result.isConfirmed) {
             // Aquí se implementaría la lógica para reportar el producto
-            alert('Producto reportado. Revisaremos el contenido.')
+            (window as any).Swal.fire({
+                title: 'Producto Reportado',
+                text: 'Producto reportado. Revisaremos el contenido.',
+                icon: 'success',
+                confirmButtonText: 'Aceptar'
+            })
         }
     }
 

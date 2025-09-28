@@ -286,6 +286,32 @@ export default function AgregarProductoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Verificar si el usuario está verificado
+    console.log('🔍 DEBUG: Verificando estado del usuario en página agregar producto...')
+    const { isUserVerified } = await import('@/lib/auth')
+    const isVerified = await isUserVerified()
+    console.log('🔍 DEBUG: Usuario verificado en página:', isVerified)
+    
+    if (!isVerified) {
+      console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde página...')
+      // Mostrar mensaje de verificación requerida
+      const result = await (window as any).Swal.fire({
+        title: 'Verificación Requerida',
+        text: 'Por favor, primero verifica tu cuenta para poder publicar productos.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ir a Verificación',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#3B82F6',
+        cancelButtonColor: '#6B7280'
+      })
+      
+      if (result.isConfirmed) {
+        router.push('/verificacion-identidad')
+      }
+      return
+    }
+
     if (!validateForm()) return
 
     setIsSubmitting(true)
@@ -294,7 +320,12 @@ export default function AgregarProductoPage() {
       // Obtener token de autenticación
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
-        alert('No hay sesión activa. Por favor, inicia sesión.')
+        (window as any).Swal.fire({
+          title: 'Sesión Requerida',
+          text: 'No hay sesión activa. Por favor, inicia sesión.',
+          icon: 'warning',
+          confirmButtonText: 'Aceptar'
+        })
         return
       }
 
@@ -433,13 +464,23 @@ export default function AgregarProductoPage() {
       }
 
       // Mostrar mensaje de éxito
-      alert('¡Producto enviado exitosamente! Será revisado por nuestros administradores antes de ser publicado.')
+      (window as any).Swal.fire({
+        title: '¡Producto Enviado!',
+        text: '¡Producto enviado exitosamente! Será revisado por nuestros administradores antes de ser publicado.',
+        icon: 'success',
+        confirmButtonText: 'Aceptar'
+      })
 
       // Redirigir a productos
       router.push('/')
     } catch (error) {
       console.error('Error al enviar producto:', error)
-      alert(`Error al enviar el producto: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+      (window as any).Swal.fire({
+        title: 'Error',
+        text: `Error al enviar el producto: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+        icon: 'error',
+        confirmButtonText: 'Aceptar'
+      })
     } finally {
       setIsSubmitting(false)
     }

@@ -14,7 +14,8 @@ export interface User {
 }
 
 export interface RegisterData {
-    name: string
+    firstName: string
+    lastName: string
     email: string
     phone: string
     location: string
@@ -33,7 +34,8 @@ export interface RequestCodeData {
 export interface CompleteRegistrationData {
     email: string
     code: string
-    name: string
+    firstName: string
+    lastName: string
     phone: string
     location: string
     password: string
@@ -49,42 +51,44 @@ export interface AdminUser extends User {
 export async function registerUser(data: RegisterData): Promise<{ user: User | null; error: string | null; needsVerification?: boolean }> {
     try {
         // 1. Verificar si el usuario ya existe en la tabla USUARIO
+        console.log('🔍 DEBUG: registerUser - Verificando usuario existente para email:', data.email)
+        
         const { data: existingUser, error: checkError } = await supabase
             .from('usuario')
             .select('email, verificado, activo')
             .eq('email', data.email)
-            .single()
+            .maybeSingle() // Usar maybeSingle para evitar error 406 cuando no hay resultados
+
+        if (checkError) {
+            console.error('❌ ERROR: registerUser - Error verificando usuario existente:', checkError)
+            console.error('❌ ERROR: registerUser - Código:', checkError.code)
+            console.error('❌ ERROR: registerUser - Mensaje:', checkError.message)
+            return { user: null, error: 'Error interno del servidor' }
+        }
+
+        console.log('🔍 DEBUG: registerUser - Usuario existente encontrado:', existingUser)
 
         if (existingUser) {
             if (existingUser.activo) {
                 if (existingUser.verificado) {
                     return { user: null, error: 'Este correo electrónico ya está registrado y verificado. Inicia sesión en su lugar.' }
                 } else {
-                    return { user: null, error: 'Este correo electrónico ya está registrado pero no ha sido verificado. Revisa tu email o solicita un nuevo enlace de verificación.' }
+                    // Usuario existe pero no está verificado - permitir reenvío de código
+                    console.log('🔍 DEBUG: registerUser - Usuario existe pero no verificado, permitiendo reenvío de código')
                 }
             } else {
                 return { user: null, error: 'Esta cuenta está desactivada. Contacta al soporte para reactivarla.' }
             }
         }
 
-        // 2. Verificar si el usuario existe en Supabase Auth (para casos edge)
-        const { data: authUsers, error: authCheckError } = await supabase.auth.admin.listUsers()
-
-        if (authCheckError) {
-            console.error('Error verificando usuarios de auth:', authCheckError)
-        } else if (authUsers) {
-            const existingAuthUser = authUsers.users.find((user: any) => user.email === data.email)
-            if (existingAuthUser) {
-                if (existingAuthUser.email_confirmed_at) {
-                    return { user: null, error: 'Este correo electrónico ya está registrado. Inicia sesión en su lugar.' }
-                } else {
-                    return { user: null, error: 'Este correo electrónico ya está registrado pero no ha sido verificado. Revisa tu email o solicita un nuevo enlace de verificación.' }
-                }
-            }
-        }
+        // 2. La verificación de Supabase Auth se maneja automáticamente
+        // No necesitamos verificar manualmente ya que Supabase Auth maneja duplicados
 
         // 3. NUEVO FLUJO: Enviar código OTP al correo (no crear usuario todavía)
-        const { error: otpError } = await supabase.auth.signInWithOtp({
+        console.log('🔍 DEBUG: registerUser - Enviando código OTP a:', data.email)
+        console.log('🔍 DEBUG: registerUser - URL de redirección:', `${window.location.origin}/auth/callback`)
+        
+        const { data: otpData, error: otpError } = await supabase.auth.signInWithOtp({
             email: data.email,
             options: {
                 shouldCreateUser: true
@@ -92,7 +96,10 @@ export async function registerUser(data: RegisterData): Promise<{ user: User | n
         })
 
         if (otpError) {
-            console.error('Error enviando OTP de registro:', otpError)
+            console.error('❌ ERROR: registerUser - Error enviando código OTP:', otpError)
+            console.error('❌ ERROR: registerUser - Código de error OTP:', otpError.status)
+            console.error('❌ ERROR: registerUser - Mensaje OTP:', otpError.message)
+            console.error('❌ ERROR: registerUser - Detalles OTP:', otpError)
 
             // Manejar errores específicos de Supabase
             if (otpError.message.includes('already registered')) {
@@ -104,6 +111,8 @@ export async function registerUser(data: RegisterData): Promise<{ user: User | n
             }
         }
 
+        console.log('✅ DEBUG: registerUser - Código OTP enviado exitosamente:', otpData)
+        
         // 4. Indicar al frontend que debe mostrar la pantalla para ingresar el código
         return {
             user: null,
@@ -120,16 +129,26 @@ export async function registerUser(data: RegisterData): Promise<{ user: User | n
 // NUEVO: Solicitar código de verificación por email (puede usarse independiente del formulario completo)
 export async function requestRegistrationCode(data: RequestCodeData): Promise<{ error: string | null }> {
     try {
-        const { error } = await supabase.auth.signInWithOtp({
+        console.log('🔍 DEBUG: requestRegistrationCode - Enviando código OTP a:', data.email)
+        
+        const { data: otpData, error } = await supabase.auth.signInWithOtp({
             email: data.email,
             options: {
                 shouldCreateUser: true
             }
         })
-        if (error) return { error: error.message }
+        
+        if (error) {
+            console.error('❌ ERROR: requestRegistrationCode - Error enviando OTP:', error)
+            console.error('❌ ERROR: requestRegistrationCode - Código:', error.status)
+            console.error('❌ ERROR: requestRegistrationCode - Mensaje:', error.message)
+            return { error: error.message }
+        }
+        
+        console.log('✅ DEBUG: requestRegistrationCode - Código OTP enviado exitosamente:', otpData)
         return { error: null }
     } catch (e) {
-        console.error('Error en requestRegistrationCode:', e)
+        console.error('❌ ERROR: requestRegistrationCode - Excepción:', e)
         return { error: 'Error al enviar el código. Intenta nuevamente.' }
     }
 }
@@ -157,9 +176,11 @@ export async function completeRegistrationWithCode(data: CompleteRegistrationDat
         const { data: updateRes, error: updateError } = await supabase.auth.updateUser({
             password: data.password,
             data: {
-                name: data.name,
+                first_name: data.firstName.trim(),
+                last_name: data.lastName.trim(),
                 phone: data.phone,
-                location: data.location
+                location: data.location,
+                full_name: `${data.firstName} ${data.lastName}`.trim()
             }
         })
 
@@ -170,9 +191,106 @@ export async function completeRegistrationWithCode(data: CompleteRegistrationDat
 
         const effectiveAuthUser = updateRes?.user || authUser
 
-        // 3) Crear el perfil en la tabla USUARIO si no existe
-        const userData = await createUserProfileFromAuth(effectiveAuthUser)
-        return { user: userData, error: null }
+        // 3) Crear/actualizar el perfil en la tabla USUARIO con los datos correctos
+        console.log('🔍 DEBUG: completeRegistrationWithCode - Creando/actualizando perfil de usuario...')
+        
+        // Verificar si ya existe un usuario con este email
+        const { data: existingUser, error: checkError } = await supabase
+            .from('usuario')
+            .select('*')
+            .eq('email', data.email)
+            .maybeSingle()
+        
+        let userData
+        
+        if (existingUser) {
+            // Usuario ya existe, actualizar con los datos del formulario
+            console.log('🔍 DEBUG: completeRegistrationWithCode - Usuario existe, actualizando datos...')
+            
+            const { data: updatedUser, error: updateError } = await supabase
+                .from('usuario')
+                .update({
+                    nombre: data.firstName.trim(),
+                    apellido: data.lastName.trim(),
+                    telefono: data.phone || null,
+                    auth_user_id: effectiveAuthUser.id,
+                    verificado: true,
+                    ultima_conexion: new Date().toISOString()
+                })
+                .eq('email', data.email)
+                .select()
+                .single()
+            
+            if (updateError) {
+                console.error('❌ ERROR: completeRegistrationWithCode - Error actualizando usuario:', updateError)
+                return { user: null, error: 'Error al actualizar datos del usuario' }
+            }
+            
+            userData = updatedUser
+        } else {
+            // Usuario no existe, crear nuevo
+            console.log('🔍 DEBUG: completeRegistrationWithCode - Usuario no existe, creando nuevo...')
+            
+            const { data: newUser, error: createError } = await supabase
+                .from('usuario')
+                .insert({
+                    nombre: data.firstName.trim(),
+                    apellido: data.lastName.trim(),
+                    email: data.email,
+                    telefono: data.phone || null,
+                    password_hash: 'supabase_auth',
+                    auth_user_id: effectiveAuthUser.id,
+                    verificado: false,
+                    activo: true,
+                    ultima_conexion: new Date().toISOString()
+                })
+                .select()
+                .single()
+            
+            if (createError) {
+                console.error('❌ ERROR: completeRegistrationWithCode - Error creando usuario:', createError)
+                return { user: null, error: 'Error al crear usuario' }
+            }
+            
+            userData = newUser
+        }
+        
+        // Actualizar datos adicionales si es necesario
+        if (data.location) {
+            const locationParts = data.location.split(', ')
+            const ciudad = locationParts[0] || ''
+            const departamento = locationParts[1] || ''
+
+            await supabase
+                .from('ubicacion')
+                .insert({
+                    user_id: userData.user_id,
+                    pais: 'Colombia',
+                    departamento,
+                    ciudad,
+                    barrio: null,
+                    latitud: null,
+                    longitud: null,
+                    es_principal: true
+                })
+        }
+        
+        console.log('✅ DEBUG: completeRegistrationWithCode - Usuario obtenido exitosamente:', userData)
+        
+        // Crear objeto User para el frontend
+        const user: User = {
+            id: userData.user_id.toString(),
+            name: `${userData.nombre} ${userData.apellido}`.trim(),
+            email: userData.email,
+            avatar: userData.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+            location: data.location || 'Colombia',
+            phone: userData.telefono,
+            isAdmin: false,
+            roles: [],
+            adminSince: null
+        }
+        
+        return { user, error: null }
 
     } catch (e) {
         console.error('Error en completeRegistrationWithCode:', e)
@@ -180,12 +298,38 @@ export async function completeRegistrationWithCode(data: CompleteRegistrationDat
     }
 }
 
+// Función auxiliar para separar nombre completo en nombre y apellido
+function splitFullName(fullName: string): { nombre: string, apellido: string } {
+    if (!fullName || typeof fullName !== 'string') {
+        return { nombre: 'Usuario', apellido: 'EcoSwap' }
+    }
+    
+    const trimmedName = fullName.trim()
+    if (!trimmedName) {
+        return { nombre: 'Usuario', apellido: 'EcoSwap' }
+    }
+    
+    const nameParts = trimmedName.split(/\s+/).filter(part => part.length > 0)
+    
+    if (nameParts.length === 0) {
+        return { nombre: 'Usuario', apellido: 'EcoSwap' }
+    } else if (nameParts.length === 1) {
+        return { nombre: nameParts[0], apellido: 'EcoSwap' }
+    } else {
+        // Tomar el primer elemento como nombre y el resto como apellido
+        const nombre = nameParts[0]
+        const apellido = nameParts.slice(1).join(' ')
+        return { nombre, apellido }
+    }
+}
+
 // Función auxiliar para crear el perfil del usuario en la tabla USUARIO
 async function createUserProfile(authUser: any, registerData: RegisterData): Promise<User> {
-    // Separar nombre y apellido
-    const nameParts = registerData.name.trim().split(' ')
-    const nombre = nameParts[0] || ''
-    const apellido = nameParts.slice(1).join(' ') || ''
+    // Usar directamente los campos separados
+    const nombre = registerData.firstName.trim()
+    const apellido = registerData.lastName.trim()
+    
+    console.log('🔍 DEBUG: createUserProfile - Nombre recibido:', { nombre, apellido })
 
     // Crear el usuario en la tabla USUARIO (usando la estructura existente)
     // Campos mínimos requeridos según el esquema
@@ -214,6 +358,9 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
     }
     
     try {
+      console.log('🔍 DEBUG: Intentando insertar usuario con datos completos')
+      console.log('🔍 DEBUG: Datos a insertar:', JSON.stringify(userData, null, 2))
+      
       const { data: newUser, error: insertError } = await supabase
         .from('usuario')
         .insert(userData)
@@ -221,7 +368,11 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
         .single()
 
       if (insertError) {
-        console.error('Error al crear perfil de usuario:', insertError)
+        console.error('❌ ERROR: Error al crear perfil de usuario:', insertError)
+        console.error('❌ ERROR: Código de error:', insertError.code)
+        console.error('❌ ERROR: Mensaje:', insertError.message)
+        console.error('❌ ERROR: Detalles:', insertError.details)
+        console.error('❌ ERROR: Hint:', insertError.hint)
         
         // Intentar inserción con campos mínimos
         const minimalUserData = {
@@ -235,6 +386,9 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
           auth_user_id: authUser.id
         }
         
+        console.log('🔍 DEBUG: Intentando inserción con campos mínimos')
+        console.log('🔍 DEBUG: Datos mínimos:', JSON.stringify(minimalUserData, null, 2))
+        
         const { data: newUserMinimal, error: insertErrorMinimal } = await supabase
           .from('usuario')
           .insert(minimalUserData)
@@ -242,7 +396,10 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
           .single()
           
         if (insertErrorMinimal) {
-          console.error('Error también con campos mínimos:', insertErrorMinimal)
+          console.error('❌ ERROR: Error también con campos mínimos:', insertErrorMinimal)
+          console.error('❌ ERROR: Código de error mínimo:', insertErrorMinimal.code)
+          console.error('❌ ERROR: Mensaje mínimo:', insertErrorMinimal.message)
+          console.error('❌ ERROR: Detalles mínimo:', insertErrorMinimal.details)
           throw insertErrorMinimal
         }
         
@@ -421,39 +578,53 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
     }
 }
 
-// Función auxiliar para crear perfil desde datos de auth
-async function createUserProfileFromAuth(authUser: any): Promise<User> {
-    const name = authUser.user_metadata?.name || 'Usuario'
-    const nameParts = name.trim().split(' ')
-    const nombre = nameParts[0] || ''
-    const apellido = nameParts.slice(1).join(' ') || ''
+// Función auxiliar para crear perfil con datos específicos del formulario
+async function createUserProfileWithData(authUser: any, formData: CompleteRegistrationData): Promise<User> {
+    const nombre = formData.firstName.trim()
+    const apellido = formData.lastName.trim()
+    
+    console.log('🔍 DEBUG: createUserProfileWithData - Datos del formulario:', { nombre, apellido })
 
     // Crear el usuario en la tabla USUARIO (usando la estructura existente)
+    const userDataToInsert = {
+        nombre,
+        apellido,
+        email: authUser.email,
+        telefono: formData.phone || null,
+        password_hash: 'supabase_auth', // Marcador para indicar que usa Supabase Auth
+        fecha_nacimiento: null,
+        biografia: null,
+        foto_perfil: null,
+        calificacion_promedio: 0.00,
+        total_intercambios: 0,
+        eco_puntos: 0,
+        verificado: true,
+        activo: true,
+        ultima_conexion: new Date().toISOString(),
+        auth_user_id: authUser.id // Agregar el auth_user_id requerido
+    }
+    
+    console.log('🔍 DEBUG: createUserProfileFromAuth - Intentando insertar usuario')
+    console.log('🔍 DEBUG: createUserProfileFromAuth - AuthUser:', {
+        id: authUser.id,
+        email: authUser.email,
+        user_metadata: authUser.user_metadata
+    })
+    console.log('🔍 DEBUG: createUserProfileFromAuth - Datos a insertar:', JSON.stringify(userDataToInsert, null, 2))
+    
     const { data: newUser, error: insertError } = await supabase
         .from('usuario')
-        .insert({
-            nombre,
-            apellido,
-            email: authUser.email,
-            telefono: authUser.user_metadata?.phone || null,
-            password_hash: 'supabase_auth', // Marcador para indicar que usa Supabase Auth
-            fecha_nacimiento: null,
-            biografia: null,
-            foto_perfil: null,
-            calificacion_promedio: 0.00,
-            total_intercambios: 0,
-            eco_puntos: 0,
-            verificado: true,
-            activo: true,
-            ultima_conexion: new Date().toISOString(),
-            auth_user_id: authUser.id // Agregar el auth_user_id requerido
-        })
+        .insert(userDataToInsert)
         .select()
         .single()
 
     if (insertError) {
-        console.error('Error al crear perfil desde auth:', insertError)
-        console.error('Datos que se intentaron insertar:', {
+        console.error('❌ ERROR: createUserProfileFromAuth - Error al crear perfil desde auth:', insertError)
+        console.error('❌ ERROR: createUserProfileFromAuth - Código:', insertError.code)
+        console.error('❌ ERROR: createUserProfileFromAuth - Mensaje:', insertError.message)
+        console.error('❌ ERROR: createUserProfileFromAuth - Detalles:', insertError.details)
+        console.error('❌ ERROR: createUserProfileFromAuth - Hint:', insertError.hint)
+        console.error('❌ ERROR: createUserProfileFromAuth - Datos que se intentaron insertar:', {
             nombre,
             apellido,
             email: authUser.email,
@@ -462,6 +633,150 @@ async function createUserProfileFromAuth(authUser: any): Promise<User> {
         })
         throw insertError
     }
+    
+    console.log('✅ DEBUG: createUserProfileFromAuth - Usuario creado exitosamente:', newUser)
+
+    // Crear ubicación principal usando datos del formulario
+    if (formData.location) {
+        const locationParts = formData.location.split(', ')
+        const ciudad = locationParts[0] || ''
+        const departamento = locationParts[1] || ''
+
+        const { error: ubicacionError } = await supabase
+            .from('ubicacion')
+            .insert({
+                user_id: newUser.user_id,
+                pais: 'Colombia',
+                departamento,
+                ciudad,
+                barrio: null,
+                latitud: null,
+                longitud: null,
+                es_principal: true
+            })
+        
+        if (ubicacionError) {
+            console.error('Error al crear ubicación:', ubicacionError)
+        }
+    }
+
+    // Crear configuración por defecto
+    const { error: configError } = await supabase
+        .from('configuracion_usuario')
+        .insert({
+            usuario_id: newUser.user_id,
+            notif_nuevas_propuestas: true,
+            notif_mensajes: true,
+            notif_actualizaciones: false,
+            notif_newsletter: true,
+            perfil_publico: true,
+            mostrar_ubicacion_exacta: false,
+            mostrar_telefono: false,
+            recibir_mensajes_desconocidos: true,
+            distancia_maxima_km: 50,
+            categorias_interes: null
+        })
+    
+    if (configError) {
+        console.error('Error al crear configuración:', configError)
+    }
+
+    return {
+        id: newUser.user_id.toString(),
+        name: `${nombre} ${apellido}`.trim(),
+        email: newUser.email,
+        avatar: newUser.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+        location: formData.location || 'Colombia',
+        phone: newUser.telefono
+    }
+}
+
+// Función para verificar si el usuario actual está verificado
+export async function isUserVerified(): Promise<boolean> {
+    try {
+        console.log('🔍 DEBUG: isUserVerified - Iniciando verificación...')
+        const { data: { user } } = await supabase.auth.getUser()
+        console.log('🔍 DEBUG: isUserVerified - Usuario de auth:', user?.email)
+        
+        if (!user?.email) {
+            console.log('🔍 DEBUG: isUserVerified - No hay usuario autenticado')
+            return false
+        }
+
+        const { data: usuario, error } = await supabase
+            .from('usuario')
+            .select('verificado')
+            .eq('email', user.email)
+            .single()
+
+        console.log('🔍 DEBUG: isUserVerified - Usuario en BD:', usuario)
+        console.log('🔍 DEBUG: isUserVerified - Error:', error)
+
+        if (error || !usuario) {
+            console.log('🔍 DEBUG: isUserVerified - Error o usuario no encontrado')
+            return false
+        }
+        
+        const isVerified = usuario.verificado === true
+        console.log('🔍 DEBUG: isUserVerified - Estado verificado:', isVerified)
+        return isVerified
+    } catch (error) {
+        console.error('❌ ERROR: isUserVerified - Error verificando estado del usuario:', error)
+        return false
+    }
+}
+
+// Función auxiliar para crear perfil desde datos de auth (para login)
+async function createUserProfileFromAuth(authUser: any): Promise<User> {
+    const name = authUser.user_metadata?.name || 'Usuario'
+    const { nombre, apellido } = splitFullName(name)
+    
+    console.log('🔍 DEBUG: createUserProfileFromAuth - Nombre completo:', name)
+    console.log('🔍 DEBUG: createUserProfileFromAuth - Nombre separado:', { nombre, apellido })
+
+    // Crear el usuario en la tabla USUARIO (usando la estructura existente)
+    const userDataToInsert = {
+        nombre,
+        apellido,
+        email: authUser.email,
+        telefono: authUser.user_metadata?.phone || null,
+        password_hash: 'supabase_auth', // Marcador para indicar que usa Supabase Auth
+        fecha_nacimiento: null,
+        biografia: null,
+        foto_perfil: null,
+        calificacion_promedio: 0.00,
+        total_intercambios: 0,
+        eco_puntos: 0,
+        verificado: true,
+        activo: true,
+        ultima_conexion: new Date().toISOString(),
+        auth_user_id: authUser.id // Agregar el auth_user_id requerido
+    }
+    
+    console.log('🔍 DEBUG: createUserProfileFromAuth - Intentando insertar usuario')
+    console.log('🔍 DEBUG: createUserProfileFromAuth - AuthUser:', {
+        id: authUser.id,
+        email: authUser.email,
+        user_metadata: authUser.user_metadata
+    })
+    console.log('🔍 DEBUG: createUserProfileFromAuth - Datos a insertar:', JSON.stringify(userDataToInsert, null, 2))
+    
+    const { data: newUser, error: insertError } = await supabase
+        .from('usuario')
+        .insert(userDataToInsert)
+        .select()
+        .single()
+
+    if (insertError) {
+        console.error('❌ ERROR: createUserProfileFromAuth - Error al crear perfil desde auth:', insertError)
+        console.error('❌ ERROR: createUserProfileFromAuth - Código:', insertError.code)
+        console.error('❌ ERROR: createUserProfileFromAuth - Mensaje:', insertError.message)
+        console.error('❌ ERROR: createUserProfileFromAuth - Detalles:', insertError.details)
+        console.error('❌ ERROR: createUserProfileFromAuth - Hint:', insertError.hint)
+        throw insertError
+    }
+    
+    console.log('✅ DEBUG: createUserProfileFromAuth - Usuario creado exitosamente:', newUser)
 
     // Crear ubicación principal si se proporciona
     if (authUser.user_metadata?.location) {
@@ -694,9 +1009,10 @@ export async function verifyEmailAndCreateProfile(token: string): Promise<{ user
 
         // Separar nombre y apellido
         const fullName = userMetadata.name || (authData.user.email ? authData.user.email.split('@')[0] : 'Usuario')
-        const nameParts = fullName.trim().split(' ')
-        const nombre = nameParts[0] || 'Usuario'
-        const apellido = nameParts.slice(1).join(' ') || 'EcoSwap'
+        const { nombre, apellido } = splitFullName(fullName)
+        
+        console.log('🔍 DEBUG: loginUser - Nombre completo:', fullName)
+        console.log('🔍 DEBUG: loginUser - Nombre separado:', { nombre, apellido })
 
         // Crear el perfil del usuario
         const { data: newUser, error: insertError } = await supabase

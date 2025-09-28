@@ -208,8 +208,33 @@ export default function InteractionDetailModal({
     }
 
     // Funciones de acción
-    const handleSendMessage = () => {
+    const handleSendMessage = async () => {
         if (!newMessage.trim()) return
+
+        // Verificar si el usuario está verificado
+        const { isUserVerified } = await import('@/lib/auth')
+        const isVerified = await isUserVerified()
+        
+        if (!isVerified) {
+            // Mostrar mensaje de verificación requerida
+            const result = await (window as any).Swal.fire({
+                title: 'Verificación Requerida',
+                text: 'Por favor, primero verifica tu cuenta para poder enviar mensajes.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ir a Verificación',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#3B82F6',
+                cancelButtonColor: '#6B7280'
+            })
+            
+            if (result.isConfirmed) {
+                const { useRouter } = await import('next/router')
+                const router = useRouter()
+                router.push('/verificacion-identidad')
+            }
+            return
+        }
 
         const message: Message = {
             id: Date.now().toString(),

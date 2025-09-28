@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
   MagnifyingGlassIcon,
@@ -159,6 +160,39 @@ export default function CoreModule({ currentUser, onLogout }: CoreModuleProps) {
 
 // Componente de la pantalla de inicio
 function HomeScreen({ stats, currentUser }: { stats: any, currentUser: User | null }) {
+  const router = useRouter()
+
+  const handlePublishProduct = async () => {
+    // Verificar si el usuario está verificado
+    console.log('🔍 DEBUG: Verificando estado del usuario desde HomeScreen...')
+    const { isUserVerified } = await import('@/lib/auth')
+    const isVerified = await isUserVerified()
+    console.log('🔍 DEBUG: Usuario verificado desde HomeScreen:', isVerified)
+    
+    if (!isVerified) {
+      console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde HomeScreen...')
+      // Mostrar mensaje de verificación requerida
+      const result = await (window as any).Swal.fire({
+        title: 'Verificación Requerida',
+        text: 'Por favor, primero verifica tu cuenta para poder publicar productos.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ir a Verificación',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#3B82F6',
+        cancelButtonColor: '#6B7280'
+      })
+      
+      if (result.isConfirmed) {
+        router.push('/verificacion-identidad')
+      }
+      return
+    }
+
+    // Si está verificado, redirigir a agregar producto
+    router.push('/agregar-producto')
+  }
+
   return (
     <div className="space-y-8">
       {/* Estadísticas */}
@@ -205,7 +239,7 @@ function HomeScreen({ stats, currentUser }: { stats: any, currentUser: User | nu
           </p>
           <button 
             className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
-            onClick={() => window.location.href = '/agregar-producto'}
+            onClick={handlePublishProduct}
           >
             <PlusIcon className="w-5 h-5 inline mr-2" />
             Publicar Producto

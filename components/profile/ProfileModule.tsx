@@ -116,6 +116,37 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     const [rejectionReason, setRejectionReason] = useState<string | null>(null)
     const [badgesDetail, setBadgesDetail] = useState<BadgeDetail[]>([])
 
+    const handlePublishProduct = async () => {
+        // Verificar si el usuario está verificado
+        console.log('🔍 DEBUG: Verificando estado del usuario desde ProfileModule...')
+        const { isUserVerified } = await import('@/lib/auth')
+        const isVerified = await isUserVerified()
+        console.log('🔍 DEBUG: Usuario verificado desde ProfileModule:', isVerified)
+        
+        if (!isVerified) {
+            console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde ProfileModule...')
+            // Mostrar mensaje de verificación requerida
+            const result = await (window as any).Swal.fire({
+                title: 'Verificación Requerida',
+                text: 'Por favor, primero verifica tu cuenta para poder publicar productos.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ir a Verificación',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#3B82F6',
+                cancelButtonColor: '#6B7280'
+            })
+            
+            if (result.isConfirmed) {
+                router.push('/verificacion-identidad')
+            }
+            return
+        }
+
+        // Si está verificado, redirigir a agregar producto
+        router.push('/agregar-producto')
+    }
+
     // Cargar datos del perfil desde Supabase
     useEffect(() => {
         const loadProfileData = async () => {
@@ -318,7 +349,12 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
             if (error) throw error
             setUserProducts(prev => prev.map(p => p.id === productId ? { ...p } : p))
         } catch (_) {
-            alert('No se pudo actualizar el estado de publicación')
+            (window as any).Swal.fire({
+                title: 'Error',
+                text: 'No se pudo actualizar el estado de publicación',
+                icon: 'error',
+                confirmButtonText: 'Aceptar'
+            })
         } finally {
             setPausingId(null)
         }
@@ -362,7 +398,12 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
             if (error) throw error
             setUserProducts(prev => prev.filter(p => p.id !== productId))
         } catch (_) {
-            alert('No se pudo eliminar el producto')
+            (window as any).Swal.fire({
+                title: 'Error',
+                text: 'No se pudo eliminar el producto',
+                icon: 'error',
+                confirmButtonText: 'Aceptar'
+            })
         } finally {
             setDeletingId(null)
         }
@@ -726,7 +767,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                             <h3 className="text-lg font-semibold text-gray-900">Mis Productos</h3>
                             <button 
                                 className="btn-primary"
-                                onClick={() => router.push('/agregar-producto')}
+                                onClick={handlePublishProduct}
                             >
                                 <HeartIcon className="w-4 h-4 mr-2" />
                                 Publicar Nuevo Producto

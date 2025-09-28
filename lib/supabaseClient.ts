@@ -11,6 +11,12 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     console.warn('Supabase: faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY')
 }
 
-export const supabase = createClient(SUPABASE_URL || '', SUPABASE_ANON_KEY || '')
+export const supabase = createClient(SUPABASE_URL || '', SUPABASE_ANON_KEY || '', {
+    global: {
+        headers: {
+            'Referrer-Policy': 'strict-origin-when-cross-origin'
+        }
+    }
+})
 
 

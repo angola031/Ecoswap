@@ -1,50 +1,83 @@
-#!/usr/bin/env node
-
-/**
- * Script para verificar la configuración de Supabase
- */
-
+// Script para verificar la configuración de Supabase Auth
 require('dotenv').config({ path: '.env.local' })
+const { createClient } = require('@supabase/supabase-js')
 
-console.log('🔍 Verificando configuración de Supabase...')
-
+// Configuración
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-console.log('\n📋 Variables de entorno:')
-console.log('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅ Configurada' : '❌ Faltante')
-console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ Configurada' : '❌ Faltante')
-console.log('SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✅ Configurada' : '❌ Faltante')
+console.log('🔍 Variables de entorno:')
+console.log('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅ Configurado' : '❌ Faltante')
+console.log('SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✅ Configurado' : '❌ Faltante')
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('\n❌ Error: Variables de entorno de Supabase no configuradas')
+if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('\n❌ Faltan variables de entorno necesarias')
+    console.error('Verifica tu archivo .env.local')
     process.exit(1)
 }
 
-console.log('\n🔗 URL de Supabase:', supabaseUrl)
-console.log('🔑 Anon Key:', supabaseAnonKey.substring(0, 20) + '...')
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-// Verificar configuración de cookies en Supabase
-console.log('\n🍪 Configuración de cookies recomendada:')
-console.log('1. Ve al Dashboard de Supabase')
-console.log('2. Settings → Authentication')
-console.log('3. Site URL: http://localhost:3000')
-console.log('4. Redirect URLs:')
-console.log('   - http://localhost:3000/auth/callback')
-console.log('   - http://localhost:3000/auth/supabase-redirect')
-console.log('5. Cookie Settings:')
-console.log('   - SameSite: lax')
-console.log('   - Secure: false (para desarrollo)')
-console.log('   - HttpOnly: false')
+async function checkSupabaseConfig() {
+    console.log('\n🔍 Verificando configuración de Supabase...\n')
 
-console.log('\n📱 Para verificar cookies en el navegador:')
-console.log('1. Abre las herramientas de desarrollador (F12)')
-console.log('2. Ve a Application → Cookies → http://localhost:3000')
-console.log('3. Busca cookies que empiecen con "sb-" o "supabase"')
-console.log('4. Deberías ver algo como:')
-console.log('   - sb-vaqdzualcteljmivtoka-auth-token')
-console.log('   - sb-vaqdzualcteljmivtoka-auth-token.0')
-console.log('   - sb-vaqdzualcteljmivtoka-auth-token.1')
+    try {
+        // 1. Verificar conexión
+        console.log('1. Verificando conexión...')
+        const { data: health, error: healthError } = await supabase
+            .from('usuario')
+            .select('count')
+            .limit(1)
+        
+        if (healthError) {
+            console.error('❌ Error de conexión:', healthError.message)
+        } else {
+            console.log('✅ Conexión exitosa')
+        }
 
-console.log('\n✅ Configuración básica verificada')
+        // 2. Verificar configuración de Auth
+        console.log('\n2. Verificando configuración de Auth...')
+        
+        // Listar usuarios (para verificar permisos)
+        const { data: users, error: usersError } = await supabase.auth.admin.listUsers()
+        
+        if (usersError) {
+            console.error('❌ Error listando usuarios:', usersError.message)
+            console.error('Código:', usersError.status)
+        } else {
+            console.log(`✅ Permisos de admin OK (${users.users.length} usuarios encontrados)`)
+        }
+
+        // 3. Verificar configuración de email templates
+        console.log('\n3. Verificando configuración de email...')
+        
+        // Intentar enviar un OTP de prueba
+        const testEmail = 'test@example.com'
+        console.log(`Enviando OTP de prueba a: ${testEmail}`)
+        
+        const { data: otpData, error: otpError } = await supabase.auth.admin.generateLink({
+            type: 'signup',
+            email: testEmail,
+            password: 'test123'
+        })
+
+        if (otpError) {
+            console.error('❌ Error en OTP:', otpError.message)
+            console.error('Código:', otpError.status)
+            console.error('Detalles:', otpError)
+        } else {
+            console.log('✅ OTP configurado correctamente')
+            console.log('Link generado:', otpData.properties?.action_link)
+        }
+
+        // 4. Verificar configuración del proyecto
+        console.log('\n4. Información del proyecto:')
+        console.log('URL:', supabaseUrl)
+        console.log('Service Key configurado:', supabaseServiceKey ? 'Sí' : 'No')
+
+    } catch (error) {
+        console.error('❌ Error general:', error.message)
+    }
+}
+
+checkSupabaseConfig()

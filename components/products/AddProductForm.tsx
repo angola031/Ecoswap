@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
     XMarkIcon,
@@ -55,6 +56,7 @@ interface AddProductFormProps {
 }
 
 export default function AddProductForm({ currentUser, isOpen, onClose, onProductAdded }: AddProductFormProps) {
+    const router = useRouter()
     const categories = [
         'Electrónicos', 'Computadores', 'Telefonía', 'Electrodomésticos', 'Audio y Video',
         'Ropa y Accesorios', 'Relojes y Joyería',
@@ -89,6 +91,32 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
 
     const handlePublishProduct = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        // Verificar si el usuario está verificado
+        console.log('🔍 DEBUG: Verificando estado del usuario...')
+        const { isUserVerified } = await import('@/lib/auth')
+        const isVerified = await isUserVerified()
+        console.log('🔍 DEBUG: Usuario verificado:', isVerified)
+        
+        if (!isVerified) {
+            console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje...')
+            // Mostrar mensaje de verificación requerida
+            const result = await (window as any).Swal.fire({
+                title: 'Verificación Requerida',
+                text: 'Por favor, primero verifica tu cuenta para poder publicar productos.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ir a Verificación',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#3B82F6',
+                cancelButtonColor: '#6B7280'
+            })
+            
+            if (result.isConfirmed) {
+                router.push('/verificacion-identidad')
+            }
+            return
+        }
 
         // Validar formulario
         const errors: Record<string, string> = {}
@@ -195,7 +223,12 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || [])
         if (files.length + publishForm.images.length > 5) {
-            alert('Máximo 5 imágenes permitidas')
+            (window as any).Swal.fire({
+                title: 'Límite de Imágenes',
+                text: 'Máximo 5 imágenes permitidas',
+                icon: 'warning',
+                confirmButtonText: 'Aceptar'
+            })
             return
         }
         setPublishForm(prev => ({
