@@ -8,7 +8,13 @@ import {
   PaperAirplaneIcon,
   CheckIcon,
   CheckCircleIcon,
-  PhotoIcon
+  PhotoIcon,
+  UserIcon,
+  PhoneIcon,
+  EllipsisVerticalIcon,
+  VideoCameraIcon,
+  ShoppingBagIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 
@@ -287,79 +293,168 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => router.back()}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-          </button>
-          
-          <div className="flex items-center space-x-3 flex-1">
-            <img
-              src={chatInfo.seller.avatar || '/default-avatar.png'}
-              alt={`${chatInfo.seller.name} ${chatInfo.seller.lastName}`}
-              className="w-10 h-10 rounded-full object-cover"
-            />
-            <div>
-              <h1 className="font-semibold text-gray-900">
-                {chatInfo.seller.name} {chatInfo.seller.lastName}
-              </h1>
-              <p className="text-sm text-gray-500">{chatInfo.product.title}</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      {/* Header mejorado */}
+      <div className="bg-white shadow-lg border-b border-gray-200 px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => router.back()}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ArrowLeftIcon className="w-6 h-6 text-gray-600" />
+            </button>
+            
+            <div className="flex items-center space-x-3">
+              {chatInfo.seller.avatar ? (
+                <div className="relative">
+                  <img
+                    src={chatInfo.seller.avatar}
+                    alt={`${chatInfo.seller.name} ${chatInfo.seller.lastName}`}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
+                  />
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                </div>
+              ) : (
+                <div className="relative">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-md">
+                    <UserIcon className="w-7 h-7 text-white" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                </div>
+              )}
+              
+              <div>
+                <h1 className="font-bold text-lg text-gray-900">
+                  {chatInfo.seller.name} {chatInfo.seller.lastName}
+                </h1>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-green-600 font-medium">● En línea</span>
+                  <span className="text-sm text-gray-500">•</span>
+                  <span className="text-sm text-gray-500">Vendedor</span>
+                </div>
+              </div>
             </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <button className="p-3 hover:bg-gray-100 rounded-full transition-colors group">
+              <PhoneIcon className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
+            </button>
+            <button className="p-3 hover:bg-gray-100 rounded-full transition-colors group">
+              <VideoCameraIcon className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
+            </button>
+            <button className="p-3 hover:bg-gray-100 rounded-full transition-colors group">
+              <EllipsisVerticalIcon className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
+            </button>
+          </div>
+        </div>
+        
+        {/* Información del producto */}
+        <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+          <div className="flex items-center space-x-3">
+            {chatInfo.product.imageUrl ? (
+              <img
+                src={chatInfo.product.imageUrl}
+                alt={chatInfo.product.title}
+                className="w-12 h-12 rounded-lg object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                <ShoppingBagIcon className="w-6 h-6 text-gray-400" />
+              </div>
+            )}
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 text-sm">Producto en conversación</h3>
+              <p className="text-sm text-gray-600 truncate">{chatInfo.product.title}</p>
+            </div>
+            <button className="p-2 hover:bg-blue-100 rounded-lg transition-colors">
+              <EyeIcon className="w-4 h-4 text-blue-600" />
+            </button>
           </div>
         </div>
       </div>
 
       {/* Mensajes */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.map((message) => (
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 bg-gradient-to-b from-transparent to-gray-50/30">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center py-12">
+            <div className="bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full p-6 mb-6 shadow-lg">
+              <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">
+              ¡Conversación iniciada! 🎉
+            </h3>
+            <p className="text-gray-600 mb-6 max-w-md">
+              Comienza a chatear con <span className="font-semibold text-blue-600">{chatInfo.seller.name}</span> sobre 
+              <span className="font-semibold text-gray-800"> "{chatInfo.product.title}"</span>
+            </p>
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 max-w-lg shadow-sm">
+              <div className="flex items-start space-x-3">
+                <div className="bg-blue-500 rounded-full p-2">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <h4 className="font-semibold text-blue-900 mb-2">💡 Consejos para una buena conversación:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• Sé claro sobre lo que buscas</li>
+                    <li>• Comparte imágenes si es necesario</li>
+                    <li>• Pregunta sobre el estado del producto</li>
+                    <li>• Acuerda lugar y forma de intercambio</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          messages.map((message) => (
           <motion.div
             key={message.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`flex ${isMyMessage(message) ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${isMyMessage(message) ? 'justify-end' : 'justify-start'} mb-4`}
           >
             <div className={`max-w-xs lg:max-w-md ${isMyMessage(message) ? 'order-2' : 'order-1'}`}>
               {!isMyMessage(message) && (
-                <div className="flex items-center space-x-2 mb-1">
+                <div className="flex items-center space-x-2 mb-2">
                   <img
                     src={message.sender.avatar || '/default-avatar.png'}
                     alt={`${message.sender.name} ${message.sender.lastName}`}
-                    className="w-6 h-6 rounded-full object-cover"
+                    className="w-6 h-6 rounded-full object-cover border border-gray-200"
                   />
-                  <span className="text-xs text-gray-500">
-                    {message.sender.name} {message.sender.lastName}
+                  <span className="text-xs font-medium text-gray-700">
+                    {message.sender.name}
                   </span>
                 </div>
               )}
               
               <div
-                className={`px-4 py-2 rounded-lg ${
+                className={`px-4 py-3 rounded-2xl shadow-sm ${
                   isMyMessage(message)
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white text-gray-900 border border-gray-200'
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md'
+                    : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md'
                 }`}
               >
                 {message.type === 'imagen' && message.imageUrl ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <img
                       src={message.imageUrl}
                       alt="Imagen del mensaje"
-                      className="max-w-full h-auto rounded-lg cursor-pointer"
+                      className="max-w-full h-auto rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
                       onClick={() => window.open(message.imageUrl, '_blank')}
                     />
-                    <p className="text-sm">{message.content}</p>
+                    <p className="text-sm leading-relaxed">{message.content}</p>
                   </div>
                 ) : (
-                  <p className="text-sm">{message.content}</p>
+                  <p className="text-sm leading-relaxed">{message.content}</p>
                 )}
               </div>
               
-              <div className={`flex items-center space-x-1 mt-1 ${isMyMessage(message) ? 'justify-end' : 'justify-start'}`}>
+              <div className={`flex items-center space-x-2 mt-2 ${isMyMessage(message) ? 'justify-end' : 'justify-start'}`}>
                 <span className="text-xs text-gray-500">
                   {formatTime(message.timestamp)}
                 </span>
@@ -375,22 +470,23 @@ export default function ChatPage() {
               </div>
             </div>
           </motion.div>
-        ))}
+          ))
+        )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input de mensaje */}
-      <div className="bg-white border-t border-gray-200 px-4 py-3">
+      {/* Input de mensaje mejorado */}
+      <div className="bg-white border-t border-gray-200 px-4 py-4 shadow-lg">
         <div className="flex items-end space-x-3">
           <button
             onClick={() => imageInputRef.current?.click()}
             disabled={isUploadingImage}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isUploadingImage ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-500"></div>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
             ) : (
-              <PhotoIcon className="w-5 h-5" />
+              <PhotoIcon className="w-6 h-6" />
             )}
           </button>
           
@@ -402,29 +498,43 @@ export default function ChatPage() {
             className="hidden"
           />
           
-          <div className="flex-1">
+          <div className="flex-1 relative">
             <textarea
               ref={textareaRef}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Escribe tu mensaje..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-full resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 focus:bg-white transition-colors"
               rows={1}
-              style={{ minHeight: '40px', maxHeight: '120px' }}
+              style={{ minHeight: '48px', maxHeight: '120px' }}
             />
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <span className="text-xs text-gray-400">
+                {newMessage.length}/500
+              </span>
+            </div>
           </div>
+          
           <button
             onClick={handleSendMessage}
             disabled={!newMessage.trim() || isSending}
-            className="p-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
           >
             {isSending ? (
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
             ) : (
-              <PaperAirplaneIcon className="w-5 h-5" />
+              <PaperAirplaneIcon className="w-6 h-6" />
             )}
           </button>
+        </div>
+        
+        {/* Indicador de estado de conexión */}
+        <div className="flex items-center justify-center mt-3">
+          <div className="flex items-center space-x-2 text-xs text-gray-500">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span>Conectado</span>
+          </div>
         </div>
       </div>
     </div>

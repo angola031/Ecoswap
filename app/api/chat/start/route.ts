@@ -141,10 +141,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Error creando chat' }, { status: 500 })
     }
 
+    // Enviar mensaje de bienvenida automático
+    const welcomeMessage = `¡Hola! Me interesa tu producto "${product.titulo}". ¿Podrías darme más información?`
+    
+    await supabaseAdmin
+      .from('mensaje')
+      .insert({
+        chat_id: newChat.chat_id,
+        usuario_id: userId,
+        contenido: welcomeMessage,
+        tipo: 'texto',
+        leido: false,
+        fecha_envio: new Date().toISOString()
+      })
+
+    // Actualizar último mensaje del chat
+    await supabaseAdmin
+      .from('chat')
+      .update({ ultimo_mensaje: new Date().toISOString() })
+      .eq('chat_id', newChat.chat_id)
+
+    // Crear notificación para el vendedor
+    await supabaseAdmin
+      .from('notificacion')
+      .insert({
+        usuario_id: sellerId,
+        tipo: 'mensaje',
+        titulo: 'Nuevo chat iniciado',
+        mensaje: `Un usuario ha iniciado una conversación sobre tu producto "${product.titulo}"`,
+        datos_adicionales: {
+          chat_id: newChat.chat_id,
+          sender_id: userId,
+          product_id: productId
+        },
+        leida: false,
+        fecha_creacion: new Date().toISOString()
+      })
+
     return NextResponse.json({ 
       chatId: newChat.chat_id,
       intercambioId: intercambioId,
-      message: 'Chat creado exitosamente',
+      message: 'Chat creado exitosamente con mensaje de bienvenida',
       seller: {
         id: seller.user_id,
         nombre: seller.nombre,

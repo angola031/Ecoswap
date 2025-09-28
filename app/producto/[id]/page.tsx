@@ -534,8 +534,21 @@ export default function ProductDetailPage() {
       console.log('🔍 DEBUG: Respuesta de iniciar chat:', result)
 
       if (response.ok) {
-        // Redirigir al chat
-        router.push(`/chat/${result.chatId}`)
+        // Mostrar mensaje de éxito y redirigir al chat
+        await (window as any).Swal.fire({
+          title: 'Chat iniciado',
+          text: `Conversación iniciada con ${result.seller.nombre} ${result.seller.apellido}`,
+          icon: 'success',
+          confirmButtonText: 'Ir al chat',
+          confirmButtonColor: '#3B82F6',
+          showCancelButton: true,
+          cancelButtonText: 'Cancelar',
+          cancelButtonColor: '#6B7280'
+        }).then((swalResult: any) => {
+          if (swalResult.isConfirmed) {
+            router.push(`/chat/${result.chatId}`)
+          }
+        })
       } else {
         await (window as any).Swal.fire({
           title: 'Error',
