@@ -696,24 +696,25 @@ export async function isUserVerified(): Promise<boolean> {
     try {
         console.log('🔍 DEBUG: isUserVerified - Iniciando verificación...')
         const { data: { user } } = await supabase.auth.getUser()
-        console.log('🔍 DEBUG: isUserVerified - Usuario de auth:', user?.email)
+        console.log('🔍 DEBUG: isUserVerified - Usuario de auth:', user?.email, 'ID:', user?.id)
         
-        if (!user?.email) {
+        if (!user?.id) {
             console.log('🔍 DEBUG: isUserVerified - No hay usuario autenticado')
             return false
         }
 
+        // Buscar el usuario por auth_user_id en lugar de email
         const { data: usuario, error } = await supabase
             .from('usuario')
             .select('verificado')
-            .eq('email', user.email)
+            .eq('auth_user_id', user.id)
             .single()
 
         console.log('🔍 DEBUG: isUserVerified - Usuario en BD:', usuario)
         console.log('🔍 DEBUG: isUserVerified - Error:', error)
 
         if (error || !usuario) {
-            console.log('🔍 DEBUG: isUserVerified - Error o usuario no encontrado')
+            console.log('🔍 DEBUG: isUserVerified - Error o usuario no encontrado:', error?.message)
             return false
         }
         

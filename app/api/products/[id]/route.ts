@@ -98,6 +98,7 @@ export async function GET(
             categoria_nombre: product.categoria_nombre,
             especificaciones: specifications,
             visualizaciones: product.visualizaciones ?? 0,
+            total_likes: product.total_likes ?? 0,
             usuario: {
                 user_id: product.user_id,
                 nombre: product.usuario_nombre,

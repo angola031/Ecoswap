@@ -11,7 +11,9 @@ import {
     Cog6ToothIcon,
     QuestionMarkCircleIcon,
     InformationCircleIcon,
-    BellIcon
+    BellIcon,
+    ShoppingBagIcon,
+    ArrowsRightLeftIcon
 } from '@heroicons/react/24/outline'
 
 // Componentes
@@ -199,7 +201,7 @@ export default function HomePage() {
                                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                                     }`}
                             >
-                                <HeartIcon className="w-5 h-5" />
+                                <ShoppingBagIcon className="w-5 h-5" />
                                 <span>Productos</span>
                             </button>
 
@@ -212,7 +214,7 @@ export default function HomePage() {
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                                             }`}
                                     >
-                                        <HeartIcon className="w-5 h-5" />
+                                        <ArrowsRightLeftIcon className="w-5 h-5" />
                                         <span>Interacciones</span>
                                     </button>
 
@@ -330,7 +332,7 @@ export default function HomePage() {
                         className={`flex flex-col items-center space-y-1 p-2 ${currentModule === 'products' ? 'text-primary-600' : 'text-gray-500'
                             }`}
                     >
-                        <HeartIcon className="w-6 h-6" />
+                        <ShoppingBagIcon className="w-6 h-6" />
                         <span className="text-xs">Productos</span>
                     </button>
 
@@ -341,7 +343,7 @@ export default function HomePage() {
                                 className={`flex flex-col items-center space-y-1 p-2 ${currentModule === 'interactions' ? 'text-primary-600' : 'text-gray-500'
                                     }`}
                             >
-                                <HeartIcon className="w-6 h-6" />
+                                <ArrowsRightLeftIcon className="w-6 h-6" />
                                 <span className="text-xs">Interacciones</span>
                             </button>
 

@@ -49,6 +49,22 @@ interface Product {
   especificaciones?: Record<string, string>
 }
 
+// Función auxiliar para verificar si el usuario es el propietario
+async function checkIfUserIsOwner(authUserId: string, productOwnerId: number): Promise<boolean> {
+  try {
+    const { data: usuario } = await supabase
+      .from('usuario')
+      .select('user_id')
+      .eq('auth_user_id', authUserId)
+      .single()
+    
+    return usuario?.user_id === productOwnerId
+  } catch (error) {
+    console.error('Error verificando propietario:', error)
+    return false
+  }
+}
+
 export default function ProductDetailPage() {
   const router = useRouter()
   const params = useParams()
@@ -94,9 +110,12 @@ export default function ProductDetailPage() {
 
         const { product } = await response.json()
         setProduct(product)
-        // Prefijar vistas con el valor en BD si viene
+        // Prefijar vistas y likes con los valores de BD si vienen
         if (typeof product.visualizaciones === 'number') {
           setStats(prev => ({ ...prev, views: product.visualizaciones }))
+        }
+        if (typeof product.total_likes === 'number') {
+          setStats(prev => ({ ...prev, likes: product.total_likes }))
         }
 
         // VERIFICACIÓN INMEDIATA DEL PROPIETARIO
@@ -182,23 +201,72 @@ export default function ProductDetailPage() {
         // Cargar estado de like solo si NO es el dueño
         try {
           const { data: { session } } = await supabase.auth.getSession()
-          if (session?.access_token && product?.usuario?.email && session.user?.email) {
-            const isProductOwner = product.usuario.email === session.user.email
+          if (session?.access_token && session.user?.id) {
+            // Verificar si es el propietario comparando auth_user_id
+            const isProductOwner = product?.usuario?.user_id ? 
+              await checkIfUserIsOwner(session.user.id, product.usuario.user_id) : false
+            
+            console.log('🔍 DEBUG: Verificando propietario...', { 
+              authUserId: session.user.id, 
+              productOwnerId: product?.usuario?.user_id,
+              isProductOwner 
+            })
+            
             if (!isProductOwner) {
+              console.log('🔍 DEBUG: Usuario NO es propietario, verificando estado de like...')
               const likeRes = await fetch(`/api/products/${productId}/like`, {
                 headers: { Authorization: `Bearer ${session.access_token}` }
               })
+              console.log('🔍 DEBUG: Respuesta de API like:', likeRes.status, likeRes.ok)
+              
               if (likeRes.ok) {
                 const json = await likeRes.json()
-                if (typeof json?.liked === 'boolean') setIsLiked(json.liked)
+                console.log('🔍 DEBUG: JSON respuesta like:', json)
+                if (typeof json?.liked === 'boolean') {
+                  console.log('🔍 DEBUG: Estableciendo isLiked a:', json.liked)
+                  setIsLiked(json.liked)
+                } else {
+                  console.log('🔍 DEBUG: Respuesta no contiene liked válido:', json)
+                }
+              } else {
+                console.log('🔍 DEBUG: Error en API like:', likeRes.status)
+                const errorText = await likeRes.text()
+                console.log('🔍 DEBUG: Error details:', errorText)
               }
             } else {
               // Si es el dueño, asegurar que no tenga like activo
+              console.log('🔍 DEBUG: Usuario ES propietario, estableciendo isLiked a false')
               setIsLiked(false)
             }
           }
         } catch (error) {
           console.error('Error cargando estado de like:', error)
+        }
+        
+        // Log final del estado del like
+        console.log('🔍 DEBUG: Estado final del like:', { isLiked, isOwner })
+
+        // Registrar visualización del producto
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.access_token) {
+            console.log('🔍 DEBUG: Registrando visualización del producto...')
+            const viewRes = await fetch(`/api/products/${productId}/view`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${session.access_token}` }
+            })
+            
+            if (viewRes.ok) {
+              const viewData = await viewRes.json()
+              console.log('🔍 DEBUG: Visualización registrada:', viewData)
+            } else {
+              console.log('🔍 DEBUG: Error registrando visualización:', viewRes.status)
+            }
+          } else {
+            console.log('🔍 DEBUG: No hay sesión, no se registra visualización')
+          }
+        } catch (error) {
+          console.error('Error registrando visualización:', error)
         }
 
       } catch (error) {
@@ -229,7 +297,39 @@ export default function ProductDetailPage() {
       if (process.env.NODE_ENV === 'development') {
         console.log('🚫 Usuario dueño intentando mostrar interés en su propio producto')
       }
-      alert('No puedes mostrar interés en tu propia publicación')
+      await (window as any).Swal.fire({
+        title: 'Acción no permitida',
+        text: 'No puedes mostrar interés en tu propia publicación',
+        icon: 'warning',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#3B82F6'
+      })
+      return
+    }
+
+    // Verificar si el usuario está verificado
+    console.log('🔍 DEBUG: Verificando estado del usuario desde handleInterest...')
+    const { isUserVerified } = await import('@/lib/auth')
+    const isVerified = await isUserVerified()
+    console.log('🔍 DEBUG: Usuario verificado desde handleInterest:', isVerified)
+    
+    if (!isVerified) {
+      console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde handleInterest...')
+      // Mostrar mensaje de verificación requerida
+      const result = await (window as any).Swal.fire({
+        title: 'Verificación Requerida',
+        text: 'Por favor, primero verifica tu cuenta para poder mostrar interés en productos.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ir a Verificación',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#3B82F6',
+        cancelButtonColor: '#6B7280'
+      })
+      
+      if (result.isConfirmed) {
+        router.push('/verificacion-identidad')
+      }
       return
     }
     
@@ -244,31 +344,90 @@ export default function ProductDetailPage() {
       if (process.env.NODE_ENV === 'development') {
         console.log('🚫 Usuario dueño intentando dar like a su propio producto')
       }
-      alert('No puedes dar me gusta a tu propia publicación')
+      await (window as any).Swal.fire({
+        title: 'Acción no permitida',
+        text: 'No puedes dar me gusta a tu propia publicación',
+        icon: 'warning',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#3B82F6'
+      })
+      return
+    }
+
+    // Verificar si el usuario está verificado
+    console.log('🔍 DEBUG: Verificando estado del usuario desde handleLike...')
+    const { isUserVerified } = await import('@/lib/auth')
+    const isVerified = await isUserVerified()
+    console.log('🔍 DEBUG: Usuario verificado desde handleLike:', isVerified)
+    
+    if (!isVerified) {
+      console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde handleLike...')
+      // Mostrar mensaje de verificación requerida
+      const result = await (window as any).Swal.fire({
+        title: 'Verificación Requerida',
+        text: 'Por favor, primero verifica tu cuenta para poder dar like a productos.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ir a Verificación',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#3B82F6',
+        cancelButtonColor: '#6B7280'
+      })
+      
+      if (result.isConfirmed) {
+        router.push('/verificacion-identidad')
+      }
       return
     }
     
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
-        alert('Inicia sesión para dar me gusta')
+        await (window as any).Swal.fire({
+          title: 'Sesión requerida',
+          text: 'Inicia sesión para dar me gusta',
+          icon: 'warning',
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#3B82F6'
+        })
         return
       }
       const method = isLiked ? 'DELETE' : 'POST'
+      console.log('🔍 DEBUG: handleLike - Acción:', method, 'Estado actual isLiked:', isLiked)
+      
       const res = await fetch(`/api/products/${product.id}/like`, {
         method,
         headers: { Authorization: `Bearer ${session.access_token}` }
       })
+      
+      console.log('🔍 DEBUG: handleLike - Respuesta API:', res.status, res.ok)
+      
       if (res.ok) {
-        setIsLiked(!isLiked)
-        setStats(prev => ({ ...prev, likes: Math.max(0, prev.likes + (isLiked ? -1 : 1)) }))
+        const newLikedState = !isLiked
+        const likesChange = isLiked ? -1 : 1
+        console.log('🔍 DEBUG: handleLike - Actualizando estado:', {
+          isLiked: isLiked,
+          newLikedState: newLikedState,
+          likesChange: likesChange,
+          currentLikes: stats.likes,
+          newLikes: Math.max(0, stats.likes + likesChange)
+        })
+        
+        setIsLiked(newLikedState)
+        setStats(prev => ({ ...prev, likes: Math.max(0, prev.likes + likesChange) }))
+        
+        console.log('🔍 DEBUG: handleLike - Estado actualizado exitosamente')
+      } else {
+        console.log('🔍 DEBUG: handleLike - Error en API:', res.status)
+        const errorText = await res.text()
+        console.log('🔍 DEBUG: handleLike - Error details:', errorText)
       }
     } catch (error) {
       console.error('Error al dar like:', error)
     }
   }
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (navigator.share) {
       navigator.share({
         title: product?.titulo,
@@ -278,27 +437,77 @@ export default function ProductDetailPage() {
     } else {
       // Fallback para navegadores que no soportan Web Share API
       navigator.clipboard.writeText(window.location.href)
-      alert('Enlace copiado al portapapeles')
+      await (window as any).Swal.fire({
+        title: 'Enlace copiado',
+        text: 'El enlace del producto ha sido copiado al portapapeles',
+        icon: 'success',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#3B82F6'
+      })
     }
   }
 
-  const handleReport = () => {
+  const handleReport = async () => {
     // Aquí iría la lógica para reportar el producto
-    alert('Función de reporte en desarrollo')
+    await (window as any).Swal.fire({
+      title: 'Función en desarrollo',
+      text: 'La función de reporte estará disponible próximamente',
+      icon: 'info',
+      confirmButtonText: 'Entendido',
+      confirmButtonColor: '#3B82F6'
+    })
   }
 
-  const handleChat = () => {
+  const handleChat = async () => {
     if (isOwner) {
       if (process.env.NODE_ENV === 'development') {
         console.log('🚫 Usuario dueño intentando chatear consigo mismo')
       }
-      alert('No puedes enviarte mensajes a ti mismo')
+      await (window as any).Swal.fire({
+        title: 'Acción no permitida',
+        text: 'No puedes enviarte mensajes a ti mismo',
+        icon: 'warning',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#3B82F6'
+      })
+      return
+    }
+
+    // Verificar si el usuario está verificado
+    console.log('🔍 DEBUG: Verificando estado del usuario desde handleChat...')
+    const { isUserVerified } = await import('@/lib/auth')
+    const isVerified = await isUserVerified()
+    console.log('🔍 DEBUG: Usuario verificado desde handleChat:', isVerified)
+    
+    if (!isVerified) {
+      console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde handleChat...')
+      // Mostrar mensaje de verificación requerida
+      const result = await (window as any).Swal.fire({
+        title: 'Verificación Requerida',
+        text: 'Por favor, primero verifica tu cuenta para poder enviar mensajes.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ir a Verificación',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#3B82F6',
+        cancelButtonColor: '#6B7280'
+      })
+      
+      if (result.isConfirmed) {
+        router.push('/verificacion-identidad')
+      }
       return
     }
     
     // Aquí iría la lógica para iniciar un chat con el vendedor
     // Por ejemplo, redirigir a una página de chat o abrir un modal
-    alert('Función de chat en desarrollo')
+    await (window as any).Swal.fire({
+      title: 'Función en desarrollo',
+      text: 'La función de chat estará disponible próximamente',
+      icon: 'info',
+      confirmButtonText: 'Entendido',
+      confirmButtonColor: '#3B82F6'
+    })
   }
 
   const formatPrice = (price: number) => {
@@ -522,6 +731,10 @@ export default function ProductDetailPage() {
                       <EyeIcon className="w-4 h-4" />
                       <span>{stats.views} vistas</span>
                     </div>
+                    <div className="flex items-center space-x-1">
+                      <HeartIcon className="w-4 h-4" />
+                      <span>{stats.likes} me gusta</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -559,14 +772,18 @@ export default function ProductDetailPage() {
                   onClick={handleLike}
                   disabled={isOwner}
                   aria-disabled={isOwner}
-                  className={`p-3 rounded-lg border transition-colors ${isOwner
+                  className={`p-3 rounded-lg border transition-colors flex flex-col items-center space-y-1 min-w-[60px] ${isOwner
                       ? 'border-gray-400 text-gray-300 bg-gray-100 cursor-not-allowed pointer-events-none'
                       : isLiked
-                        ? 'border-red-500 text-red-600 bg-red-50'
-                        : 'border-gray-300 text-gray-600 hover:border-red-500 hover:text-red-600'
+                        ? 'border-red-500 text-red-600 bg-red-50 hover:bg-red-100'
+                        : 'border-gray-300 text-gray-600 hover:border-red-500 hover:text-red-600 hover:bg-red-50'
                     }`}
+                  title={isOwner ? 'No puedes dar me gusta a tu propia publicación' : (isLiked ? 'Quitar me gusta' : 'Dar me gusta')}
                 >
                   {isLiked ? <HeartIconSolid className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
+                  <span className={`text-xs font-medium ${isLiked ? 'text-red-600' : 'text-gray-600'}`}>
+                    {stats.likes}
+                  </span>
                 </button>
                 <button
                   onClick={handleChat}
