@@ -136,7 +136,7 @@ export default function ChatPage() {
 
     setIsUploadingImage(true)
     try {
-      const { data: { session } = await supabase.auth.getSession()
+      const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) return
 
       const formData = new FormData()
