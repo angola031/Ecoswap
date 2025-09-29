@@ -103,11 +103,17 @@ export async function GET(
           producto_ofrecido:producto!intercambio_producto_ofrecido_id_fkey (
             producto_id,
             titulo,
+            descripcion,
             precio,
             tipo_transaccion,
             condiciones_intercambio,
             que_busco_cambio,
             precio_negociable,
+            estado,
+            estado_publicacion,
+            visualizaciones,
+            ciudad_snapshot,
+            departamento_snapshot,
             categoria:categoria (
               nombre
             )
@@ -115,11 +121,17 @@ export async function GET(
           producto_solicitado:producto!intercambio_producto_solicitado_id_fkey (
             producto_id,
             titulo,
+            descripcion,
             precio,
             tipo_transaccion,
             condiciones_intercambio,
             que_busco_cambio,
             precio_negociable,
+            estado,
+            estado_publicacion,
+            visualizaciones,
+            ciudad_snapshot,
+            departamento_snapshot,
             categoria:categoria (
               nombre
             )
@@ -218,27 +230,47 @@ export async function GET(
         },
         offeredProduct: {
           id: intercambio.producto_ofrecido.producto_id,
+          producto_id: intercambio.producto_ofrecido.producto_id,
           title: intercambio.producto_ofrecido.titulo,
+          titulo: intercambio.producto_ofrecido.titulo,
+          descripcion: intercambio.producto_ofrecido.descripcion,
           price: intercambio.producto_ofrecido.precio,
+          precio: intercambio.producto_ofrecido.precio,
           type: intercambio.producto_ofrecido.tipo_transaccion,
+          tipo_transaccion: intercambio.producto_ofrecido.tipo_transaccion,
           category: intercambio.producto_ofrecido.categoria?.nombre,
           mainImage: productImageUrl,
           imageUrl: productImageUrl,
           condiciones_intercambio: intercambio.producto_ofrecido.condiciones_intercambio,
           que_busco_cambio: intercambio.producto_ofrecido.que_busco_cambio,
-          precio_negociable: intercambio.producto_ofrecido.precio_negociable
+          precio_negociable: intercambio.producto_ofrecido.precio_negociable,
+          estado: intercambio.producto_ofrecido.estado,
+          estado_publicacion: intercambio.producto_ofrecido.estado_publicacion,
+          visualizaciones: intercambio.producto_ofrecido.visualizaciones,
+          ciudad_snapshot: intercambio.producto_ofrecido.ciudad_snapshot,
+          departamento_snapshot: intercambio.producto_ofrecido.departamento_snapshot
         },
         requestedProduct: intercambio.producto_solicitado ? {
           id: intercambio.producto_solicitado.producto_id,
+          producto_id: intercambio.producto_solicitado.producto_id,
           title: intercambio.producto_solicitado.titulo,
+          titulo: intercambio.producto_solicitado.titulo,
+          descripcion: intercambio.producto_solicitado.descripcion,
           price: intercambio.producto_solicitado.precio,
+          precio: intercambio.producto_solicitado.precio,
           type: intercambio.producto_solicitado.tipo_transaccion,
+          tipo_transaccion: intercambio.producto_solicitado.tipo_transaccion,
           category: intercambio.producto_solicitado.categoria?.nombre,
           mainImage: requestedProductImageUrl,
           imageUrl: requestedProductImageUrl,
           condiciones_intercambio: intercambio.producto_solicitado.condiciones_intercambio,
           que_busco_cambio: intercambio.producto_solicitado.que_busco_cambio,
-          precio_negociable: intercambio.producto_solicitado.precio_negociable
+          precio_negociable: intercambio.producto_solicitado.precio_negociable,
+          estado: intercambio.producto_solicitado.estado,
+          estado_publicacion: intercambio.producto_solicitado.estado_publicacion,
+          visualizaciones: intercambio.producto_solicitado.visualizaciones,
+          ciudad_snapshot: intercambio.producto_solicitado.ciudad_snapshot,
+          departamento_snapshot: intercambio.producto_solicitado.departamento_snapshot
         } : null,
         createdAt: chat.fecha_creacion
       }

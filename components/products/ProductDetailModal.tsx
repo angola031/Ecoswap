@@ -84,6 +84,19 @@ export default function ProductDetailModal({ product, isOpen, onClose, currentUs
     }
 
     const handleInterest = async () => {
+        // Si no hay sesión, redirigir a la interfaz de login del AuthModule
+        try {
+            const { getCurrentUser } = await import('@/lib/auth')
+            const user = await getCurrentUser()
+            if (!user) {
+                router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+                return
+            }
+        } catch (e) {
+            router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+            return
+        }
+
         // Verificar si el usuario está verificado
         const { isUserVerified } = await import('@/lib/auth')
         const isVerified = await isUserVerified()
@@ -112,6 +125,19 @@ export default function ProductDetailModal({ product, isOpen, onClose, currentUs
     }
 
     const handleLike = async () => {
+        // Si no hay sesión, redirigir a la interfaz de login del AuthModule
+        try {
+            const { getCurrentUser } = await import('@/lib/auth')
+            const user = await getCurrentUser()
+            if (!user) {
+                router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+                return
+            }
+        } catch (e) {
+            router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+            return
+        }
+
         // Verificar si el usuario está verificado
         const { isUserVerified } = await import('@/lib/auth')
         const isVerified = await isUserVerified()

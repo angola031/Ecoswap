@@ -64,7 +64,17 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
     const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high' | 'popular'>('newest')
 
     const handlePublishProduct = async () => {
-        // Verificar si el usuario está verificado
+        // Verificar si el usuario está autenticado
+        const { getCurrentUser } = await import('@/lib/auth')
+        const user = await getCurrentUser()
+        
+        if (!user) {
+            // Si no está autenticado, redirigir a la interfaz de login del AuthModule
+            router.push(`/?returnUrl=${encodeURIComponent('/agregar-producto')}&auth=true`)
+            return
+        }
+
+        // Si está autenticado, verificar si está verificado
         console.log('🔍 DEBUG: Verificando estado del usuario desde ProductsModule...')
         const { isUserVerified } = await import('@/lib/auth')
         const isVerified = await isUserVerified()

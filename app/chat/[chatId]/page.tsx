@@ -307,6 +307,52 @@ function ChatPageContent() {
     }
   }
 
+  const handleNegotiate = () => {
+    // Abrir modal de propuesta para negociación
+    setShowProposalModal(true)
+    
+    // Agregar mensaje informativo al chat
+    const negotiateMessage: ChatMessage = {
+      id: `negotiate-${Date.now()}`,
+      senderId: currentUserId,
+      content: '🔄 Iniciando negociación...',
+      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      isRead: true,
+      type: 'texto',
+      sender: {
+        id: currentUserId,
+        name: 'Tú',
+        lastName: '',
+        avatar: undefined
+      }
+    }
+    
+    setMessages(prev => [...prev, negotiateMessage])
+  }
+
+  const handleAccept = () => {
+    // Agregar mensaje de aceptación al chat
+    const acceptMessage: ChatMessage = {
+      id: `accept-${Date.now()}`,
+      senderId: currentUserId,
+      content: '✅ Has aceptado el intercambio',
+      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      isRead: true,
+      type: 'texto',
+      sender: {
+        id: currentUserId,
+        name: 'Tú',
+        lastName: '',
+        avatar: undefined
+      }
+    }
+    
+    setMessages(prev => [...prev, acceptMessage])
+    
+    // Aquí puedes implementar lógica adicional para actualizar el estado del intercambio
+    console.log('Intercambio aceptado por el usuario')
+  }
+
   // Mostrar estado de carga
   if (isLoading) {
     return (
@@ -611,40 +657,35 @@ function ChatPageContent() {
               </div>
 
               {/* SECCIÓN DE PROPUESTA */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-t-2 border-blue-200 px-6 py-6">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-t-2 border-green-200 px-6 py-6">
                 <div className="text-center mb-4">
-                  <h3 className="text-lg font-bold text-gray-800 mb-1">Sección de Propuesta</h3>
+                  <h3 className="text-lg font-bold text-gray-800 mb-1">💰 Sesión de Propuesta</h3>
                   <p className="text-sm text-gray-600">Gestiona las propuestas del intercambio</p>
                 </div>
                 
-                <div className="flex items-center justify-center flex-wrap gap-3">
+                <div className="flex items-center justify-center flex-wrap gap-4">
                   <button
                     onClick={() => setShowProposalModal(true)}
                     className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="font-semibold">💰 Enviar Propuesta</span>
+                    <span className="text-xl">💰</span>
+                    <span className="font-semibold">Enviar Propuesta</span>
                   </button>
                   
                   <button
-                    onClick={() => setShowProposalModal(true)}
+                    onClick={() => handleNegotiate()}
                     className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <span className="font-semibold">🔄 Negociar</span>
+                    <span className="text-xl">🔄</span>
+                    <span className="font-semibold">Negociar</span>
                   </button>
                   
                   <button
+                    onClick={() => handleAccept()}
                     className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="font-semibold">✅ Aceptar</span>
+                    <span className="text-xl">✅</span>
+                    <span className="font-semibold">Aceptar</span>
                   </button>
                 </div>
               </div>

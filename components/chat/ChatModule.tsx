@@ -78,6 +78,32 @@ interface ChatMessage {
   }
 }
 
+interface Proposal {
+  id: number
+  type: 'precio' | 'intercambio' | 'encuentro' | 'condiciones' | 'otro'
+  description: string
+  proposedPrice?: number
+  conditions?: string
+  status: 'pendiente' | 'aceptada' | 'rechazada' | 'contrapropuesta' | 'cancelada'
+  createdAt: string
+  respondedAt?: string
+  response?: string
+  meetingDate?: string
+  meetingPlace?: string
+  proposer: {
+    id: number
+    name: string
+    lastName: string
+    avatar?: string
+  }
+  receiver: {
+    id: number
+    name: string
+    lastName: string
+    avatar?: string
+  }
+}
+
 
 // Función para formatear precio
 const formatPrice = (precio: number | null, tipoTransaccion: string | null, condicionesIntercambio: string | null, queBuscoCambio: string | null, precioNegociable: boolean | null) => {
@@ -94,40 +120,48 @@ const formatPrice = (precio: number | null, tipoTransaccion: string | null, cond
   return 'Precio no especificado'
 }
 
-// Función para renderizar información de producto
-const renderProductInfo = (product: any, label: string) => {
+// Función para renderizar información de producto compacta
+const renderProductInfoCompact = (product: any, label: string) => {
   if (!product) return null
   
   return (
-    <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+    <div className="p-2 bg-white rounded border border-gray-200">
       <div className="flex items-center space-x-3">
-        <div className="relative">
+        <div className="relative flex-shrink-0">
           {product.imageUrl ? (
             <img
               src={product.imageUrl}
               alt={product.title}
-              className="w-12 h-12 rounded-lg object-cover border border-blue-200"
+              className="w-10 h-10 rounded object-cover border border-gray-200"
               onError={(e) => {
-                // Si falla la imagen, mostrar icono por defecto
                 e.currentTarget.style.display = 'none'
                 e.currentTarget.nextElementSibling?.classList.remove('hidden')
               }}
             />
           ) : null}
-          <div className={`w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center border border-blue-200 ${product.imageUrl ? 'hidden' : ''}`}>
-            <span className="text-blue-600 text-lg">📦</span>
+          <div className={`w-10 h-10 bg-gray-100 rounded flex items-center justify-center border border-gray-200 ${product.imageUrl ? 'hidden' : ''}`}>
+            <span className="text-gray-600 text-sm">📦</span>
           </div>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2 mb-1">
-            <span className="text-xs font-medium text-blue-800 bg-blue-200 px-2 py-1 rounded-full">
+            <span className="text-xs font-medium text-gray-600 bg-gray-200 px-2 py-0.5 rounded-full">
               {label}
             </span>
+            {product.estado && (
+              <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${
+                product.estado === 'activo' ? 'bg-green-100 text-green-700' :
+                product.estado === 'pausado' ? 'bg-yellow-100 text-yellow-700' :
+                'bg-gray-100 text-gray-700'
+              }`}>
+                {product.estado}
+              </span>
+            )}
           </div>
-          <p className="text-sm font-medium text-blue-900 truncate">
+          <h4 className="text-sm font-medium text-gray-900 truncate">
             {product.title}
-          </p>
-          <p className="text-xs text-blue-700">
+          </h4>
+          <p className="text-xs text-green-600 font-medium">
             {formatPrice(
               product.precio,
               product.tipo_transaccion,
@@ -136,6 +170,115 @@ const renderProductInfo = (product: any, label: string) => {
               product.precio_negociable
             )}
           </p>
+        </div>
+        <div className="flex space-x-1">
+          <button
+            onClick={() => window.open(`/producto/${product.producto_id || product.id}`, '_blank')}
+            className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors"
+            title="Ver producto"
+          >
+            Ver
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Función para renderizar información de producto completa (mantener para otros usos)
+const renderProductInfo = (product: any, label: string) => {
+  if (!product) return null
+  
+  return (
+    <div className="p-4 bg-white rounded-lg border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-start space-x-4">
+        <div className="relative flex-shrink-0">
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.title}
+              className="w-16 h-16 rounded-lg object-cover border border-blue-200"
+              onError={(e) => {
+                // Si falla la imagen, mostrar icono por defecto
+                e.currentTarget.style.display = 'none'
+                e.currentTarget.nextElementSibling?.classList.remove('hidden')
+              }}
+            />
+          ) : null}
+          <div className={`w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center border border-blue-200 ${product.imageUrl ? 'hidden' : ''}`}>
+            <span className="text-blue-600 text-2xl">📦</span>
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2 mb-2">
+            <span className="text-xs font-medium text-blue-800 bg-blue-200 px-3 py-1 rounded-full">
+              {label}
+            </span>
+            {product.estado && (
+              <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                product.estado === 'activo' ? 'bg-green-100 text-green-800' :
+                product.estado === 'pausado' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {product.estado}
+              </span>
+            )}
+          </div>
+          <h4 className="text-base font-semibold text-gray-900 mb-1 line-clamp-2">
+            {product.title}
+          </h4>
+          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+            {product.descripcion}
+          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-green-600">
+              {formatPrice(
+                product.precio,
+                product.tipo_transaccion,
+                product.condiciones_intercambio,
+                product.que_busco_cambio,
+                product.precio_negociable
+              )}
+            </p>
+            {product.visualizaciones && (
+              <p className="text-xs text-gray-500">
+                👁️ {product.visualizaciones} vistas
+              </p>
+            )}
+          </div>
+          {product.ciudad_snapshot && (
+            <p className="text-xs text-gray-500 mt-1">
+              📍 {product.ciudad_snapshot}, {product.departamento_snapshot}
+            </p>
+          )}
+          <div className="mt-3 flex space-x-2">
+            <button
+              onClick={() => window.open(`/producto/${product.producto_id || product.id}`, '_blank')}
+              className="text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700 transition-colors"
+            >
+              Ver Producto
+            </button>
+            <button
+              onClick={() => {
+                // Copiar enlace del producto al portapapeles
+                const productUrl = `${window.location.origin}/producto/${product.producto_id || product.id}`
+                navigator.clipboard.writeText(productUrl).then(() => {
+                  if ((window as any).Swal) {
+                    (window as any).Swal.fire({
+                      title: 'Enlace copiado',
+                      text: 'El enlace del producto se ha copiado al portapapeles',
+                      icon: 'success',
+                      timer: 2000,
+                      showConfirmButton: false
+                    })
+                  }
+                })
+              }}
+              className="text-xs bg-gray-600 text-white px-3 py-1 rounded-full hover:bg-gray-700 transition-colors"
+            >
+              Copiar Enlace
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -159,6 +302,9 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [offeredProduct, setOfferedProduct] = useState<any>(null)
   const [requestedProduct, setRequestedProduct] = useState<any>(null)
+  const [proposals, setProposals] = useState<Proposal[]>([])
+  const [showProposals, setShowProposals] = useState(false)
+  const [isLoadingProposals, setIsLoadingProposals] = useState(false)
 // Estado para manejar conexión realtime
 const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
 // Estado para controlar scroll manual
@@ -382,7 +528,10 @@ const getCurrentUserId = () => {
         console.log('📨 [ChatModule] Respuesta info:', { status: response.status, ok: response.ok })
         
         if (response.ok && isMounted) {
-          const data = await response.json()
+          const responseData = await response.json()
+          console.log('📦 [ChatModule] Respuesta completa de la API:', responseData)
+          
+          const data = responseData.data || responseData
           setOfferedProduct(data.offeredProduct)
           setRequestedProduct(data.requestedProduct)
           console.log('📦 [ChatModule] Información de productos cargada:', {
@@ -396,6 +545,53 @@ const getCurrentUserId = () => {
     }
 
     loadProductInfo()
+    
+    return () => {
+      isMounted = false
+    }
+  }, [selectedConversation?.id])
+
+  // Cargar propuestas cuando se selecciona un chat
+  useEffect(() => {
+    let isMounted = true
+    
+    const loadProposals = async () => {
+      if (!selectedConversation?.id || !isMounted) {
+        if (isMounted) {
+          setProposals([])
+        }
+        return
+      }
+
+      try {
+        setIsLoadingProposals(true)
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) return
+
+        console.log('📡 [ChatModule] Cargando propuestas para chat:', selectedConversation.id)
+        
+        const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        
+        console.log('📨 [ChatModule] Respuesta propuestas:', { status: response.status, ok: response.ok })
+        
+        if (response.ok && isMounted) {
+          const data = await response.json()
+          setProposals(data.data || [])
+          console.log('💼 [ChatModule] Propuestas cargadas:', data.data?.length || 0)
+        }
+      } catch (error) {
+        console.error('❌ [ChatModule] Error cargando propuestas:', error)
+      } finally {
+        if (isMounted) {
+          setIsLoadingProposals(false)
+        }
+      }
+    }
+
+    loadProposals()
     
     return () => {
       isMounted = false
@@ -676,6 +872,110 @@ const getCurrentUserId = () => {
     }
   }
 
+  // Funciones para manejar propuestas
+  const handleCreateProposal = async (proposalData: {
+    type: 'precio' | 'intercambio' | 'encuentro' | 'condiciones' | 'otro'
+    description: string
+    proposedPrice?: number
+    conditions?: string
+    meetingDate?: string
+    meetingPlace?: string
+  }) => {
+    if (!selectedConversation) return
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(proposalData)
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setProposals(prev => [data.data, ...prev])
+        
+        // Mostrar mensaje de éxito
+        if ((window as any).Swal) {
+          (window as any).Swal.fire({
+            title: 'Propuesta enviada',
+            text: 'Tu propuesta ha sido enviada exitosamente',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+          })
+        }
+      } else {
+        throw new Error('Error creando propuesta')
+      }
+    } catch (error) {
+      console.error('Error creando propuesta:', error)
+      if ((window as any).Swal) {
+        (window as any).Swal.fire({
+          title: 'Error',
+          text: 'No se pudo enviar la propuesta. Inténtalo de nuevo.',
+          icon: 'error',
+          confirmButtonText: 'Entendido'
+        })
+      }
+    }
+  }
+
+  const handleRespondToProposal = async (proposalId: number, response: 'aceptar' | 'rechazar' | 'contrapropuesta', reason?: string) => {
+    if (!selectedConversation) return
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      const responseData = await fetch(`/api/chat/${selectedConversation.id}/proposals/${proposalId}/respond`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ response, reason })
+      })
+
+      if (responseData.ok) {
+        const data = await responseData.json()
+        setProposals(prev => prev.map(prop => 
+          prop.id === proposalId ? { ...prop, ...data.data } : prop
+        ))
+        
+        // Mostrar mensaje de éxito
+        if ((window as any).Swal) {
+          (window as any).Swal.fire({
+            title: 'Respuesta enviada',
+            text: `Has ${response === 'aceptar' ? 'aceptado' : response === 'rechazar' ? 'rechazado' : 'respondido a'} la propuesta`,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+          })
+        }
+      } else {
+        throw new Error('Error respondiendo a propuesta')
+      }
+    } catch (error) {
+      console.error('Error respondiendo a propuesta:', error)
+      if ((window as any).Swal) {
+        (window as any).Swal.fire({
+          title: 'Error',
+          text: 'No se pudo enviar la respuesta. Inténtalo de nuevo.',
+          icon: 'error',
+          confirmButtonText: 'Entendido'
+        })
+      }
+    }
+  }
+
   const formatTime = (time: string) => {
     return time
   }
@@ -739,56 +1039,227 @@ const getCurrentUserId = () => {
   const handleSendProposal = () => {
     if (!selectedConversation) return
     
-    // Agregar mensaje informativo al chat
-    const proposalMessage = {
-      id: `proposal-${Date.now()}`,
-      senderId: currentUser?.id,
-      content: '💰 Enviando propuesta...',
-      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-      isRead: true,
-      type: 'text' as const,
-      sender: {
-        id: currentUser?.id,
-        name: currentUser?.name || 'Tú',
-        lastName: '',
-        avatar: currentUser?.avatar
-      }
+    // Abrir modal completo para crear propuesta
+    if ((window as any).Swal) {
+      (window as any).Swal.fire({
+        title: 'Crear Nueva Propuesta',
+        html: `
+          <div class="text-left space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de propuesta</label>
+              <select id="proposal-type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <option value="precio">💰 Propuesta de precio</option>
+                <option value="intercambio">🔄 Propuesta de intercambio</option>
+                <option value="encuentro">📅 Propuesta de encuentro</option>
+                <option value="condiciones">📋 Propuesta de condiciones</option>
+                <option value="otro">📝 Otra propuesta</option>
+              </select>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Descripción de la propuesta</label>
+              <textarea id="proposal-description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows="4" placeholder="Describe detalladamente tu propuesta..."></textarea>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Precio propuesto (opcional)</label>
+              <input type="number" id="proposal-price" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="0" min="0" step="1000">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Condiciones adicionales (opcional)</label>
+              <textarea id="proposal-conditions" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows="2" placeholder="Condiciones especiales, garantías, etc..."></textarea>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de encuentro (opcional)</label>
+                <input type="date" id="proposal-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Lugar de encuentro (opcional)</label>
+                <input type="text" id="proposal-place" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Centro comercial, parque, etc...">
+              </div>
+            </div>
+          </div>
+        `,
+        width: '600px',
+        showCancelButton: true,
+        confirmButtonText: 'Enviar Propuesta',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#3B82F6',
+        cancelButtonColor: '#6B7280',
+        preConfirm: () => {
+          const type = (document.getElementById('proposal-type') as HTMLSelectElement)?.value
+          const description = (document.getElementById('proposal-description') as HTMLTextAreaElement)?.value
+          const price = (document.getElementById('proposal-price') as HTMLInputElement)?.value
+          const conditions = (document.getElementById('proposal-conditions') as HTMLTextAreaElement)?.value
+          const meetingDate = (document.getElementById('proposal-date') as HTMLInputElement)?.value
+          const meetingPlace = (document.getElementById('proposal-place') as HTMLInputElement)?.value
+          
+          if (!type || !description) {
+            (window as any).Swal.showValidationMessage('Tipo y descripción son requeridos')
+            return false
+          }
+          
+          if (description.length < 10) {
+            (window as any).Swal.showValidationMessage('La descripción debe tener al menos 10 caracteres')
+            return false
+          }
+          
+          return { 
+            type, 
+            description, 
+            price: price ? parseFloat(price) : undefined,
+            conditions: conditions || undefined,
+            meetingDate: meetingDate || undefined,
+            meetingPlace: meetingPlace || undefined
+          }
+        }
+      }).then((result: any) => {
+        if (result.isConfirmed) {
+          // Crear la propuesta
+          handleCreateProposal(result.value)
+          
+          // Agregar mensaje informativo al chat
+          const proposalMessage = {
+            id: `proposal-${Date.now()}`,
+            senderId: currentUser?.id,
+            content: `💰 Nueva propuesta de ${result.value.type}: ${result.value.description.substring(0, 50)}${result.value.description.length > 50 ? '...' : ''}`,
+            timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+            isRead: true,
+            type: 'text' as const,
+            sender: {
+              id: currentUser?.id,
+              name: currentUser?.name || 'Tú',
+              lastName: '',
+              avatar: currentUser?.avatar
+            }
+          }
+          
+          setSelectedConversation(prev => prev ? {
+            ...prev,
+            messages: [...prev.messages, proposalMessage]
+          } : prev)
+          
+          // Mostrar la sección de propuestas
+          setShowProposals(true)
+        }
+      })
     }
-    
-    setSelectedConversation(prev => prev ? {
-      ...prev,
-      messages: [...prev.messages, proposalMessage]
-    } : prev)
-    
-    // Aquí puedes abrir un modal de propuestas o navegar a una página específica
-    console.log('Abriendo modal de propuestas')
   }
 
   const handleNegotiate = () => {
     if (!selectedConversation) return
     
-    // Agregar mensaje de negociación al chat
-    const negotiateMessage = {
-      id: `negotiate-${Date.now()}`,
-      senderId: currentUser?.id,
-      content: '🔄 Iniciando negociación...',
-      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-      isRead: true,
-      type: 'text' as const,
-      sender: {
-        id: currentUser?.id,
-        name: currentUser?.name || 'Tú',
-        lastName: '',
-        avatar: currentUser?.avatar
-      }
+    // Abrir modal completo para crear propuesta
+    if ((window as any).Swal) {
+      (window as any).Swal.fire({
+        title: 'Crear Propuesta de Negociación',
+        html: `
+          <div class="text-left space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de propuesta</label>
+              <select id="negotiate-type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <option value="precio">💰 Propuesta de precio</option>
+                <option value="intercambio">🔄 Propuesta de intercambio</option>
+                <option value="encuentro">📅 Propuesta de encuentro</option>
+                <option value="condiciones">📋 Propuesta de condiciones</option>
+                <option value="otro">📝 Otra propuesta</option>
+              </select>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Descripción de la propuesta</label>
+              <textarea id="negotiate-description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows="4" placeholder="Describe detalladamente tu propuesta..."></textarea>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Precio propuesto (opcional)</label>
+              <input type="number" id="negotiate-price" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="0" min="0" step="1000">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Condiciones adicionales (opcional)</label>
+              <textarea id="negotiate-conditions" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows="2" placeholder="Condiciones especiales, garantías, etc..."></textarea>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de encuentro (opcional)</label>
+                <input type="date" id="negotiate-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Lugar de encuentro (opcional)</label>
+                <input type="text" id="negotiate-place" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Centro comercial, parque, etc...">
+              </div>
+            </div>
+          </div>
+        `,
+        width: '600px',
+        showCancelButton: true,
+        confirmButtonText: 'Enviar Propuesta',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#3B82F6',
+        cancelButtonColor: '#6B7280',
+        preConfirm: () => {
+          const type = (document.getElementById('negotiate-type') as HTMLSelectElement)?.value
+          const description = (document.getElementById('negotiate-description') as HTMLTextAreaElement)?.value
+          const price = (document.getElementById('negotiate-price') as HTMLInputElement)?.value
+          const conditions = (document.getElementById('negotiate-conditions') as HTMLTextAreaElement)?.value
+          const meetingDate = (document.getElementById('negotiate-date') as HTMLInputElement)?.value
+          const meetingPlace = (document.getElementById('negotiate-place') as HTMLInputElement)?.value
+          
+          if (!type || !description) {
+            (window as any).Swal.showValidationMessage('Tipo y descripción son requeridos')
+            return false
+          }
+          
+          if (description.length < 10) {
+            (window as any).Swal.showValidationMessage('La descripción debe tener al menos 10 caracteres')
+            return false
+          }
+          
+          return { 
+            type, 
+            description, 
+            price: price ? parseFloat(price) : undefined,
+            conditions: conditions || undefined,
+            meetingDate: meetingDate || undefined,
+            meetingPlace: meetingPlace || undefined
+          }
+        }
+      }).then((result: any) => {
+        if (result.isConfirmed) {
+          // Crear la propuesta
+          handleCreateProposal(result.value)
+          
+          // Agregar mensaje informativo al chat
+          const negotiateMessage = {
+            id: `negotiate-${Date.now()}`,
+            senderId: currentUser?.id,
+            content: `🔄 Nueva propuesta de ${result.value.type}: ${result.value.description.substring(0, 50)}${result.value.description.length > 50 ? '...' : ''}`,
+            timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+            isRead: true,
+            type: 'text' as const,
+            sender: {
+              id: currentUser?.id,
+              name: currentUser?.name || 'Tú',
+              lastName: '',
+              avatar: currentUser?.avatar
+            }
+          }
+          
+          setSelectedConversation(prev => prev ? {
+            ...prev,
+            messages: [...prev.messages, negotiateMessage]
+          } : prev)
+          
+          // Mostrar la sección de propuestas
+          setShowProposals(true)
+        }
+      })
     }
-    
-    setSelectedConversation(prev => prev ? {
-      ...prev,
-      messages: [...prev.messages, negotiateMessage]
-    } : prev)
-    
-    console.log('Iniciando negociación')
   }
 
   const handleAccept = () => {
@@ -884,9 +1355,9 @@ const getCurrentUserId = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-200px)] flex bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="h-[calc(100vh-120px)] flex bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Lista de conversaciones */}
-      <div className="w-96 border-r border-gray-200 flex flex-col">
+      <div className="w-80 border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200 space-y-3">
           <h2 className="text-lg font-semibold text-gray-900">Chats</h2>
           <div>
@@ -1003,6 +1474,19 @@ const getCurrentUserId = () => {
               </div>
 
               <div className="flex items-center space-x-2">
+                <button 
+                  onClick={() => setShowProposals(!showProposals)} 
+                  className={`p-2 rounded-lg transition-colors ${
+                    showProposals 
+                      ? 'text-primary-600 bg-primary-100' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                  title="Ver propuestas"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </button>
                 <button onClick={() => setShowProfile(true)} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
                   <PhoneIcon className="w-5 h-5" />
                 </button>
@@ -1015,16 +1499,195 @@ const getCurrentUserId = () => {
                 </div>
               </div>
               
-              {/* Información de productos */}
-              <div className="px-4 pb-3 space-y-2">
-                {offeredProduct && renderProductInfo(offeredProduct, 'Producto Ofrecido')}
-                {requestedProduct && renderProductInfo(requestedProduct, 'Producto Solicitado')}
+              {/* Información de productos - Compacta */}
+              <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-sm">📦</span>
+                  <h3 className="text-sm font-medium text-gray-700">Producto en Negociación</h3>
+                </div>
+                <div className="space-y-2">
+                  {offeredProduct && renderProductInfoCompact(offeredProduct, 'Ofrecido')}
+                  {requestedProduct && renderProductInfoCompact(requestedProduct, 'Solicitado')}
+                  {!offeredProduct && !requestedProduct && (
+                    <div className="text-center py-2 text-gray-500">
+                      <div className="animate-pulse">
+                        <div className="h-3 bg-gray-200 rounded w-2/3 mx-auto mb-1"></div>
+                        <div className="h-2 bg-gray-200 rounded w-1/3 mx-auto"></div>
+                      </div>
+                      <p className="text-xs mt-1">Cargando producto...</p>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Sección de propuestas */}
+              {showProposals && (
+                <div className="px-4 pb-3 border-t border-gray-200">
+                  <div className="flex items-center justify-between py-2">
+                    <h4 className="font-medium text-gray-900">Propuestas</h4>
+                    <button
+                      onClick={() => {
+                        // Aquí se abriría un modal para crear propuesta
+                        if ((window as any).Swal) {
+                          (window as any).Swal.fire({
+                            title: 'Crear Propuesta',
+                            html: `
+                              <div class="text-left space-y-3">
+                                <div>
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de propuesta</label>
+                                  <select id="proposal-type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                                    <option value="precio">Propuesta de precio</option>
+                                    <option value="intercambio">Propuesta de intercambio</option>
+                                    <option value="encuentro">Propuesta de encuentro</option>
+                                    <option value="condiciones">Propuesta de condiciones</option>
+                                    <option value="otro">Otra propuesta</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                                  <textarea id="proposal-description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows="3" placeholder="Describe tu propuesta..."></textarea>
+                                </div>
+                                <div>
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">Precio propuesto (opcional)</label>
+                                  <input type="number" id="proposal-price" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="0">
+                                </div>
+                              </div>
+                            `,
+                            showCancelButton: true,
+                            confirmButtonText: 'Enviar Propuesta',
+                            cancelButtonText: 'Cancelar',
+                            confirmButtonColor: '#3B82F6',
+                            cancelButtonColor: '#6B7280',
+                            preConfirm: () => {
+                              const type = (document.getElementById('proposal-type') as HTMLSelectElement)?.value
+                              const description = (document.getElementById('proposal-description') as HTMLTextAreaElement)?.value
+                              const price = (document.getElementById('proposal-price') as HTMLInputElement)?.value
+                              
+                              if (!type || !description) {
+                                (window as any).Swal.showValidationMessage('Tipo y descripción son requeridos')
+                                return false
+                              }
+                              
+                              return { type, description, price: price ? parseFloat(price) : undefined }
+                            }
+                          }).then((result: any) => {
+                            if (result.isConfirmed) {
+                              handleCreateProposal(result.value)
+                            }
+                          })
+                        }
+                      }}
+                      className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                    >
+                      + Nueva propuesta
+                    </button>
+                  </div>
+                  
+                  {isLoadingProposals ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                    </div>
+                  ) : proposals.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">
+                      <p className="text-sm">No hay propuestas en esta conversación</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {proposals.map((proposal) => (
+                        <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                proposal.type === 'precio' ? 'bg-blue-100 text-blue-800' :
+                                proposal.type === 'intercambio' ? 'bg-green-100 text-green-800' :
+                                proposal.type === 'encuentro' ? 'bg-purple-100 text-purple-800' :
+                                proposal.type === 'condiciones' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {proposal.type}
+                              </span>
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                proposal.status === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :
+                                proposal.status === 'aceptada' ? 'bg-green-100 text-green-800' :
+                                proposal.status === 'rechazada' ? 'bg-red-100 text-red-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {proposal.status}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
+                            </span>
+                          </div>
+                          
+                          <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                          
+                          {proposal.proposedPrice && (
+                            <p className="text-sm font-medium text-green-600 mb-2">
+                              Precio propuesto: ${proposal.proposedPrice.toLocaleString('es-CO')}
+                            </p>
+                          )}
+                          
+                          {proposal.meetingDate && (
+                            <p className="text-sm text-gray-600 mb-2">
+                              📅 Encuentro: {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}
+                              {proposal.meetingPlace && ` en ${proposal.meetingPlace}`}
+                            </p>
+                          )}
+                          
+                          {proposal.response && (
+                            <div className="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
+                              <p className="text-sm text-gray-700">
+                                <strong>Respuesta:</strong> {proposal.response}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {proposal.status === 'pendiente' && proposal.receiver.id === parseInt(getCurrentUserId()) && (
+                            <div className="flex space-x-2 mt-3">
+                              <button
+                                onClick={() => handleRespondToProposal(proposal.id, 'aceptar')}
+                                className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                              >
+                                Aceptar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if ((window as any).Swal) {
+                                    (window as any).Swal.fire({
+                                      title: 'Rechazar Propuesta',
+                                      input: 'textarea',
+                                      inputLabel: 'Motivo del rechazo (opcional)',
+                                      inputPlaceholder: 'Explica por qué rechazas esta propuesta...',
+                                      showCancelButton: true,
+                                      confirmButtonText: 'Rechazar',
+                                      cancelButtonText: 'Cancelar',
+                                      confirmButtonColor: '#EF4444',
+                                      cancelButtonColor: '#6B7280'
+                                    }).then((result: any) => {
+                                      if (result.isConfirmed) {
+                                        handleRespondToProposal(proposal.id, 'rechazar', result.value)
+                                      }
+                                    })
+                                  }
+                                }}
+                                className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                              >
+                                Rechazar
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Mensajes */}
+            {/* Mensajes - Área expandida */}
             <div 
-              className="flex-1 overflow-y-auto p-4 space-y-4 relative"
+              className="flex-1 overflow-y-auto p-6 space-y-6 relative min-h-0"
               onScroll={(e) => {
                 const target = e.target as HTMLDivElement
                 const isAtBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 10
@@ -1049,7 +1712,7 @@ const getCurrentUserId = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex ${isOwnMessage(message) ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-xs lg:max-w-md ${isOwnMessage(message) ? 'order-2' : 'order-1'
+                  <div className={`max-w-md lg:max-w-xl xl:max-w-2xl ${isOwnMessage(message) ? 'order-2' : 'order-1'
                     }`}>
                     {!isOwnMessage(message) && (
                       <img
@@ -1068,12 +1731,12 @@ const getCurrentUserId = () => {
                       />
                     )}
 
-                    <div className={`rounded-lg px-4 py-2 relative group ${isOwnMessage(message)
+                    <div className={`rounded-xl px-5 py-3 relative group shadow-sm ${isOwnMessage(message)
                       ? 'bg-primary-600 text-white'
-                      : 'bg-gray-100 text-gray-900'
+                      : 'bg-white text-gray-900 border border-gray-200'
                       }`}>
                       {message.replyToId && (
-                        <div className={`text-xs mb-1 px-2 py-1 rounded ${isOwnMessage(message) ? 'bg-primary-700/40' : 'bg-gray-200'}`}>
+                        <div className={`text-xs mb-2 px-3 py-1.5 rounded-lg ${isOwnMessage(message) ? 'bg-primary-700/40' : 'bg-gray-100'}`}>
                           <span className="opacity-80">Respuesta a:</span>
                           <span className="ml-1 font-medium">
                             {findMessageById(message.replyToId)?.content?.slice(0, 60) || 'mensaje'}
@@ -1081,7 +1744,7 @@ const getCurrentUserId = () => {
                         </div>
                       )}
                       {message.type === 'text' && (
-                        <p className="text-sm">{message.content}</p>
+                        <p className="text-base leading-relaxed">{message.content}</p>
                       )}
 
                       {message.type === 'image' && message.metadata?.imageUrl && (
@@ -1231,17 +1894,17 @@ const getCurrentUserId = () => {
               </div>
             </div>
 
-            {/* Input de mensaje */}
-            <div className="p-4 border-t border-gray-200">
-              <div className="flex items-center space-x-2">
-                <button onClick={handleAttachFile} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <PaperClipIcon className="w-5 h-5" />
+            {/* Input de mensaje - Área expandida */}
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <div className="flex items-end space-x-3">
+                <button onClick={handleAttachFile} className="p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                  <PaperClipIcon className="w-6 h-6" />
                 </button>
-                <button onClick={handleAttachImage} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <MapPinIcon className="w-5 h-5" />
+                <button onClick={handleAttachImage} className="p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                  <MapPinIcon className="w-6 h-6" />
                 </button>
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <FaceSmileIcon className="w-5 h-5" />
+                <button className="p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                  <FaceSmileIcon className="w-6 h-6" />
                 </button>
 
                 <div className="flex-1">
@@ -1251,8 +1914,8 @@ const getCurrentUserId = () => {
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Escribe un mensaje..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    rows={1}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base"
+                    rows={2}
                   />
                 </div>
 
@@ -1280,7 +1943,7 @@ const getCurrentUserId = () => {
       </div>
       {/* Panel lateral de perfil y producto */}
       {showProfile && selectedConversation && (
-        <div className="w-96 border-l border-gray-200 bg-white flex flex-col">
+        <div className="w-80 border-l border-gray-200 bg-white flex flex-col">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-900">Perfil y Producto</h3>
             <button onClick={() => setShowProfile(false)} className="text-gray-500 hover:text-gray-700">✕</button>

@@ -316,6 +316,18 @@ export default function ProductDetailPage() {
   }
 
   const handleInterest = async () => {
+    // Si no hay sesión, redirigir a la interfaz de login del AuthModule
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+        return
+      }
+    } catch (e) {
+      router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+      return
+    }
+
     if (isOwner) {
       if (process.env.NODE_ENV === 'development') {
         console.log('🚫 Usuario dueño intentando mostrar interés en su propio producto')
@@ -363,6 +375,18 @@ export default function ProductDetailPage() {
   const handleLike = async () => {
     if (!product) return
     
+    // Si no hay sesión, redirigir a la interfaz de login del AuthModule
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+        return
+      }
+    } catch (e) {
+      router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+      return
+    }
+
     if (isOwner) {
       if (process.env.NODE_ENV === 'development') {
         console.log('🚫 Usuario dueño intentando dar like a su propio producto')
@@ -482,6 +506,18 @@ export default function ProductDetailPage() {
   }
 
   const handleChat = async () => {
+    // Si no hay sesión, redirigir a la interfaz de login del AuthModule
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+        return
+      }
+    } catch (e) {
+      router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+      return
+    }
+
     if (isOwner) {
       if (process.env.NODE_ENV === 'development') {
         console.log('🚫 Usuario dueño intentando chatear consigo mismo')

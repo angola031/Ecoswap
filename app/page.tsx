@@ -80,13 +80,21 @@ export default function HomePage() {
                         setCurrentModule(m)
                     }
                 } else {
-                    // Si no hay usuario, mostrar productos por defecto
-                    setCurrentScreen('main')
-                    // Permitir navegación por query aunque no haya login para no romper el "volver"
+                    // Si no hay usuario, verificar si debe mostrar auth
                     const params = new URLSearchParams(window.location.search)
-                    const m = params.get('m')
-                    setCurrentModule(m || 'products')
-                    setIsAuthenticated(false)
+                    const auth = params.get('auth')
+                    
+                    if (auth === 'true') {
+                        // Mostrar interfaz de login
+                        setCurrentScreen('auth')
+                        setIsAuthenticated(false)
+                    } else {
+                        // Mostrar productos por defecto
+                        setCurrentScreen('main')
+                        const m = params.get('m')
+                        setCurrentModule(m || 'products')
+                        setIsAuthenticated(false)
+                    }
                 }
             } catch (error) {
                 console.error('Error verificando autenticación:', error)
@@ -104,6 +112,16 @@ export default function HomePage() {
         setIsAuthenticated(true)
         setCurrentScreen('main')
         localStorage.setItem('ecoswap_user', JSON.stringify(userData))
+        
+        // Verificar si hay returnUrl para redirigir después del login
+        const params = new URLSearchParams(window.location.search)
+        const returnUrl = params.get('returnUrl')
+        
+        if (returnUrl) {
+            // Limpiar parámetros de la URL y redirigir
+            window.history.replaceState({}, '', '/')
+            window.location.href = returnUrl
+        }
     }
 
     const handleLogout = async () => {
