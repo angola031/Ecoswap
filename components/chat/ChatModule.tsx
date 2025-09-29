@@ -432,13 +432,17 @@ const getCurrentUserId = () => {
       }
       setRealtimeChannel(null)
     }
-  }, [selectedConversation?.id, getCurrentUserId()])
+  }, [selectedConversation?.id, currentUser?.user_id, currentUser?.id])
 
   // Scroll automático mejorado - solo cuando se agregan nuevos mensajes
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null
+    
     // Solo hacer scroll automático si hay mensajes y el usuario no está haciendo scroll manual
     if (!selectedConversation?.messages || selectedConversation.messages.length === 0 || isUserScrolling) {
-      return () => {} // Devolver función vacía para evitar el error
+      return () => {
+        if (timeoutId) clearTimeout(timeoutId)
+      }
     }
     
     const scrollToBottom = () => {
@@ -451,8 +455,11 @@ const getCurrentUserId = () => {
     }
     
     // Delay para asegurar que el DOM se haya actualizado
-    const timeoutId = setTimeout(scrollToBottom, 100)
-    return () => clearTimeout(timeoutId)
+    timeoutId = setTimeout(scrollToBottom, 100)
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
   }, [selectedConversation?.messages?.length, isUserScrolling]) // Dependencias actualizadas
 
   // ✅ ENVÍO DE MENSAJES MEJORADO
