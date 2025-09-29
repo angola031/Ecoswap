@@ -427,7 +427,9 @@ const getCurrentUserId = () => {
 
     return () => {
       console.log('🔌 [ChatModule] Limpiando canal realtime')
-      supabase.removeChannel(channel)
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
       setRealtimeChannel(null)
     }
   }, [selectedConversation?.id, getCurrentUserId()])
@@ -435,7 +437,9 @@ const getCurrentUserId = () => {
   // Scroll automático mejorado - solo cuando se agregan nuevos mensajes
   useEffect(() => {
     // Solo hacer scroll automático si hay mensajes y el usuario no está haciendo scroll manual
-    if (!selectedConversation?.messages || selectedConversation.messages.length === 0 || isUserScrolling) return
+    if (!selectedConversation?.messages || selectedConversation.messages.length === 0 || isUserScrolling) {
+      return () => {} // Devolver función vacía para evitar el error
+    }
     
     const scrollToBottom = () => {
       if (messagesEndRef.current) {
