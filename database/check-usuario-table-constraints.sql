@@ -19,3 +19,4 @@ WHERE conrelid = 'public.usuario'::regclass
 AND contype = 'n'; -- 'n' = NOT NULL constraint
 
 
+

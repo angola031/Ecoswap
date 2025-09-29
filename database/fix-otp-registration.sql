@@ -22,3 +22,4 @@ WHERE n.nspname = 'auth' AND c.relname = 'users' AND t.tgname = 'on_auth_user_cr
 -- ALTER TABLE auth.users ENABLE TRIGGER on_auth_user_created;
 
 
+

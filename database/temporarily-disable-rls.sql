@@ -24,3 +24,4 @@ WHERE schemaname = 'public' AND tablename = 'usuario';
 -- ALTER TABLE public.usuario ENABLE ROW LEVEL SECURITY;
 
 
+

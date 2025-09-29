@@ -52,3 +52,4 @@ WHERE n.nspname = 'auth' AND c.relname = 'users';
 -- ALTER TABLE auth.users ENABLE TRIGGER ALL;
 
 
+

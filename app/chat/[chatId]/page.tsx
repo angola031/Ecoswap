@@ -16,7 +16,9 @@ import {
   EllipsisVerticalIcon,
   VideoCameraIcon,
   ShoppingBagIcon,
-  EyeIcon
+  EyeIcon,
+  DocumentTextIcon,
+  HandRaisedIcon
 } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 
@@ -26,7 +28,7 @@ interface ChatMessage {
   content: string
   timestamp: string
   isRead: boolean
-  type: 'texto' | 'imagen' | 'ubicacion'
+  type: 'texto' | 'imagen' | 'ubicacion' | 'propuesta' | 'respuesta_propuesta'
   imageUrl?: string
   sender: {
     id: string
@@ -34,6 +36,7 @@ interface ChatMessage {
     lastName: string
     avatar?: string
   }
+  metadata?: any
 }
 
 interface ChatInfo {
@@ -81,6 +84,8 @@ export default function ChatPage() {
   const [isUserOnline, setIsUserOnline] = useState(false)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
+  const [showProposalModal, setShowProposalModal] = useState(false)
+  const [proposals, setProposals] = useState<any[]>([])
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -291,10 +296,10 @@ export default function ChatPage() {
                   type: newMessageData.tipo || 'texto',
                   imageUrl: newMessageData.archivo_url || undefined,
                   sender: {
-                    id: newMessageData.usuario?.user_id?.toString() || '',
-                    name: newMessageData.usuario?.nombre || 'Usuario',
-                    lastName: newMessageData.usuario?.apellido || '',
-                    avatar: newMessageData.usuario?.foto_perfil || undefined
+                    id: String((newMessageData.usuario as any)?.user_id || ''),
+                    name: String((newMessageData.usuario as any)?.nombre || 'Usuario'),
+                    lastName: String((newMessageData.usuario as any)?.apellido || ''),
+                    avatar: (newMessageData.usuario as any)?.foto_perfil || undefined
                   }
                 }
 
@@ -418,8 +423,8 @@ export default function ChatPage() {
     if (container) {
       container.addEventListener('scroll', handleScroll)
       
-      // Scroll inicial al final
-      setTimeout(() => scrollToBottom(true), 100)
+      // Scroll inicial al final después de que se carguen los mensajes
+      setTimeout(() => scrollToBottom(true), 200)
     }
 
     return () => {
@@ -435,10 +440,17 @@ export default function ChatPage() {
 
   // Scroll automático cuando se agregan nuevos mensajes
   useEffect(() => {
-    if (!isUserScrolling) {
+    if (!isUserScrolling && messages.length > 0) {
       setTimeout(() => scrollToBottom(), 100)
     }
   }, [messages.length, isUserScrolling])
+
+  // Scroll inicial cuando se carga el chat
+  useEffect(() => {
+    if (messages.length > 0 && !isLoading) {
+      setTimeout(() => scrollToBottom(true), 300)
+    }
+  }, [isLoading, messages.length])
 
   // Enviar mensaje
   const handleSendMessage = async () => {
@@ -454,7 +466,7 @@ export default function ChatPage() {
       content: messageContent,
       timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
-      type: 'texto',
+        type: 'texto' as const,
       sender: {
         id: String(currentUser?.user_id || ''),
         name: currentUser?.nombre || 'Usuario',
@@ -1002,6 +1014,14 @@ export default function ChatPage() {
       <div className="bg-white border-t border-gray-200 px-4 py-4 shadow-lg">
         <div className="flex items-end space-x-3">
           <button
+            onClick={() => setShowProposalModal(true)}
+            className="p-3 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-full transition-colors"
+            title="Hacer propuesta"
+          >
+            <HandRaisedIcon className="w-6 h-6" />
+          </button>
+          
+          <button
             onClick={() => imageInputRef.current?.click()}
             disabled={isUploadingImage}
             className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1060,7 +1080,222 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Modal de Propuesta */}
+      {showProposalModal && (
+        <ProposalModal
+          chatId={chatId}
+          currentUser={currentUser}
+          onClose={() => setShowProposalModal(false)}
+          onProposalSent={() => {
+            setShowProposalModal(false)
+            // Recargar mensajes después de enviar propuesta
+            setTimeout(() => scrollToBottom(true), 500)
+          }}
+        />
+      )}
+      </div>
     </AuthGuard>
+  )
+}
+
+// Componente Modal de Propuesta
+function ProposalModal({ chatId, currentUser, onClose, onProposalSent }: {
+  chatId: string
+  currentUser: any
+  onClose: () => void
+  onProposalSent: () => void
+}) {
+  const [tipoPropuesta, setTipoPropuesta] = useState('precio')
+  const [descripcion, setDescripcion] = useState('')
+  const [precioPropuesto, setPrecioPropuesto] = useState('')
+  const [condiciones, setCondiciones] = useState('')
+  const [fechaEncuentro, setFechaEncuentro] = useState('')
+  const [lugarEncuentro, setLugarEncuentro] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!descripcion.trim()) return
+
+    setIsSubmitting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+
+      const response = await fetch(`/api/chat/${chatId}/proposals`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          tipo_propuesta: tipoPropuesta,
+          descripcion: descripcion.trim(),
+          precio_propuesto: precioPropuesto ? parseFloat(precioPropuesto) : null,
+          condiciones: condiciones.trim() || null,
+          fecha_encuentro: fechaEncuentro || null,
+          lugar_encuentro: lugarEncuentro.trim() || null
+        })
+      })
+
+      if (response.ok) {
+        await (window as any).Swal.fire({
+          title: 'Propuesta Enviada',
+          text: 'Tu propuesta ha sido enviada exitosamente',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        })
+        onProposalSent()
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || 'Error enviando propuesta')
+      }
+    } catch (error) {
+      console.error('Error enviando propuesta:', error)
+      await (window as any).Swal.fire({
+        title: 'Error',
+        text: 'No se pudo enviar la propuesta. Inténtalo de nuevo.',
+        icon: 'error',
+        confirmButtonText: 'Entendido'
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Hacer Propuesta</h2>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Tipo de Propuesta */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tipo de Propuesta
+              </label>
+              <select
+                value={tipoPropuesta}
+                onChange={(e) => setTipoPropuesta(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="precio">Precio</option>
+                <option value="intercambio">Intercambio</option>
+                <option value="encuentro">Encuentro</option>
+                <option value="condiciones">Condiciones</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+
+            {/* Descripción */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Descripción *
+              </label>
+              <textarea
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                placeholder="Describe tu propuesta en detalle..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={4}
+                required
+              />
+            </div>
+
+            {/* Precio (si aplica) */}
+            {tipoPropuesta === 'precio' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Precio Propuesto (COP)
+                </label>
+                <input
+                  type="number"
+                  value={precioPropuesto}
+                  onChange={(e) => setPrecioPropuesto(e.target.value)}
+                  placeholder="Ej: 500000"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+
+            {/* Condiciones */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Condiciones Adicionales
+              </label>
+              <textarea
+                value={condiciones}
+                onChange={(e) => setCondiciones(e.target.value)}
+                placeholder="Especifica condiciones especiales, garantías, etc..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={3}
+              />
+            </div>
+
+            {/* Fecha de Encuentro (si aplica) */}
+            {(tipoPropuesta === 'encuentro' || tipoPropuesta === 'intercambio') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fecha Propuesta para Encuentro
+                </label>
+                <input
+                  type="datetime-local"
+                  value={fechaEncuentro}
+                  onChange={(e) => setFechaEncuentro(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+
+            {/* Lugar de Encuentro (si aplica) */}
+            {(tipoPropuesta === 'encuentro' || tipoPropuesta === 'intercambio') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Lugar Propuesto
+                </label>
+                <input
+                  type="text"
+                  value={lugarEncuentro}
+                  onChange={(e) => setLugarEncuentro(e.target.value)}
+                  placeholder="Ej: Centro Comercial San Fernando, Pereira"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+
+            {/* Botones */}
+            <div className="flex space-x-4 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={!descripcion.trim() || isSubmitting}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSubmitting ? 'Enviando...' : 'Enviar Propuesta'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   )
 }

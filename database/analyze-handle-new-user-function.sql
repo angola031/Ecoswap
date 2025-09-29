@@ -41,3 +41,4 @@ WHERE table_schema = 'public' AND table_name = 'usuario'
 ORDER BY ordinal_position;
 
 
+
