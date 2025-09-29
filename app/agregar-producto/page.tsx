@@ -464,7 +464,7 @@ export default function AgregarProductoPage() {
       }
 
       // Mostrar mensaje de éxito
-      (window as any).Swal.fire({
+      await (window as any).Swal.fire({
         title: '¡Producto Enviado!',
         text: '¡Producto enviado exitosamente! Será revisado por nuestros administradores antes de ser publicado.',
         icon: 'success',

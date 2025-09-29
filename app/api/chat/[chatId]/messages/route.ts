@@ -73,7 +73,25 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
         }
         const { data: msgs, error } = await query
         if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-        return NextResponse.json({ items: (msgs || []).reverse() })
+        
+        // Transformar los mensajes al formato esperado por el frontend
+        const transformedMessages = (msgs || []).reverse().map((msg: any) => ({
+          id: msg.mensaje_id.toString(),
+          senderId: msg.usuario_id.toString(),
+          content: msg.contenido || '',
+          timestamp: new Date(msg.fecha_envio).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+          isRead: msg.leido || false,
+          type: msg.tipo || 'texto',
+          imageUrl: msg.archivo_url || undefined,
+          sender: {
+            id: msg.usuario?.user_id?.toString() || '',
+            name: msg.usuario?.nombre || 'Usuario',
+            lastName: msg.usuario?.apellido || '',
+            avatar: msg.usuario?.foto_perfil || undefined
+          }
+        }))
+        
+        return NextResponse.json({ data: transformedMessages })
     } catch (e: any) {
         return NextResponse.json({ error: e?.message || 'Server error' }, { status: 500 })
     }

@@ -41,7 +41,7 @@ export async function GET(
         }
 
         // Obtener especificaciones técnicas normalizadas
-        let specifications: Record<string, string> = {}
+        const specifications: Record<string, string> = {}
         try {
             const { data: specRows } = await supabaseAdmin
                 .from('producto_especificacion')

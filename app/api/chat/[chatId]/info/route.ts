@@ -107,7 +107,10 @@ export async function GET(
             tipo_transaccion,
             condiciones_intercambio,
             que_busco_cambio,
-            precio_negociable
+            precio_negociable,
+            categoria:categoria (
+              nombre
+            )
           ),
           producto_solicitado:producto!intercambio_producto_solicitado_id_fkey (
             producto_id,
@@ -116,19 +119,28 @@ export async function GET(
             tipo_transaccion,
             condiciones_intercambio,
             que_busco_cambio,
-            precio_negociable
+            precio_negociable,
+            categoria:categoria (
+              nombre
+            )
           ),
           usuario_propone:usuario!intercambio_usuario_propone_id_fkey (
             user_id,
             nombre,
             apellido,
-            foto_perfil
+            foto_perfil,
+            calificacion_promedio,
+            total_intercambios,
+            fecha_registro
           ),
           usuario_recibe:usuario!intercambio_usuario_recibe_id_fkey (
             user_id,
             nombre,
             apellido,
-            foto_perfil
+            foto_perfil,
+            calificacion_promedio,
+            total_intercambios,
+            fecha_registro
           )
         )
       `)
@@ -162,6 +174,21 @@ export async function GET(
       requestedProductImageUrl = requestedProductImage?.url_imagen || null
     }
 
+    // Obtener ubicación del otro usuario
+    let otherUserLocation = null
+    if (otherUser) {
+      const { data: location } = await supabaseAdmin
+        .from('ubicacion')
+        .select('ciudad, departamento')
+        .eq('user_id', otherUser.user_id)
+        .eq('es_principal', true)
+        .single()
+      
+      if (location) {
+        otherUserLocation = `${location.ciudad}, ${location.departamento}`
+      }
+    }
+
     if (chatError || !chat) {
       return NextResponse.json({ error: 'Chat no encontrado' }, { status: 404 })
     }
@@ -177,34 +204,44 @@ export async function GET(
       : intercambio.usuario_propone
 
     return NextResponse.json({
-      chatId: chat.chat_id,
-      seller: {
-        id: otherUser.user_id,
-        name: otherUser.nombre,
-        lastName: otherUser.apellido,
-        avatar: otherUser.foto_perfil
-      },
-      offeredProduct: {
-        id: intercambio.producto_ofrecido.producto_id,
-        title: intercambio.producto_ofrecido.titulo,
-        precio: intercambio.producto_ofrecido.precio,
-        tipo_transaccion: intercambio.producto_ofrecido.tipo_transaccion,
-        condiciones_intercambio: intercambio.producto_ofrecido.condiciones_intercambio,
-        que_busco_cambio: intercambio.producto_ofrecido.que_busco_cambio,
-        precio_negociable: intercambio.producto_ofrecido.precio_negociable,
-        imageUrl: productImageUrl
-      },
-      requestedProduct: intercambio.producto_solicitado ? {
-        id: intercambio.producto_solicitado.producto_id,
-        title: intercambio.producto_solicitado.titulo,
-        precio: intercambio.producto_solicitado.precio,
-        tipo_transaccion: intercambio.producto_solicitado.tipo_transaccion,
-        condiciones_intercambio: intercambio.producto_solicitado.condiciones_intercambio,
-        que_busco_cambio: intercambio.producto_solicitado.que_busco_cambio,
-        precio_negociable: intercambio.producto_solicitado.precio_negociable,
-        imageUrl: requestedProductImageUrl
-      } : null,
-      createdAt: chat.fecha_creacion
+      data: {
+        chatId: chat.chat_id,
+        seller: {
+          id: otherUser.user_id,
+          name: otherUser.nombre,
+          lastName: otherUser.apellido,
+          avatar: otherUser.foto_perfil,
+          location: otherUserLocation,
+          rating: otherUser.calificacion_promedio || 0,
+          totalExchanges: otherUser.total_intercambios || 0,
+          memberSince: otherUser.fecha_registro ? new Date(otherUser.fecha_registro).getFullYear().toString() : null
+        },
+        offeredProduct: {
+          id: intercambio.producto_ofrecido.producto_id,
+          title: intercambio.producto_ofrecido.titulo,
+          price: intercambio.producto_ofrecido.precio,
+          type: intercambio.producto_ofrecido.tipo_transaccion,
+          category: intercambio.producto_ofrecido.categoria?.nombre,
+          mainImage: productImageUrl,
+          imageUrl: productImageUrl,
+          condiciones_intercambio: intercambio.producto_ofrecido.condiciones_intercambio,
+          que_busco_cambio: intercambio.producto_ofrecido.que_busco_cambio,
+          precio_negociable: intercambio.producto_ofrecido.precio_negociable
+        },
+        requestedProduct: intercambio.producto_solicitado ? {
+          id: intercambio.producto_solicitado.producto_id,
+          title: intercambio.producto_solicitado.titulo,
+          price: intercambio.producto_solicitado.precio,
+          type: intercambio.producto_solicitado.tipo_transaccion,
+          category: intercambio.producto_solicitado.categoria?.nombre,
+          mainImage: requestedProductImageUrl,
+          imageUrl: requestedProductImageUrl,
+          condiciones_intercambio: intercambio.producto_solicitado.condiciones_intercambio,
+          que_busco_cambio: intercambio.producto_solicitado.que_busco_cambio,
+          precio_negociable: intercambio.producto_solicitado.precio_negociable
+        } : null,
+        createdAt: chat.fecha_creacion
+      }
     })
 
   } catch (error: any) {
