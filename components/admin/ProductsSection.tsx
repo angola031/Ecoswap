@@ -48,6 +48,8 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
     const [rejectReason, setRejectReason] = useState('')
 
     useEffect(() => {
+        let isMounted = true
+
         const fetchProducts = async () => {
             try {
                 console.log('📦 ProductsSection: Cargando productos directamente desde BD...')
@@ -121,17 +123,25 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                     }
                 }) || []
 
-                setProducts(transformedProducts)
-                console.log('✅ ProductsSection: Productos transformados y cargados:', transformedProducts.length)
+                if (isMounted) {
+                    setProducts(transformedProducts)
+                    console.log('✅ ProductsSection: Productos transformados y cargados:', transformedProducts.length)
+                }
 
             } catch (error) {
                 console.error('💥 Error cargando productos:', error)
             } finally {
-                setLoading(false)
+                if (isMounted) {
+                    setLoading(false)
+                }
             }
         }
 
         fetchProducts()
+
+        return () => {
+            isMounted = false
+        }
     }, [])
 
     const filteredProducts = products.filter(product => {

@@ -39,19 +39,27 @@ export default function CoreModule({ currentUser, onLogout }: CoreModuleProps) {
 
   // Simular carga de estadísticas
   useEffect(() => {
+    let isMounted = true
+
     const loadStats = async () => {
       // Simular delay de API
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      setStats({
-        totalUsers: 15420,
-        totalProducts: 8930,
-        totalExchanges: 5670,
-        activeUsers: 2340
-      })
+      if (isMounted) {
+        setStats({
+          totalUsers: 15420,
+          totalProducts: 8930,
+          totalExchanges: 5670,
+          activeUsers: 2340
+        })
+      }
     }
 
     loadStats()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const renderScreen = () => {

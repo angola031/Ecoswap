@@ -45,8 +45,10 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
     // Cargar datos reales desde la API
     useEffect(() => {
+        let isMounted = true
+
         const loadData = async () => {
-            if (!currentUser) return
+            if (!currentUser || !isMounted) return
             
             setIsLoading(true)
 
@@ -55,7 +57,9 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                 const { data: { session } } = await supabase.auth.getSession()
                 if (!session?.access_token) {
                     console.error('No hay token de sesión')
-                    setIsLoading(false)
+                    if (isMounted) {
+                        setIsLoading(false)
+                    }
                     return
                 }
 
@@ -69,7 +73,9 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                 if (response.ok) {
                     const data = await response.json()
                     console.log('Interacciones cargadas:', data)
-                    setInteractions(data.interactions || [])
+                    if (isMounted) {
+                        setInteractions(data.interactions || [])
+                    }
                 } else {
                     console.error('Error cargando interacciones:', response.status)
                 }
@@ -77,11 +83,17 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
             } catch (error) {
                 console.error('Error cargando datos:', error)
             } finally {
-                setIsLoading(false)
+                if (isMounted) {
+                    setIsLoading(false)
+                }
             }
         }
 
         loadData()
+
+        return () => {
+            isMounted = false
+        }
     }, [currentUser])
 
     const getTypeIcon = (type: string) => {

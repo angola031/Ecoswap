@@ -73,12 +73,16 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
 
   // Cargar datos de Colombia al montar el componente
   useEffect(() => {
+    let isMounted = true
+
     const loadColombiaData = async () => {
       try {
         const response = await fetch('/data/colombia.json')
         if (response.ok) {
           const data = await response.json()
-          setDepartamentos(data)
+          if (isMounted) {
+            setDepartamentos(data)
+          }
         }
       } catch (error) {
         console.error('Error cargando datos de Colombia:', error)
@@ -86,6 +90,10 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
     }
     
     loadColombiaData()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const handleLogin = async (e: React.FormEvent) => {

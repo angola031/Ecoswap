@@ -34,13 +34,26 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
     const [selectedImage, setSelectedImage] = useState<{url: string, title: string} | null>(null)
 
     useEffect(() => {
-        fetchVerificationRequests()
+        let isMounted = true
+
+        const fetchData = async () => {
+            if (!isMounted) return
+            await fetchVerificationRequests(isMounted)
+        }
+
+        fetchData()
+
+        return () => {
+            isMounted = false
+        }
     }, [])
 
-    const fetchVerificationRequests = async () => {
+    const fetchVerificationRequests = async (isMounted: boolean = true) => {
         try {
-            setLoading(true)
-            setError(null)
+            if (isMounted) {
+                setLoading(true)
+                setError(null)
+            }
 
             // Buscar usuarios que tienen validaciones pendientes
             const { data: validationsData, error: validationsError } = await supabase
@@ -70,7 +83,9 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
 
             if (validationsError) {
                 console.error('❌ Error obteniendo validaciones:', validationsError)
-                setError('Error cargando validaciones de identidad')
+                if (isMounted) {
+                    setError('Error cargando validaciones de identidad')
+                }
                 return
             }
 
@@ -124,13 +139,19 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                 })
             })
             
-            setVerificationRequests(transformedData)
+            if (isMounted) {
+                setVerificationRequests(transformedData)
+            }
 
         } catch (err) {
             console.error('❌ Error en fetchVerificationRequests:', err)
-            setError('Error cargando solicitudes de verificación')
+            if (isMounted) {
+                setError('Error cargando solicitudes de verificación')
+            }
         } finally {
-            setLoading(false)
+            if (isMounted) {
+                setLoading(false)
+            }
         }
     }
 
