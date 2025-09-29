@@ -20,14 +20,24 @@ import {
     ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
-
-interface User {
-    id: string
-    name: string
-    email: string
-    avatar: string
-    location: string
-}
+import { supabase } from '@/lib/supabase'
+import { 
+    User, 
+    Exchange, 
+    Product, 
+    Chat,
+    Message,
+    Rating,
+    IntercambioWithDetails,
+    ProductoWithDetails,
+    UsuarioWithDetails
+} from '@/lib/types'
+import { 
+    InteractionSummary, 
+    UserActivity, 
+    SystemEvent,
+    InteractionsState 
+} from '@/lib/types/interactions'
 
 interface InteractionsModuleProps {
     currentUser: User | null
@@ -129,22 +139,47 @@ interface Event {
 
 export default function InteractionsModule({ currentUser }: InteractionsModuleProps) {
     const router = useRouter()
-    const [interactions, setInteractions] = useState<Interaction[]>([])
-    const [activities, setActivities] = useState<Activity[]>([])
-    const [events, setEvents] = useState<Event[]>([])
+    const [interactions, setInteractions] = useState<InteractionSummary[]>([])
+    const [activities, setActivities] = useState<UserActivity[]>([])
+    const [events, setEvents] = useState<SystemEvent[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<'interactions' | 'activities' | 'events'>('interactions')
     const [filterStatus, setFilterStatus] = useState<string>('all')
 
-    // Cargar datos mockup
+    // Cargar datos reales desde la API
     useEffect(() => {
         const loadData = async () => {
+            if (!currentUser) return
+            
             setIsLoading(true)
 
-            // Simular delay de API
-            await new Promise(resolve => setTimeout(resolve, 1000))
+            try {
+                // Obtener sesión de Supabase
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session?.access_token) {
+                    console.error('No hay token de sesión')
+                    setIsLoading(false)
+                    return
+                }
 
-            const mockInteractions: Interaction[] = [
+                // Cargar interacciones desde la API
+                const response = await fetch('/api/interactions', {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                })
+
+                if (response.ok) {
+                    const data = await response.json()
+                    console.log('Interacciones cargadas:', data)
+                    setInteractions(data.interactions || [])
+                } else {
+                    console.error('Error cargando interacciones:', response.status)
+                }
+
+                // TODO: Implementar carga de actividades y eventos
+                // Por ahora usar datos mockup para estas secciones
+                const mockActivities: Activity[] = [
                 {
                     id: '1',
                     type: 'exchange',
@@ -508,17 +543,23 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
     const getTypeIcon = (type: string) => {
         const icons: Record<string, JSX.Element> = {
-            exchange: <UserGroupIcon className="w-5 h-5" />,
+            intercambio: <UserGroupIcon className="w-5 h-5" />,
+            venta: <GiftIcon className="w-5 h-5" />,
+            donacion: <HeartIcon className="w-5 h-5" />,
+            exchange: <UserGroupIcon className="w-5 h-5" />, // Mantener compatibilidad
             purchase: <GiftIcon className="w-5 h-5" />,
             donation: <HeartIcon className="w-5 h-5" />,
             collaboration: <UserIcon className="w-5 h-5" />
         }
-        return icons[type] || <UserIcon className="w-5 h-5" />
+        return icons[type] || <UserGroupIcon className="w-5 h-5" />
     }
 
     const getTypeColor = (type: string) => {
         const colors: Record<string, string> = {
-            exchange: 'bg-blue-100 text-blue-800',
+            intercambio: 'bg-blue-100 text-blue-800',
+            venta: 'bg-green-100 text-green-800',
+            donacion: 'bg-pink-100 text-pink-800',
+            exchange: 'bg-blue-100 text-blue-800', // Mantener compatibilidad
             purchase: 'bg-green-100 text-green-800',
             donation: 'bg-pink-100 text-pink-800',
             collaboration: 'bg-purple-100 text-purple-800'
@@ -528,7 +569,10 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
     const getTypeLabel = (type: string) => {
         const labels: Record<string, string> = {
-            exchange: 'Intercambio',
+            intercambio: 'Intercambio',
+            venta: 'Venta',
+            donacion: 'Donación',
+            exchange: 'Intercambio', // Mantener compatibilidad
             purchase: 'Compra',
             donation: 'Donación',
             collaboration: 'Colaboración'
@@ -538,7 +582,12 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
     const getStatusIcon = (status: string) => {
         const icons: Record<string, JSX.Element> = {
-            pending: <ClockIcon className="w-5 h-5" />,
+            pendiente: <ClockIcon className="w-5 h-5" />,
+            aceptado: <ExclamationTriangleIcon className="w-5 h-5" />,
+            rechazado: <XCircleIcon className="w-5 h-5" />,
+            completado: <CheckCircleIcon className="w-5 h-5" />,
+            cancelado: <XCircleIcon className="w-5 h-5" />,
+            pending: <ClockIcon className="w-5 h-5" />, // Mantener compatibilidad
             in_progress: <ExclamationTriangleIcon className="w-5 h-5" />,
             completed: <CheckCircleIcon className="w-5 h-5" />,
             cancelled: <XCircleIcon className="w-5 h-5" />
@@ -548,7 +597,12 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
     const getStatusColor = (status: string) => {
         const colors: Record<string, string> = {
-            pending: 'bg-yellow-100 text-yellow-800',
+            pendiente: 'bg-yellow-100 text-yellow-800',
+            aceptado: 'bg-blue-100 text-blue-800',
+            rechazado: 'bg-red-100 text-red-800',
+            completado: 'bg-green-100 text-green-800',
+            cancelado: 'bg-red-100 text-red-800',
+            pending: 'bg-yellow-100 text-yellow-800', // Mantener compatibilidad
             in_progress: 'bg-blue-100 text-blue-800',
             completed: 'bg-green-100 text-green-800',
             cancelled: 'bg-red-100 text-red-800'
@@ -558,7 +612,12 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
     const getStatusLabel = (status: string) => {
         const labels: Record<string, string> = {
-            pending: 'Pendiente',
+            pendiente: 'Pendiente',
+            aceptado: 'Aceptado',
+            rechazado: 'Rechazado',
+            completado: 'Completado',
+            cancelado: 'Cancelado',
+            pending: 'Pendiente', // Mantener compatibilidad
             in_progress: 'En Progreso',
             completed: 'Completado',
             cancelled: 'Cancelado'
@@ -612,8 +671,17 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
         : interactions.filter(interaction => interaction.status === filterStatus)
 
     // Función para abrir el detalle de la interacción
-    const openInteractionDetail = (interaction: Interaction) => {
+    const openInteractionDetail = (interaction: InteractionSummary) => {
         router.push(`/interaccion/${interaction.id}`)
+    }
+
+    // Función para abrir el chat
+    const openChat = (interaction: InteractionSummary) => {
+        if (interaction.chatId) {
+            router.push(`/chat/${interaction.chatId}`)
+        } else {
+            console.error('No hay chatId disponible para esta interacción')
+        }
     }
 
     if (isLoading) {
@@ -780,7 +848,10 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
                                             {/* Acciones */}
                                             <div className="flex space-x-2 mt-4 pt-4 border-t border-gray-200">
-                                                <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center">
+                                                <button 
+                                                    onClick={() => openChat(interaction)}
+                                                    className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center"
+                                                >
                                                     <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
                                                     Ver Chat
                                                 </button>
@@ -791,7 +862,7 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                                     <EyeIcon className="w-4 h-4 mr-2" />
                                                     Ver Detalles
                                                 </button>
-                                                {interaction.status === 'completed' && (
+                                                {(interaction.status === 'completado' || interaction.status === 'completed') && (
                                                     <button
                                                         onClick={() => router.push(`/interaccion/${interaction.id}/calificar?user=${interaction.otherUser.id}`)}
                                                         className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg hover:bg-yellow-200 transition-colors flex items-center"
@@ -800,7 +871,7 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                                         Calificar
                                                     </button>
                                                 )}
-                                                {interaction.status === 'pending' && (
+                                                {(interaction.status === 'pendiente' || interaction.status === 'pending') && (
                                                     <button
                                                         onClick={() => router.push(`/interaccion/${interaction.id}/aceptar`)}
                                                         className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center"
