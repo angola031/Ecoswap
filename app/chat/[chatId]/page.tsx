@@ -85,28 +85,33 @@ export default function ChatPage() {
 
   // Cargar información del chat y mensajes
   useEffect(() => {
+    let isMounted = true
+    let channel: any = null
+
     const loadChat = async () => {
-      if (!chatId) return
+      if (!chatId || !isMounted) return
       
       // Verificar autenticación primero
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) {
         console.log('❌ [Chat] No hay sesión - redirigiendo al login')
         router.push('/login')
-        return
-      }
+          return
+        }
       
       try {
 
         // Obtener usuario actual primero
         const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
+        if (user && isMounted) {
           const { data: usuario } = await supabase
             .from('usuario')
             .select('user_id, nombre, apellido, foto_perfil')
             .eq('auth_user_id', user.id)
             .single()
+          if (isMounted) {
           setCurrentUser(usuario)
+          }
         }
 
         // Intentar obtener información del chat
@@ -117,10 +122,13 @@ export default function ChatPage() {
           
           if (chatResponse.ok) {
             const chatData = await chatResponse.json()
+            if (isMounted) {
             setChatInfo(chatData)
+            }
           } else {
             // Si no se puede cargar la info del chat, crear una interfaz básica
             console.log('No se pudo cargar info del chat, creando interfaz básica')
+            if (isMounted) {
             setChatInfo({
               chatId: chatId,
               seller: {
@@ -129,16 +137,18 @@ export default function ChatPage() {
                 lastName: '',
                 avatar: null
               },
-              product: {
+                offeredProduct: {
                 id: 'unknown',
                 title: 'Producto',
                 imageUrl: null
               }
             })
+            }
           }
         } catch (error) {
           console.log('Error cargando info del chat:', error)
           // Crear interfaz básica si hay error
+          if (isMounted) {
           setChatInfo({
             chatId: chatId,
             seller: {
@@ -147,12 +157,13 @@ export default function ChatPage() {
               lastName: '',
               avatar: null
             },
-            product: {
+              offeredProduct: {
               id: 'unknown',
               title: 'Producto',
               imageUrl: null
             }
           })
+          }
         }
 
         // Intentar obtener mensajes
@@ -181,7 +192,9 @@ export default function ChatPage() {
               }
             }))
             
-            setMessages(transformedMessages)
+            if (isMounted) {
+              setMessages(transformedMessages)
+            }
             
             // Marcar mensajes como leídos
             if (messagesData.items?.length > 0) {
@@ -193,7 +206,8 @@ export default function ChatPage() {
           }
 
           // Configurar tiempo real para nuevos mensajes y presencia
-          const channel = supabase
+          if (isMounted) {
+            channel = supabase
             .channel(`chat-${chatId}`, {
               config: {
                 broadcast: { self: false },
@@ -202,6 +216,7 @@ export default function ChatPage() {
             })
             // Detectar presencia del otro usuario
             .on('presence', { event: 'sync' }, () => {
+              if (!isMounted) return
               const presenceState = channel.presenceState()
               const otherUserId = chatInfo?.seller?.id
               if (otherUserId && presenceState[`user-${otherUserId}`]) {
@@ -211,12 +226,14 @@ export default function ChatPage() {
               }
             })
             .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+              if (!isMounted) return
               const otherUserId = chatInfo?.seller?.id
               if (otherUserId && key === `user-${otherUserId}`) {
                 setIsUserOnline(true)
               }
             })
             .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+              if (!isMounted) return
               const otherUserId = chatInfo?.seller?.id
               if (otherUserId && key === `user-${otherUserId}`) {
                 setIsUserOnline(false)
@@ -269,12 +286,14 @@ export default function ChatPage() {
                   }
                 }
 
-                setMessages(prev => {
-                  // Evitar duplicados
-                  const exists = prev.some(msg => msg.id === transformedMessage.id)
-                  if (exists) return prev
-                  return [...prev, transformedMessage]
-                })
+                if (isMounted) {
+                  setMessages(prev => {
+                    // Evitar duplicados
+                    const exists = prev.some(msg => msg.id === transformedMessage.id)
+                    if (exists) return prev
+                    return [...prev, transformedMessage]
+                  })
+                }
 
                 // Mostrar notificación si el mensaje es de otro usuario
                 const isFromOtherUser = transformedMessage.senderId !== currentUser?.user_id?.toString()
@@ -311,12 +330,6 @@ export default function ChatPage() {
               }
             })
 
-          // Guardar referencia del canal para limpiarlo después
-          return () => {
-            if (currentUser?.user_id) {
-              channel.untrack()
-            }
-            supabase.removeChannel(channel)
           }
 
         } catch (error) {
@@ -327,17 +340,40 @@ export default function ChatPage() {
       } catch (error) {
         console.error('Error general cargando chat:', error)
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
-    const cleanup = loadChat()
-    return cleanup
+    loadChat()
+
+    return () => {
+      isMounted = false
+      if (channel) {
+        if (currentUser?.user_id) {
+          channel.untrack()
+        }
+        supabase.removeChannel(channel)
+      }
+    }
   }, [chatId, router])
 
   // Auto-scroll al final cuando hay nuevos mensajes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    let isMounted = true
+
+    const scrollToBottom = () => {
+      if (isMounted) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }
+    }
+
+    scrollToBottom()
+
+    return () => {
+      isMounted = false
+    }
   }, [messages])
 
   // Enviar mensaje
@@ -599,7 +635,7 @@ export default function ChatPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header mejorado */}
       <div className="bg-white shadow-lg border-b border-gray-200 px-4 py-4">
         <div className="flex items-center justify-between">
@@ -921,7 +957,7 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
-      </div>
+    </div>
     </AuthGuard>
   )
 }
