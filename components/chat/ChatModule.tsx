@@ -24,14 +24,6 @@ import {
 } from '@/lib/types'
 
 
-interface User {
-  id: string
-  name: string
-  email: string
-  avatar: string
-  location: string
-  user_id?: string // Agregado para consistencia
-}
 interface ChatModuleProps {
   currentUser: User | null
 }
@@ -69,14 +61,6 @@ interface ChatMessage {
   }
 }
 
-interface ChatConversation {
-  id: string
-  user: ChatUser
-  lastMessage: string
-  lastMessageTime: string
-  unreadCount: number
-  messages: ChatMessage[]
-}
 
 // Función para formatear precio
 const formatPrice = (precio: number | null, tipoTransaccion: string | null, condicionesIntercambio: string | null, queBuscoCambio: string | null, precioNegociable: boolean | null) => {
@@ -165,7 +149,7 @@ const [isUserScrolling, setIsUserScrolling] = useState(false)
 
 // Función auxiliar para obtener ID consistente del usuario
 const getCurrentUserId = () => {
-  return String(currentUser?.user_id || currentUser?.id || '')
+  return String(currentUser?.id || '')
 }
   // Cargar conversaciones reales
   useEffect(() => {
@@ -204,7 +188,7 @@ const getCurrentUserId = () => {
         }))
         
         if (isMounted) {
-          setConversations(list)
+        setConversations(list)
           // Solo seleccionar el primer chat si no hay uno seleccionado
           if (list.length > 0 && !selectedConversation) {
             setSelectedConversation(list[0])
@@ -213,13 +197,13 @@ const getCurrentUserId = () => {
       } catch (error) {
         console.error('❌ [ChatModule] Error cargando conversaciones:', error)
         if (isMounted) {
-          setConversations([])
+        setConversations([])
         }
       } finally {
         if (isMounted) {
-          setIsLoading(false)
-        }
+        setIsLoading(false)
       }
+    }
     }
     
     loadConversations()
@@ -281,17 +265,17 @@ const getCurrentUserId = () => {
             return !isProductInfo && content.trim().length > 0
           })
           .map((m: any) => ({
-            id: String(m.mensaje_id),
-            senderId: String(m.usuario_id),
-            content: m.contenido || '',
+          id: String(m.mensaje_id),
+          senderId: String(m.usuario_id),
+          content: m.contenido || '',
             timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
               hour: '2-digit', 
               minute: '2-digit',
               day: '2-digit',
               month: '2-digit'
             }),
-            isRead: m.leido,
-            type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
+          isRead: m.leido,
+          type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
             metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
             sender: {
               id: String(m.usuario?.user_id || m.usuario_id),
@@ -308,18 +292,18 @@ const getCurrentUserId = () => {
         console.log('💬 [ChatModule] ID del usuario actual:', getCurrentUserId())
         
         if (isMounted) {
-          setSelectedConversation(prev => prev ? { ...prev, messages } : prev)
-          setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, messages } : c))
+        setSelectedConversation(prev => prev ? { ...prev, messages } : prev)
+        setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, messages } : c))
 
-          // Marcar como leídos
-          const readRes = await fetch(`/api/chat/${chatId}/read`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-          if (readRes.ok) {
-            setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, unreadCount: 0 } : c))
-          }
+        // Marcar como leídos
+        const readRes = await fetch(`/api/chat/${chatId}/read`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+        if (readRes.ok) {
+          setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, unreadCount: 0 } : c))
         }
+      }
       } catch (error) {
         console.error('❌ [ChatModule] Error cargando mensajes:', error)
-      }
+    }
     }
     
     loadMessages()
@@ -472,7 +456,7 @@ const getCurrentUserId = () => {
       }
       setRealtimeChannel(null)
     }
-  }, [selectedConversation?.id, currentUser?.user_id, currentUser?.id])
+  }, [selectedConversation?.id, currentUser?.id, currentUser?.id])
 
   // Scroll automático mejorado - solo cuando se agregan nuevos mensajes
   useEffect(() => {
@@ -526,7 +510,7 @@ const getCurrentUserId = () => {
       sender: {
         id: currentUserId,
         name: currentUser?.name || 'Usuario',
-        lastName: currentUser?.apellido || '',
+        lastName: '',
         avatar: currentUser?.avatar || undefined
       }
     }
@@ -627,8 +611,8 @@ const getCurrentUserId = () => {
       } : prev)
       
       // Mostrar error al usuario
-      if (window.Swal) {
-        window.Swal.fire({
+      if ((window as any).Swal) {
+        (window as any).Swal.fire({
           title: 'Error',
           text: 'No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.',
           icon: 'error',
@@ -709,6 +693,89 @@ const getCurrentUserId = () => {
 
   const handleAttachImage = () => imageInputRef.current?.click()
   const handleAttachFile = () => fileInputRef.current?.click()
+
+  // Funciones para manejar propuestas
+  const handleSendProposal = () => {
+    if (!selectedConversation) return
+    
+    // Agregar mensaje informativo al chat
+    const proposalMessage = {
+      id: `proposal-${Date.now()}`,
+      senderId: currentUser?.id,
+      content: '💰 Enviando propuesta...',
+      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      isRead: true,
+      type: 'text' as const,
+      sender: {
+        id: currentUser?.id,
+        name: currentUser?.name || 'Tú',
+        lastName: '',
+        avatar: currentUser?.avatar
+      }
+    }
+    
+    setSelectedConversation(prev => prev ? {
+      ...prev,
+      messages: [...prev.messages, proposalMessage]
+    } : prev)
+    
+    // Aquí puedes abrir un modal de propuestas o navegar a una página específica
+    console.log('Abriendo modal de propuestas')
+  }
+
+  const handleNegotiate = () => {
+    if (!selectedConversation) return
+    
+    // Agregar mensaje de negociación al chat
+    const negotiateMessage = {
+      id: `negotiate-${Date.now()}`,
+      senderId: currentUser?.id,
+      content: '🔄 Iniciando negociación...',
+      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      isRead: true,
+      type: 'text' as const,
+      sender: {
+        id: currentUser?.id,
+        name: currentUser?.name || 'Tú',
+        lastName: '',
+        avatar: currentUser?.avatar
+      }
+    }
+    
+    setSelectedConversation(prev => prev ? {
+      ...prev,
+      messages: [...prev.messages, negotiateMessage]
+    } : prev)
+    
+    console.log('Iniciando negociación')
+  }
+
+  const handleAccept = () => {
+    if (!selectedConversation) return
+    
+    // Agregar mensaje de aceptación al chat
+    const acceptMessage = {
+      id: `accept-${Date.now()}`,
+      senderId: currentUser?.id,
+      content: '✅ Has aceptado el intercambio',
+      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      isRead: true,
+      type: 'text' as const,
+      sender: {
+        id: currentUser?.id,
+        name: currentUser?.name || 'Tú',
+        lastName: '',
+        avatar: currentUser?.avatar
+      }
+    }
+    
+    setSelectedConversation(prev => prev ? {
+      ...prev,
+      messages: [...prev.messages, acceptMessage]
+    } : prev)
+    
+    console.log('Intercambio aceptado por el usuario')
+  }
 
   const onImageSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -808,7 +875,7 @@ const getCurrentUserId = () => {
                     alt={conversation.user.name}
                     className="w-12 h-12 rounded-full"
                   />
-                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${conversation.user.isOnline ? 'bg-green-500' : 'bg-gray-400'
+                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white bg-green-500
                     }`}></div>
                 </div>
 
@@ -851,42 +918,42 @@ const getCurrentUserId = () => {
             {/* Header del chat */}
             <div className="border-b border-gray-200">
               <div className="p-4 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <img
-                      src={selectedConversation.user.avatar}
-                      alt={selectedConversation.user.name}
-                      className="w-10 h-10 rounded-full"
-                    />
-                    <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${selectedConversation.user.isOnline ? 'bg-green-500' : 'bg-gray-400'
-                      }`}></div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium text-gray-900">
-                      {selectedConversation.user.name}
-                    </h3>
-                    <div className="flex items-center space-x-1 text-sm text-gray-500">
-                      <MapPinIcon className="w-3 h-3" />
-                      <span>{selectedConversation.user.location}</span>
-                      <span>•</span>
-                      <span>
-                        {selectedConversation.user.isOnline ? 'En línea' : selectedConversation.user.lastSeen}
-                      </span>
-                    </div>
-                  </div>
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <img
+                    src={selectedConversation.user.avatar}
+                    alt={selectedConversation.user.name}
+                    className="w-10 h-10 rounded-full"
+                  />
+                  <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white bg-green-500
+                    }`}></div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <button onClick={() => setShowProfile(true)} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                    <PhoneIcon className="w-5 h-5" />
-                  </button>
-                  <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                    <VideoCameraIcon className="w-5 h-5" />
-                  </button>
-                  <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                    <EllipsisVerticalIcon className="w-5 h-5" />
-                  </button>
+                <div>
+                  <h3 className="font-medium text-gray-900">
+                    {selectedConversation.user.name}
+                  </h3>
+                  <div className="flex items-center space-x-1 text-sm text-gray-500">
+                    <MapPinIcon className="w-3 h-3" />
+                    <span>{selectedConversation.user.location}</span>
+                    <span>•</span>
+                    <span>
+                      En línea
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button onClick={() => setShowProfile(true)} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                  <PhoneIcon className="w-5 h-5" />
+                </button>
+                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                  <VideoCameraIcon className="w-5 h-5" />
+                </button>
+                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                  <EllipsisVerticalIcon className="w-5 h-5" />
+                </button>
                 </div>
               </div>
               
@@ -1072,6 +1139,40 @@ const getCurrentUserId = () => {
               )}
             </div>
 
+            {/* SECCIÓN DE PROPUESTA */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-t-2 border-green-200 px-6 py-6">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-bold text-gray-800 mb-1">💰 Sesión de Propuesta</h3>
+                <p className="text-sm text-gray-600">Gestiona las propuestas del intercambio</p>
+              </div>
+              
+              <div className="flex items-center justify-center flex-wrap gap-4">
+                <button
+                  onClick={handleSendProposal}
+                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  <span className="text-xl">💰</span>
+                  <span className="font-semibold">Enviar Propuesta</span>
+                </button>
+                
+                <button
+                  onClick={handleNegotiate}
+                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  <span className="text-xl">🔄</span>
+                  <span className="font-semibold">Negociar</span>
+                </button>
+                
+                <button
+                  onClick={handleAccept}
+                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  <span className="text-xl">✅</span>
+                  <span className="font-semibold">Aceptar</span>
+                </button>
+              </div>
+            </div>
+
             {/* Input de mensaje */}
             <div className="p-4 border-t border-gray-200">
               <div className="flex items-center space-x-2">
@@ -1131,7 +1232,7 @@ const getCurrentUserId = () => {
             <div>
               <p className="font-medium text-gray-900">{selectedConversation.user.name}</p>
               <p className="text-sm text-gray-500 flex items-center space-x-1"><MapPinIcon className="w-4 h-4" /><span>{selectedConversation.user.location}</span></p>
-              <p className="text-sm text-gray-500">{selectedConversation.user.isOnline ? 'En línea' : `Visto: ${selectedConversation.user.lastSeen}`}</p>
+              <p className="text-sm text-gray-500">Usuario activo</p>
             </div>
             <div className="pt-2 border-t border-gray-100">
               <button className="w-full text-left text-sm text-primary-700 hover:underline">Ver perfil completo</button>
