@@ -86,8 +86,10 @@ export default function ProductDetailPage() {
   })
 
   useEffect(() => {
+    let isMounted = true
+
     const loadProduct = async () => {
-      if (!productId) return
+      if (!productId || !isMounted) return
 
       setIsLoading(true)
       setError(null)
@@ -109,6 +111,9 @@ export default function ProductDetailPage() {
         }
 
         const { product } = await response.json()
+        
+        if (!isMounted) return
+        
         setProduct(product)
         // Prefijar vistas y likes con los valores de BD si vienen
         if (typeof product.visualizaciones === 'number') {
@@ -178,13 +183,17 @@ export default function ProductDetailPage() {
             })
           }
           
-          setIsOwner(isProductOwner)
-          setOwnerCheckComplete(true)
+          if (isMounted) {
+            setIsOwner(isProductOwner)
+            setOwnerCheckComplete(true)
+          }
           
         } catch (error) {
           console.error('Error en verificación inmediata:', error)
-          setIsOwner(false)
-          setOwnerCheckComplete(true)
+          if (isMounted) {
+            setIsOwner(false)
+            setOwnerCheckComplete(true)
+          }
         }
 
         // Obtener estadísticas del producto
@@ -192,7 +201,9 @@ export default function ProductDetailPage() {
           const statsResponse = await fetch(`/api/products/${productId}/stats`)
           if (statsResponse.ok) {
             const { stats: productStats } = await statsResponse.json()
-            setStats(productStats)
+            if (isMounted) {
+              setStats(productStats)
+            }
           }
         } catch (statsError) {
           console.warn('No se pudieron cargar las estadísticas:', statsError)
@@ -224,7 +235,9 @@ export default function ProductDetailPage() {
                 console.log('🔍 DEBUG: JSON respuesta like:', json)
                 if (typeof json?.liked === 'boolean') {
                   console.log('🔍 DEBUG: Estableciendo isLiked a:', json.liked)
-                  setIsLiked(json.liked)
+                  if (isMounted) {
+                    setIsLiked(json.liked)
+                  }
                 } else {
                   console.log('🔍 DEBUG: Respuesta no contiene liked válido:', json)
                 }
@@ -236,7 +249,9 @@ export default function ProductDetailPage() {
             } else {
               // Si es el dueño, asegurar que no tenga like activo
               console.log('🔍 DEBUG: Usuario ES propietario, estableciendo isLiked a false')
-              setIsLiked(false)
+              if (isMounted) {
+                setIsLiked(false)
+              }
             }
           }
         } catch (error) {
@@ -271,13 +286,21 @@ export default function ProductDetailPage() {
 
       } catch (error) {
         console.error('Error cargando producto:', error)
-        setError(error instanceof Error ? error.message : 'Error desconocido')
+        if (isMounted) {
+          setError(error instanceof Error ? error.message : 'Error desconocido')
+        }
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
     loadProduct()
+
+    return () => {
+      isMounted = false
+    }
   }, [productId])
 
   const nextImage = () => {
