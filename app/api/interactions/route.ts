@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     const type = searchParams.get('type')
     const offset = (page - 1) * limit
 
-    // Construir consulta base para intercambios
+    // Construir consulta base para intercambios optimizada
     let query = supabase
       .from('intercambio')
       .select(`
@@ -85,20 +85,17 @@ export async function GET(req: NextRequest) {
           condiciones_intercambio,
           que_busco_cambio,
           precio_negociable,
+          ciudad_snapshot,
+          departamento_snapshot,
           usuario:usuario!producto_user_id_fkey (
             user_id,
             nombre,
             apellido,
             foto_perfil,
-            calificacion_promedio,
-            ubicacion:ubicacion!ubicacion_user_id_fkey (
-              ciudad,
-              departamento
-            )
+            calificacion_promedio
           ),
-          imagenes:imagen_producto (
-            url_imagen,
-            es_principal
+          imagenes:imagen_producto!es_principal.eq.true (
+            url_imagen
           ),
           categoria:categoria (
             nombre
@@ -113,20 +110,17 @@ export async function GET(req: NextRequest) {
           condiciones_intercambio,
           que_busco_cambio,
           precio_negociable,
+          ciudad_snapshot,
+          departamento_snapshot,
           usuario:usuario!producto_user_id_fkey (
             user_id,
             nombre,
             apellido,
             foto_perfil,
-            calificacion_promedio,
-            ubicacion:ubicacion!ubicacion_user_id_fkey (
-              ciudad,
-              departamento
-            )
+            calificacion_promedio
           ),
-          imagenes:imagen_producto (
-            url_imagen,
-            es_principal
+          imagenes:imagen_producto!es_principal.eq.true (
+            url_imagen
           ),
           categoria:categoria (
             nombre
@@ -137,22 +131,14 @@ export async function GET(req: NextRequest) {
           nombre,
           apellido,
           foto_perfil,
-          calificacion_promedio,
-          ubicacion:ubicacion!ubicacion_user_id_fkey (
-            ciudad,
-            departamento
-          )
+          calificacion_promedio
         ),
         usuario_recibe:usuario!intercambio_usuario_recibe_id_fkey (
           user_id,
           nombre,
           apellido,
           foto_perfil,
-          calificacion_promedio,
-          ubicacion:ubicacion!ubicacion_user_id_fkey (
-            ciudad,
-            departamento
-          )
+          calificacion_promedio
         ),
         chat:chat (
           chat_id,
@@ -188,6 +174,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Error obteniendo intercambios' }, { status: 500 })
     }
 
+    // Obtener contadores de mensajes para cada chat
+    const chatIds = intercambios?.map(i => i.chat?.chat_id).filter(Boolean) || []
+    let messageCounts: Record<number, number> = {}
+    
+    if (chatIds.length > 0) {
+      const { data: messageData } = await supabase
+        .from('mensaje')
+        .select('chat_id')
+        .in('chat_id', chatIds)
+      
+      // Contar mensajes por chat
+      messageCounts = (messageData || []).reduce((acc: Record<number, number>, msg: any) => {
+        acc[msg.chat_id] = (acc[msg.chat_id] || 0) + 1
+        return acc
+      }, {})
+    }
+
     // Transformar datos a formato de interfaz
     const interactions: InteractionSummary[] = (intercambios || []).map((intercambio: any) => {
       // Determinar el otro usuario
@@ -198,15 +201,11 @@ export async function GET(req: NextRequest) {
       // Determinar el producto principal (el que está siendo ofrecido)
       const mainProduct = intercambio.producto_ofrecido
 
-      // Obtener imagen principal del producto ofrecido
-      const mainProductImage = mainProduct?.imagenes?.find((img: any) => img.es_principal)?.url_imagen 
-        || mainProduct?.imagenes?.[0]?.url_imagen 
-        || '/images/placeholder-product.jpg'
+      // Obtener imagen principal del producto ofrecido (ya filtrada en la consulta)
+      const mainProductImage = mainProduct?.imagenes?.[0]?.url_imagen || '/images/placeholder-product.jpg'
 
       // Obtener imagen principal del producto solicitado si existe
-      const requestedProductImage = intercambio.producto_solicitado?.imagenes?.find((img: any) => img.es_principal)?.url_imagen 
-        || intercambio.producto_solicitado?.imagenes?.[0]?.url_imagen 
-        || '/images/placeholder-product.jpg'
+      const requestedProductImage = intercambio.producto_solicitado?.imagenes?.[0]?.url_imagen || '/images/placeholder-product.jpg'
 
       return {
         id: String(intercambio.intercambio_id),
@@ -239,12 +238,12 @@ export async function GET(req: NextRequest) {
           name: otherUser?.nombre || '',
           lastName: otherUser?.apellido || '',
           avatar: otherUser?.foto_perfil,
-          location: `${otherUser?.ubicacion?.ciudad || ''}, ${otherUser?.ubicacion?.departamento || ''}`,
+          location: `${mainProduct?.ciudad_snapshot || ''}, ${mainProduct?.departamento_snapshot || ''}`,
           rating: otherUser?.calificacion_promedio || 0
         },
         createdAt: intercambio.fecha_propuesta,
         updatedAt: intercambio.fecha_respuesta || intercambio.fecha_propuesta,
-        messagesCount: 0, // Se puede calcular después con una consulta adicional
+        messagesCount: messageCounts[intercambio.chat?.chat_id] || 0,
         chatId: String(intercambio.chat?.chat_id || ''),
         additionalAmount: intercambio.monto_adicional || 0,
         meetingPlace: intercambio.lugar_encuentro,
