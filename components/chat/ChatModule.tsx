@@ -15,6 +15,13 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
+import { 
+  ChatConversation, 
+  Message, 
+  User, 
+  Product, 
+  ChatInfo 
+} from '@/lib/types'
 
 
 interface User {
@@ -162,7 +169,11 @@ const getCurrentUserId = () => {
 }
   // Cargar conversaciones reales
   useEffect(() => {
+    let isMounted = true
+    
     const loadConversations = async () => {
+      if (!isMounted) return
+      
       setIsLoading(true)
       try {
         const { data: { session } } = await supabase.auth.getSession()
@@ -191,25 +202,39 @@ const getCurrentUserId = () => {
           unreadCount: c.unreadCount || 0,
           messages: []
         }))
-        setConversations(list)
-        // Solo seleccionar el primer chat si no hay uno seleccionado
-        if (list.length > 0 && !selectedConversation) {
-          setSelectedConversation(list[0])
+        
+        if (isMounted) {
+          setConversations(list)
+          // Solo seleccionar el primer chat si no hay uno seleccionado
+          if (list.length > 0 && !selectedConversation) {
+            setSelectedConversation(list[0])
+          }
         }
       } catch (error) {
         console.error('❌ [ChatModule] Error cargando conversaciones:', error)
-        setConversations([])
+        if (isMounted) {
+          setConversations([])
+        }
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
+    
     loadConversations()
+    
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   // Cargar mensajes reales al seleccionar conversación
   useEffect(() => {
+    let isMounted = true
+    
     const loadMessages = async () => {
-      if (!selectedConversation) return
+      if (!selectedConversation || !isMounted) return
       try {
         const chatId = Number(selectedConversation.id)
         console.log('🔄 [ChatModule] Cargando mensajes para chat:', chatId)
@@ -282,27 +307,38 @@ const getCurrentUserId = () => {
         console.log('💬 [ChatModule] Usuario actual:', currentUser)
         console.log('💬 [ChatModule] ID del usuario actual:', getCurrentUserId())
         
-        setSelectedConversation(prev => prev ? { ...prev, messages } : prev)
-        setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, messages } : c))
+        if (isMounted) {
+          setSelectedConversation(prev => prev ? { ...prev, messages } : prev)
+          setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, messages } : c))
 
-        // Marcar como leídos
-        const readRes = await fetch(`/api/chat/${chatId}/read`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-        if (readRes.ok) {
-          setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, unreadCount: 0 } : c))
+          // Marcar como leídos
+          const readRes = await fetch(`/api/chat/${chatId}/read`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+          if (readRes.ok) {
+            setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, unreadCount: 0 } : c))
+          }
         }
       } catch (error) {
         console.error('❌ [ChatModule] Error cargando mensajes:', error)
       }
     }
+    
     loadMessages()
+    
+    return () => {
+      isMounted = false
+    }
   }, [selectedConversation?.id])
 
   // Cargar información del producto cuando se selecciona un chat
   useEffect(() => {
+    let isMounted = true
+    
     const loadProductInfo = async () => {
-      if (!selectedConversation?.id) {
-        setOfferedProduct(null)
-        setRequestedProduct(null)
+      if (!selectedConversation?.id || !isMounted) {
+        if (isMounted) {
+          setOfferedProduct(null)
+          setRequestedProduct(null)
+        }
         return
       }
 
@@ -320,7 +356,7 @@ const getCurrentUserId = () => {
         
         console.log('📨 [ChatModule] Respuesta info:', { status: response.status, ok: response.ok })
         
-        if (response.ok) {
+        if (response.ok && isMounted) {
           const data = await response.json()
           setOfferedProduct(data.offeredProduct)
           setRequestedProduct(data.requestedProduct)
@@ -335,6 +371,10 @@ const getCurrentUserId = () => {
     }
 
     loadProductInfo()
+    
+    return () => {
+      isMounted = false
+    }
   }, [selectedConversation?.id])
 
   // ✅ REALTIME MEJORADO: Suscripción más robusta
