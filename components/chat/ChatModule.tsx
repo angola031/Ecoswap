@@ -1390,7 +1390,7 @@ const getCurrentUserId = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-120px)] flex bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="h-[calc(100vh-300px)] flex bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Lista de conversaciones */}
       <div className="w-80 border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200 space-y-3">

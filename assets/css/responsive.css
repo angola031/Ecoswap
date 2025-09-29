@@ -115,7 +115,7 @@
     /* Chat */
     .chat-main {
         grid-template-columns: 1fr;
-        height: calc(100vh - 120px);
+        height: calc(100vh - 300px);
     }
 
     .conversations-sidebar {
@@ -310,7 +310,7 @@
 /* ===== ORIENTACIÓN LANDSCAPE EN MÓVILES ===== */
 @media (max-width: 767px) and (orientation: landscape) {
     .chat-main {
-        height: calc(100vh - 80px);
+        height: calc(100vh - 200px);
     }
 
     .chat-area {
