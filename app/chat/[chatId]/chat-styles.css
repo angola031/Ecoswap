@@ -1,0 +1,137 @@
+/* Estilos específicos para el chat */
+
+/* Scroll personalizado para el contenedor de mensajes */
+.chat-messages-container {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.chat-messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages-container::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 3px;
+}
+
+.chat-messages-container::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.chat-messages-container::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Animación suave para el scroll */
+.chat-messages-container {
+  scroll-behavior: smooth;
+}
+
+/* Efecto de fade en los bordes del scroll */
+.chat-messages-container::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to bottom, rgba(247, 250, 252, 1), rgba(247, 250, 252, 0));
+  pointer-events: none;
+  z-index: 10;
+}
+
+.chat-messages-container::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to top, rgba(247, 250, 252, 1), rgba(247, 250, 252, 0));
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Animación para el botón de scroll */
+.scroll-to-bottom-btn {
+  backdrop-filter: blur(8px);
+  background: rgba(59, 130, 246, 0.9);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scroll-to-bottom-btn:hover {
+  background: rgba(37, 99, 235, 0.95);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Animación para los mensajes */
+.message-enter {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease-out;
+}
+
+.message-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Indicador de mensaje nuevo */
+.new-message-indicator {
+  position: relative;
+}
+
+.new-message-indicator::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  background: #10b981;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Mejoras para dispositivos móviles */
+@media (max-width: 768px) {
+  .chat-messages-container::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .scroll-to-bottom-btn {
+    bottom: 20px;
+    right: 20px;
+    padding: 12px;
+  }
+}
+
+/* Animación para el contenedor de mensajes vacío */
+.empty-chat-container {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

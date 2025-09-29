@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import AuthGuard from '@/components/auth/AuthGuard'
 import { motion } from 'framer-motion'
+import './chat-styles.css'
 import {
   ArrowLeftIcon,
   PaperAirplaneIcon,
@@ -78,10 +79,14 @@ export default function ChatPage() {
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isUserOnline, setIsUserOnline] = useState(false)
+  const [showScrollButton, setShowScrollButton] = useState(false)
+  const [isUserScrolling, setIsUserScrolling] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Cargar información del chat y mensajes
   useEffect(() => {
@@ -247,6 +252,13 @@ export default function ChatPage() {
             }, async (payload) => {
               console.log('🔔 Nuevo mensaje recibido:', payload)
               
+              // Ignorar mensajes del usuario actual para evitar duplicados con mensajes optimistas
+              const currentUserIdStr = String(currentUser?.user_id || '')
+              if (payload.new.usuario_id?.toString() === currentUserIdStr) {
+                console.log('🔄 Ignorando mensaje del usuario actual (ya está en optimista)')
+                return
+              }
+              
               // Obtener información completa del mensaje con usuario
               const { data: newMessageData } = await supabase
                 .from('mensaje')
@@ -341,7 +353,7 @@ export default function ChatPage() {
         console.error('Error general cargando chat:', error)
       } finally {
         if (isMounted) {
-          setIsLoading(false)
+        setIsLoading(false)
         }
       }
     }
@@ -359,32 +371,87 @@ export default function ChatPage() {
     }
   }, [chatId, router])
 
-  // Auto-scroll al final cuando hay nuevos mensajes
+  // Función para scroll suave al final
+  const scrollToBottom = (force = false) => {
+    if (!messagesContainerRef.current) return
+    
+    const container = messagesContainerRef.current
+    const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 100
+    
+    // Solo hacer scroll automático si el usuario está cerca del final o es forzado
+    if (isNearBottom || force) {
+      messagesEndRef.current?.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'end',
+        inline: 'nearest'
+      })
+    }
+  }
+
+  // Auto-scroll inteligente cuando hay nuevos mensajes
   useEffect(() => {
     let isMounted = true
 
-    const scrollToBottom = () => {
-      if (isMounted) {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const handleScroll = () => {
+      if (!isMounted || !messagesContainerRef.current) return
+      
+      const container = messagesContainerRef.current
+      const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 50
+      
+      setShowScrollButton(!isAtBottom)
+      setIsUserScrolling(!isAtBottom)
+      
+      // Resetear el flag de scroll manual después de un tiempo
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
       }
+      
+      scrollTimeoutRef.current = setTimeout(() => {
+        if (isMounted) {
+          setIsUserScrolling(false)
+        }
+      }, 1000)
     }
 
-    scrollToBottom()
+    // Agregar listener de scroll
+    const container = messagesContainerRef.current
+    if (container) {
+      container.addEventListener('scroll', handleScroll)
+      
+      // Scroll inicial al final
+      setTimeout(() => scrollToBottom(true), 100)
+    }
 
     return () => {
       isMounted = false
+      if (container) {
+        container.removeEventListener('scroll', handleScroll)
+      }
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
     }
-  }, [messages])
+  }, [messages.length])
+
+  // Scroll automático cuando se agregan nuevos mensajes
+  useEffect(() => {
+    if (!isUserScrolling) {
+      setTimeout(() => scrollToBottom(), 100)
+    }
+  }, [messages.length, isUserScrolling])
 
   // Enviar mensaje
   const handleSendMessage = async () => {
     if (!newMessage.trim() || isSending || !chatId) return
 
+    // Guardar el contenido del mensaje antes de limpiarlo
+    const messageContent = newMessage.trim()
+
     // Crear mensaje optimista inmediatamente
     const optimisticMessage = {
       id: `temp-${Date.now()}`, // ID temporal
       senderId: String(currentUser?.user_id || ''),
-      content: newMessage.trim(),
+      content: messageContent,
       timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
       isRead: false,
       type: 'texto',
@@ -396,15 +463,13 @@ export default function ChatPage() {
       }
     }
 
-    // Actualizar inmediatamente la interfaz (actualización optimista)
-    setMessages(prev => [...prev, optimisticMessage])
+    // Limpiar input y mostrar mensaje optimista INMEDIATAMENTE
     setNewMessage('')
+    setMessages(prev => [...prev, optimisticMessage])
     setIsSending(true)
 
-    // Auto-scroll inmediato
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, 50)
+    // Auto-scroll inmediato y suave
+    setTimeout(() => scrollToBottom(true), 50)
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -421,7 +486,7 @@ export default function ChatPage() {
           'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          content: newMessage.trim(),
+          content: messageContent,
           type: 'texto'
         })
       })
@@ -446,8 +511,18 @@ export default function ChatPage() {
           }
         }
         
-        // Reemplazar mensaje temporal con el real
-        setMessages(prev => prev.map(msg => msg.id === optimisticMessage.id ? realMessage : msg))
+        // Reemplazar mensaje temporal con el real (evitar duplicados)
+        setMessages(prev => {
+          // Verificar si el mensaje real ya existe (por realtime)
+          const exists = prev.some(msg => msg.id === realMessage.id)
+          if (exists) {
+            // Si ya existe, solo remover el mensaje optimista
+            return prev.filter(msg => msg.id !== optimisticMessage.id)
+          } else {
+            // Si no existe, reemplazar el optimista con el real
+            return prev.map(msg => msg.id === optimisticMessage.id ? realMessage : msg)
+          }
+        })
         
       } else {
         const error = await response.json()
@@ -543,9 +618,7 @@ export default function ChatPage() {
           setMessages(prev => [...prev, result.data])
           
           // Auto-scroll al final
-          setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-          }, 100)
+          setTimeout(() => scrollToBottom(true), 100)
         }
       } else {
         const error = await uploadResponse.json()
@@ -736,9 +809,13 @@ export default function ChatPage() {
       </div>
 
       {/* Mensajes */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 bg-gradient-to-b from-transparent to-gray-50/30">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-4 py-6 space-y-4 bg-gradient-to-b from-transparent to-gray-50/30 chat-messages-container"
+        style={{ scrollBehavior: 'smooth' }}
+      >
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-12">
+          <div className="flex flex-col items-center justify-center h-full text-center py-12 empty-chat-container">
             <div className="bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full p-6 mb-6 shadow-lg">
               <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -893,6 +970,32 @@ export default function ChatPage() {
           ))
         )}
         <div ref={messagesEndRef} />
+        
+        {/* Botón de scroll flotante */}
+        {showScrollButton && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={() => scrollToBottom(true)}
+            className="fixed bottom-24 right-6 z-50 text-white rounded-full p-3 shadow-lg transition-all duration-200 group scroll-to-bottom-btn"
+            title="Ir al final"
+          >
+            <svg 
+              className="w-5 h-5 transition-transform group-hover:scale-110" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M19 14l-7 7m0 0l-7-7m7 7V3" 
+              />
+            </svg>
+          </motion.button>
+        )}
       </div>
 
       {/* Input de mensaje mejorado */}
