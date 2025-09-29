@@ -448,6 +448,15 @@ const getCurrentUserId = () => {
         if (!isMounted) return
         
         const json = await res.json()
+        console.log('📨 [ChatModule] Respuesta de mensajes:', { 
+          status: res.status, 
+          ok: res.ok, 
+          json: {
+            items: json.items?.length || 0,
+            firstMessage: json.items?.[0],
+            lastMessage: json.items?.[json.items?.length - 1]
+          }
+        })
         if (!res.ok) throw new Error(json?.error || 'Error cargando mensajes')
         
         const messages: ChatMessage[] = (json.items || [])
@@ -478,6 +487,12 @@ const getCurrentUserId = () => {
               avatar: m.usuario?.foto_perfil || undefined
             }
           }))
+        
+        console.log('💬 [ChatModule] Mensajes transformados:', {
+          count: messages.length,
+          firstMessage: messages[0],
+          lastMessage: messages[messages.length - 1]
+        })
         
         if (isMounted) {
         setSelectedConversation(prev => prev ? { ...prev, messages } : prev)

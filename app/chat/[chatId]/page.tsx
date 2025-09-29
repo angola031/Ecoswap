@@ -412,7 +412,17 @@ function ChatPageContent() {
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <button 
+                onClick={() => {
+                  if (chatInfo?.offeredProduct?.producto_id) {
+                    router.push(`/producto/${chatInfo.offeredProduct.producto_id}`)
+                  } else {
+                    router.back()
+                  }
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                title="Volver al producto"
+              >
                 <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>

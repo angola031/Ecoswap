@@ -58,11 +58,13 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
                 archivo_url, 
                 leido, 
                 fecha_envio,
-                usuario (
+                fecha_lectura,
+                usuario!inner (
                     user_id,
                     nombre,
                     apellido,
-                    foto_perfil
+                    foto_perfil,
+                    activo
                 )
             `)
             .eq('chat_id', chatId)
@@ -72,26 +74,44 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
             query = query.lt('mensaje_id', Number(beforeId))
         }
         const { data: msgs, error } = await query
-        if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+        if (error) {
+            console.error('❌ [API] Error obteniendo mensajes:', error)
+            return NextResponse.json({ error: error.message }, { status: 400 })
+        }
+        
+        console.log('📨 [API] Mensajes obtenidos:', {
+            chatId,
+            count: msgs?.length || 0,
+            firstMessage: msgs?.[0],
+            lastMessage: msgs?.[msgs?.length - 1]
+        })
         
         // Transformar los mensajes al formato esperado por el frontend
         const transformedMessages = (msgs || []).reverse().map((msg: any) => ({
-          id: msg.mensaje_id.toString(),
-          senderId: msg.usuario_id.toString(),
-          content: msg.contenido || '',
-          timestamp: new Date(msg.fecha_envio).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-          isRead: msg.leido || false,
-          type: msg.tipo || 'texto',
-          imageUrl: msg.archivo_url || undefined,
-          sender: {
-            id: msg.usuario?.user_id?.toString() || '',
-            name: msg.usuario?.nombre || 'Usuario',
-            lastName: msg.usuario?.apellido || '',
-            avatar: msg.usuario?.foto_perfil || undefined
+          mensaje_id: msg.mensaje_id,
+          usuario_id: msg.usuario_id,
+          contenido: msg.contenido || '',
+          tipo: msg.tipo || 'texto',
+          archivo_url: msg.archivo_url || null,
+          leido: msg.leido || false,
+          fecha_envio: msg.fecha_envio,
+          fecha_lectura: msg.fecha_lectura,
+          usuario: {
+            user_id: msg.usuario?.user_id,
+            nombre: msg.usuario?.nombre || 'Usuario',
+            apellido: msg.usuario?.apellido || '',
+            foto_perfil: msg.usuario?.foto_perfil || null,
+            activo: msg.usuario?.activo || false
           }
         }))
         
-        return NextResponse.json({ data: transformedMessages })
+        console.log('📨 [API] Mensajes transformados:', {
+            count: transformedMessages.length,
+            firstTransformed: transformedMessages[0],
+            lastTransformed: transformedMessages[transformedMessages.length - 1]
+        })
+        
+        return NextResponse.json({ items: transformedMessages })
     } catch (e: any) {
         return NextResponse.json({ error: e?.message || 'Server error' }, { status: 500 })
     }
