@@ -388,6 +388,25 @@ export interface MensajeSoporte {
   fecha_lectura?: string
 }
 
+// ===== PROPUESTA =====
+export interface Propuesta {
+  propuesta_id: number
+  chat_id: number
+  usuario_propone_id: number
+  usuario_recibe_id: number
+  tipo_propuesta: 'precio' | 'intercambio' | 'encuentro' | 'condiciones' | 'otro'
+  descripcion: string
+  precio_propuesto?: number
+  condiciones?: string
+  fecha_encuentro?: string
+  lugar_encuentro?: string
+  estado: 'pendiente' | 'aceptada' | 'rechazada' | 'contrapropuesta' | 'cancelada'
+  respuesta?: string
+  fecha_respuesta?: string
+  fecha_creacion: string
+  fecha_actualizacion: string
+}
+
 // ===== TIPOS COMPUESTOS PARA APIS =====
 
 // Chat con información completa
@@ -407,6 +426,7 @@ export interface ChatWithDetails extends Chat {
     usuario_recibe: Usuario
   }
   mensajes: Mensaje[]
+  propuestas: Propuesta[]
 }
 
 // Producto con información completa

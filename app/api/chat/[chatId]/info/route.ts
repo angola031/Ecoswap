@@ -174,6 +174,20 @@ export async function GET(
       requestedProductImageUrl = requestedProductImage?.url_imagen || null
     }
 
+    if (chatError || !chat) {
+      return NextResponse.json({ error: 'Chat no encontrado' }, { status: 404 })
+    }
+
+    const intercambio = chat.intercambio as any
+    if (!intercambio || (intercambio.usuario_propone_id !== userId && intercambio.usuario_recibe_id !== userId)) {
+      return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
+    }
+
+    // Determinar quién es el otro usuario (no el actual)
+    const otherUser = intercambio.usuario_propone_id === userId 
+      ? intercambio.usuario_recibe 
+      : intercambio.usuario_propone
+
     // Obtener ubicación del otro usuario
     let otherUserLocation = null
     if (otherUser) {
@@ -188,20 +202,6 @@ export async function GET(
         otherUserLocation = `${location.ciudad}, ${location.departamento}`
       }
     }
-
-    if (chatError || !chat) {
-      return NextResponse.json({ error: 'Chat no encontrado' }, { status: 404 })
-    }
-
-    const intercambio = chat.intercambio as any
-    if (!intercambio || (intercambio.usuario_propone_id !== userId && intercambio.usuario_recibe_id !== userId)) {
-      return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
-    }
-
-    // Determinar quién es el otro usuario (no el actual)
-    const otherUser = intercambio.usuario_propone_id === userId 
-      ? intercambio.usuario_recibe 
-      : intercambio.usuario_propone
 
     return NextResponse.json({
       data: {

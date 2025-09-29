@@ -6,59 +6,48 @@ import { supabase } from '@/lib/supabase'
 
 interface AuthGuardProps {
   children: React.ReactNode
-  redirectTo?: string
+  fallback?: React.ReactNode
 }
 
-export default function AuthGuard({ children, redirectTo = '/login' }: AuthGuardProps) {
-  const router = useRouter()
+export default function AuthGuard({ children, fallback }: AuthGuardProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
+    let isMounted = true
+
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { user } } = await supabase.auth.getUser()
         
-        if (!session?.access_token) {
-          console.log('🔒 [AuthGuard] Usuario no autenticado - redirigiendo')
-          router.push(redirectTo)
-          setIsAuthenticated(false)
-          return
+        if (isMounted) {
+          if (user) {
+            setIsAuthenticated(true)
+          } else {
+            setIsAuthenticated(false)
+            router.push('/login')
+          }
         }
-        
-        console.log('✅ [AuthGuard] Usuario autenticado:', session.user?.email)
-        setIsAuthenticated(true)
       } catch (error) {
-        console.error('❌ [AuthGuard] Error verificando autenticación:', error)
-        router.push(redirectTo)
-        setIsAuthenticated(false)
+        console.error('Error verificando autenticación:', error)
+        if (isMounted) {
+          setIsAuthenticated(false)
+          router.push('/login')
+        }
       }
     }
 
     checkAuth()
 
-    // Escuchar cambios en la autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔄 [AuthGuard] Cambio de estado de autenticación:', event)
-      
-      if (event === 'SIGNED_OUT' || !session?.access_token) {
-        console.log('🔒 [AuthGuard] Usuario desautenticado - redirigiendo')
-        router.push(redirectTo)
-        setIsAuthenticated(false)
-      } else if (event === 'SIGNED_IN' && session?.access_token) {
-        console.log('✅ [AuthGuard] Usuario autenticado - permitiendo acceso')
-        setIsAuthenticated(true)
-      }
-    })
-
     return () => {
-      subscription.unsubscribe()
+      isMounted = false
     }
-  }, [router, redirectTo])
+  }, [router])
 
-  // Mostrar loading mientras verifica
+  // Mostrar loading mientras se verifica la autenticación
   if (isAuthenticated === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    return fallback || (
+      <div className="h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Verificando autenticación...</p>
@@ -67,11 +56,11 @@ export default function AuthGuard({ children, redirectTo = '/login' }: AuthGuard
     )
   }
 
-  // No mostrar nada si no está autenticado (ya se redirigió)
-  if (!isAuthenticated) {
-    return null
+  // Mostrar contenido si está autenticado
+  if (isAuthenticated) {
+    return <>{children}</>
   }
 
-  // Mostrar contenido si está autenticado
-  return <>{children}</>
+  // No mostrar nada si no está autenticado (se redirige)
+  return null
 }

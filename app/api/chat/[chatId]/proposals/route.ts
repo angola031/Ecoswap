@@ -1,78 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { chatId: string } }
-) {
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+async function getAuthUserId(request: NextRequest): Promise<number | null> {
   try {
-    const chatId = params.chatId
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options)
-              })
-            } catch {
-              // The `setAll` method was called from a Server Component.
-            }
-          },
-        },
-      }
-    )
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader) return null
 
-    // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+    
+    if (error || !user) return null
 
-    // Obtener usuario de la base de datos
-    const { data: usuario, error: usuarioError } = await supabase
+    // Buscar el usuario en la tabla usuario por auth_user_id
+    const { data: usuario } = await supabaseAdmin
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', user.id)
       .single()
 
-    if (usuarioError || !usuario) {
-      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    return usuario?.user_id || null
+  } catch (error) {
+    console.error('Error obteniendo usuario:', error)
+    return null
+  }
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { chatId: string } }
+) {
+  try {
+    const chatId = parseInt(params.chatId)
+    if (isNaN(chatId)) {
+      return NextResponse.json({ error: 'ID de chat inválido' }, { status: 400 })
     }
 
-    const userId = usuario.user_id
-
-    // Obtener datos del body
-    const body = await req.json()
-    const { 
-      tipo_propuesta, 
-      descripcion, 
-      precio_propuesto, 
-      condiciones, 
-      fecha_encuentro, 
-      lugar_encuentro,
-      archivos_adjuntos 
-    } = body
-
-    // Validar datos requeridos
-    if (!tipo_propuesta || !descripcion) {
-      return NextResponse.json({ error: 'Tipo de propuesta y descripción son requeridos' }, { status: 400 })
+    const userId = await getAuthUserId(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 })
     }
 
-    // Verificar que el usuario tiene acceso al chat
-    const { data: chat, error: chatError } = await supabase
+    // Verificar que el usuario tenga acceso al chat
+    const { data: chat, error: chatError } = await supabaseAdmin
       .from('chat')
       .select(`
         chat_id,
-        intercambio:intercambio_id (
-          intercambio_id,
+        intercambio (
           usuario_propone_id,
           usuario_recibe_id
         )
@@ -84,187 +62,184 @@ export async function POST(
       return NextResponse.json({ error: 'Chat no encontrado' }, { status: 404 })
     }
 
-    const intercambio = chat.intercambio
-    if (!intercambio) {
-      return NextResponse.json({ error: 'Intercambio no encontrado' }, { status: 404 })
-    }
-
-    // Verificar que el usuario es parte del intercambio
-    if (intercambio.usuario_propone_id !== userId && intercambio.usuario_recibe_id !== userId) {
-      return NextResponse.json({ error: 'No autorizado para este chat' }, { status: 403 })
-    }
-
-    // Crear propuesta
-    const { data: propuesta, error: propuestaError } = await supabase
-      .from('propuesta_intercambio')
-      .insert({
-        intercambio_id: intercambio.intercambio_id,
-        propuesta_por_id: userId,
-        tipo_propuesta,
-        descripcion,
-        precio_propuesto: precio_propuesto || null,
-        condiciones: condiciones || null,
-        fecha_encuentro: fecha_encuentro ? new Date(fecha_encuentro).toISOString() : null,
-        lugar_encuentro: lugar_encuentro || null,
-        archivos_adjuntos: archivos_adjuntos || null,
-        estado: 'pendiente'
-      })
-      .select()
-      .single()
-
-    if (propuestaError) {
-      console.error('Error creando propuesta:', propuestaError)
-      return NextResponse.json({ error: 'Error creando propuesta' }, { status: 500 })
-    }
-
-    // Crear mensaje automático en el chat
-    const mensajeContenido = `📋 Nueva propuesta: ${tipo_propuesta}\n\n${descripcion}${
-      precio_propuesto ? `\n💰 Precio propuesto: $${precio_propuesto.toLocaleString()}` : ''
-    }${condiciones ? `\n📝 Condiciones: ${condiciones}` : ''}${
-      fecha_encuentro ? `\n📅 Fecha encuentro: ${new Date(fecha_encuentro).toLocaleDateString('es-CO')}` : ''
-    }${lugar_encuentro ? `\n📍 Lugar: ${lugar_encuentro}` : ''}`
-
-    const { error: mensajeError } = await supabase
-      .from('mensaje')
-      .insert({
-        chat_id: parseInt(chatId),
-        usuario_id: userId,
-        contenido: mensajeContenido,
-        tipo: 'propuesta',
-        metadata: {
-          propuesta_id: propuesta.propuesta_id,
-          tipo_propuesta,
-          estado: 'pendiente'
-        }
-      })
-
-    if (mensajeError) {
-      console.error('Error creando mensaje de propuesta:', mensajeError)
-    }
-
-    // Crear notificación para el otro usuario
-    const otroUsuarioId = intercambio.usuario_propone_id === userId 
-      ? intercambio.usuario_recibe_id 
-      : intercambio.usuario_propone_id
-
-    await supabase
-      .from('notificacion')
-      .insert({
-        usuario_id: otroUsuarioId,
-        tipo: 'nueva_propuesta',
-        titulo: 'Nueva Propuesta Recibida',
-        mensaje: `Has recibido una nueva propuesta de ${tipo_propuesta}`,
-        datos_adicionales: {
-          propuesta_id: propuesta.propuesta_id,
-          chat_id: chatId,
-          intercambio_id: intercambio.intercambio_id
-        }
-      })
-
-    return NextResponse.json({
-      success: true,
-      propuesta,
-      message: 'Propuesta creada exitosamente'
-    })
-
-  } catch (error) {
-    console.error('Error en API de propuestas:', error)
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
-  }
-}
-
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { chatId: string } }
-) {
-  try {
-    const chatId = params.chatId
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options)
-              })
-            } catch {
-              // The `setAll` method was called from a Server Component.
-            }
-          },
-        },
-      }
-    )
-
-    // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
-
-    // Obtener usuario de la base de datos
-    const { data: usuario, error: usuarioError } = await supabase
-      .from('usuario')
-      .select('user_id')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (usuarioError || !usuario) {
-      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    const intercambio = chat.intercambio as any
+    if (!intercambio || (intercambio.usuario_propone_id !== userId && intercambio.usuario_recibe_id !== userId)) {
+      return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
     }
 
     // Obtener propuestas del chat
-    const { data: propuestas, error } = await supabase
-      .from('propuesta_intercambio')
+    const { data: propuestas, error: propuestasError } = await supabaseAdmin
+      .from('propuesta')
       .select(`
         propuesta_id,
-        intercambio_id,
-        propuesta_por_id,
         tipo_propuesta,
         descripcion,
         precio_propuesto,
         condiciones,
-        fecha_encuentro,
-        lugar_encuentro,
-        archivos_adjuntos,
         estado,
+        respuesta,
         fecha_creacion,
         fecha_respuesta,
-        respuesta_usuario_id,
-        respuesta_comentario,
-        intercambio:intercambio_id (
-          chat:chat_id
-        ),
-        propuesta_por:propuesta_por_id (
+        fecha_encuentro,
+        lugar_encuentro,
+        usuario_propone_id,
+        usuario_recibe_id,
+        usuario_propone:usuario!propuesta_usuario_propone_id_fkey (
           user_id,
           nombre,
           apellido,
           foto_perfil
         ),
-        respuesta_usuario:respuesta_usuario_id (
+        usuario_recibe:usuario!propuesta_usuario_recibe_id_fkey (
           user_id,
           nombre,
           apellido,
           foto_perfil
         )
       `)
-      .eq('intercambio.chat_id', chatId)
+      .eq('chat_id', chatId)
       .order('fecha_creacion', { ascending: false })
 
-    if (error) {
-      console.error('Error obteniendo propuestas:', error)
+    if (propuestasError) {
+      console.error('Error obteniendo propuestas:', propuestasError)
       return NextResponse.json({ error: 'Error obteniendo propuestas' }, { status: 500 })
     }
 
-    return NextResponse.json({ propuestas: propuestas || [] })
+    // Transformar datos
+    const transformedProposals = (propuestas || []).map((prop: any) => ({
+      id: prop.propuesta_id,
+      type: prop.tipo_propuesta,
+      description: prop.descripcion,
+      proposedPrice: prop.precio_propuesto,
+      conditions: prop.condiciones,
+      status: prop.estado,
+      createdAt: prop.fecha_creacion,
+      respondedAt: prop.fecha_respuesta,
+      response: prop.respuesta,
+      meetingDate: prop.fecha_encuentro,
+      meetingPlace: prop.lugar_encuentro,
+      proposer: {
+        id: prop.usuario_propone.user_id,
+        name: prop.usuario_propone.nombre,
+        lastName: prop.usuario_propone.apellido,
+        avatar: prop.usuario_propone.foto_perfil
+      },
+      receiver: {
+        id: prop.usuario_recibe.user_id,
+        name: prop.usuario_recibe.nombre,
+        lastName: prop.usuario_recibe.apellido,
+        avatar: prop.usuario_recibe.foto_perfil
+      }
+    }))
 
+    return NextResponse.json({ data: transformedProposals })
   } catch (error) {
     console.error('Error en API de propuestas:', error)
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+  }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { chatId: string } }
+) {
+  try {
+    const chatId = parseInt(params.chatId)
+    if (isNaN(chatId)) {
+      return NextResponse.json({ error: 'ID de chat inválido' }, { status: 400 })
+    }
+
+    const userId = await getAuthUserId(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { type, description, proposedPrice, conditions, meetingDate, meetingPlace } = body
+
+    if (!type || !description) {
+      return NextResponse.json({ error: 'Tipo y descripción son requeridos' }, { status: 400 })
+    }
+
+    // Verificar que el usuario tenga acceso al chat
+    const { data: chat, error: chatError } = await supabaseAdmin
+      .from('chat')
+      .select(`
+        chat_id,
+        intercambio (
+          usuario_propone_id,
+          usuario_recibe_id
+        )
+      `)
+      .eq('chat_id', chatId)
+      .single()
+
+    if (chatError || !chat) {
+      return NextResponse.json({ error: 'Chat no encontrado' }, { status: 404 })
+    }
+
+    const intercambio = chat.intercambio as any
+    if (!intercambio || (intercambio.usuario_propone_id !== userId && intercambio.usuario_recibe_id !== userId)) {
+      return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
+    }
+
+    // Determinar el usuario receptor (el otro usuario en el chat)
+    const usuarioRecibeId = intercambio.usuario_propone_id === userId 
+      ? intercambio.usuario_recibe_id 
+      : intercambio.usuario_propone_id
+
+    // Crear nueva propuesta
+    const { data: nuevaPropuesta, error: createError } = await supabaseAdmin
+      .from('propuesta')
+      .insert({
+        chat_id: chatId,
+        usuario_propone_id: userId,
+        usuario_recibe_id: usuarioRecibeId,
+        tipo_propuesta: type,
+        descripcion: description,
+        precio_propuesto: proposedPrice || null,
+        condiciones: conditions || null,
+        fecha_encuentro: meetingDate || null,
+        lugar_encuentro: meetingPlace || null,
+        estado: 'pendiente'
+      })
+      .select(`
+        propuesta_id,
+        tipo_propuesta,
+        descripcion,
+        precio_propuesto,
+        condiciones,
+        estado,
+        fecha_creacion,
+        fecha_encuentro,
+        lugar_encuentro,
+        usuario_propone_id
+      `)
+      .single()
+
+    if (createError) {
+      console.error('Error creando propuesta:', createError)
+      return NextResponse.json({ error: 'Error creando propuesta' }, { status: 500 })
+    }
+
+    return NextResponse.json({ 
+      data: {
+        id: nuevaPropuesta.propuesta_id,
+        type: nuevaPropuesta.tipo_propuesta,
+        description: nuevaPropuesta.descripcion,
+        proposedPrice: nuevaPropuesta.precio_propuesto,
+        conditions: nuevaPropuesta.condiciones,
+        status: nuevaPropuesta.estado,
+        createdAt: nuevaPropuesta.fecha_creacion,
+        meetingDate: nuevaPropuesta.fecha_encuentro,
+        meetingPlace: nuevaPropuesta.lugar_encuentro,
+        proposer: {
+          id: nuevaPropuesta.usuario_propone_id
+        }
+      }
+    }, { status: 201 })
+  } catch (error) {
+    console.error('Error creando propuesta:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
