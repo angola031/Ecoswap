@@ -180,6 +180,8 @@ const getCurrentUserId = () => {
         const { data: { session } } = await supabase.auth.getSession()
         console.log('🔐 [ChatModule] Cargando conversaciones - Sesión:', session ? 'Sí' : 'No')
         console.log('🔐 [ChatModule] Usuario:', session?.user?.email)
+        console.log('💬 [ChatModule] Usuario actual:', currentUser)
+        console.log('💬 [ChatModule] Usuario ID:', currentUser?.id)
         
         const token = session?.access_token
         if (!token) {
@@ -195,22 +197,39 @@ const getCurrentUserId = () => {
         console.log('📨 [ChatModule] Respuesta conversaciones:', { status: res.status, ok: res.ok, json })
         console.log('📦 [ChatModule] Productos en conversaciones:', json.items?.map((item: any) => ({ 
           id: item.id, 
-          product: item.product 
+          product: item.product,
+          offered: item.offered,
+          requested: item.requested,
+          hasProduct: !!item.product
         })))
         
         if (!res.ok) throw new Error(json?.error || 'Error cargando chats')
-        const list: ChatConversation[] = (json.items || []).map((c: any) => ({
+        const list: ChatConversation[] = (json.items || []).map((c: any) => {
+          console.log('🔄 [ChatModule] Mapeando conversación:', {
+            id: c.id,
+            product: c.product,
+            offered: c.offered,
+            hasProduct: !!c.product
+          })
+          
+          return {
           id: String(c.id),
           user: c.user,
           lastMessage: c.lastMessage || '',
           lastMessageTime: c.lastMessageTime ? new Date(c.lastMessageTime).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '',
           unreadCount: c.unreadCount || 0,
-          messages: [],
-          product: c.product || null // Incluir información del producto
-        }))
+            messages: [],
+            product: c.product || c.offered || null // Usar product o offered como fallback
+          }
+        })
         
         if (isMounted) {
         setConversations(list)
+        console.log('✅ [ChatModule] Conversaciones establecidas:', list.map(c => ({
+          id: c.id,
+          hasProduct: !!c.product,
+          productTitle: c.product?.title
+        })))
           // Solo seleccionar el primer chat si no hay uno seleccionado
           if (list.length > 0 && !selectedConversation) {
             setSelectedConversation(list[0])
@@ -1284,7 +1303,9 @@ const getCurrentUserId = () => {
 
           {/* Información del producto */}
           {(() => {
-            console.log('🔍 [ChatModule] Verificando producto:', selectedConversation.product)
+            console.log('🔍 [ChatModule] Verificando producto para chat:', selectedConversation.id)
+            console.log('🔍 [ChatModule] Producto:', selectedConversation.product)
+            console.log('🔍 [ChatModule] Tiene producto:', !!selectedConversation.product)
             return selectedConversation.product
           })() && (
             <div className="p-4 border-t border-gray-200 space-y-3">
