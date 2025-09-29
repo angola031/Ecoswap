@@ -22,30 +22,33 @@ export async function GET(req: NextRequest) {
             .single()
         if (!u) return NextResponse.json({ items: [] })
 
-        // Chats del usuario a través de INTERCAMBIO
-        const { data: chats } = await supabaseAdmin
-            .from('chat')
-            .select('chat_id, intercambio_id, ultimo_mensaje, activo')
-            .order('ultimo_mensaje', { ascending: false, nullsFirst: false })
+        // Obtener intercambios del usuario actual
+        const { data: intercambios } = await supabaseAdmin
+            .from('intercambio')
+            .select(`
+                intercambio_id,
+                usuario_propone_id,
+                usuario_recibe_id,
+                fecha_propuesta,
+                producto_ofrecido_id,
+                producto_solicitado_id
+            `)
+            .or(`usuario_propone_id.eq.${u.user_id},usuario_recibe_id.eq.${u.user_id}`)
+            .order('fecha_propuesta', { ascending: false })
 
         const items: any[] = []
-        for (const ch of (chats || [])) {
-            // Obtener participantes del intercambio y productos
-            const { data: it } = await supabaseAdmin
-                .from('intercambio')
-                .select(`
-                    usuario_propone_id, 
-                    usuario_recibe_id, 
-                    fecha_propuesta,
-                    producto_ofrecido_id,
-                    producto_solicitado_id
-                `)
-                .eq('intercambio_id', ch.intercambio_id)
-                .single()
-            if (!it) continue
+        for (const it of (intercambios || [])) {
             const me = u.user_id
             const otherId = it.usuario_propone_id === me ? it.usuario_recibe_id : it.usuario_propone_id
-            if (otherId !== it.usuario_propone_id && otherId !== it.usuario_recibe_id) continue
+
+            // Obtener el chat asociado al intercambio
+            const { data: chat } = await supabaseAdmin
+                .from('chat')
+                .select('chat_id, ultimo_mensaje, activo')
+                .eq('intercambio_id', it.intercambio_id)
+                .single()
+
+            if (!chat) continue
 
             // Info del otro usuario
             const { data: other } = await supabaseAdmin
@@ -54,15 +57,12 @@ export async function GET(req: NextRequest) {
                 .eq('user_id', otherId)
                 .single()
 
-            // Obtener información completa del intercambio con productos
+            // Obtener información del producto ofrecido
             let productInfo = null
-            const { data: intercambioCompleto } = await supabaseAdmin
-                .from('intercambio')
-                .select(`
-                    intercambio_id,
-                    producto_ofrecido_id,
-                    producto_solicitado_id,
-                    producto_ofrecido:producto_ofrecido_id (
+            if (it.producto_ofrecido_id) {
+                const { data: producto } = await supabaseAdmin
+                    .from('producto')
+                    .select(`
                         producto_id,
                         titulo,
                         descripcion,
@@ -72,51 +72,51 @@ export async function GET(req: NextRequest) {
                         que_busco_cambio,
                         precio_negociable,
                         categoria (nombre)
-                    )
-                `)
-                .eq('intercambio_id', ch.intercambio_id)
-                .single()
-
-            if (intercambioCompleto?.producto_ofrecido) {
-                const producto = intercambioCompleto.producto_ofrecido
-
-                // Obtener imagen principal del producto
-                let mainImage = null
-                const { data: imagen } = await supabaseAdmin
-                    .from('imagen_producto')
-                    .select('url_imagen')
-                    .eq('producto_id', producto.producto_id)
-                    .eq('es_principal', true)
+                    `)
+                    .eq('producto_id', it.producto_ofrecido_id)
                     .single()
-                mainImage = imagen?.url_imagen
 
-                productInfo = {
-                    id: producto.producto_id,
-                    title: producto.titulo,
-                    description: producto.descripcion,
-                    price: producto.precio ? 
-                        new Intl.NumberFormat('es-CO', {
-                            style: 'currency',
-                            currency: 'COP',
-                            minimumFractionDigits: 0
-                        }).format(producto.precio) + (producto.precio_negociable ? ' (Negociable)' : '') :
-                        (producto.tipo_transaccion === 'cambio' ? 
-                            (producto.condiciones_intercambio || producto.que_busco_cambio || 'Intercambio') : 
-                            'Precio no especificado'),
-                    category: producto.categoria?.nombre || 'Sin categoría',
-                    mainImage: mainImage,
-                    exchangeConditions: producto.condiciones_intercambio || producto.que_busco_cambio
+                if (producto) {
+                    // Obtener imagen principal del producto
+                    let mainImage = null
+                    const { data: imagen } = await supabaseAdmin
+                        .from('imagen_producto')
+                        .select('url_imagen')
+                        .eq('producto_id', producto.producto_id)
+                        .eq('es_principal', true)
+                        .single()
+                    mainImage = imagen?.url_imagen
+
+                    productInfo = {
+                        id: producto.producto_id,
+                        title: producto.titulo,
+                        description: producto.descripcion,
+                        price: producto.precio ? 
+                            new Intl.NumberFormat('es-CO', {
+                                style: 'currency',
+                                currency: 'COP',
+                                minimumFractionDigits: 0
+                            }).format(producto.precio) + (producto.precio_negociable ? ' (Negociable)' : '') :
+                            (producto.tipo_transaccion === 'cambio' ? 
+                                (producto.condiciones_intercambio || producto.que_busco_cambio || 'Intercambio') : 
+                                'Precio no especificado'),
+                        category: producto.categoria?.nombre || 'Sin categoría',
+                        mainImage: mainImage,
+                        exchangeConditions: producto.condiciones_intercambio || producto.que_busco_cambio
+                    }
+                    console.log('📦 [API] Producto encontrado:', productInfo)
+                } else {
+                    console.log('❌ [API] No se encontró producto para ID:', it.producto_ofrecido_id)
                 }
-                console.log('📦 [API] Producto encontrado:', productInfo)
             } else {
-                console.log('❌ [API] No se encontró producto para intercambio:', ch.intercambio_id)
+                console.log('❌ [API] No hay producto_ofrecido_id en intercambio:', it.intercambio_id)
             }
 
             // Último mensaje como texto
             const { data: lastMsg } = await supabaseAdmin
                 .from('mensaje')
                 .select('contenido, tipo, fecha_envio')
-                .eq('chat_id', ch.chat_id)
+                .eq('chat_id', chat.chat_id)
                 .order('mensaje_id', { ascending: false })
                 .limit(1)
                 .single()
@@ -125,12 +125,12 @@ export async function GET(req: NextRequest) {
             const { count: unread } = await supabaseAdmin
                 .from('mensaje')
                 .select('mensaje_id', { count: 'exact', head: true })
-                .eq('chat_id', ch.chat_id)
+                .eq('chat_id', chat.chat_id)
                 .neq('usuario_id', me)
                 .eq('leido', false)
 
             items.push({
-                id: ch.chat_id,
+                id: chat.chat_id,
                 user: {
                     id: other?.user_id,
                     name: other ? `${other.nombre} ${other.apellido}`.trim() : 'Usuario',
