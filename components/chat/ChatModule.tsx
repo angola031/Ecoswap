@@ -193,6 +193,10 @@ const getCurrentUserId = () => {
         const res = await fetch('/api/chat/conversations', { headers: { Authorization: `Bearer ${token}` } })
         const json = await res.json()
         console.log('📨 [ChatModule] Respuesta conversaciones:', { status: res.status, ok: res.ok, json })
+        console.log('📦 [ChatModule] Productos en conversaciones:', json.items?.map((item: any) => ({ 
+          id: item.id, 
+          product: item.product 
+        })))
         
         if (!res.ok) throw new Error(json?.error || 'Error cargando chats')
         const list: ChatConversation[] = (json.items || []).map((c: any) => ({
@@ -1279,7 +1283,10 @@ const getCurrentUserId = () => {
           </div>
 
           {/* Información del producto */}
-          {selectedConversation.product && (
+          {(() => {
+            console.log('🔍 [ChatModule] Verificando producto:', selectedConversation.product)
+            return selectedConversation.product
+          })() && (
             <div className="p-4 border-t border-gray-200 space-y-3">
               <h4 className="text-sm font-semibold text-gray-900">Producto en Negociación</h4>
               

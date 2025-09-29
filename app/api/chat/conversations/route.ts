@@ -30,10 +30,16 @@ export async function GET(req: NextRequest) {
 
         const items: any[] = []
         for (const ch of (chats || [])) {
-            // Obtener participantes del intercambio
+            // Obtener participantes del intercambio y productos
             const { data: it } = await supabaseAdmin
                 .from('intercambio')
-                .select('usuario_propone_id, usuario_recibe_id, fecha_propuesta')
+                .select(`
+                    usuario_propone_id, 
+                    usuario_recibe_id, 
+                    fecha_propuesta,
+                    producto_ofrecido_id,
+                    producto_solicitado_id
+                `)
                 .eq('intercambio_id', ch.intercambio_id)
                 .single()
             if (!it) continue
@@ -47,6 +53,59 @@ export async function GET(req: NextRequest) {
                 .select('user_id, nombre, apellido, foto_perfil')
                 .eq('user_id', otherId)
                 .single()
+
+            // Obtener información del producto ofrecido
+            let productInfo = null
+            if (it.producto_ofrecido_id) {
+                const { data: producto } = await supabaseAdmin
+                    .from('producto')
+                    .select(`
+                        producto_id,
+                        titulo,
+                        descripcion,
+                        precio,
+                        tipo_transaccion,
+                        condiciones_intercambio,
+                        que_busco_cambio,
+                        precio_negociable,
+                        categoria_id,
+                        categoria (nombre)
+                    `)
+                    .eq('producto_id', it.producto_ofrecido_id)
+                    .single()
+
+                // Obtener imagen principal del producto
+                let mainImage = null
+                if (producto) {
+                    const { data: imagen } = await supabaseAdmin
+                        .from('imagen_producto')
+                        .select('url_imagen')
+                        .eq('producto_id', producto.producto_id)
+                        .eq('es_principal', true)
+                        .single()
+                    mainImage = imagen?.url_imagen
+                }
+
+                if (producto) {
+                    productInfo = {
+                        id: producto.producto_id,
+                        title: producto.titulo,
+                        description: producto.descripcion,
+                        price: producto.precio ? 
+                            new Intl.NumberFormat('es-CO', {
+                                style: 'currency',
+                                currency: 'COP',
+                                minimumFractionDigits: 0
+                            }).format(producto.precio) + (producto.precio_negociable ? ' (Negociable)' : '') :
+                            (producto.tipo_transaccion === 'cambio' ? 
+                                (producto.condiciones_intercambio || producto.que_busco_cambio || 'Intercambio') : 
+                                'Precio no especificado'),
+                        category: producto.categoria?.nombre || 'Sin categoría',
+                        mainImage: mainImage,
+                        exchangeConditions: producto.condiciones_intercambio || producto.que_busco_cambio
+                    }
+                }
+            }
 
             // Último mensaje como texto
             const { data: lastMsg } = await supabaseAdmin
@@ -77,7 +136,8 @@ export async function GET(req: NextRequest) {
                 },
                 lastMessage: lastMsg ? (lastMsg.tipo === 'texto' ? (lastMsg.contenido || '') : lastMsg.tipo) : '',
                 lastMessageTime: lastMsg ? lastMsg.fecha_envio : it.fecha_propuesta,
-                unreadCount: unread || 0
+                unreadCount: unread || 0,
+                product: productInfo
             })
         }
 
