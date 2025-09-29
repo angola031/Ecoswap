@@ -475,7 +475,7 @@ export default function ProductDetailPage() {
 
     // Verificar si el usuario está verificado
     console.log('🔍 DEBUG: Verificando estado del usuario desde handleChat...')
-    const { isUserVerified } = await import('@/lib/auth')
+    const { isUserVerified } = require('@/lib/auth')
     const isVerified = await isUserVerified()
     console.log('🔍 DEBUG: Usuario verificado desde handleChat:', isVerified)
     
