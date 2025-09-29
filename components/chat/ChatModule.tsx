@@ -200,7 +200,6 @@ const renderProductInfo = (product: any, label: string) => {
               alt={product.title}
               className="w-16 h-16 rounded-lg object-cover border border-blue-200"
               onError={(e) => {
-                // Si falla la imagen, mostrar icono por defecto
                 e.currentTarget.style.display = 'none'
                 e.currentTarget.nextElementSibling?.classList.remove('hidden')
               }}
@@ -261,7 +260,6 @@ const renderProductInfo = (product: any, label: string) => {
             </button>
             <button
               onClick={() => {
-                // Copiar enlace del producto al portapapeles
                 const productUrl = `${window.location.origin}/producto/${product.producto_id || product.id}`
                 navigator.clipboard.writeText(productUrl).then(() => {
                   if ((window as any).Swal) {
@@ -303,16 +301,13 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [offeredProduct, setOfferedProduct] = useState<any>(null)
   
-  // Hook para obtener estado de usuarios en línea
   const { onlineUsers, updateUserStatus } = useUserStatus()
   const [requestedProduct, setRequestedProduct] = useState<any>(null)
   
-  // Función para verificar si un usuario está en línea
   const isUserOnline = (userId: string): boolean => {
     return onlineUsers.some(user => user.id === userId && user.isOnline)
   }
 
-  // Actualizar estado del usuario como activo cuando se monta el componente
   useEffect(() => {
     if (currentUser) {
       updateUserStatus(true)
@@ -321,16 +316,12 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [showProposals, setShowProposals] = useState(false)
   const [isLoadingProposals, setIsLoadingProposals] = useState(false)
-// Estado para manejar conexión realtime
 const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
-// Estado para controlar scroll manual
 const [isUserScrolling, setIsUserScrolling] = useState(false)
 
-// Función auxiliar para obtener ID consistente del usuario
 const getCurrentUserId = () => {
   return String(currentUser?.id || '')
 }
-  // Cargar conversaciones reales
   useEffect(() => {
     let isMounted = true
     
@@ -349,7 +340,6 @@ const getCurrentUserId = () => {
         if (!token) {
           console.log('❌ [ChatModule] No hay token para cargar conversaciones')
           console.log('🔄 [ChatModule] Redirigiendo al login...')
-          // Redirigir al login si no hay sesión
           router.push('/login')
           return
         }
@@ -381,7 +371,7 @@ const getCurrentUserId = () => {
           lastMessageTime: c.lastMessageTime ? new Date(c.lastMessageTime).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '',
           unreadCount: c.unreadCount || 0,
             messages: [],
-            product: c.product || c.offered || null // Usar product o offered como fallback
+            product: c.product || c.offered || null
           }
         })
         
@@ -392,7 +382,6 @@ const getCurrentUserId = () => {
           hasProduct: !!c.product,
           productTitle: c.product?.title
         })))
-          // Solo seleccionar el primer chat si no hay uno seleccionado
           if (list.length > 0 && !selectedConversation) {
             setSelectedConversation(list[0])
           }
@@ -416,7 +405,6 @@ const getCurrentUserId = () => {
     }
   }, [])
 
-  // ⚡ CARGA INSTANTÁNEA DE MENSAJES OPTIMIZADA
   useEffect(() => {
     let isMounted = true
     
@@ -426,13 +414,11 @@ const getCurrentUserId = () => {
         const chatId = Number(selectedConversation.id)
         if (!chatId) return
         
-      // ⚡ Mostrar mensajes existentes inmediatamente si ya están en caché
       const cachedConversation = conversations.find(c => c.id === String(chatId))
       if (cachedConversation?.messages?.length > 0) {
         console.log('⚡ [ChatModule] Usando mensajes en caché:', cachedConversation.messages.length)
         setSelectedConversation(prev => prev ? { ...prev, messages: cachedConversation.messages } : prev)
         
-        // Scroll inmediato a la parte inferior
         setTimeout(() => {
           if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'instant', block: 'end' })
@@ -450,9 +436,8 @@ const getCurrentUserId = () => {
         
         console.log('🔄 [ChatModule] Cargando mensajes frescos para chat:', chatId)
         
-        // ⚡ Petición optimizada con timeout más corto
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 segundos timeout
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
         
         const res = await fetch(`/api/chat/${chatId}/messages?limit=50`, { 
           headers: { Authorization: `Bearer ${token}` },
@@ -465,7 +450,6 @@ const getCurrentUserId = () => {
         const json = await res.json()
         if (!res.ok) throw new Error(json?.error || 'Error cargando mensajes')
         
-        // ⚡ Procesamiento optimizado de mensajes
         const messages: ChatMessage[] = (json.items || [])
           .filter((m: any) => {
             const content = m.contenido || ''
@@ -496,18 +480,15 @@ const getCurrentUserId = () => {
           }))
         
         if (isMounted) {
-          // ⚡ Actualización instantánea del estado
         setSelectedConversation(prev => prev ? { ...prev, messages } : prev)
         setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, messages } : c))
 
-          // ⚡ Scroll suave a la parte inferior después de cargar
           setTimeout(() => {
             if (messagesEndRef.current) {
               messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
             }
           }, 100)
 
-          // Marcar como leídos en background
           fetch(`/api/chat/${chatId}/read`, { 
             method: 'POST', 
             headers: { Authorization: `Bearer ${token}` } 
@@ -533,7 +514,6 @@ const getCurrentUserId = () => {
     }
   }, [selectedConversation?.id])
 
-  // Cargar información del producto cuando se selecciona un chat
   useEffect(() => {
     let isMounted = true
     
@@ -584,7 +564,6 @@ const getCurrentUserId = () => {
     }
   }, [selectedConversation?.id])
 
-  // Cargar propuestas cuando se selecciona un chat
   useEffect(() => {
     let isMounted = true
     
@@ -638,9 +617,7 @@ const getCurrentUserId = () => {
     }
   }, [selectedConversation?.id])
 
-  // ✅ REALTIME MEJORADO: Suscripción más robusta
   useEffect(() => {
-    // Limpiar canal anterior
     if (realtimeChannel) {
       supabase.removeChannel(realtimeChannel)
       setRealtimeChannel(null)
@@ -654,7 +631,7 @@ const getCurrentUserId = () => {
     const channel = supabase
       .channel(`chat_${chatId}`, {
         config: {
-          broadcast: { self: true }, // ✅ Permitir recibir nuestros propios mensajes
+          broadcast: { self: true },
           presence: { key: getCurrentUserId() }
         }
       })
@@ -669,7 +646,6 @@ const getCurrentUserId = () => {
         const m = payload.new
         if (!m) return
 
-        // Evitar duplicados
         const messageId = String(m.mensaje_id)
         const messageExists = selectedConversation?.messages.some(msg => msg.id === messageId)
         if (messageExists) {
@@ -692,7 +668,7 @@ const getCurrentUserId = () => {
           metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
           sender: {
             id: String(m.usuario_id),
-            name: 'Usuario', // Se puede mejorar obteniendo info del usuario
+            name: 'Usuario',
             lastName: '',
             avatar: undefined
           }
@@ -700,7 +676,6 @@ const getCurrentUserId = () => {
 
         console.log('✅ [ChatModule] Agregando mensaje realtime:', incoming)
 
-        // Actualizar conversación seleccionada
         setSelectedConversation(prev => {
           if (!prev) return prev
           return {
@@ -711,12 +686,10 @@ const getCurrentUserId = () => {
           }
         })
 
-        // Actualizar lista de conversaciones
         setConversations(prev => prev.map(c => c.id === String(chatId) ? {
           ...c,
           lastMessage: incoming.content || incoming.type,
           lastMessageTime: incoming.timestamp,
-          // Solo incrementar unread si no es nuestro mensaje
           unreadCount: incoming.senderId !== getCurrentUserId() ? (c.unreadCount || 0) + 1 : c.unreadCount
         } : c))
       })
@@ -735,11 +708,9 @@ const getCurrentUserId = () => {
     }
   }, [selectedConversation?.id, currentUser?.id, currentUser?.id])
 
-  // Scroll automático mejorado - solo cuando se agregan nuevos mensajes
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null
     
-    // Solo hacer scroll automático si hay mensajes y el usuario no está haciendo scroll manual
     if (!selectedConversation?.messages || selectedConversation.messages.length === 0 || isUserScrolling) {
       return () => {
         if (timeoutId) clearTimeout(timeoutId)
@@ -755,15 +726,13 @@ const getCurrentUserId = () => {
       }
     }
     
-    // Delay para asegurar que el DOM se haya actualizado
     timeoutId = setTimeout(scrollToBottom, 100)
     
     return () => {
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [selectedConversation?.messages?.length, isUserScrolling]) // Dependencias actualizadas
+  }, [selectedConversation?.messages?.length, isUserScrolling])
 
-  // ⚡ ENVÍO DE MENSAJES ULTRA INSTANTÁNEO
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return
     
@@ -771,7 +740,6 @@ const getCurrentUserId = () => {
     const tempId = `temp-${Date.now()}-${Math.random()}`
     const currentUserId = getCurrentUserId()
     
-    // ⚡ Crear mensaje optimista con timestamp instantáneo
     const now = new Date()
     const optimisticMessage: ChatMessage = {
       id: tempId,
@@ -793,11 +761,9 @@ const getCurrentUserId = () => {
       }
     }
 
-    // ⚡ Limpiar input INMEDIATAMENTE antes de cualquier otra operación
     setNewMessage('')
     setReplyToMessageId(null)
 
-    // ⚡ Actualización optimista INSTANTÁNEA
     const updatedConversation = {
       ...selectedConversation,
       messages: [...selectedConversation.messages, optimisticMessage],
@@ -805,13 +771,11 @@ const getCurrentUserId = () => {
       lastMessageTime: optimisticMessage.timestamp
     }
     
-    // ⚡ Actualizar estado de forma síncrona para máxima velocidad
     setSelectedConversation(updatedConversation)
     setConversations(prev => prev.map(conv => 
       conv.id === selectedConversation.id ? updatedConversation : conv
     ))
     
-    // ⚡ Scroll INSTANTÁNEO (sin animación para máxima velocidad)
     requestAnimationFrame(() => {
       if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ 
@@ -846,7 +810,6 @@ const getCurrentUserId = () => {
       
       console.log('✅ [ChatModule] Mensaje enviado exitosamente:', json.message)
       
-      // Reemplazar mensaje temporal con el real
       const realMessage: ChatMessage = {
         id: String(json.message.mensaje_id),
         senderId: String(json.message.usuario_id),
@@ -862,7 +825,6 @@ const getCurrentUserId = () => {
         sender: optimisticMessage.sender
       }
       
-      // Actualizar mensaje optimista con datos reales
       setSelectedConversation(prev => prev ? {
         ...prev,
         messages: prev.messages.map(msg => 
@@ -883,13 +845,11 @@ const getCurrentUserId = () => {
     } catch (error) {
       console.error('❌ [ChatModule] Error enviando mensaje:', error)
       
-      // Revertir mensaje optimista en caso de error
       setSelectedConversation(prev => prev ? {
         ...prev,
         messages: prev.messages.filter(msg => msg.id !== tempId)
       } : prev)
       
-      // Mostrar error al usuario
       if ((window as any).Swal) {
         (window as any).Swal.fire({
           title: 'Error',
@@ -902,7 +862,6 @@ const getCurrentUserId = () => {
         alert('Error: No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.')
       }
       
-      // Restaurar el mensaje en el input
       setNewMessage(messageContent)
     }
   }
@@ -914,7 +873,6 @@ const getCurrentUserId = () => {
     }
   }
 
-  // Funciones para manejar propuestas
   const handleCreateProposal = async (proposalData: {
     type: 'precio' | 'intercambio' | 'encuentro' | 'condiciones' | 'otro'
     description: string
@@ -943,7 +901,6 @@ const getCurrentUserId = () => {
         const data = await response.json()
         setProposals(prev => [data.data, ...prev])
         
-        // Mostrar mensaje de éxito
         if ((window as any).Swal) {
           (window as any).Swal.fire({
             title: 'Propuesta enviada',
@@ -992,7 +949,6 @@ const getCurrentUserId = () => {
           prop.id === proposalId ? { ...prop, ...data.data } : prop
         ))
         
-        // Mostrar mensaje de éxito
         if ((window as any).Swal) {
           (window as any).Swal.fire({
             title: 'Respuesta enviada',
@@ -1077,11 +1033,9 @@ const getCurrentUserId = () => {
   const handleAttachImage = () => imageInputRef.current?.click()
   const handleAttachFile = () => fileInputRef.current?.click()
 
-  // Funciones para manejar propuestas
   const handleSendProposal = () => {
     if (!selectedConversation) return
     
-    // Abrir modal completo para crear propuesta
     if ((window as any).Swal) {
       (window as any).Swal.fire({
         title: 'Crear Nueva Propuesta',
@@ -1160,10 +1114,8 @@ const getCurrentUserId = () => {
         }
       }).then((result: any) => {
         if (result.isConfirmed) {
-          // Crear la propuesta
           handleCreateProposal(result.value)
     
-    // Agregar mensaje informativo al chat
     const proposalMessage = {
       id: `proposal-${Date.now()}`,
       senderId: currentUser?.id,
@@ -1184,7 +1136,6 @@ const getCurrentUserId = () => {
       messages: [...prev.messages, proposalMessage]
     } : prev)
     
-          // Mostrar la sección de propuestas
           setShowProposals(true)
         }
       })
@@ -1194,7 +1145,6 @@ const getCurrentUserId = () => {
   const handleNegotiate = () => {
     if (!selectedConversation) return
     
-    // Abrir modal completo para crear propuesta
     if ((window as any).Swal) {
       (window as any).Swal.fire({
         title: 'Crear Propuesta de Negociación',
@@ -1273,10 +1223,8 @@ const getCurrentUserId = () => {
         }
       }).then((result: any) => {
         if (result.isConfirmed) {
-          // Crear la propuesta
           handleCreateProposal(result.value)
           
-          // Agregar mensaje informativo al chat
     const negotiateMessage = {
       id: `negotiate-${Date.now()}`,
       senderId: currentUser?.id,
@@ -1297,7 +1245,6 @@ const getCurrentUserId = () => {
       messages: [...prev.messages, negotiateMessage]
     } : prev)
     
-          // Mostrar la sección de propuestas
           setShowProposals(true)
         }
       })
@@ -1307,7 +1254,6 @@ const getCurrentUserId = () => {
   const handleAccept = () => {
     if (!selectedConversation) return
     
-    // Agregar mensaje de aceptación al chat
     const acceptMessage = {
       id: `accept-${Date.now()}`,
       senderId: currentUser?.id,
@@ -1397,10 +1343,10 @@ const getCurrentUserId = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-300px)] flex bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="flex bg-white rounded-lg shadow-sm border border-gray-200" style={{ height: 'calc(100vh - 200px)', minHeight: '600px' }}>
       {/* Lista de conversaciones */}
       <div className="w-80 border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200 space-y-3">
+        <div className="p-4 border-b border-gray-200 space-y-3 flex-shrink-0">
           <h2 className="text-lg font-semibold text-gray-900">Chats</h2>
           <div>
             <input
@@ -1484,11 +1430,11 @@ const getCurrentUserId = () => {
       </div>
 
       {/* Área de chat */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {selectedConversation ? (
           <>
             {/* Header del chat */}
-            <div className="border-b border-gray-200">
+            <div className="border-b border-gray-200 flex-shrink-0">
               <div className="p-4 flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="relative">
@@ -1571,7 +1517,6 @@ const getCurrentUserId = () => {
                     <h4 className="font-medium text-gray-900">Propuestas</h4>
                     <button
                       onClick={() => {
-                        // Aquí se abriría un modal para crear propuesta
                         if ((window as any).Swal) {
                           (window as any).Swal.fire({
                             title: 'Crear Propuesta',
@@ -1729,9 +1674,9 @@ const getCurrentUserId = () => {
               )}
             </div>
 
-            {/* Mensajes - Área expandida para mejor visibilidad */}
+            {/* MENSAJES - ÁREA MÁS GRANDE CON SCROLL */}
             <div 
-              className="flex-1 overflow-y-auto p-8 space-y-8 relative min-h-0"
+              className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
               onScroll={(e) => {
                 const target = e.target as HTMLDivElement
                 const isAtBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 10
@@ -1743,9 +1688,6 @@ const getCurrentUserId = () => {
                   <div className="text-center text-gray-500">
                     <ChatBubbleLeftRightIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                     <p>No hay mensajes en esta conversación</p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      Debug: {selectedConversation.messages.length} mensajes cargados
-                    </p>
                   </div>
                 </div>
               ) : (
@@ -1756,15 +1698,13 @@ const getCurrentUserId = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex ${isOwnMessage(message) ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-md lg:max-w-xl xl:max-w-2xl ${isOwnMessage(message) ? 'order-2' : 'order-1'
-                    }`}>
+                  <div className={`max-w-md ${isOwnMessage(message) ? 'order-2' : 'order-1'}`}>
                     {!isOwnMessage(message) && (
                       <img
                         src={message.sender?.avatar || selectedConversation.user.avatar}
                         alt={message.sender?.name || selectedConversation.user.name}
                         className="w-8 h-8 rounded-full mb-2"
                         onError={(e) => {
-                          // Si falla la imagen, mostrar iniciales
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
                           const fallback = document.createElement('div');
@@ -1775,7 +1715,7 @@ const getCurrentUserId = () => {
                       />
                     )}
 
-                    <div className={`rounded-xl px-5 py-3 relative group shadow-sm ${isOwnMessage(message)
+                    <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isOwnMessage(message)
                       ? 'bg-primary-600 text-white'
                       : 'bg-white text-gray-900 border border-gray-200'
                       }`}>
@@ -1788,7 +1728,7 @@ const getCurrentUserId = () => {
                         </div>
                       )}
                       {message.type === 'text' && (
-                        <p className="text-base leading-relaxed">{message.content}</p>
+                        <p className="text-sm leading-relaxed">{message.content}</p>
                       )}
 
                       {message.type === 'image' && message.metadata?.imageUrl && (
@@ -1812,7 +1752,6 @@ const getCurrentUserId = () => {
                           <span className="text-sm">{message.metadata.fileName}</span>
                         </div>
                       )}
-                      {/* Acciones de mensaje */}
                       <div className={`absolute -top-3 ${isOwnMessage(message) ? 'right-2' : 'left-2'} opacity-0 group-hover:opacity-100 transition-opacity`}>
                         <div className="bg-white border border-gray-200 shadow-sm rounded-lg px-1 py-0.5 flex space-x-1">
                           <button onClick={() => setOpenReactionsFor(message.id)} className="text-xs px-2 py-1 hover:bg-gray-100 rounded">🙂</button>
@@ -1820,7 +1759,6 @@ const getCurrentUserId = () => {
                         </div>
                       </div>
 
-                      {/* Picker de reacciones */}
                       {openReactionsFor === message.id && (
                         <div className={`absolute ${isOwnMessage(message) ? 'right-0' : 'left-0'} -top-12 bg-white border border-gray-200 shadow-lg rounded-lg p-1 flex space-x-1 z-10`}>
                           {['👍', '❤️', '🎉', '😂', '😮', '😢'].map(e => (
@@ -1830,8 +1768,7 @@ const getCurrentUserId = () => {
                       )}
                     </div>
 
-                    <div className={`flex items-center space-x-1 mt-1 ${isOwnMessage(message) ? 'justify-end' : 'justify-start'
-                      }`}>
+                    <div className={`flex items-center space-x-1 mt-1 ${isOwnMessage(message) ? 'justify-end' : 'justify-start'}`}>
                       <span className="text-xs text-gray-500">
                         {formatTime(message.timestamp)}
                       </span>
@@ -1845,7 +1782,6 @@ const getCurrentUserId = () => {
                           )}
                         </div>
                       )}
-                      {/* Reacciones mostradas */}
                       {message.reactions && (
                         <div className="ml-2 flex space-x-1">
                           {Object.entries(message.reactions).map(([emoji, count]) => (
@@ -1862,7 +1798,7 @@ const getCurrentUserId = () => {
               )}
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="max-w-xs lg:max-w-md order-1">
+                  <div className="max-w-xs order-1">
                     <img
                       src={selectedConversation.user.avatar}
                       alt={selectedConversation.user.name}
@@ -1880,9 +1816,8 @@ const getCurrentUserId = () => {
               )}
               <div ref={messagesEndRef} />
               
-              {/* Botón para scroll al final cuando el usuario está scrolleando manualmente */}
               {isUserScrolling && (
-                <div className="absolute bottom-20 right-4">
+                <div className="sticky bottom-4 left-1/2 transform -translate-x-1/2 z-10">
                   <button
                     onClick={() => {
                       if (messagesEndRef.current) {
@@ -1904,53 +1839,49 @@ const getCurrentUserId = () => {
               )}
             </div>
 
-            {/* SECCIÓN DE PROPUESTA - Muy compacta */}
-            <div className="bg-gray-50 border-t border-gray-200 px-3 py-2">
-              <div className="text-center mb-2">
-                <h3 className="text-xs font-medium text-gray-700">💰 Propuestas</h3>
-              </div>
-              
-              <div className="flex items-center justify-center gap-1">
+            {/* Barra de acciones - FIJA */}
+            <div className="bg-gray-50 border-t border-gray-200 px-4 py-2 flex-shrink-0">
+              <div className="flex items-center justify-center gap-2">
                 <button
                   onClick={handleSendProposal}
-                  className="flex items-center space-x-1 px-2 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-xs"
+                  className="flex items-center space-x-1 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
                 >
-                  <span className="text-xs">💰</span>
+                  <span>💰</span>
                   <span>Enviar</span>
                 </button>
                 
                 <button
                   onClick={handleNegotiate}
-                  className="flex items-center space-x-1 px-2 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs"
+                  className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
                 >
-                  <span className="text-xs">🔄</span>
+                  <span>🔄</span>
                   <span>Negociar</span>
                 </button>
                 
                 <button
                   onClick={handleAccept}
-                  className="flex items-center space-x-1 px-2 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors text-xs"
+                  className="flex items-center space-x-1 px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors text-sm"
                 >
-                  <span className="text-xs">✅</span>
+                  <span>✅</span>
                   <span>Aceptar</span>
                 </button>
               </div>
             </div>
 
-            {/* Input de mensaje */}
-            <div className="p-4 border-t border-gray-200">
+            {/* Input de mensaje - FIJO */}
+            <div className="p-4 border-t border-gray-200 bg-white flex-shrink-0">
               <div className="flex items-center space-x-2">
-                <button onClick={handleAttachFile} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                <button onClick={handleAttachFile} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
                   <PaperClipIcon className="w-5 h-5" />
                 </button>
-                <button onClick={handleAttachImage} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                <button onClick={handleAttachImage} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
                   <MapPinIcon className="w-5 h-5" />
                 </button>
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
                   <FaceSmileIcon className="w-5 h-5" />
                 </button>
 
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <textarea
                     ref={textareaRef}
                     value={newMessage}
@@ -1959,13 +1890,14 @@ const getCurrentUserId = () => {
                     placeholder="Escribe un mensaje..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     rows={1}
+                    style={{ maxHeight: '100px' }}
                   />
                 </div>
 
                 <button
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim()}
-                  className="p-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                 >
                   <PaperAirplaneIcon className="w-5 h-5" />
                 </button>
@@ -1984,7 +1916,6 @@ const getCurrentUserId = () => {
           </div>
         )}
       </div>
-      {/* Panel lateral de perfil y producto */}
       {showProfile && selectedConversation && (
         <div className="w-80 border-l border-gray-200 bg-white flex flex-col">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
@@ -1992,7 +1923,6 @@ const getCurrentUserId = () => {
             <button onClick={() => setShowProfile(false)} className="text-gray-500 hover:text-gray-700">✕</button>
           </div>
           
-          {/* Información del usuario */}
           <div className="p-4 space-y-3">
             <img src={selectedConversation.user.avatar} alt={selectedConversation.user.name} className="w-20 h-20 rounded-full" />
             <div>
@@ -2014,7 +1944,6 @@ const getCurrentUserId = () => {
             </div>
           </div>
 
-          {/* Información del producto */}
           {(() => {
             console.log('🔍 [ChatModule] Verificando producto para chat:', selectedConversation.id)
             console.log('🔍 [ChatModule] Producto:', selectedConversation.product)
@@ -2024,7 +1953,6 @@ const getCurrentUserId = () => {
             <div className="p-4 border-t border-gray-200 space-y-3">
               <h4 className="text-sm font-semibold text-gray-900">Producto en Negociación</h4>
               
-              {/* Imagen del producto */}
               {selectedConversation.product.mainImage && (
                 <div className="relative">
                   <img 
@@ -2035,7 +1963,6 @@ const getCurrentUserId = () => {
                 </div>
               )}
               
-              {/* Detalles del producto */}
               <div className="space-y-2">
                 <h5 className="font-medium text-gray-900 text-sm">{selectedConversation.product.title}</h5>
                 
