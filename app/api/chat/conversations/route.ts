@@ -54,12 +54,15 @@ export async function GET(req: NextRequest) {
                 .eq('user_id', otherId)
                 .single()
 
-            // Obtener información del producto ofrecido
+            // Obtener información completa del intercambio con productos
             let productInfo = null
-            if (it.producto_ofrecido_id) {
-                const { data: producto } = await supabaseAdmin
-                    .from('producto')
-                    .select(`
+            const { data: intercambioCompleto } = await supabaseAdmin
+                .from('intercambio')
+                .select(`
+                    intercambio_id,
+                    producto_ofrecido_id,
+                    producto_solicitado_id,
+                    producto_ofrecido:producto_ofrecido_id (
                         producto_id,
                         titulo,
                         descripcion,
@@ -68,46 +71,45 @@ export async function GET(req: NextRequest) {
                         condiciones_intercambio,
                         que_busco_cambio,
                         precio_negociable,
-                        categoria_id,
                         categoria (nombre)
-                    `)
-                    .eq('producto_id', it.producto_ofrecido_id)
-                    .single()
+                    )
+                `)
+                .eq('intercambio_id', ch.intercambio_id)
+                .single()
+
+            if (intercambioCompleto?.producto_ofrecido) {
+                const producto = intercambioCompleto.producto_ofrecido
 
                 // Obtener imagen principal del producto
                 let mainImage = null
-                if (producto) {
-                    const { data: imagen } = await supabaseAdmin
-                        .from('imagen_producto')
-                        .select('url_imagen')
-                        .eq('producto_id', producto.producto_id)
-                        .eq('es_principal', true)
-                        .single()
-                    mainImage = imagen?.url_imagen
-                }
+                const { data: imagen } = await supabaseAdmin
+                    .from('imagen_producto')
+                    .select('url_imagen')
+                    .eq('producto_id', producto.producto_id)
+                    .eq('es_principal', true)
+                    .single()
+                mainImage = imagen?.url_imagen
 
-                if (producto) {
-                    productInfo = {
-                        id: producto.producto_id,
-                        title: producto.titulo,
-                        description: producto.descripcion,
-                        price: producto.precio ? 
-                            new Intl.NumberFormat('es-CO', {
-                                style: 'currency',
-                                currency: 'COP',
-                                minimumFractionDigits: 0
-                            }).format(producto.precio) + (producto.precio_negociable ? ' (Negociable)' : '') :
-                            (producto.tipo_transaccion === 'cambio' ? 
-                                (producto.condiciones_intercambio || producto.que_busco_cambio || 'Intercambio') : 
-                                'Precio no especificado'),
-                        category: producto.categoria?.nombre || 'Sin categoría',
-                        mainImage: mainImage,
-                        exchangeConditions: producto.condiciones_intercambio || producto.que_busco_cambio
-                    }
-                    console.log('📦 [API] Producto encontrado:', productInfo)
-                } else {
-                    console.log('❌ [API] No se encontró producto para ID:', it.producto_ofrecido_id)
+                productInfo = {
+                    id: producto.producto_id,
+                    title: producto.titulo,
+                    description: producto.descripcion,
+                    price: producto.precio ? 
+                        new Intl.NumberFormat('es-CO', {
+                            style: 'currency',
+                            currency: 'COP',
+                            minimumFractionDigits: 0
+                        }).format(producto.precio) + (producto.precio_negociable ? ' (Negociable)' : '') :
+                        (producto.tipo_transaccion === 'cambio' ? 
+                            (producto.condiciones_intercambio || producto.que_busco_cambio || 'Intercambio') : 
+                            'Precio no especificado'),
+                    category: producto.categoria?.nombre || 'Sin categoría',
+                    mainImage: mainImage,
+                    exchangeConditions: producto.condiciones_intercambio || producto.que_busco_cambio
                 }
+                console.log('📦 [API] Producto encontrado:', productInfo)
+            } else {
+                console.log('❌ [API] No se encontró producto para intercambio:', ch.intercambio_id)
             }
 
             // Último mensaje como texto
