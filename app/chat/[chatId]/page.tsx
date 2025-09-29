@@ -590,16 +590,16 @@ function ChatPageContent() {
                           className="w-8 h-8 rounded-full object-cover border border-gray-200"
                         />
                         <div className={`px-4 py-2 rounded-2xl ${message.senderId === currentUserId 
-                          ? 'bg-blue-600 text-white' 
+                          ? 'bg-green-600 text-white' 
                           : 'bg-white text-gray-900 border border-gray-200'
                         }`}>
                           <p className="text-sm">{message.content}</p>
                           <div className="flex items-center justify-between mt-1">
-                            <p className={`text-xs ${message.senderId === currentUserId ? 'text-blue-100' : 'text-gray-500'}`}>
+                            <p className={`text-xs ${message.senderId === currentUserId ? 'text-green-100' : 'text-gray-500'}`}>
                               {message.timestamp}
                             </p>
                             {message.senderId === currentUserId && (
-                              <div className={`w-2 h-2 rounded-full ${message.isRead ? 'bg-blue-300' : 'bg-gray-400'}`}></div>
+                              <div className={`w-2 h-2 rounded-full ${message.isRead ? 'bg-green-300' : 'bg-gray-400'}`}></div>
                             )}
                           </div>
                         </div>
