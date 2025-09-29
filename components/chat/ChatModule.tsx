@@ -634,19 +634,23 @@ const getCurrentUserId = () => {
 
   useEffect(() => {
     if (realtimeChannel) {
+      console.log('🔌 [ChatModule] Removiendo canal realtime anterior')
       supabase.removeChannel(realtimeChannel)
       setRealtimeChannel(null)
     }
 
     const chatId = Number(selectedConversation?.id)
-    if (!chatId) return
+    if (!chatId || !currentUser?.id) {
+      console.log('⚠️ [ChatModule] No hay chatId o currentUser para realtime')
+      return
+    }
 
-    console.log('🔗 [ChatModule] Configurando realtime para chat:', chatId)
+    console.log('🔗 [ChatModule] Configurando realtime para chat:', chatId, 'usuario:', currentUser.id)
 
     const channel = supabase
-      .channel(`chat_${chatId}`, {
+      .channel(`chat_${chatId}_${currentUser.id}`, {
         config: {
-          broadcast: { self: true },
+          broadcast: { self: false }, // No recibir nuestros propios mensajes
           presence: { key: getCurrentUserId() }
         }
       })
@@ -655,17 +659,54 @@ const getCurrentUserId = () => {
         schema: 'public',
         table: 'mensaje',
         filter: `chat_id=eq.${chatId}`
-      }, (payload: any) => {
-        console.log('📨 [ChatModule] Nuevo mensaje realtime:', payload)
+      }, async (payload: any) => {
+        console.log('📨 [ChatModule] Nuevo mensaje realtime recibido:', payload)
         
         const m = payload.new
         if (!m) return
 
         const messageId = String(m.mensaje_id)
+        const currentUserId = getCurrentUserId()
+        
+        // No procesar nuestros propios mensajes (ya los tenemos optimísticamente)
+        if (String(m.usuario_id) === currentUserId) {
+          console.log('⚠️ [ChatModule] Ignorando mensaje propio en realtime:', messageId)
+          return
+        }
+
+        // Verificar si el mensaje ya existe
         const messageExists = selectedConversation?.messages.some(msg => msg.id === messageId)
         if (messageExists) {
           console.log('⚠️ [ChatModule] Mensaje ya existe, ignorando:', messageId)
           return
+        }
+
+        // Obtener información del usuario que envió el mensaje
+        let senderInfo = {
+          id: String(m.usuario_id),
+          name: 'Usuario',
+          lastName: '',
+          avatar: undefined
+        }
+
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.access_token) {
+            const userRes = await fetch(`/api/users/${m.usuario_id}`, {
+              headers: { Authorization: `Bearer ${session.access_token}` }
+            })
+            if (userRes.ok) {
+              const userData = await userRes.json()
+              senderInfo = {
+                id: String(userData.user_id),
+                name: userData.nombre || 'Usuario',
+                lastName: userData.apellido || '',
+                avatar: userData.foto_perfil
+              }
+            }
+          }
+        } catch (error) {
+          console.log('⚠️ [ChatModule] Error obteniendo info del usuario:', error)
         }
 
         const incoming: ChatMessage = {
@@ -681,16 +722,12 @@ const getCurrentUserId = () => {
           isRead: m.leido,
           type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
           metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
-          sender: {
-            id: String(m.usuario_id),
-            name: 'Usuario',
-            lastName: '',
-            avatar: undefined
-          }
+          sender: senderInfo
         }
 
         console.log('✅ [ChatModule] Agregando mensaje realtime:', incoming)
 
+        // Actualizar conversación seleccionada
         setSelectedConversation(prev => {
           if (!prev) return prev
           return {
@@ -701,15 +738,32 @@ const getCurrentUserId = () => {
           }
         })
 
+        // Actualizar lista de conversaciones
         setConversations(prev => prev.map(c => c.id === String(chatId) ? {
           ...c,
+          messages: [...(c.messages || []), incoming],
           lastMessage: incoming.content || incoming.type,
           lastMessageTime: incoming.timestamp,
-          unreadCount: incoming.senderId !== getCurrentUserId() ? (c.unreadCount || 0) + 1 : c.unreadCount
+          unreadCount: (c.unreadCount || 0) + 1
         } : c))
+
+        // Scroll automático al final
+        setTimeout(() => {
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'end' 
+            })
+          }
+        }, 100)
       })
       .subscribe((status) => {
         console.log('🔌 [ChatModule] Estado realtime:', status)
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ [ChatModule] Realtime conectado exitosamente')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ [ChatModule] Error en canal realtime')
+        }
       })
 
     setRealtimeChannel(channel)
@@ -721,7 +775,7 @@ const getCurrentUserId = () => {
       }
       setRealtimeChannel(null)
     }
-  }, [selectedConversation?.id, currentUser?.id, currentUser?.id])
+  }, [selectedConversation?.id, currentUser?.id])
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null
@@ -776,9 +830,11 @@ const getCurrentUserId = () => {
       }
     }
 
+    // Limpiar input inmediatamente para mejor UX
     setNewMessage('')
     setReplyToMessageId(null)
 
+    // Actualizar UI optimísticamente - INMEDIATO
     const updatedConversation = {
       ...selectedConversation,
       messages: [...selectedConversation.messages, optimisticMessage],
@@ -791,6 +847,7 @@ const getCurrentUserId = () => {
       conv.id === selectedConversation.id ? updatedConversation : conv
     ))
     
+    // Scroll inmediato al final
     requestAnimationFrame(() => {
       if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ 
@@ -800,13 +857,21 @@ const getCurrentUserId = () => {
       }
     })
     
+    // Enviar al servidor en background
     try {
       const chatId = Number(selectedConversation.id)
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
-      if (!token) return
+      if (!token) {
+        console.error('❌ [ChatModule] No hay token de sesión')
+        return
+      }
       
-      console.log('📤 [ChatModule] Enviando mensaje:', messageContent)
+      console.log('📤 [ChatModule] Enviando mensaje al servidor:', messageContent)
+      
+      // Usar AbortController para timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 segundos timeout
       
       const res = await fetch(`/api/chat/${chatId}/messages`, {
         method: 'POST',
@@ -817,14 +882,18 @@ const getCurrentUserId = () => {
         body: JSON.stringify({ 
           contenido: messageContent, 
           tipo: 'texto' 
-        })
+        }),
+        signal: controller.signal
       })
+      
+      clearTimeout(timeoutId)
       
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Error al enviar')
       
-      console.log('✅ [ChatModule] Mensaje enviado exitosamente:', json.message)
+      console.log('✅ [ChatModule] Mensaje confirmado por servidor:', json.message)
       
+      // Reemplazar mensaje temporal con el real (con ID del servidor)
       const realMessage: ChatMessage = {
         id: String(json.message.mensaje_id),
         senderId: String(json.message.usuario_id),
@@ -840,6 +909,7 @@ const getCurrentUserId = () => {
         sender: optimisticMessage.sender
       }
       
+      // Actualizar con el mensaje real del servidor
       setSelectedConversation(prev => prev ? {
         ...prev,
         messages: prev.messages.map(msg => 
@@ -852,6 +922,9 @@ const getCurrentUserId = () => {
       setConversations(prev => prev.map(conv => 
         conv.id === selectedConversation.id ? {
           ...conv,
+          messages: conv.messages?.map(msg => 
+            msg.id === tempId ? realMessage : msg
+          ) || [realMessage],
           lastMessage: realMessage.content,
           lastMessageTime: realMessage.timestamp
         } : conv
@@ -860,24 +933,36 @@ const getCurrentUserId = () => {
     } catch (error) {
       console.error('❌ [ChatModule] Error enviando mensaje:', error)
       
+      // Remover mensaje temporal en caso de error
       setSelectedConversation(prev => prev ? {
         ...prev,
         messages: prev.messages.filter(msg => msg.id !== tempId)
       } : prev)
       
-      if ((window as any).Swal) {
-        (window as any).Swal.fire({
-          title: 'Error',
-          text: 'No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.',
-          icon: 'error',
-          confirmButtonText: 'Entendido',
-          confirmButtonColor: '#3B82F6'
-        })
-      } else {
-        alert('Error: No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.')
-      }
+      setConversations(prev => prev.map(conv => 
+        conv.id === selectedConversation.id ? {
+          ...conv,
+          messages: conv.messages?.filter(msg => msg.id !== tempId) || []
+        } : conv
+      ))
       
+      // Restaurar mensaje en el input
       setNewMessage(messageContent)
+      
+      // Mostrar error solo si no es un timeout
+      if (error.name !== 'AbortError') {
+        if ((window as any).Swal) {
+          (window as any).Swal.fire({
+            title: 'Error',
+            text: 'No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.',
+            icon: 'error',
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#3B82F6'
+          })
+        } else {
+          alert('Error: No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.')
+        }
+      }
     }
   }
 
