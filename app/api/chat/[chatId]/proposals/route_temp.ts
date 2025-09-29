@@ -52,6 +52,7 @@ export async function GET(
     }
 
     // Verificar que el usuario tenga acceso al chat
+    console.log('🔍 [API Proposals] Buscando chat con ID:', chatId)
     const { data: chat, error: chatError } = await supabaseAdmin
       .from('chat')
       .select(`
@@ -64,16 +65,24 @@ export async function GET(
       .eq('chat_id', chatId)
       .single()
 
+    console.log('🔍 [API Proposals] Resultado búsqueda chat:', { chat, chatError })
+
     if (chatError || !chat) {
+      console.error('❌ [API Proposals] Chat no encontrado:', { chatError, chatId })
       return NextResponse.json({ error: 'Chat no encontrado' }, { status: 404 })
     }
 
     const intercambio = chat.intercambio as any
+    console.log('🔍 [API Proposals] Intercambio encontrado:', intercambio)
+    console.log('🔍 [API Proposals] Verificando acceso - Usuario ID:', userId, 'Propone:', intercambio?.usuario_propone_id, 'Recibe:', intercambio?.usuario_recibe_id)
+    
     if (!intercambio || (intercambio.usuario_propone_id !== userId && intercambio.usuario_recibe_id !== userId)) {
+      console.error('❌ [API Proposals] Usuario sin acceso al chat')
       return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
     }
 
     // Obtener propuestas del chat
+    console.log('🔍 [API Proposals] Obteniendo propuestas para chat:', chatId)
     const { data: propuestas, error: propuestasError } = await supabaseAdmin
       .from('propuesta')
       .select(`
@@ -106,8 +115,10 @@ export async function GET(
       .eq('chat_id', chatId)
       .order('fecha_creacion', { ascending: false })
 
+    console.log('🔍 [API Proposals] Resultado propuestas:', { propuestas, propuestasError })
+
     if (propuestasError) {
-      console.error('Error obteniendo propuestas:', propuestasError)
+      console.error('❌ [API Proposals] Error obteniendo propuestas:', propuestasError)
       return NextResponse.json({ error: 'Error obteniendo propuestas' }, { status: 500 })
     }
 
@@ -138,9 +149,10 @@ export async function GET(
       }
     }))
 
+    console.log('✅ [API Proposals] Propuestas transformadas:', transformedProposals.length)
     return NextResponse.json({ data: transformedProposals })
   } catch (error) {
-    console.error('Error en API de propuestas:', error)
+    console.error('❌ [API Proposals] Error interno:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }

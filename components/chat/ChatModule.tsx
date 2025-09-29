@@ -614,6 +614,13 @@ const getCurrentUserId = () => {
           const data = await response.json()
           setProposals(data.data || [])
           console.log('💼 [ChatModule] Propuestas cargadas:', data.data?.length || 0)
+        } else {
+          const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }))
+          console.error('❌ [ChatModule] Error cargando propuestas:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          })
         }
       } catch (error) {
         console.error('❌ [ChatModule] Error cargando propuestas:', error)
