@@ -11,7 +11,8 @@ import {
   UserGroupIcon,
   GlobeAltIcon,
   ShieldCheckIcon,
-  SparklesIcon
+  SparklesIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
 
 interface User {
@@ -342,9 +343,10 @@ function SettingsScreen({ currentUser, onLogout }: { currentUser: User | null, o
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones de la Cuenta</h3>
         <button
           onClick={onLogout}
-          className="btn-secondary"
+          className="btn-secondary flex items-center space-x-2"
         >
-          Cerrar Sesión
+          <ArrowRightOnRectangleIcon className="w-5 h-5" />
+          <span>Cerrar Sesión</span>
         </button>
       </div>
     </div>

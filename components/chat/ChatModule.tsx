@@ -21,6 +21,7 @@ import {
   Product, 
   ChatInfo 
 } from '@/lib/types'
+import { useUserStatus } from '@/hooks/useUserStatus'
 
 
 interface ChatModuleProps {
@@ -232,14 +233,14 @@ const renderProductInfo = (product: any, label: string) => {
           </p>
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-green-600">
-              {formatPrice(
-                product.precio,
-                product.tipo_transaccion,
-                product.condiciones_intercambio,
-                product.que_busco_cambio,
-                product.precio_negociable
-              )}
-            </p>
+            {formatPrice(
+              product.precio,
+              product.tipo_transaccion,
+              product.condiciones_intercambio,
+              product.que_busco_cambio,
+              product.precio_negociable
+            )}
+          </p>
             {product.visualizaciones && (
               <p className="text-xs text-gray-500">
                 👁️ {product.visualizaciones} vistas
@@ -301,7 +302,22 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const imageInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [offeredProduct, setOfferedProduct] = useState<any>(null)
+  
+  // Hook para obtener estado de usuarios en línea
+  const { onlineUsers, updateUserStatus } = useUserStatus()
   const [requestedProduct, setRequestedProduct] = useState<any>(null)
+  
+  // Función para verificar si un usuario está en línea
+  const isUserOnline = (userId: string): boolean => {
+    return onlineUsers.some(user => user.id === userId && user.isOnline)
+  }
+
+  // Actualizar estado del usuario como activo cuando se monta el componente
+  useEffect(() => {
+    if (currentUser) {
+      updateUserStatus(true)
+    }
+  }, [currentUser, updateUserStatus])
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [showProposals, setShowProposals] = useState(false)
   const [isLoadingProposals, setIsLoadingProposals] = useState(false)
@@ -400,52 +416,59 @@ const getCurrentUserId = () => {
     }
   }, [])
 
-  // Cargar mensajes reales al seleccionar conversación
+  // ⚡ CARGA INSTANTÁNEA DE MENSAJES OPTIMIZADA
   useEffect(() => {
     let isMounted = true
     
     const loadMessages = async () => {
       if (!selectedConversation || !isMounted) return
-      try {
+      
         const chatId = Number(selectedConversation.id)
-        console.log('🔄 [ChatModule] Cargando mensajes para chat:', chatId)
         if (!chatId) return
         
-        const { data: { session } } = await supabase.auth.getSession()
-        console.log('🔐 [ChatModule] Sesión actual:', session ? 'Sí' : 'No')
-        console.log('🔐 [ChatModule] Usuario:', session?.user?.email)
-        console.log('🔐 [ChatModule] Token:', session?.access_token ? 'Presente' : 'Ausente')
-        console.log('🔐 [ChatModule] Usuario actual del componente:', currentUser?.email)
+      // ⚡ Mostrar mensajes existentes inmediatamente si ya están en caché
+      const cachedConversation = conversations.find(c => c.id === String(chatId))
+      if (cachedConversation?.messages?.length > 0) {
+        console.log('⚡ [ChatModule] Usando mensajes en caché:', cachedConversation.messages.length)
+        setSelectedConversation(prev => prev ? { ...prev, messages: cachedConversation.messages } : prev)
         
+        // Scroll inmediato a la parte inferior
+        setTimeout(() => {
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'instant', block: 'end' })
+          }
+        }, 50)
+      }
+      
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
         const token = session?.access_token
         if (!token) {
-          console.log('❌ [ChatModule] No hay token de sesión - usuario no autenticado')
-          console.log('🔄 [ChatModule] Redirigiendo al login...')
           router.push('/login')
           return
         }
         
-        console.log('📡 [ChatModule] Haciendo petición a API...')
-        const res = await fetch(`/api/chat/${chatId}/messages?limit=100`, { headers: { Authorization: `Bearer ${token}` } })
-        const json = await res.json()
+        console.log('🔄 [ChatModule] Cargando mensajes frescos para chat:', chatId)
         
-        console.log('📨 [ChatModule] Respuesta de API:', { 
-          status: res.status, 
-          ok: res.ok, 
-          json: {
-            items: json.items?.length || 0,
-            firstMessage: json.items?.[0],
-            lastMessage: json.items?.[json.items?.length - 1]
-          }
+        // ⚡ Petición optimizada con timeout más corto
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 segundos timeout
+        
+        const res = await fetch(`/api/chat/${chatId}/messages?limit=50`, { 
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal
         })
+        clearTimeout(timeoutId)
         
+        if (!isMounted) return
+        
+        const json = await res.json()
         if (!res.ok) throw new Error(json?.error || 'Error cargando mensajes')
         
+        // ⚡ Procesamiento optimizado de mensajes
         const messages: ChatMessage[] = (json.items || [])
           .filter((m: any) => {
-            // Filtrar solo mensajes que son claramente de información del producto
             const content = m.contenido || ''
-            // Solo filtrar si el mensaje completo parece ser información del producto
             const isProductInfo = content.includes('Producto Ofrecido') && 
                                  content.includes('$') && 
                                  content.includes('Negociable')
@@ -472,24 +495,34 @@ const getCurrentUserId = () => {
             }
           }))
         
-        console.log('💬 [ChatModule] Mensajes transformados:', messages.length, 'mensajes')
-        console.log('💬 [ChatModule] Primer mensaje:', messages[0])
-        console.log('💬 [ChatModule] Último mensaje:', messages[messages.length - 1])
-        console.log('💬 [ChatModule] Usuario actual:', currentUser)
-        console.log('💬 [ChatModule] ID del usuario actual:', getCurrentUserId())
-        
         if (isMounted) {
+          // ⚡ Actualización instantánea del estado
         setSelectedConversation(prev => prev ? { ...prev, messages } : prev)
         setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, messages } : c))
 
-        // Marcar como leídos
-        const readRes = await fetch(`/api/chat/${chatId}/read`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-        if (readRes.ok) {
+          // ⚡ Scroll suave a la parte inferior después de cargar
+          setTimeout(() => {
+            if (messagesEndRef.current) {
+              messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+            }
+          }, 100)
+
+          // Marcar como leídos en background
+          fetch(`/api/chat/${chatId}/read`, { 
+            method: 'POST', 
+            headers: { Authorization: `Bearer ${token}` } 
+          }).then(readRes => {
+            if (readRes.ok && isMounted) {
           setConversations(prev => prev.map(c => c.id === String(chatId) ? { ...c, unreadCount: 0 } : c))
         }
+          }).catch(err => console.log('⚠️ [ChatModule] Error marcando como leído:', err))
       }
       } catch (error) {
+        if (error.name === 'AbortError') {
+          console.log('⏱️ [ChatModule] Timeout cargando mensajes')
+        } else {
         console.error('❌ [ChatModule] Error cargando mensajes:', error)
+        }
     }
     }
     
@@ -723,7 +756,7 @@ const getCurrentUserId = () => {
     }
   }, [selectedConversation?.messages?.length, isUserScrolling]) // Dependencias actualizadas
 
-  // ✅ ENVÍO DE MENSAJES MEJORADO
+  // ⚡ ENVÍO DE MENSAJES ULTRA INSTANTÁNEO
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return
     
@@ -731,12 +764,13 @@ const getCurrentUserId = () => {
     const tempId = `temp-${Date.now()}-${Math.random()}`
     const currentUserId = getCurrentUserId()
     
-    // Crear mensaje optimista
+    // ⚡ Crear mensaje optimista con timestamp instantáneo
+    const now = new Date()
     const optimisticMessage: ChatMessage = {
       id: tempId,
       senderId: currentUserId,
       content: messageContent,
-      timestamp: new Date().toLocaleString('es-CO', { 
+      timestamp: now.toLocaleString('es-CO', { 
         hour: '2-digit', 
         minute: '2-digit',
         day: '2-digit',
@@ -752,11 +786,11 @@ const getCurrentUserId = () => {
       }
     }
 
-    // Limpiar input inmediatamente
+    // ⚡ Limpiar input INMEDIATAMENTE antes de cualquier otra operación
     setNewMessage('')
     setReplyToMessageId(null)
 
-    // Actualización optimista
+    // ⚡ Actualización optimista INSTANTÁNEA
     const updatedConversation = {
       ...selectedConversation,
       messages: [...selectedConversation.messages, optimisticMessage],
@@ -764,20 +798,21 @@ const getCurrentUserId = () => {
       lastMessageTime: optimisticMessage.timestamp
     }
     
+    // ⚡ Actualizar estado de forma síncrona para máxima velocidad
     setSelectedConversation(updatedConversation)
     setConversations(prev => prev.map(conv => 
       conv.id === selectedConversation.id ? updatedConversation : conv
     ))
     
-    // Scroll suave solo para mensajes nuevos
-    setTimeout(() => {
+    // ⚡ Scroll INSTANTÁNEO (sin animación para máxima velocidad)
+    requestAnimationFrame(() => {
       if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ 
-          behavior: 'smooth', 
+          behavior: 'instant', 
           block: 'end' 
         })
       }
-    }, 100)
+    })
     
     try {
       const chatId = Number(selectedConversation.id)
@@ -1120,28 +1155,28 @@ const getCurrentUserId = () => {
         if (result.isConfirmed) {
           // Crear la propuesta
           handleCreateProposal(result.value)
-          
-          // Agregar mensaje informativo al chat
-          const proposalMessage = {
-            id: `proposal-${Date.now()}`,
-            senderId: currentUser?.id,
+    
+    // Agregar mensaje informativo al chat
+    const proposalMessage = {
+      id: `proposal-${Date.now()}`,
+      senderId: currentUser?.id,
             content: `💰 Nueva propuesta de ${result.value.type}: ${result.value.description.substring(0, 50)}${result.value.description.length > 50 ? '...' : ''}`,
-            timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-            isRead: true,
-            type: 'text' as const,
-            sender: {
-              id: currentUser?.id,
-              name: currentUser?.name || 'Tú',
-              lastName: '',
-              avatar: currentUser?.avatar
-            }
-          }
-          
-          setSelectedConversation(prev => prev ? {
-            ...prev,
-            messages: [...prev.messages, proposalMessage]
-          } : prev)
-          
+      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      isRead: true,
+      type: 'text' as const,
+      sender: {
+        id: currentUser?.id,
+        name: currentUser?.name || 'Tú',
+        lastName: '',
+        avatar: currentUser?.avatar
+      }
+    }
+    
+    setSelectedConversation(prev => prev ? {
+      ...prev,
+      messages: [...prev.messages, proposalMessage]
+    } : prev)
+    
           // Mostrar la sección de propuestas
           setShowProposals(true)
         }
@@ -1235,26 +1270,26 @@ const getCurrentUserId = () => {
           handleCreateProposal(result.value)
           
           // Agregar mensaje informativo al chat
-          const negotiateMessage = {
-            id: `negotiate-${Date.now()}`,
-            senderId: currentUser?.id,
+    const negotiateMessage = {
+      id: `negotiate-${Date.now()}`,
+      senderId: currentUser?.id,
             content: `🔄 Nueva propuesta de ${result.value.type}: ${result.value.description.substring(0, 50)}${result.value.description.length > 50 ? '...' : ''}`,
-            timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-            isRead: true,
-            type: 'text' as const,
-            sender: {
-              id: currentUser?.id,
-              name: currentUser?.name || 'Tú',
-              lastName: '',
-              avatar: currentUser?.avatar
-            }
-          }
-          
-          setSelectedConversation(prev => prev ? {
-            ...prev,
-            messages: [...prev.messages, negotiateMessage]
-          } : prev)
-          
+      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      isRead: true,
+      type: 'text' as const,
+      sender: {
+        id: currentUser?.id,
+        name: currentUser?.name || 'Tú',
+        lastName: '',
+        avatar: currentUser?.avatar
+      }
+    }
+    
+    setSelectedConversation(prev => prev ? {
+      ...prev,
+      messages: [...prev.messages, negotiateMessage]
+    } : prev)
+    
           // Mostrar la sección de propuestas
           setShowProposals(true)
         }
@@ -1403,8 +1438,9 @@ const getCurrentUserId = () => {
                     alt={conversation.user.name}
                     className="w-12 h-12 rounded-full"
                   />
-                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white bg-green-500
-                    }`}></div>
+                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
+                    isUserOnline(conversation.user.id) ? 'bg-green-500' : 'bg-gray-400'
+                  }`}></div>
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -1454,8 +1490,9 @@ const getCurrentUserId = () => {
                     alt={selectedConversation.user.name}
                     className="w-10 h-10 rounded-full"
                   />
-                  <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white bg-green-500
-                    }`}></div>
+                  <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
+                    isUserOnline(selectedConversation.user.id) ? 'bg-green-500' : 'bg-gray-400'
+                  }`}></div>
                 </div>
 
                 <div>
@@ -1517,8 +1554,8 @@ const getCurrentUserId = () => {
                       <p className="text-xs mt-1">Cargando producto...</p>
                     </div>
                   )}
-                </div>
               </div>
+            </div>
 
               {/* Sección de propuestas */}
               {showProposals && (
@@ -1685,9 +1722,9 @@ const getCurrentUserId = () => {
               )}
             </div>
 
-            {/* Mensajes - Área expandida */}
+            {/* Mensajes - Área expandida para mejor visibilidad */}
             <div 
-              className="flex-1 overflow-y-auto p-6 space-y-6 relative min-h-0"
+              className="flex-1 overflow-y-auto p-8 space-y-8 relative min-h-0"
               onScroll={(e) => {
                 const target = e.target as HTMLDivElement
                 const isAtBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 10
@@ -1860,51 +1897,50 @@ const getCurrentUserId = () => {
               )}
             </div>
 
-            {/* SECCIÓN DE PROPUESTA */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-t-2 border-green-200 px-6 py-6">
-              <div className="text-center mb-4">
-                <h3 className="text-lg font-bold text-gray-800 mb-1">💰 Sesión de Propuesta</h3>
-                <p className="text-sm text-gray-600">Gestiona las propuestas del intercambio</p>
+            {/* SECCIÓN DE PROPUESTA - Muy compacta */}
+            <div className="bg-gray-50 border-t border-gray-200 px-3 py-2">
+              <div className="text-center mb-2">
+                <h3 className="text-xs font-medium text-gray-700">💰 Propuestas</h3>
               </div>
               
-              <div className="flex items-center justify-center flex-wrap gap-4">
+              <div className="flex items-center justify-center gap-1">
                 <button
                   onClick={handleSendProposal}
-                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                  className="flex items-center space-x-1 px-2 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-xs"
                 >
-                  <span className="text-xl">💰</span>
-                  <span className="font-semibold">Enviar Propuesta</span>
+                  <span className="text-xs">💰</span>
+                  <span>Enviar</span>
                 </button>
                 
                 <button
                   onClick={handleNegotiate}
-                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                  className="flex items-center space-x-1 px-2 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs"
                 >
-                  <span className="text-xl">🔄</span>
-                  <span className="font-semibold">Negociar</span>
+                  <span className="text-xs">🔄</span>
+                  <span>Negociar</span>
                 </button>
                 
                 <button
                   onClick={handleAccept}
-                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                  className="flex items-center space-x-1 px-2 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors text-xs"
                 >
-                  <span className="text-xl">✅</span>
-                  <span className="font-semibold">Aceptar</span>
+                  <span className="text-xs">✅</span>
+                  <span>Aceptar</span>
                 </button>
               </div>
             </div>
 
-            {/* Input de mensaje - Área expandida */}
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <div className="flex items-end space-x-3">
-                <button onClick={handleAttachFile} className="p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <PaperClipIcon className="w-6 h-6" />
+            {/* Input de mensaje */}
+            <div className="p-4 border-t border-gray-200">
+              <div className="flex items-center space-x-2">
+                <button onClick={handleAttachFile} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                  <PaperClipIcon className="w-5 h-5" />
                 </button>
-                <button onClick={handleAttachImage} className="p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <MapPinIcon className="w-6 h-6" />
+                <button onClick={handleAttachImage} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                  <MapPinIcon className="w-5 h-5" />
                 </button>
-                <button className="p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <FaceSmileIcon className="w-6 h-6" />
+                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                  <FaceSmileIcon className="w-5 h-5" />
                 </button>
 
                 <div className="flex-1">
@@ -1914,8 +1950,8 @@ const getCurrentUserId = () => {
                     onChange={(e) => handleInputChange(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Escribe un mensaje..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base"
-                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    rows={1}
                   />
                 </div>
 
@@ -1955,7 +1991,14 @@ const getCurrentUserId = () => {
             <div>
               <p className="font-medium text-gray-900">{selectedConversation.user.name}</p>
               <p className="text-sm text-gray-500 flex items-center space-x-1"><MapPinIcon className="w-4 h-4" /><span>{selectedConversation.user.location}</span></p>
-              <p className="text-sm text-gray-500">Usuario activo</p>
+              <p className={`text-sm flex items-center space-x-1 ${
+                isUserOnline(selectedConversation.user.id) ? 'text-green-600' : 'text-gray-500'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  isUserOnline(selectedConversation.user.id) ? 'bg-green-500' : 'bg-gray-400'
+                }`}></div>
+                <span>{isUserOnline(selectedConversation.user.id) ? 'En línea' : 'Desconectado'}</span>
+              </p>
             </div>
             <div className="pt-2 border-t border-gray-100">
               <button className="w-full text-left text-sm text-primary-700 hover:underline">Ver perfil completo</button>

@@ -522,24 +522,59 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
             return { user: null, error: 'Por favor, verifica tu email antes de iniciar sesión' }
         }
 
-        // Obtener el perfil del usuario de la tabla USUARIO por email
-        const { data: user, error: fetchError } = await supabase
+        // Obtener el perfil del usuario de la tabla USUARIO por email (sin filtrar por activo)
+        let { data: user, error: fetchError } = await supabase
             .from('usuario')
             .select('*')
             .eq('email', authData.user.email)
-            .eq('activo', true)
             .single()
 
         if (fetchError || !user) {
-            // Si no existe el perfil, crearlo con los datos de auth
-            const userData = await createUserProfileFromAuth(authData.user)
-            return { user: userData, error: null }
+            // Si no existe el perfil, intentar crearlo con los datos de auth
+            try {
+                const userData = await createUserProfileFromAuth(authData.user)
+                return { user: userData, error: null }
+            } catch (createError: any) {
+                // Si falla por duplicado, intentar obtener el usuario existente
+                if (createError.code === '23505') {
+                    console.log('🔄 Usuario ya existe, obteniendo perfil existente...')
+                    const { data: existingUser, error: existingError } = await supabase
+                        .from('usuario')
+                        .select('*')
+                        .eq('email', authData.user.email)
+                        .single()
+                    
+                    if (existingError || !existingUser) {
+                        return { user: null, error: 'Error al obtener perfil de usuario' }
+                    }
+                    
+                    // Reactivar el usuario existente
+                    await supabase
+                        .from('usuario')
+                        .update({ 
+                            activo: true,
+                            ultima_conexion: new Date().toISOString()
+                        })
+                        .eq('user_id', existingUser.user_id)
+                    
+                    // Continuar con el flujo normal usando el usuario existente
+                    user = existingUser
+                } else {
+                    throw createError
+                }
+            }
         }
 
-        // Actualizar última conexión
+        // Actualizar última conexión y marcar como activo (solo si no está ya activo)
+        if (!user.activo) {
+            console.log('🔄 Reactivando usuario inactivo...')
+        }
         await supabase
             .from('usuario')
-            .update({ ultima_conexion: new Date().toISOString() })
+            .update({ 
+                ultima_conexion: new Date().toISOString(),
+                activo: true
+            })
             .eq('user_id', user.user_id)
 
         // Obtener ubicación principal del usuario
@@ -910,8 +945,38 @@ export async function getCurrentUser(): Promise<User | null> {
 // Función para cerrar sesión
 export async function logoutUser(): Promise<void> {
     try {
+        // Obtener el usuario actual antes de cerrar sesión
+        const { data: { session } } = await supabase.auth.getSession()
+        const userEmail = session?.user?.email
+        
+        // Cerrar sesión en Supabase Auth
         await supabase.auth.signOut()
+        
+        // Actualizar estado del usuario en la base de datos
+        if (userEmail) {
+            try {
+                const { error: updateError } = await supabase
+                    .from('usuario')
+                    .update({ 
+                        activo: false,
+                        ultima_conexion: new Date().toISOString()
+                    })
+                    .eq('email', userEmail)
+                
+                if (updateError) {
+                    console.error('Error actualizando estado del usuario:', updateError)
+                } else {
+                    console.log('✅ Estado del usuario actualizado a inactivo')
+                }
+            } catch (dbError) {
+                console.error('Error en actualización de base de datos:', dbError)
+            }
+        }
+        
+        // Limpiar localStorage
         localStorage.removeItem(config.auth.sessionKey)
+        console.log('🚪 Usuario desconectado y marcado como inactivo')
+        
     } catch (error) {
         console.error('Error en logout:', error)
         localStorage.removeItem(config.auth.sessionKey)

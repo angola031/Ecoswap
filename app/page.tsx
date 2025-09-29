@@ -13,7 +13,8 @@ import {
     InformationCircleIcon,
     BellIcon,
     ShoppingBagIcon,
-    ArrowsRightLeftIcon
+    ArrowsRightLeftIcon,
+    ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
 
 // Componentes
@@ -311,9 +312,10 @@ export default function HomePage() {
                             {isAuthenticated && (
                                 <button
                                     onClick={handleLogout}
-                                    className="text-gray-500 hover:text-gray-700 transition-colors"
+                                    className="text-gray-500 hover:text-red-600 transition-colors"
+                                    title="Cerrar Sesión"
                                 >
-                                    <Cog6ToothIcon className="w-6 h-6" />
+                                    <ArrowRightOnRectangleIcon className="w-6 h-6" />
                                 </button>
                             )}
                         </div>
