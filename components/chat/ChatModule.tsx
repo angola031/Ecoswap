@@ -16,7 +16,6 @@ import {
 } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 import { 
-  ChatConversation, 
   Message, 
   User, 
   Product, 
@@ -35,6 +34,24 @@ interface ChatUser {
   location: string
   isOnline: boolean
   lastSeen: string
+}
+
+interface ChatConversation {
+  id: string
+  user: ChatUser
+  lastMessage: string
+  lastMessageTime: string
+  unreadCount: number
+  messages: ChatMessage[]
+  product?: {
+    id: string
+    title: string
+    price?: string
+    category?: string
+    description?: string
+    mainImage?: string
+    exchangeConditions?: string
+  } | null
 }
 
 interface ChatMessage {
@@ -184,7 +201,8 @@ const getCurrentUserId = () => {
           lastMessage: c.lastMessage || '',
           lastMessageTime: c.lastMessageTime ? new Date(c.lastMessageTime).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '',
           unreadCount: c.unreadCount || 0,
-          messages: []
+          messages: [],
+          product: c.product || null // Incluir información del producto
         }))
         
         if (isMounted) {
@@ -845,7 +863,7 @@ const getCurrentUserId = () => {
   return (
     <div className="h-[calc(100vh-200px)] flex bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Lista de conversaciones */}
-      <div className="w-80 border-r border-gray-200 flex flex-col">
+      <div className="w-96 border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200 space-y-3">
           <h2 className="text-lg font-semibold text-gray-900">Chats</h2>
           <div>
@@ -859,7 +877,23 @@ const getCurrentUserId = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {filteredConversations.map((conversation) => (
+          {isLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="flex flex-col items-center space-y-2">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                <p className="text-sm text-gray-500">Cargando chats...</p>
+              </div>
+            </div>
+          ) : filteredConversations.length === 0 ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="text-center">
+                <ChatBubbleLeftRightIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">No hay conversaciones</p>
+                <p className="text-xs text-gray-400">Inicia un chat desde un producto</p>
+              </div>
+            </div>
+          ) : (
+            filteredConversations.map((conversation) => (
             <motion.div
               key={conversation.id}
               initial={{ opacity: 0, x: -20 }}
@@ -907,7 +941,8 @@ const getCurrentUserId = () => {
                 </div>
               </div>
             </motion.div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -1220,13 +1255,15 @@ const getCurrentUserId = () => {
           </div>
         )}
       </div>
-      {/* Panel lateral de perfil */}
+      {/* Panel lateral de perfil y producto */}
       {showProfile && selectedConversation && (
-        <div className="w-80 border-l border-gray-200 bg-white flex flex-col">
+        <div className="w-96 border-l border-gray-200 bg-white flex flex-col">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900">Perfil</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Perfil y Producto</h3>
             <button onClick={() => setShowProfile(false)} className="text-gray-500 hover:text-gray-700">✕</button>
           </div>
+          
+          {/* Información del usuario */}
           <div className="p-4 space-y-3">
             <img src={selectedConversation.user.avatar} alt={selectedConversation.user.name} className="w-20 h-20 rounded-full" />
             <div>
@@ -1240,6 +1277,59 @@ const getCurrentUserId = () => {
               <button className="w-full text-left text-sm text-gray-700 hover:underline mt-1">Bloquear</button>
             </div>
           </div>
+
+          {/* Información del producto */}
+          {selectedConversation.product && (
+            <div className="p-4 border-t border-gray-200 space-y-3">
+              <h4 className="text-sm font-semibold text-gray-900">Producto en Negociación</h4>
+              
+              {/* Imagen del producto */}
+              {selectedConversation.product.mainImage && (
+                <div className="relative">
+                  <img 
+                    src={selectedConversation.product.mainImage} 
+                    alt={selectedConversation.product.title}
+                    className="w-full h-32 object-cover rounded-lg"
+                  />
+                </div>
+              )}
+              
+              {/* Detalles del producto */}
+              <div className="space-y-2">
+                <h5 className="font-medium text-gray-900 text-sm">{selectedConversation.product.title}</h5>
+                
+                {selectedConversation.product.price && (
+                  <p className="text-sm font-semibold text-green-600">
+                    {selectedConversation.product.price}
+                  </p>
+                )}
+                
+                {selectedConversation.product.category && (
+                  <p className="text-xs text-gray-500">
+                    Categoría: {selectedConversation.product.category}
+                  </p>
+                )}
+                
+                {selectedConversation.product.description && (
+                  <p className="text-xs text-gray-600 line-clamp-3">
+                    {selectedConversation.product.description}
+                  </p>
+                )}
+                
+                {selectedConversation.product.exchangeConditions && (
+                  <div className="mt-2 p-2 bg-blue-50 rounded-md">
+                    <p className="text-xs font-medium text-blue-800">Condiciones de Intercambio:</p>
+                    <p className="text-xs text-blue-700">{selectedConversation.product.exchangeConditions}</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="pt-2 border-t border-gray-100">
+                <button className="w-full text-left text-sm text-primary-700 hover:underline">Ver producto completo</button>
+                <button className="w-full text-left text-sm text-gray-700 hover:underline mt-1">Reportar producto</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
