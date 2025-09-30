@@ -74,6 +74,8 @@ export async function GET(
     }
 
     // Obtener propuestas del chat
+    console.log('🔍 [API Proposals] Buscando propuestas para chat:', chatId)
+    
     const { data: propuestas, error: propuestasError } = await supabaseAdmin
       .from('propuesta')
       .select(`
@@ -106,8 +108,13 @@ export async function GET(
       .eq('chat_id', chatId)
       .order('fecha_creacion', { ascending: false })
 
+    console.log('🔍 [API Proposals] Query result:', { 
+      propuestas: propuestas?.length || 0, 
+      error: propuestasError 
+    })
+
     if (propuestasError) {
-      console.error('Error obteniendo propuestas:', propuestasError)
+      console.error('❌ [API Proposals] Error obteniendo propuestas:', propuestasError)
       return NextResponse.json({ error: 'Error obteniendo propuestas' }, { status: 500 })
     }
 
@@ -137,6 +144,14 @@ export async function GET(
         avatar: prop.usuario_recibe.foto_perfil
       }
     }))
+
+    console.log('✅ [API Proposals] Propuestas transformadas:', transformedProposals.length)
+    console.log('📋 [API Proposals] Datos finales:', { 
+      chatId, 
+      userId, 
+      propuestasCount: transformedProposals.length,
+      propuestas: transformedProposals.map(p => ({ id: p.id, type: p.type, status: p.status }))
+    })
 
     return NextResponse.json({ data: transformedProposals })
   } catch (error) {

@@ -1050,13 +1050,26 @@ const getCurrentUserId = () => {
     meetingDate?: string
     meetingPlace?: string
   }) => {
-    if (!selectedConversation) return
+    if (!selectedConversation) {
+      console.log('❌ [ChatModule] No hay conversación seleccionada para crear propuesta')
+      return
+    }
+
+    console.log('📝 [ChatModule] Creando propuesta:', { 
+      chatId: selectedConversation.id, 
+      proposalData 
+    })
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
-      if (!token) return
+      if (!token) {
+        console.log('❌ [ChatModule] No hay token para crear propuesta')
+        return
+      }
 
+      console.log('📡 [ChatModule] Enviando propuesta a API...')
+      
       const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
         method: 'POST',
         headers: {
@@ -1066,8 +1079,14 @@ const getCurrentUserId = () => {
         body: JSON.stringify(proposalData)
       })
 
+      console.log('📨 [ChatModule] Respuesta de creación de propuesta:', { 
+        status: response.status, 
+        ok: response.ok 
+      })
+
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ [ChatModule] Propuesta creada exitosamente:', data)
         setProposals(prev => [data.data, ...prev])
         
         if ((window as any).Swal) {
@@ -1080,10 +1099,16 @@ const getCurrentUserId = () => {
           })
         }
       } else {
-        throw new Error('Error creando propuesta')
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }))
+        console.error('❌ [ChatModule] Error creando propuesta:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        })
+        throw new Error(errorData.error || 'Error creando propuesta')
       }
     } catch (error) {
-      console.error('Error creando propuesta:', error)
+      console.error('❌ [ChatModule] Error creando propuesta:', error)
       if ((window as any).Swal) {
         (window as any).Swal.fire({
           title: 'Error',
