@@ -487,6 +487,7 @@ const getCurrentUserId = () => {
               avatar: m.usuario?.foto_perfil || undefined
             }
           }))
+          .sort((a, b) => Number(a.id) - Number(b.id)) // Ordenar por ID (del más antiguo al más reciente)
         
         console.log('💬 [ChatModule] Mensajes transformados:', {
           count: messages.length,
@@ -705,9 +706,11 @@ const getCurrentUserId = () => {
         // Actualizar conversación seleccionada
         setSelectedConversation(prev => {
           if (!prev) return prev
+          const updatedMessages = [...prev.messages, incoming]
+            .sort((a, b) => Number(a.id) - Number(b.id)) // Mantener orden correcto
           return {
             ...prev,
-            messages: [...prev.messages, incoming],
+            messages: updatedMessages,
             lastMessage: incoming.content || incoming.type,
             lastMessageTime: incoming.timestamp
           }
@@ -716,7 +719,8 @@ const getCurrentUserId = () => {
         // Actualizar lista de conversaciones
         setConversations(prev => prev.map(c => c.id === String(chatId) ? {
           ...c,
-          messages: [...(c.messages || []), incoming],
+          messages: [...(c.messages || []), incoming]
+            .sort((a, b) => Number(a.id) - Number(b.id)), // Mantener orden correcto
           lastMessage: incoming.content || incoming.type,
           lastMessageTime: incoming.timestamp,
           unreadCount: (c.unreadCount || 0) + 1
@@ -812,9 +816,11 @@ const getCurrentUserId = () => {
               
               setSelectedConversation(prev => {
                 if (!prev) return prev
+                const updatedMessages = [...prev.messages, ...transformedMessages]
+                  .sort((a, b) => Number(a.id) - Number(b.id)) // Mantener orden correcto
                 return {
                   ...prev,
-                  messages: [...prev.messages, ...transformedMessages],
+                  messages: updatedMessages,
                   lastMessage: transformedMessages[transformedMessages.length - 1].content,
                   lastMessageTime: transformedMessages[transformedMessages.length - 1].timestamp
                 }
@@ -822,7 +828,8 @@ const getCurrentUserId = () => {
 
               setConversations(prev => prev.map(c => c.id === String(chatId) ? {
                 ...c,
-                messages: [...(c.messages || []), ...transformedMessages],
+                messages: [...(c.messages || []), ...transformedMessages]
+                  .sort((a, b) => Number(a.id) - Number(b.id)), // Mantener orden correcto
                 lastMessage: transformedMessages[transformedMessages.length - 1].content,
                 lastMessageTime: transformedMessages[transformedMessages.length - 1].timestamp,
                 unreadCount: (c.unreadCount || 0) + transformedMessages.length
@@ -904,9 +911,11 @@ const getCurrentUserId = () => {
     setReplyToMessageId(null)
 
     // Actualizar UI optimísticamente - INMEDIATO
+    const updatedMessages = [...selectedConversation.messages, optimisticMessage]
+      .sort((a, b) => Number(a.id) - Number(b.id)) // Mantener orden correcto
     const updatedConversation = {
       ...selectedConversation,
-      messages: [...selectedConversation.messages, optimisticMessage],
+      messages: updatedMessages,
       lastMessage: optimisticMessage.content,
       lastMessageTime: optimisticMessage.timestamp
     }
@@ -983,7 +992,7 @@ const getCurrentUserId = () => {
         ...prev,
         messages: prev.messages.map(msg => 
           msg.id === tempId ? realMessage : msg
-        ),
+        ).sort((a, b) => Number(a.id) - Number(b.id)), // Mantener orden correcto
         lastMessage: realMessage.content,
         lastMessageTime: realMessage.timestamp
       } : prev)
@@ -993,7 +1002,7 @@ const getCurrentUserId = () => {
           ...conv,
           messages: conv.messages?.map(msg => 
             msg.id === tempId ? realMessage : msg
-          ) || [realMessage],
+          ).sort((a, b) => Number(a.id) - Number(b.id)) || [realMessage], // Mantener orden correcto
           lastMessage: realMessage.content,
           lastMessageTime: realMessage.timestamp
         } : conv
