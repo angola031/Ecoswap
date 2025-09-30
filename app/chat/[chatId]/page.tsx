@@ -119,6 +119,7 @@ function ChatPageContent() {
         }
         
         if (isMounted) {
+          console.log('📦 [ChatPage] Información del chat cargada:', data.data)
           setChatInfo(data.data)
         }
       } catch (error) {
@@ -780,10 +781,33 @@ function ChatPageContent() {
             <div className="flex items-center space-x-4">
               <button 
                 onClick={() => {
+                  console.log('🔙 [ChatPage] Botón volver presionado')
+                  console.log('📦 [ChatPage] chatInfo:', chatInfo)
+                  console.log('📦 [ChatPage] offeredProduct:', chatInfo?.offeredProduct)
+                  
+                  // Intentar obtener el ID del producto de diferentes maneras
+                  let productId = null
+                  
                   if (chatInfo?.offeredProduct?.producto_id) {
-                    router.push(`/producto/${chatInfo.offeredProduct.producto_id}`)
+                    productId = chatInfo.offeredProduct.producto_id
+                    console.log('✅ [ChatPage] Product ID desde producto_id:', productId)
+                  } else if (chatInfo?.offeredProduct?.id) {
+                    productId = chatInfo.offeredProduct.id
+                    console.log('✅ [ChatPage] Product ID desde id:', productId)
+                  } else if (chatInfo?.intercambio?.producto_ofrecido_id) {
+                    productId = chatInfo.intercambio.producto_ofrecido_id
+                    console.log('✅ [ChatPage] Product ID desde intercambio:', productId)
+                  }
+                  
+                  console.log('🆔 [ChatPage] Product ID final:', productId)
+                  
+                  if (productId) {
+                    console.log('✅ [ChatPage] Redirigiendo a producto:', productId)
+                    router.push(`/producto/${productId}`)
                   } else {
-                    router.back()
+                    console.log('⚠️ [ChatPage] No se encontró product ID, redirigiendo a productos')
+                    // En lugar de router.back(), redirigir a la página principal con módulo de productos
+                    router.push('/?m=products')
                   }
                 }}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
