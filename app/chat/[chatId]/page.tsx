@@ -183,7 +183,12 @@ function ChatPageContent() {
             }
           }))
           
-          setMessages(transformedMessages)
+          // Ordenar mensajes por ID (del más antiguo al más reciente)
+          const sortedMessages = transformedMessages.sort((a, b) => Number(a.id) - Number(b.id))
+          
+          console.log('📨 [ChatPage] Mensajes ordenados:', sortedMessages.length, 'primer mensaje ID:', sortedMessages[0]?.id, 'último mensaje ID:', sortedMessages[sortedMessages.length - 1]?.id)
+          
+          setMessages(sortedMessages)
         } else {
           const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }))
           console.error('❌ [ChatPage] Error cargando mensajes:', {
@@ -413,7 +418,11 @@ function ChatPageContent() {
             if (transformedMessages.length > 0) {
               console.log('✅ [ChatPage] Polling: Agregando mensajes:', transformedMessages.length)
               
-              setMessages(prev => [...prev, ...transformedMessages])
+              setMessages(prev => {
+                const combined = [...prev, ...transformedMessages]
+                // Ordenar todos los mensajes por ID para mantener el orden correcto
+                return combined.sort((a, b) => Number(a.id) - Number(b.id))
+              })
 
               // Actualizar último mensaje ID
               lastMessageId = Math.max(...transformedMessages.map(m => Number(m.id)))
@@ -478,7 +487,11 @@ function ChatPageContent() {
       avatar: tempMessage.sender.avatar
     })
     
-    setMessages(prev => [...prev, tempMessage])
+    setMessages(prev => {
+      const combined = [...prev, tempMessage]
+      // Ordenar todos los mensajes por ID para mantener el orden correcto
+      return combined.sort((a, b) => Number(a.id) - Number(b.id))
+    })
     
     // Scroll inmediato al final
     setTimeout(() => {
@@ -532,8 +545,8 @@ function ChatPageContent() {
       console.log('✅ [ChatPage] Mensaje enviado exitosamente:', data)
       
       // Reemplazar mensaje temporal con el real
-      setMessages(prev => 
-        prev.map(msg => 
+      setMessages(prev => {
+        const updated = prev.map(msg => 
           msg.id === tempMessage.id 
             ? {
                 id: String(data.message.mensaje_id),
@@ -557,7 +570,9 @@ function ChatPageContent() {
               }
             : msg
         )
-      )
+        // Ordenar todos los mensajes por ID para mantener el orden correcto
+        return updated.sort((a, b) => Number(a.id) - Number(b.id))
+      })
     } catch (error) {
       console.error('Error enviando mensaje:', error)
       
