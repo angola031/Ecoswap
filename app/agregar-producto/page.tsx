@@ -499,7 +499,7 @@ export default function AgregarProductoPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/?m=products')}
               className="flex items-center text-gray-600 hover:text-gray-900"
             >
               <ArrowLeftIcon className="h-5 w-5 mr-2" />
