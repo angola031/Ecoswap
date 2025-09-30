@@ -33,6 +33,16 @@ function ChatPageContent() {
     return currentUserId
   }
 
+  // Función helper para evitar mensajes duplicados
+  const addMessageIfNotExists = (messages: ChatMessage[], newMessage: ChatMessage): ChatMessage[] => {
+    const exists = messages.some(msg => msg.id === newMessage.id)
+    if (exists) {
+      console.log('⚠️ [ChatPage] Mensaje duplicado detectado, ignorando:', newMessage.id)
+      return messages
+    }
+    return [...messages, newMessage].sort((a, b) => Number(a.id) - Number(b.id))
+  }
+
   // Cargar información del usuario actual
   useEffect(() => {
     let isMounted = true
@@ -303,6 +313,14 @@ function ChatPageContent() {
           return
         }
 
+        // Verificar si el mensaje es muy reciente (menos de 5 segundos) para evitar duplicados con polling
+        const messageTime = new Date(m.fecha_envio).getTime()
+        const now = Date.now()
+        if (now - messageTime < 5000) {
+          console.log('⚠️ [ChatPage] Mensaje muy reciente, posible duplicado con polling, ignorando:', messageId)
+          return
+        }
+
         // Crear mensaje con información básica (sin hacer fetch adicional)
         const incoming: ChatMessage = {
           id: messageId,
@@ -327,8 +345,8 @@ function ChatPageContent() {
 
         console.log('✅ [ChatPage] Agregando mensaje realtime:', incoming)
 
-        // Actualizar mensajes
-        setMessages(prev => [...prev, incoming])
+        // Actualizar mensajes usando función helper para evitar duplicados
+        setMessages(prev => addMessageIfNotExists(prev, incoming))
 
         // Scroll automático al final
         setTimeout(() => {
@@ -392,7 +410,25 @@ function ChatPageContent() {
             const transformedMessages = newMessages
               .filter((m: any) => {
                 const messageId = Number(m.mensaje_id)
-                return messageId > lastMessageId && String(m.usuario_id) !== getCurrentUserId()
+                const currentUserIdStr = getCurrentUserId()
+                
+                // No procesar nuestros propios mensajes
+                if (String(m.usuario_id) === currentUserIdStr) {
+                  return false
+                }
+                
+                // Solo mensajes más nuevos que el último
+                if (messageId <= lastMessageId) {
+                  return false
+                }
+                
+                // Verificar si el mensaje ya existe en el estado actual
+                const messageExists = messages.some(msg => msg.id === String(messageId))
+                if (messageExists) {
+                  return false
+                }
+                
+                return true
               })
               .map((m: any) => ({
                 id: String(m.mensaje_id),
@@ -419,9 +455,12 @@ function ChatPageContent() {
               console.log('✅ [ChatPage] Polling: Agregando mensajes:', transformedMessages.length)
               
               setMessages(prev => {
-                const combined = [...prev, ...transformedMessages]
-                // Ordenar todos los mensajes por ID para mantener el orden correcto
-                return combined.sort((a, b) => Number(a.id) - Number(b.id))
+                let updatedMessages = prev
+                // Agregar cada mensaje individualmente para evitar duplicados
+                transformedMessages.forEach(msg => {
+                  updatedMessages = addMessageIfNotExists(updatedMessages, msg)
+                })
+                return updatedMessages
               })
 
               // Actualizar último mensaje ID

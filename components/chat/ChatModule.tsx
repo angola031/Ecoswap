@@ -22,6 +22,7 @@ import {
   ChatInfo 
 } from '@/lib/types'
 import { useUserStatus } from '@/hooks/useUserStatus'
+import { useInactivity } from '@/hooks/useInactivity'
 
 
 interface ChatModuleProps {
@@ -307,6 +308,25 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const isUserOnline = (userId: string): boolean => {
     return onlineUsers.some(user => user.id === userId && user.isOnline)
   }
+
+  // Función helper para evitar mensajes duplicados
+  const addMessageIfNotExists = (messages: ChatMessage[], newMessage: ChatMessage): ChatMessage[] => {
+    const exists = messages.some(msg => msg.id === newMessage.id)
+    if (exists) {
+      console.log('⚠️ [ChatModule] Mensaje duplicado detectado, ignorando:', newMessage.id)
+      return messages
+    }
+    return [...messages, newMessage].sort((a, b) => Number(a.id) - Number(b.id))
+  }
+
+  // Hook para detectar inactividad y cerrar sesión automáticamente
+  useInactivity({
+    timeout: 30 * 60 * 1000, // 30 minutos de inactividad
+    onInactive: async () => {
+      console.log('🕐 [ChatModule] Sesión expirada por inactividad')
+      // El hook ya maneja el logout automáticamente
+    }
+  })
 
   useEffect(() => {
     if (currentUser) {
@@ -679,6 +699,14 @@ const getCurrentUserId = () => {
           return
         }
 
+        // Verificar si el mensaje es muy reciente (menos de 5 segundos) para evitar duplicados con polling
+        const messageTime = new Date(m.fecha_envio).getTime()
+        const now = Date.now()
+        if (now - messageTime < 5000) {
+          console.log('⚠️ [ChatModule] Mensaje muy reciente, posible duplicado con polling, ignorando:', messageId)
+          return
+        }
+
         // Crear mensaje con información básica (sin hacer fetch adicional)
         const incoming: ChatMessage = {
           id: messageId,
@@ -706,8 +734,7 @@ const getCurrentUserId = () => {
         // Actualizar conversación seleccionada
         setSelectedConversation(prev => {
           if (!prev) return prev
-          const updatedMessages = [...prev.messages, incoming]
-            .sort((a, b) => Number(a.id) - Number(b.id)) // Mantener orden correcto
+          const updatedMessages = addMessageIfNotExists(prev.messages, incoming)
           return {
             ...prev,
             messages: updatedMessages,
@@ -788,7 +815,25 @@ const getCurrentUserId = () => {
             const transformedMessages = newMessages
               .filter((m: any) => {
                 const messageId = Number(m.mensaje_id)
-                return messageId > lastMessageId && String(m.usuario_id) !== getCurrentUserId()
+                const currentUserId = getCurrentUserId()
+                
+                // No procesar nuestros propios mensajes
+                if (String(m.usuario_id) === currentUserId) {
+                  return false
+                }
+                
+                // Solo mensajes más nuevos que el último
+                if (messageId <= lastMessageId) {
+                  return false
+                }
+                
+                // Verificar si el mensaje ya existe en el estado actual
+                const messageExists = selectedConversation?.messages.some(msg => msg.id === String(messageId))
+                if (messageExists) {
+                  return false
+                }
+                
+                return true
               })
               .map((m: any) => ({
                 id: String(m.mensaje_id),
@@ -816,8 +861,11 @@ const getCurrentUserId = () => {
               
               setSelectedConversation(prev => {
                 if (!prev) return prev
-                const updatedMessages = [...prev.messages, ...transformedMessages]
-                  .sort((a, b) => Number(a.id) - Number(b.id)) // Mantener orden correcto
+                let updatedMessages = prev.messages
+                // Agregar cada mensaje individualmente para evitar duplicados
+                transformedMessages.forEach(msg => {
+                  updatedMessages = addMessageIfNotExists(updatedMessages, msg)
+                })
                 return {
                   ...prev,
                   messages: updatedMessages,
@@ -1956,33 +2004,33 @@ const getCurrentUserId = () => {
                         </div>
                       )}
 
-                      {/* Fecha integrada dentro del mensaje */}
-                      <div className={`flex items-center justify-between mt-2 pt-2 border-t ${isOwnMessage(message) ? 'border-primary-500/30' : 'border-gray-200'}`}>
+              {/* Fecha integrada dentro del mensaje */}
+              <div className={`flex items-center justify-between ${isOwnMessage(message) ? '' : ''}`}>
                         <div className="flex items-center space-x-1">
                           <span className={`text-xs ${isOwnMessage(message) ? 'text-primary-100' : 'text-gray-500'}`}>
-                            {formatTime(message.timestamp)}
-                          </span>
+                        {formatTime(message.timestamp)}
+                      </span>
                           <span className={`text-xs ${isOwnMessage(message) ? 'text-primary-200' : 'text-gray-400'}`}>
                             • {message.sender?.name || selectedConversation.user.name}
                           </span>
                         </div>
 
                         <div className="flex items-center space-x-1">
-                          {isOwnMessage(message) && (
-                            <div className="flex items-center">
-                              {message.isRead ? (
+                      {isOwnMessage(message) && (
+                        <div className="flex items-center">
+                          {message.isRead ? (
                                 <CheckIcon className="w-3 h-3 text-primary-200" />
-                              ) : (
+                          ) : (
                                 <CheckIcon className="w-3 h-3 text-primary-300" />
-                              )}
-                            </div>
                           )}
-                          {message.reactions && (
+                        </div>
+                      )}
+                      {message.reactions && (
                             <div className="flex space-x-1">
-                              {Object.entries(message.reactions).map(([emoji, count]) => (
+                          {Object.entries(message.reactions).map(([emoji, count]) => (
                                 <span key={emoji} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${isOwnMessage(message) ? 'border-primary-400/40' : 'border-gray-300'}`}>
-                                  {emoji} {count}
-                                </span>
+                              {emoji} {count}
+                            </span>
                               ))}
                             </div>
                           )}

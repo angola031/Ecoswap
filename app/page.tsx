@@ -28,6 +28,7 @@ import NotificationToast from '@/components/NotificationToast'
 
 // Tipos
 import { type User, getCurrentUser, logoutUser } from '@/lib/auth'
+import { useInactivity } from '@/hooks/useInactivity'
 import { supabase } from '@/lib/supabase'
 import { useNotifications } from '@/hooks/useNotifications'
 
@@ -42,6 +43,15 @@ export default function HomePage() {
     
     // Hook para notificaciones
     const { unreadCount, loading: notificationsLoading } = useNotifications()
+
+    // Hook para detectar inactividad y cerrar sesión automáticamente
+    useInactivity({
+        timeout: 30 * 60 * 1000, // 30 minutos de inactividad
+        onInactive: async () => {
+            console.log('🕐 [HomePage] Sesión expirada por inactividad')
+            // El hook ya maneja el logout automáticamente
+        }
+    })
 
     // Verificación de autenticación real
     useEffect(() => {
