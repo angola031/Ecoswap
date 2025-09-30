@@ -1899,28 +1899,30 @@ const getCurrentUserId = () => {
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex items-end space-x-2 max-w-md ${isOwnMessage(message) ? 'justify-end flex-row-reverse space-x-reverse' : 'justify-start'}`}
+                  className={`flex ${isOwnMessage(message) ? 'justify-end' : 'justify-start'} mb-4`}
                 >
-                  {!isOwnMessage(message) && (
-                    <img
-                      src={message.sender?.avatar || selectedConversation.user.avatar}
-                      alt={message.sender?.name || selectedConversation.user.name}
-                      className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const fallback = document.createElement('div');
-                        fallback.className = 'w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-600 border border-gray-200 flex-shrink-0';
-                        fallback.textContent = (message.sender?.name || selectedConversation.user.name).charAt(0).toUpperCase();
-                        target.parentNode?.insertBefore(fallback, target.nextSibling);
-                      }}
-                    />
-                  )}
+                  <div className={`flex items-end space-x-2 max-w-md ${isOwnMessage(message) ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                    {!isOwnMessage(message) && (
+                      <img
+                        src={message.sender?.avatar || selectedConversation.user.avatar}
+                        alt={message.sender?.name || selectedConversation.user.name}
+                        className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const fallback = document.createElement('div');
+                          fallback.className = 'w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-600 border border-gray-200 flex-shrink-0';
+                          fallback.textContent = (message.sender?.name || selectedConversation.user.name).charAt(0).toUpperCase();
+                          target.parentNode?.insertBefore(fallback, target.nextSibling);
+                        }}
+                      />
+                    )}
 
-                  <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isOwnMessage(message)
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white text-gray-900 border border-gray-200'
-                    }`}>
+                    <div className="flex flex-col">
+                      <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isOwnMessage(message)
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-white text-gray-900 border border-gray-200'
+                        }`}>
                       {message.replyToId && (
                         <div className={`text-xs mb-2 px-3 py-1.5 rounded-lg ${isOwnMessage(message) ? 'bg-primary-700/40' : 'bg-gray-100'}`}>
                           <span className="opacity-80">Respuesta a:</span>
@@ -1968,39 +1970,42 @@ const getCurrentUserId = () => {
                           ))}
                         </div>
                       )}
-                    </div>
-
-                    <div className={`flex items-center justify-between mt-1 ${isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <div className="flex items-center space-x-1">
-                        <span className="text-xs text-gray-500">
-                          {formatTime(message.timestamp)}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          • {message.sender?.name || selectedConversation.user.name}
-                        </span>
                       </div>
 
-                      <div className="flex items-center space-x-1">
-                        {isOwnMessage(message) && (
-                          <div className="flex items-center">
-                            {message.isRead ? (
-                              <CheckIcon className="w-3 h-3 text-blue-500" />
-                            ) : (
-                              <CheckIcon className="w-3 h-3 text-gray-400" />
-                            )}
-                          </div>
-                        )}
-                        {message.reactions && (
-                          <div className="flex space-x-1">
-                            {Object.entries(message.reactions).map(([emoji, count]) => (
-                              <span key={emoji} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${isOwnMessage(message) ? 'border-white/40' : 'border-gray-300'}`}>
-                                {emoji} {count}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                      {/* Metadata debajo del mensaje */}
+                      <div className={`flex items-center justify-between mt-1 ${isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs text-gray-500">
+                            {formatTime(message.timestamp)}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            • {message.sender?.name || selectedConversation.user.name}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center space-x-1">
+                          {isOwnMessage(message) && (
+                            <div className="flex items-center">
+                              {message.isRead ? (
+                                <CheckIcon className="w-3 h-3 text-blue-500" />
+                              ) : (
+                                <CheckIcon className="w-3 h-3 text-gray-400" />
+                              )}
+                            </div>
+                          )}
+                          {message.reactions && (
+                            <div className="flex space-x-1">
+                              {Object.entries(message.reactions).map(([emoji, count]) => (
+                                <span key={emoji} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${isOwnMessage(message) ? 'border-white/40' : 'border-gray-300'}`}>
+                                  {emoji} {count}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  </div>
                 </motion.div>
                 ))
               )}
