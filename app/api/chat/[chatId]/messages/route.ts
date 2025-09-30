@@ -46,6 +46,7 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
         const url = new URL(req.url)
         const limit = Math.min(Number(url.searchParams.get('limit') || '50'), 200)
         const beforeId = url.searchParams.get('beforeId')
+        const sinceId = url.searchParams.get('since')
 
         let query = supabaseAdmin
             .from('mensaje')
@@ -70,7 +71,12 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
             .eq('chat_id', chatId)
             .order('mensaje_id', { ascending: false })
             .limit(limit)
-        if (beforeId) {
+        
+        if (sinceId) {
+            // Para polling: obtener mensajes más recientes que sinceId
+            query = query.gt('mensaje_id', Number(sinceId))
+        } else if (beforeId) {
+            // Para paginación: obtener mensajes anteriores a beforeId
             query = query.lt('mensaje_id', Number(beforeId))
         }
         const { data: msgs, error } = await query
@@ -82,6 +88,8 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
         console.log('📨 [API] Mensajes obtenidos:', {
             chatId,
             count: msgs?.length || 0,
+            sinceId,
+            beforeId,
             firstMessage: msgs?.[0],
             lastMessage: msgs?.[msgs?.length - 1]
         })

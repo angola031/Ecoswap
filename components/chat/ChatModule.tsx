@@ -633,6 +633,7 @@ const getCurrentUserId = () => {
   }, [selectedConversation?.id])
 
   useEffect(() => {
+    // Limpiar canal anterior
     if (realtimeChannel) {
       console.log('🔌 [ChatModule] Removiendo canal realtime anterior')
       supabase.removeChannel(realtimeChannel)
@@ -645,21 +646,17 @@ const getCurrentUserId = () => {
       return
     }
 
-    console.log('🔗 [ChatModule] Configurando realtime para chat:', chatId, 'usuario:', currentUser.id)
+    console.log('🔗 [ChatModule] Configurando realtime para chat:', chatId)
 
+    // Crear canal más simple y directo
     const channel = supabase
-      .channel(`chat_${chatId}_${currentUser.id}`, {
-        config: {
-          broadcast: { self: false }, // No recibir nuestros propios mensajes
-          presence: { key: getCurrentUserId() }
-        }
-      })
+      .channel(`chat_${chatId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'mensaje',
         filter: `chat_id=eq.${chatId}`
-      }, async (payload: any) => {
+      }, (payload: any) => {
         console.log('📨 [ChatModule] Nuevo mensaje realtime recibido:', payload)
         
         const m = payload.new
@@ -668,7 +665,7 @@ const getCurrentUserId = () => {
         const messageId = String(m.mensaje_id)
         const currentUserId = getCurrentUserId()
         
-        // No procesar nuestros propios mensajes (ya los tenemos optimísticamente)
+        // No procesar nuestros propios mensajes
         if (String(m.usuario_id) === currentUserId) {
           console.log('⚠️ [ChatModule] Ignorando mensaje propio en realtime:', messageId)
           return
@@ -681,34 +678,7 @@ const getCurrentUserId = () => {
           return
         }
 
-        // Obtener información del usuario que envió el mensaje
-        let senderInfo = {
-          id: String(m.usuario_id),
-          name: 'Usuario',
-          lastName: '',
-          avatar: undefined
-        }
-
-        try {
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session?.access_token) {
-            const userRes = await fetch(`/api/users/${m.usuario_id}`, {
-              headers: { Authorization: `Bearer ${session.access_token}` }
-            })
-            if (userRes.ok) {
-              const userData = await userRes.json()
-              senderInfo = {
-                id: String(userData.user_id),
-                name: userData.nombre || 'Usuario',
-                lastName: userData.apellido || '',
-                avatar: userData.foto_perfil
-              }
-            }
-          }
-        } catch (error) {
-          console.log('⚠️ [ChatModule] Error obteniendo info del usuario:', error)
-        }
-
+        // Crear mensaje con información básica (sin hacer fetch adicional)
         const incoming: ChatMessage = {
           id: messageId,
           senderId: String(m.usuario_id),
@@ -722,7 +692,12 @@ const getCurrentUserId = () => {
           isRead: m.leido,
           type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
           metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
-          sender: senderInfo
+          sender: {
+            id: String(m.usuario_id),
+            name: 'Usuario',
+            lastName: '',
+            avatar: undefined
+          }
         }
 
         console.log('✅ [ChatModule] Agregando mensaje realtime:', incoming)
@@ -760,20 +735,114 @@ const getCurrentUserId = () => {
       .subscribe((status) => {
         console.log('🔌 [ChatModule] Estado realtime:', status)
         if (status === 'SUBSCRIBED') {
-          console.log('✅ [ChatModule] Realtime conectado exitosamente')
+          console.log('✅ [ChatModule] Realtime conectado exitosamente para chat:', chatId)
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [ChatModule] Error en canal realtime')
+          console.error('❌ [ChatModule] Error en canal realtime para chat:', chatId)
+        } else if (status === 'TIMED_OUT') {
+          console.error('❌ [ChatModule] Timeout en canal realtime para chat:', chatId)
+        } else if (status === 'CLOSED') {
+          console.log('🔌 [ChatModule] Canal realtime cerrado para chat:', chatId)
         }
       })
 
     setRealtimeChannel(channel)
 
     return () => {
-      console.log('🔌 [ChatModule] Limpiando canal realtime')
+      console.log('🔌 [ChatModule] Limpiando canal realtime para chat:', chatId)
       if (channel) {
         supabase.removeChannel(channel)
       }
       setRealtimeChannel(null)
+    }
+  }, [selectedConversation?.id, currentUser?.id])
+
+  // Sistema de polling como respaldo para mensajes
+  useEffect(() => {
+    if (!selectedConversation?.id || !currentUser?.id) return
+
+    const chatId = Number(selectedConversation.id)
+    let lastMessageId = selectedConversation.messages.length > 0 
+      ? Number(selectedConversation.messages[selectedConversation.messages.length - 1].id)
+      : 0
+
+    const pollForNewMessages = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+
+        const response = await fetch(`/api/chat/${chatId}/messages?since=${lastMessageId}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const newMessages = data.items || []
+          
+          if (newMessages.length > 0) {
+            console.log('📨 [ChatModule] Polling: Nuevos mensajes encontrados:', newMessages.length)
+            
+            const transformedMessages = newMessages
+              .filter((m: any) => {
+                const messageId = Number(m.mensaje_id)
+                return messageId > lastMessageId && String(m.usuario_id) !== getCurrentUserId()
+              })
+              .map((m: any) => ({
+                id: String(m.mensaje_id),
+                senderId: String(m.usuario_id),
+                content: m.contenido || '',
+                timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  day: '2-digit',
+                  month: '2-digit'
+                }),
+                isRead: m.leido,
+                type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
+                metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
+                sender: {
+                  id: String(m.usuario?.user_id || m.usuario_id),
+                  name: m.usuario?.nombre || 'Usuario',
+                  lastName: m.usuario?.apellido || '',
+                  avatar: m.usuario?.foto_perfil || undefined
+                }
+              }))
+
+            if (transformedMessages.length > 0) {
+              console.log('✅ [ChatModule] Polling: Agregando mensajes:', transformedMessages.length)
+              
+              setSelectedConversation(prev => {
+                if (!prev) return prev
+                return {
+                  ...prev,
+                  messages: [...prev.messages, ...transformedMessages],
+                  lastMessage: transformedMessages[transformedMessages.length - 1].content,
+                  lastMessageTime: transformedMessages[transformedMessages.length - 1].timestamp
+                }
+              })
+
+              setConversations(prev => prev.map(c => c.id === String(chatId) ? {
+                ...c,
+                messages: [...(c.messages || []), ...transformedMessages],
+                lastMessage: transformedMessages[transformedMessages.length - 1].content,
+                lastMessageTime: transformedMessages[transformedMessages.length - 1].timestamp,
+                unreadCount: (c.unreadCount || 0) + transformedMessages.length
+              } : c))
+
+              // Actualizar último mensaje ID
+              lastMessageId = Math.max(...transformedMessages.map(m => Number(m.id)))
+            }
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ [ChatModule] Error en polling:', error)
+      }
+    }
+
+    // Polling cada 3 segundos como respaldo
+    const pollInterval = setInterval(pollForNewMessages, 3000)
+
+    return () => {
+      clearInterval(pollInterval)
     }
   }, [selectedConversation?.id, currentUser?.id])
 
@@ -951,17 +1020,17 @@ const getCurrentUserId = () => {
       
       // Mostrar error solo si no es un timeout
       if (error.name !== 'AbortError') {
-        if ((window as any).Swal) {
-          (window as any).Swal.fire({
-            title: 'Error',
-            text: 'No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.',
-            icon: 'error',
-            confirmButtonText: 'Entendido',
-            confirmButtonColor: '#3B82F6'
-          })
-        } else {
-          alert('Error: No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.')
-        }
+      if ((window as any).Swal) {
+        (window as any).Swal.fire({
+          title: 'Error',
+          text: 'No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.',
+          icon: 'error',
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#3B82F6'
+        })
+      } else {
+        alert('Error: No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.')
+      }
       }
     }
   }
@@ -1493,7 +1562,7 @@ const getCurrentUserId = () => {
                   />
                   <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
                     isUserOnline(conversation.user.id) ? 'bg-green-500' : 'bg-gray-400'
-                  }`}></div>
+                    }`}></div>
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -1545,7 +1614,7 @@ const getCurrentUserId = () => {
                   />
                   <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
                     isUserOnline(selectedConversation.user.id) ? 'bg-green-500' : 'bg-gray-400'
-                  }`}></div>
+                    }`}></div>
                 </div>
 
                 <div>
