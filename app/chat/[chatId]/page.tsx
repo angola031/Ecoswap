@@ -23,6 +23,7 @@ function ChatPageContent() {
   const [isSubmittingProposal, setIsSubmittingProposal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [currentUserInfo, setCurrentUserInfo] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
@@ -49,14 +50,17 @@ function ChatPageContent() {
             if (response.ok) {
               const userData = await response.json()
               setCurrentUserId(String(userData.user_id))
-              console.log('👤 [ChatPage] Usuario actual establecido:', userData.user_id)
+              setCurrentUserInfo(userData)
+              console.log('👤 [ChatPage] Usuario actual establecido:', userData.user_id, userData)
             } else {
               // Fallback al auth user ID si no se puede obtener el user_id
               setCurrentUserId(user.id)
+              setCurrentUserInfo({ user_id: user.id, nombre: 'Usuario', apellido: '', foto_perfil: null })
               console.log('👤 [ChatPage] Usando auth user ID como fallback:', user.id)
             }
           } else {
             setCurrentUserId(user.id)
+            setCurrentUserInfo({ user_id: user.id, nombre: 'Usuario', apellido: '', foto_perfil: null })
             console.log('👤 [ChatPage] Usando auth user ID:', user.id)
           }
         }
@@ -461,9 +465,9 @@ function ChatPageContent() {
       type: 'texto',
       sender: {
         id: currentUserId,
-        name: 'Tú',
-        lastName: '',
-        avatar: undefined
+        name: currentUserInfo?.nombre || 'Tú',
+        lastName: currentUserInfo?.apellido || '',
+        avatar: currentUserInfo?.foto_perfil || undefined
       }
     }
     
@@ -539,9 +543,9 @@ function ChatPageContent() {
                 metadata: data.message.archivo_url ? { imageUrl: data.message.archivo_url } : undefined,
                 sender: {
                   id: currentUserId,
-                  name: 'Tú',
-                  lastName: '',
-                  avatar: undefined
+                  name: currentUserInfo?.nombre || 'Tú',
+                  lastName: currentUserInfo?.apellido || '',
+                  avatar: currentUserInfo?.foto_perfil || undefined
                 }
               }
             : msg
