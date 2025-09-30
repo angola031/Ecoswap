@@ -52,6 +52,7 @@ function ChatPageContent() {
               setCurrentUserId(String(userData.user_id))
               setCurrentUserInfo(userData)
               console.log('👤 [ChatPage] Usuario actual establecido:', userData.user_id, userData)
+              console.log('🖼️ [ChatPage] Foto del usuario:', userData.foto_perfil)
             } else {
               // Fallback al auth user ID si no se puede obtener el user_id
               setCurrentUserId(user.id)
@@ -470,6 +471,12 @@ function ChatPageContent() {
         avatar: currentUserInfo?.foto_perfil || undefined
       }
     }
+    
+    console.log('🖼️ [ChatPage] Avatar en mensaje temporal:', {
+      currentUserInfo: currentUserInfo,
+      foto_perfil: currentUserInfo?.foto_perfil,
+      avatar: tempMessage.sender.avatar
+    })
     
     setMessages(prev => [...prev, tempMessage])
     
@@ -914,6 +921,21 @@ function ChatPageContent() {
                           src={message.sender.avatar || '/default-avatar.png'}
                           alt={`${message.sender.name} ${message.sender.lastName}`}
                           className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                          onError={(e) => {
+                            console.log('❌ [ChatPage] Error cargando imagen:', {
+                              src: e.currentTarget.src,
+                              messageId: message.id,
+                              senderId: message.senderId,
+                              avatar: message.sender.avatar
+                            })
+                            e.currentTarget.src = '/default-avatar.png'
+                          }}
+                          onLoad={() => {
+                            console.log('✅ [ChatPage] Imagen cargada exitosamente:', {
+                              src: message.sender.avatar,
+                              messageId: message.id
+                            })
+                          }}
                         />
                         <div className={`px-4 py-2 rounded-2xl ${isOwnMessage 
                           ? 'bg-green-600 text-white' 
