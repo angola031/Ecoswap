@@ -433,10 +433,23 @@ function ChatPageContent() {
   }, [messages])
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !chatId || !currentUserId) return
+    if (!newMessage.trim() || !chatId || !currentUserId) {
+      console.log('❌ [ChatPage] No se puede enviar mensaje:', {
+        hasMessage: !!newMessage.trim(),
+        hasChatId: !!chatId,
+        hasCurrentUserId: !!currentUserId
+      })
+      return
+    }
     
     const messageContent = newMessage.trim()
     setNewMessage('')
+    
+    console.log('📤 [ChatPage] Enviando mensaje:', {
+      chatId,
+      currentUserId,
+      messageContent
+    })
     
     // Optimistic UI - agregar mensaje inmediatamente
     const tempMessage: ChatMessage = {
@@ -484,38 +497,46 @@ function ChatPageContent() {
           'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          content: messageContent,
-          type: 'texto'
+          contenido: messageContent,
+          tipo: 'texto'
         }),
         signal: controller.signal
       })
       
       clearTimeout(timeoutId)
       
+      console.log('📨 [ChatPage] Respuesta de envío:', {
+        status: response.status,
+        ok: response.ok,
+        statusText: response.statusText
+      })
+      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }))
+        console.error('❌ [ChatPage] Error en respuesta:', errorData)
         throw new Error(errorData.error || 'Error enviando mensaje')
       }
       
       const data = await response.json()
+      console.log('✅ [ChatPage] Mensaje enviado exitosamente:', data)
       
       // Reemplazar mensaje temporal con el real
       setMessages(prev => 
         prev.map(msg => 
           msg.id === tempMessage.id 
             ? {
-                id: String(data.data.mensaje_id),
-                senderId: String(data.data.usuario_id),
-                content: data.data.contenido,
-                timestamp: new Date(data.data.fecha_envio).toLocaleString('es-CO', { 
+                id: String(data.message.mensaje_id),
+                senderId: String(data.message.usuario_id),
+                content: data.message.contenido,
+                timestamp: new Date(data.message.fecha_envio).toLocaleString('es-CO', { 
                   hour: '2-digit', 
                   minute: '2-digit',
                   day: '2-digit',
                   month: '2-digit'
                 }),
-                isRead: data.data.leido,
-                type: data.data.tipo === 'imagen' ? 'image' : data.data.tipo === 'ubicacion' ? 'location' : 'texto',
-                metadata: data.data.archivo_url ? { imageUrl: data.data.archivo_url } : undefined,
+                isRead: data.message.leido,
+                type: data.message.tipo === 'imagen' ? 'image' : data.message.tipo === 'ubicacion' ? 'location' : 'texto',
+                metadata: data.message.archivo_url ? { imageUrl: data.message.archivo_url } : undefined,
                 sender: {
                   id: currentUserId,
                   name: 'Tú',
