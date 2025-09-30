@@ -40,7 +40,25 @@ function ChatPageContent() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (isMounted && user) {
-          setCurrentUserId(user.id)
+          // Obtener el user_id de la tabla usuario
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.access_token) {
+            const response = await fetch('/api/users/me', {
+              headers: { Authorization: `Bearer ${session.access_token}` }
+            })
+            if (response.ok) {
+              const userData = await response.json()
+              setCurrentUserId(String(userData.user_id))
+              console.log('👤 [ChatPage] Usuario actual establecido:', userData.user_id)
+            } else {
+              // Fallback al auth user ID si no se puede obtener el user_id
+              setCurrentUserId(user.id)
+              console.log('👤 [ChatPage] Usando auth user ID como fallback:', user.id)
+            }
+          } else {
+            setCurrentUserId(user.id)
+            console.log('👤 [ChatPage] Usando auth user ID:', user.id)
+          }
         }
       } catch (error) {
         console.error('Error obteniendo usuario actual:', error)
@@ -850,36 +868,46 @@ function ChatPageContent() {
                     </div>
                   </div>
                 ) : (
-                  messages.map((message) => (
+                  messages.map((message) => {
+                    const isOwnMessage = message.senderId === currentUserId
+                    console.log('💬 [ChatPage] Renderizando mensaje:', {
+                      messageId: message.id,
+                      senderId: message.senderId,
+                      currentUserId: currentUserId,
+                      isOwnMessage: isOwnMessage
+                    })
+                    
+                    return (
                     <motion.div
                       key={message.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`flex ${message.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${message.senderId === currentUserId ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                      <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
                         <img
                           src={message.sender.avatar || '/default-avatar.png'}
                           alt={`${message.sender.name} ${message.sender.lastName}`}
                           className="w-8 h-8 rounded-full object-cover border border-gray-200"
                         />
-                        <div className={`px-4 py-2 rounded-2xl ${message.senderId === currentUserId 
+                        <div className={`px-4 py-2 rounded-2xl ${isOwnMessage 
                           ? 'bg-green-600 text-white' 
                           : 'bg-white text-gray-900 border border-gray-200'
                         }`}>
                           <p className="text-sm">{message.content}</p>
                           <div className="flex items-center justify-between mt-1">
-                            <p className={`text-xs ${message.senderId === currentUserId ? 'text-green-100' : 'text-gray-500'}`}>
+                            <p className={`text-xs ${isOwnMessage ? 'text-green-100' : 'text-gray-500'}`}>
                               {message.timestamp}
                             </p>
-                            {message.senderId === currentUserId && (
+                            {isOwnMessage && (
                               <div className={`w-2 h-2 rounded-full ${message.isRead ? 'bg-green-300' : 'bg-gray-400'}`}></div>
                             )}
                           </div>
                         </div>
                       </div>
                     </motion.div>
-                  ))
+                    )
+                  })
                 )}
                 <div ref={messagesEndRef} />
               </div>
