@@ -1899,29 +1899,28 @@ const getCurrentUserId = () => {
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${isOwnMessage(message) ? 'justify-end' : 'justify-start'}`}
+                  className={`flex items-end space-x-2 max-w-md ${isOwnMessage(message) ? 'justify-end flex-row-reverse space-x-reverse' : 'justify-start'}`}
                 >
-                  <div className={`max-w-md ${isOwnMessage(message) ? 'order-2' : 'order-1'}`}>
-                    {!isOwnMessage(message) && (
-                      <img
-                        src={message.sender?.avatar || selectedConversation.user.avatar}
-                        alt={message.sender?.name || selectedConversation.user.name}
-                        className="w-8 h-8 rounded-full mb-2"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const fallback = document.createElement('div');
-                          fallback.className = 'w-8 h-8 rounded-full mb-2 bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-600';
-                          fallback.textContent = (message.sender?.name || selectedConversation.user.name).charAt(0).toUpperCase();
-                          target.parentNode?.insertBefore(fallback, target.nextSibling);
-                        }}
-                      />
-                    )}
+                  {!isOwnMessage(message) && (
+                    <img
+                      src={message.sender?.avatar || selectedConversation.user.avatar}
+                      alt={message.sender?.name || selectedConversation.user.name}
+                      className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = document.createElement('div');
+                        fallback.className = 'w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-600 border border-gray-200 flex-shrink-0';
+                        fallback.textContent = (message.sender?.name || selectedConversation.user.name).charAt(0).toUpperCase();
+                        target.parentNode?.insertBefore(fallback, target.nextSibling);
+                      }}
+                    />
+                  )}
 
-                    <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isOwnMessage(message)
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-white text-gray-900 border border-gray-200'
-                      }`}>
+                  <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isOwnMessage(message)
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-white text-gray-900 border border-gray-200'
+                    }`}>
                       {message.replyToId && (
                         <div className={`text-xs mb-2 px-3 py-1.5 rounded-lg ${isOwnMessage(message) ? 'bg-primary-700/40' : 'bg-gray-100'}`}>
                           <span className="opacity-80">Respuesta a:</span>
@@ -1995,7 +1994,6 @@ const getCurrentUserId = () => {
                         </div>
                       )}
                     </div>
-                  </div>
                 </motion.div>
                 ))
               )}
