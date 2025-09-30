@@ -1970,29 +1970,36 @@ const getCurrentUserId = () => {
                       )}
                     </div>
 
-                    <div className={`flex items-center space-x-1 mt-1 ${isOwnMessage(message) ? 'justify-end' : 'justify-start'}`}>
-                      <span className="text-xs text-gray-500">
-                        {formatTime(message.timestamp)}
-                      </span>
+                    <div className={`flex items-center justify-between mt-1 ${isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <div className="flex items-center space-x-1">
+                        <span className="text-xs text-gray-500">
+                          {formatTime(message.timestamp)}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          • {message.sender?.name || selectedConversation.user.name}
+                        </span>
+                      </div>
 
-                      {isOwnMessage(message) && (
-                        <div className="flex items-center">
-                          {message.isRead ? (
-                            <CheckIcon className="w-3 h-3 text-blue-500" />
-                          ) : (
-                            <CheckIcon className="w-3 h-3 text-gray-400" />
-                          )}
-                        </div>
-                      )}
-                      {message.reactions && (
-                        <div className="ml-2 flex space-x-1">
-                          {Object.entries(message.reactions).map(([emoji, count]) => (
-                            <span key={emoji} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${isOwnMessage(message) ? 'border-white/40' : 'border-gray-300'}`}>
-                              {emoji} {count}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <div className="flex items-center space-x-1">
+                        {isOwnMessage(message) && (
+                          <div className="flex items-center">
+                            {message.isRead ? (
+                              <CheckIcon className="w-3 h-3 text-blue-500" />
+                            ) : (
+                              <CheckIcon className="w-3 h-3 text-gray-400" />
+                            )}
+                          </div>
+                        )}
+                        {message.reactions && (
+                          <div className="flex space-x-1">
+                            {Object.entries(message.reactions).map(([emoji, count]) => (
+                              <span key={emoji} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${isOwnMessage(message) ? 'border-white/40' : 'border-gray-300'}`}>
+                                {emoji} {count}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                 </motion.div>
                 ))
