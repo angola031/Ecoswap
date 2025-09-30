@@ -1918,11 +1918,10 @@ const getCurrentUserId = () => {
                       />
                     )}
 
-                    <div className="flex flex-col">
-                      <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isOwnMessage(message)
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-white text-gray-900 border border-gray-200'
-                        }`}>
+                    <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isOwnMessage(message)
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-white text-gray-900 border border-gray-200'
+                      }`}>
                       {message.replyToId && (
                         <div className={`text-xs mb-2 px-3 py-1.5 rounded-lg ${isOwnMessage(message) ? 'bg-primary-700/40' : 'bg-gray-100'}`}>
                           <span className="opacity-80">Respuesta a:</span>
@@ -1956,6 +1955,40 @@ const getCurrentUserId = () => {
                           <span className="text-sm">{message.metadata.fileName}</span>
                         </div>
                       )}
+
+                      {/* Fecha integrada dentro del mensaje */}
+                      <div className={`flex items-center justify-between mt-2 pt-2 border-t ${isOwnMessage(message) ? 'border-primary-500/30' : 'border-gray-200'}`}>
+                        <div className="flex items-center space-x-1">
+                          <span className={`text-xs ${isOwnMessage(message) ? 'text-primary-100' : 'text-gray-500'}`}>
+                            {formatTime(message.timestamp)}
+                          </span>
+                          <span className={`text-xs ${isOwnMessage(message) ? 'text-primary-200' : 'text-gray-400'}`}>
+                            • {message.sender?.name || selectedConversation.user.name}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center space-x-1">
+                          {isOwnMessage(message) && (
+                            <div className="flex items-center">
+                              {message.isRead ? (
+                                <CheckIcon className="w-3 h-3 text-primary-200" />
+                              ) : (
+                                <CheckIcon className="w-3 h-3 text-primary-300" />
+                              )}
+                            </div>
+                          )}
+                          {message.reactions && (
+                            <div className="flex space-x-1">
+                              {Object.entries(message.reactions).map(([emoji, count]) => (
+                                <span key={emoji} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${isOwnMessage(message) ? 'border-primary-400/40' : 'border-gray-300'}`}>
+                                  {emoji} {count}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       <div className={`absolute -top-3 ${isOwnMessage(message) ? 'right-2' : 'left-2'} opacity-0 group-hover:opacity-100 transition-opacity`}>
                         <div className="bg-white border border-gray-200 shadow-sm rounded-lg px-1 py-0.5 flex space-x-1">
                           <button onClick={() => setOpenReactionsFor(message.id)} className="text-xs px-2 py-1 hover:bg-gray-100 rounded">🙂</button>
@@ -1970,40 +2003,6 @@ const getCurrentUserId = () => {
                           ))}
                         </div>
                       )}
-                      </div>
-
-                      {/* Metadata debajo del mensaje */}
-                      <div className={`flex items-center justify-between mt-1 ${isOwnMessage(message) ? 'flex-row-reverse' : 'flex-row'}`}>
-                        <div className="flex items-center space-x-1">
-                          <span className="text-xs text-gray-500">
-                            {formatTime(message.timestamp)}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            • {message.sender?.name || selectedConversation.user.name}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center space-x-1">
-                          {isOwnMessage(message) && (
-                            <div className="flex items-center">
-                              {message.isRead ? (
-                                <CheckIcon className="w-3 h-3 text-blue-500" />
-                              ) : (
-                                <CheckIcon className="w-3 h-3 text-gray-400" />
-                              )}
-                            </div>
-                          )}
-                          {message.reactions && (
-                            <div className="flex space-x-1">
-                              {Object.entries(message.reactions).map(([emoji, count]) => (
-                                <span key={emoji} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${isOwnMessage(message) ? 'border-white/40' : 'border-gray-300'}`}>
-                                  {emoji} {count}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </motion.div>
