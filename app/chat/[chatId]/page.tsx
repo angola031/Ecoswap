@@ -24,7 +24,13 @@ function ChatPageContent() {
   const [error, setError] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
+  const [isUserScrolling, setIsUserScrolling] = useState(false)
   
+  // Función auxiliar para obtener el ID del usuario actual
+  const getCurrentUserId = () => {
+    return currentUserId
+  }
 
   // Cargar información del usuario actual
   useEffect(() => {
@@ -101,18 +107,21 @@ function ChatPageContent() {
     }
   }, [chatId, currentUserId])
 
-  // Cargar mensajes del chat
+  // Cargar mensajes del chat con sistema híbrido (realtime + polling)
   useEffect(() => {
     let isMounted = true
     
     const loadMessages = async () => {
-      if (!chatId || !currentUserId) return
+      if (!chatId || !currentUserId || !isMounted) return
       
       try {
+        console.log('📨 [ChatPage] Cargando mensajes para chat:', chatId)
+        
         // Obtener token de sesión
         const { data: { session } } = await supabase.auth.getSession()
         if (!session?.access_token) {
-          throw new Error('No hay sesión activa')
+          console.log('❌ [ChatPage] No hay token para cargar mensajes')
+          return
         }
         
         const response = await fetch(`/api/chat/${chatId}/messages`, {
@@ -120,17 +129,51 @@ function ChatPageContent() {
             'Authorization': `Bearer ${session.access_token}`
           }
         })
-        const data = await response.json()
         
-        if (!response.ok) {
-          throw new Error(data.error || 'Error cargando mensajes')
-        }
+        console.log('📨 [ChatPage] Respuesta de mensajes:', { status: response.status, ok: response.ok })
         
-        if (isMounted) {
-          setMessages(data.data || [])
+        if (response.ok && isMounted) {
+          const data = await response.json()
+          const messagesData = data.items || data.data || []
+          
+          console.log('📨 [ChatPage] Mensajes cargados:', messagesData.length)
+          
+          // Transformar mensajes al formato esperado
+          const transformedMessages = messagesData.map((msg: any) => ({
+            id: String(msg.mensaje_id),
+            senderId: String(msg.usuario_id),
+            content: msg.contenido || '',
+            timestamp: new Date(msg.fecha_envio).toLocaleString('es-CO', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              day: '2-digit',
+              month: '2-digit'
+            }),
+            isRead: msg.leido,
+            type: msg.tipo === 'imagen' ? 'image' : msg.tipo === 'ubicacion' ? 'location' : 'texto',
+            metadata: msg.archivo_url ? { imageUrl: msg.archivo_url } : undefined,
+            sender: {
+              id: String(msg.usuario?.user_id || msg.usuario_id),
+              name: msg.usuario?.nombre || 'Usuario',
+              lastName: msg.usuario?.apellido || '',
+              avatar: msg.usuario?.foto_perfil || undefined
+            }
+          }))
+          
+          setMessages(transformedMessages)
+        } else {
+          const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }))
+          console.error('❌ [ChatPage] Error cargando mensajes:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          })
+          if (isMounted) {
+            setError(errorData.error || 'Error cargando mensajes')
+          }
         }
       } catch (error) {
-        console.error('Error cargando mensajes:', error)
+        console.error('❌ [ChatPage] Error cargando mensajes:', error)
         if (isMounted) {
           setError(error instanceof Error ? error.message : 'Error cargando mensajes')
         }
@@ -185,6 +228,188 @@ function ChatPageContent() {
     }
   }, [chatId, currentUserId])
 
+  // Sistema de realtime para mensajes instantáneos
+  useEffect(() => {
+    // Limpiar canal anterior
+    if (realtimeChannel) {
+      console.log('🔌 [ChatPage] Removiendo canal realtime anterior')
+      supabase.removeChannel(realtimeChannel)
+      setRealtimeChannel(null)
+    }
+
+    const chatIdNum = Number(chatId)
+    if (!chatIdNum || !currentUserId) {
+      console.log('⚠️ [ChatPage] No hay chatId o currentUserId para realtime')
+      return
+    }
+
+    console.log('🔗 [ChatPage] Configurando realtime para chat:', chatIdNum)
+
+    // Crear canal más simple y directo
+    const channel = supabase
+      .channel(`chat_${chatIdNum}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'mensaje',
+        filter: `chat_id=eq.${chatIdNum}`
+      }, (payload: any) => {
+        console.log('📨 [ChatPage] Nuevo mensaje realtime recibido:', payload)
+        
+        const m = payload.new
+        if (!m) return
+
+        const messageId = String(m.mensaje_id)
+        const currentUserIdStr = getCurrentUserId()
+        
+        // No procesar nuestros propios mensajes
+        if (String(m.usuario_id) === currentUserIdStr) {
+          console.log('⚠️ [ChatPage] Ignorando mensaje propio en realtime:', messageId)
+          return
+        }
+
+        // Verificar si el mensaje ya existe
+        const messageExists = messages.some(msg => msg.id === messageId)
+        if (messageExists) {
+          console.log('⚠️ [ChatPage] Mensaje ya existe, ignorando:', messageId)
+          return
+        }
+
+        // Crear mensaje con información básica (sin hacer fetch adicional)
+        const incoming: ChatMessage = {
+          id: messageId,
+          senderId: String(m.usuario_id),
+          content: m.contenido || '',
+          timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit'
+          }),
+          isRead: m.leido,
+          type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'texto',
+          metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
+          sender: {
+            id: String(m.usuario_id),
+            name: 'Usuario',
+            lastName: '',
+            avatar: undefined
+          }
+        }
+
+        console.log('✅ [ChatPage] Agregando mensaje realtime:', incoming)
+
+        // Actualizar mensajes
+        setMessages(prev => [...prev, incoming])
+
+        // Scroll automático al final
+        setTimeout(() => {
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'end' 
+            })
+          }
+        }, 100)
+      })
+      .subscribe((status) => {
+        console.log('🔌 [ChatPage] Estado realtime:', status)
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ [ChatPage] Realtime conectado exitosamente para chat:', chatIdNum)
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ [ChatPage] Error en canal realtime para chat:', chatIdNum)
+        } else if (status === 'TIMED_OUT') {
+          console.error('❌ [ChatPage] Timeout en canal realtime para chat:', chatIdNum)
+        } else if (status === 'CLOSED') {
+          console.log('🔌 [ChatPage] Canal realtime cerrado para chat:', chatIdNum)
+        }
+      })
+
+    setRealtimeChannel(channel)
+
+    return () => {
+      console.log('🔌 [ChatPage] Limpiando canal realtime para chat:', chatIdNum)
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
+      setRealtimeChannel(null)
+    }
+  }, [chatId, currentUserId])
+
+  // Sistema de polling como respaldo para mensajes
+  useEffect(() => {
+    if (!chatId || !currentUserId) return
+
+    const chatIdNum = Number(chatId)
+    let lastMessageId = messages.length > 0 
+      ? Number(messages[messages.length - 1].id)
+      : 0
+
+    const pollForNewMessages = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+
+        const response = await fetch(`/api/chat/${chatIdNum}/messages?since=${lastMessageId}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const newMessages = data.items || []
+          
+          if (newMessages.length > 0) {
+            console.log('📨 [ChatPage] Polling: Nuevos mensajes encontrados:', newMessages.length)
+            
+            const transformedMessages = newMessages
+              .filter((m: any) => {
+                const messageId = Number(m.mensaje_id)
+                return messageId > lastMessageId && String(m.usuario_id) !== getCurrentUserId()
+              })
+              .map((m: any) => ({
+                id: String(m.mensaje_id),
+                senderId: String(m.usuario_id),
+                content: m.contenido || '',
+                timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  day: '2-digit',
+                  month: '2-digit'
+                }),
+                isRead: m.leido,
+                type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'texto',
+                metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
+                sender: {
+                  id: String(m.usuario?.user_id || m.usuario_id),
+                  name: m.usuario?.nombre || 'Usuario',
+                  lastName: m.usuario?.apellido || '',
+                  avatar: m.usuario?.foto_perfil || undefined
+                }
+              }))
+
+            if (transformedMessages.length > 0) {
+              console.log('✅ [ChatPage] Polling: Agregando mensajes:', transformedMessages.length)
+              
+              setMessages(prev => [...prev, ...transformedMessages])
+
+              // Actualizar último mensaje ID
+              lastMessageId = Math.max(...transformedMessages.map(m => Number(m.id)))
+            }
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ [ChatPage] Error en polling:', error)
+      }
+    }
+
+    // Polling cada 3 segundos como respaldo
+    const pollInterval = setInterval(pollForNewMessages, 3000)
+
+    return () => {
+      clearInterval(pollInterval)
+    }
+  }, [chatId, currentUserId])
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -213,6 +438,16 @@ function ChatPageContent() {
     
     setMessages(prev => [...prev, tempMessage])
     
+    // Scroll inmediato al final
+    setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ 
+          behavior: 'instant', 
+          block: 'end' 
+        })
+      }
+    }, 0)
+    
     try {
       // Obtener token de sesión
       const { data: { session } } = await supabase.auth.getSession()
@@ -220,7 +455,11 @@ function ChatPageContent() {
         throw new Error('No hay sesión activa')
       }
 
-      const response = await fetch(`/api/chat/${chatId}/send`, {
+      // Usar AbortController para timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 segundos timeout
+
+      const response = await fetch(`/api/chat/${chatId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -229,31 +468,54 @@ function ChatPageContent() {
         body: JSON.stringify({
           content: messageContent,
           type: 'texto'
-        })
+        }),
+        signal: controller.signal
       })
       
-      const data = await response.json()
+      clearTimeout(timeoutId)
       
       if (!response.ok) {
-        throw new Error(data.error || 'Error enviando mensaje')
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }))
+        throw new Error(errorData.error || 'Error enviando mensaje')
       }
+      
+      const data = await response.json()
       
       // Reemplazar mensaje temporal con el real
       setMessages(prev => 
         prev.map(msg => 
           msg.id === tempMessage.id 
             ? {
-                ...data.data,
-                timestamp: new Date(data.data.fecha_envio).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+                id: String(data.data.mensaje_id),
+                senderId: String(data.data.usuario_id),
+                content: data.data.contenido,
+                timestamp: new Date(data.data.fecha_envio).toLocaleString('es-CO', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  day: '2-digit',
+                  month: '2-digit'
+                }),
+                isRead: data.data.leido,
+                type: data.data.tipo === 'imagen' ? 'image' : data.data.tipo === 'ubicacion' ? 'location' : 'texto',
+                metadata: data.data.archivo_url ? { imageUrl: data.data.archivo_url } : undefined,
+                sender: {
+                  id: currentUserId,
+                  name: 'Tú',
+                  lastName: '',
+                  avatar: undefined
+                }
               }
             : msg
         )
       )
     } catch (error) {
       console.error('Error enviando mensaje:', error)
-      // Remover mensaje temporal en caso de error
-      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id))
-      setNewMessage(messageContent) // Restaurar mensaje
+      
+      // Solo remover mensaje temporal si no es un AbortError
+      if (error instanceof Error && error.name !== 'AbortError') {
+        setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id))
+        setNewMessage(messageContent) // Restaurar mensaje
+      }
     }
   }
 
@@ -473,50 +735,6 @@ function ChatPageContent() {
             </div>
           </div>
           
-          {/* Información del producto */}
-          <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-            <div className="flex items-center space-x-4">
-              <img
-                src={chatInfo.offeredProduct.mainImage || '/default-product.png'}
-                alt={chatInfo.offeredProduct.title}
-                className="w-16 h-16 rounded-lg object-cover border border-blue-200"
-              />
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">{chatInfo.offeredProduct.title}</h3>
-                {chatInfo.offeredProduct.price && (
-                  <p className="text-sm text-gray-600">
-                    ${chatInfo.offeredProduct.price.toLocaleString()} COP
-                  </p>
-                )}
-                <p className="text-xs text-blue-600">
-                  {chatInfo.offeredProduct.category || chatInfo.offeredProduct.type}
-                </p>
-                {chatInfo.offeredProduct.precio_negociable && (
-                  <p className="text-xs text-green-600 font-medium">Precio negociable</p>
-                )}
-              </div>
-            </div>
-            
-            {/* Producto solicitado si existe */}
-            {chatInfo.requestedProduct && (
-              <div className="mt-3 pt-3 border-t border-blue-200">
-                <p className="text-xs text-gray-600 mb-2">Intercambio por:</p>
-                <div className="flex items-center space-x-3">
-                  <img
-                    src={chatInfo.requestedProduct.mainImage || '/default-product.png'}
-                    alt={chatInfo.requestedProduct.title}
-                    className="w-12 h-12 rounded-lg object-cover border border-blue-200"
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{chatInfo.requestedProduct.title}</p>
-                    <p className="text-xs text-blue-600">
-                      {chatInfo.requestedProduct.category || chatInfo.requestedProduct.type}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
