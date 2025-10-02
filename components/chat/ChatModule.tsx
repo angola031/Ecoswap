@@ -23,6 +23,7 @@ import {
 } from '@/lib/types'
 import { useUserStatus } from '@/hooks/useUserStatus'
 import { useInactivity } from '@/hooks/useInactivity'
+import imageCompression from 'browser-image-compression'
 
 
 interface ChatModuleProps {
@@ -301,12 +302,74 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const imageInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [offeredProduct, setOfferedProduct] = useState<any>(null)
+  const [imagePreview, setImagePreview] = useState<{
+    file: File | null
+    url: string | null
+    comment: string
+    originalSize: number
+    compressedSize: number
+    isCompressing: boolean
+  }>({
+    file: null,
+    url: null,
+    comment: '',
+    originalSize: 0,
+    compressedSize: 0,
+    isCompressing: false
+  })
+
+  // Estado para el modal de visualización de imágenes
+  const [imageModal, setImageModal] = useState<{
+    isOpen: boolean
+    imageUrl: string | null
+    alt: string
+  }>({
+    isOpen: false,
+    imageUrl: null,
+    alt: ''
+  })
   
   const { onlineUsers, updateUserStatus } = useUserStatus()
   const [requestedProduct, setRequestedProduct] = useState<any>(null)
   
   const isUserOnline = (userId: string): boolean => {
     return onlineUsers.some(user => user.id === userId && user.isOnline)
+  }
+
+  // Función para comprimir imágenes
+  const compressImage = async (file: File): Promise<File> => {
+    const options = {
+      maxSizeMB: 1, // Máximo 1MB después de compresión
+      maxWidthOrHeight: 1920, // Máximo 1920px de ancho o alto
+      useWebWorker: true,
+      fileType: 'image/jpeg', // Convertir a JPEG para mejor compresión
+      quality: 0.8, // Calidad del 80%
+      initialQuality: 0.8,
+      alwaysKeepResolution: false
+    }
+
+    try {
+      console.log('🗜️ [ChatModule] Comprimiendo imagen...', {
+        originalSize: `${Math.round(file.size / 1024)} KB`,
+        originalType: file.type,
+        originalName: file.name
+      })
+
+      const compressedFile = await imageCompression(file, options)
+      
+      console.log('✅ [ChatModule] Imagen comprimida:', {
+        originalSize: `${Math.round(file.size / 1024)} KB`,
+        compressedSize: `${Math.round(compressedFile.size / 1024)} KB`,
+        compressionRatio: `${Math.round((1 - compressedFile.size / file.size) * 100)}%`,
+        newType: compressedFile.type
+      })
+
+      return compressedFile
+    } catch (error) {
+      console.error('❌ [ChatModule] Error comprimiendo imagen:', error)
+      // Si falla la compresión, devolver el archivo original
+      return file
+    }
   }
 
   // Función helper para evitar mensajes duplicados
@@ -333,6 +396,34 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
       updateUserStatus(true)
     }
   }, [currentUser, updateUserStatus])
+
+  // Limpiar URL temporal al desmontar el componente
+  useEffect(() => {
+    return () => {
+      if (imagePreview.url) {
+        URL.revokeObjectURL(imagePreview.url)
+      }
+    }
+  }, [imagePreview.url])
+
+  // Manejar tecla ESC para cerrar el modal de imagen
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && imageModal.isOpen) {
+        closeImageModal()
+      }
+    }
+
+    if (imageModal.isOpen) {
+      document.addEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = 'hidden' // Prevenir scroll del body
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = 'unset'
+    }
+  }, [imageModal.isOpen])
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [showProposals, setShowProposals] = useState(false)
   const [isLoadingProposals, setIsLoadingProposals] = useState(false)
@@ -1528,14 +1619,103 @@ const getCurrentUserId = () => {
     console.log('Intercambio aceptado por el usuario')
   }
 
-  const onImageSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !selectedConversation) return
-    const url = URL.createObjectURL(file)
-    const message: ChatMessage = {
-      id: Date.now().toString(),
-      senderId: currentUser?.id || '1',
-      content: '',
+    if (!file || !selectedConversation || !currentUser) return
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      if ((window as any).Swal) {
+        (window as any).Swal.fire({
+          title: 'Error',
+          text: 'Solo se permiten archivos de imagen',
+          icon: 'error',
+          confirmButtonText: 'Entendido'
+        })
+      }
+      return
+    }
+
+    // Validar tamaño (máximo 10MB para archivos originales)
+    if (file.size > 10 * 1024 * 1024) {
+      if ((window as any).Swal) {
+        (window as any).Swal.fire({
+          title: 'Error',
+          text: 'El archivo es demasiado grande. Máximo 10MB',
+          icon: 'error',
+          confirmButtonText: 'Entendido'
+        })
+      }
+      return
+    }
+
+    // Mostrar estado de compresión
+    setImagePreview({
+      file: null,
+      url: null,
+      comment: '',
+      originalSize: file.size,
+      compressedSize: 0,
+      isCompressing: true
+    })
+
+    try {
+      // Comprimir la imagen
+      const compressedFile = await compressImage(file)
+      
+      // Crear URL para preview
+      const imageUrl = URL.createObjectURL(compressedFile)
+      
+      // Actualizar preview con imagen comprimida
+      setImagePreview({
+        file: compressedFile,
+        url: imageUrl,
+        comment: '',
+        originalSize: file.size,
+        compressedSize: compressedFile.size,
+        isCompressing: false
+      })
+
+    } catch (error) {
+      console.error('❌ [ChatModule] Error procesando imagen:', error)
+      
+      // En caso de error, usar el archivo original
+      const imageUrl = URL.createObjectURL(file)
+      setImagePreview({
+        file,
+        url: imageUrl,
+        comment: '',
+        originalSize: file.size,
+        compressedSize: file.size,
+        isCompressing: false
+      })
+
+      if ((window as any).Swal) {
+        (window as any).Swal.fire({
+          title: 'Advertencia',
+          text: 'No se pudo comprimir la imagen. Se subirá el archivo original.',
+          icon: 'warning',
+          timer: 3000,
+          showConfirmButton: false
+        })
+      }
+    }
+
+    // Limpiar input
+    if (imageInputRef.current) imageInputRef.current.value = ''
+  }
+
+  const uploadImageWithComment = async () => {
+    if (!imagePreview.file || !selectedConversation || !currentUser) return
+
+    const tempId = `temp-image-${Date.now()}-${Math.random()}`
+    const currentUserId = getCurrentUserId()
+    
+    // Crear mensaje temporal optimista
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      senderId: currentUserId,
+      content: imagePreview.comment || 'Imagen adjunta',
       timestamp: new Date().toLocaleString('es-CO', { 
         hour: '2-digit', 
         minute: '2-digit',
@@ -1544,17 +1724,214 @@ const getCurrentUserId = () => {
       }),
       isRead: false,
       type: 'image',
-      metadata: { imageUrl: url }
+      metadata: { 
+        imageUrl: imagePreview.url!,
+        fileName: imagePreview.file.name,
+        fileSize: `${Math.round(imagePreview.file.size / 1024)} KB`
+      },
+      sender: {
+        id: currentUserId,
+        name: currentUser?.name || 'Usuario',
+        lastName: '',
+        avatar: currentUser?.avatar || undefined
+      }
     }
-    const updated = {
+
+    // Actualizar UI inmediatamente
+    const updatedMessages = [...selectedConversation.messages, optimisticMessage]
+      .sort((a, b) => Number(a.id) - Number(b.id))
+    const updatedConversation = {
       ...selectedConversation,
-      messages: [...selectedConversation.messages, message],
-      lastMessage: 'Imagen adjunta',
-      lastMessageTime: message.timestamp
+      messages: updatedMessages,
+      lastMessage: optimisticMessage.content,
+      lastMessageTime: optimisticMessage.timestamp
     }
-    setSelectedConversation(updated)
-    setConversations(prev => prev.map(c => c.id === updated.id ? updated : c))
-    if (imageInputRef.current) imageInputRef.current.value = ''
+    
+    setSelectedConversation(updatedConversation)
+    setConversations(prev => prev.map(conv => 
+      conv.id === selectedConversation.id ? updatedConversation : conv
+    ))
+
+    // Scroll al final
+    requestAnimationFrame(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ 
+          behavior: 'instant', 
+          block: 'end' 
+        })
+      }
+    })
+
+    // Cerrar modal de preview
+    setImagePreview({ 
+      file: null, 
+      url: null, 
+      comment: '',
+      originalSize: 0,
+      compressedSize: 0,
+      isCompressing: false
+    })
+
+    try {
+      // Subir imagen al servidor
+      const formData = new FormData()
+      formData.append('image', imagePreview.file)
+      formData.append('chatId', selectedConversation.id)
+      formData.append('userId', currentUserId)
+
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        throw new Error('No hay token de sesión')
+      }
+
+      console.log('📤 [ChatModule] Subiendo imagen al servidor...')
+      
+      const uploadResponse = await fetch('/api/chat/upload-image', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json()
+        console.error('❌ [ChatModule] Error en respuesta de subida:', {
+          status: uploadResponse.status,
+          error: errorData,
+          chatId: selectedConversation.id,
+          userId: currentUserId
+        })
+        throw new Error(errorData.error || errorData.details || 'Error subiendo imagen')
+      }
+
+      const uploadData = await uploadResponse.json()
+      console.log('✅ [ChatModule] Imagen subida exitosamente:', uploadData.data)
+
+      // Ahora enviar el mensaje con la imagen al chat
+      const chatId = Number(selectedConversation.id)
+      const messageResponse = await fetch(`/api/chat/${chatId}/messages`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          contenido: imagePreview.comment || '', // Incluir comentario si existe
+          tipo: 'imagen',
+          archivo_url: uploadData.data.url
+        })
+      })
+
+      if (!messageResponse.ok) {
+        const errorData = await messageResponse.json()
+        throw new Error(errorData.error || 'Error enviando mensaje')
+      }
+
+      const messageData = await messageResponse.json()
+      console.log('✅ [ChatModule] Mensaje de imagen enviado:', messageData.message)
+
+      // Reemplazar mensaje temporal con el real
+      const realMessage: ChatMessage = {
+        id: String(messageData.message.mensaje_id),
+        senderId: String(messageData.message.usuario_id),
+        content: messageData.message.contenido || '',
+        timestamp: new Date(messageData.message.fecha_envio).toLocaleString('es-CO', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          day: '2-digit',
+          month: '2-digit'
+        }),
+        isRead: messageData.message.leido,
+        type: 'image',
+        metadata: { 
+          imageUrl: uploadData.data.url,
+          fileName: uploadData.data.originalName,
+          fileSize: `${Math.round(uploadData.data.size / 1024)} KB`
+        },
+        sender: optimisticMessage.sender
+      }
+
+      // Actualizar con el mensaje real
+      setSelectedConversation(prev => prev ? {
+        ...prev,
+        messages: prev.messages.map(msg => 
+          msg.id === tempId ? realMessage : msg
+        ).sort((a, b) => Number(a.id) - Number(b.id)),
+        lastMessage: realMessage.content,
+        lastMessageTime: realMessage.timestamp
+      } : prev)
+      
+      setConversations(prev => prev.map(conv => 
+        conv.id === selectedConversation.id ? {
+          ...conv,
+          messages: conv.messages?.map(msg => 
+            msg.id === tempId ? realMessage : msg
+          ).sort((a, b) => Number(a.id) - Number(b.id)) || [realMessage],
+          lastMessage: realMessage.content,
+          lastMessageTime: realMessage.timestamp
+        } : conv
+      ))
+
+    } catch (error) {
+      console.error('❌ [ChatModule] Error subiendo imagen:', error)
+      
+      // Remover mensaje temporal en caso de error
+      setSelectedConversation(prev => prev ? {
+        ...prev,
+        messages: prev.messages.filter(msg => msg.id !== tempId)
+      } : prev)
+      
+      setConversations(prev => prev.map(conv => 
+        conv.id === selectedConversation.id ? {
+          ...conv,
+          messages: conv.messages?.filter(msg => msg.id !== tempId) || []
+        } : conv
+      ))
+      
+      // Mostrar error
+      if ((window as any).Swal) {
+        (window as any).Swal.fire({
+          title: 'Error',
+          text: error.message || 'No se pudo subir la imagen. Inténtalo de nuevo.',
+          icon: 'error',
+          confirmButtonText: 'Entendido'
+        })
+      }
+    }
+  }
+
+  const cancelImageUpload = () => {
+    // Limpiar URL temporal para liberar memoria
+    if (imagePreview.url) {
+      URL.revokeObjectURL(imagePreview.url)
+    }
+    setImagePreview({ 
+      file: null, 
+      url: null, 
+      comment: '',
+      originalSize: 0,
+      compressedSize: 0,
+      isCompressing: false
+    })
+  }
+
+  // Funciones para el modal de visualización de imágenes
+  const openImageModal = (imageUrl: string, alt: string = 'Imagen del chat') => {
+    setImageModal({
+      isOpen: true,
+      imageUrl,
+      alt
+    })
+  }
+
+  const closeImageModal = () => {
+    setImageModal({
+      isOpen: false,
+      imageUrl: null,
+      alt: ''
+    })
   }
 
   const onFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1983,11 +2360,53 @@ const getCurrentUserId = () => {
                       )}
 
                       {message.type === 'image' && message.metadata?.imageUrl && (
-                        <img
-                          src={message.metadata.imageUrl}
-                          alt="Imagen"
-                          className="rounded-lg max-w-full"
-                        />
+                        <div className="space-y-2">
+                          {/* Comentario si existe */}
+                          {message.content && message.content.trim() && message.content !== 'Subiendo imagen...' && (
+                            <p className="text-sm leading-relaxed">{message.content}</p>
+                          )}
+                          
+                          {/* Imagen */}
+                          <div className="relative group">
+                            <img
+                              src={message.metadata.imageUrl}
+                              alt="Imagen del chat"
+                              className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200"
+                              onClick={() => {
+                                openImageModal(message.metadata?.imageUrl!, 'Imagen del chat')
+                              }}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                                const fallback = document.createElement('div')
+                                fallback.className = 'w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400'
+                                fallback.innerHTML = `
+                                  <div class="text-center">
+                                    <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <p class="text-xs">Error cargando imagen</p>
+                                  </div>
+                                `
+                                target.parentNode?.insertBefore(fallback, target.nextSibling)
+                              }}
+                            />
+                            {message.content === 'Subiendo imagen...' && (
+                              <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
+                                <div className="text-white text-sm flex items-center space-x-2">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  <span>Subiendo...</span>
+                                </div>
+                              </div>
+                            )}
+                            {message.metadata?.fileName && message.content !== 'Subiendo imagen...' && (
+                              <div className="absolute bottom-2 left-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                {message.metadata.fileName}
+                                {message.metadata.fileSize && ` (${message.metadata.fileSize})`}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       )}
 
                       {message.type === 'location' && message.metadata?.coordinates && (
@@ -2134,8 +2553,10 @@ const getCurrentUserId = () => {
                 <button onClick={handleAttachFile} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
                   <PaperClipIcon className="w-5 h-5" />
                 </button>
-                <button onClick={handleAttachImage} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
-                  <MapPinIcon className="w-5 h-5" />
+                <button onClick={handleAttachImage} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0" title="Adjuntar imagen">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
                 </button>
                 <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
                   <FaceSmileIcon className="w-5 h-5" />
@@ -2258,6 +2679,151 @@ const getCurrentUserId = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal de Preview de Imagen */}
+      {(imagePreview.file || imagePreview.isCompressing) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden">
+            {/* Header del modal */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {imagePreview.isCompressing ? 'Procesando imagen...' : 'Vista previa de imagen'}
+              </h3>
+              <button
+                onClick={cancelImageUpload}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                disabled={imagePreview.isCompressing}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Contenido del modal */}
+            <div className="p-4 space-y-4">
+              {/* Estado de compresión */}
+              {imagePreview.isCompressing ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Comprimiendo imagen...</p>
+                    <p className="text-sm text-gray-500 mt-2">Esto puede tomar unos segundos</p>
+                  </div>
+                </div>
+              ) : imagePreview.url ? (
+                <>
+                  {/* Preview de la imagen - simplificado */}
+                  <div className="relative flex justify-center">
+                    <img
+                      src={imagePreview.url}
+                      alt="Preview"
+                      className="max-w-xs max-h-64 object-contain rounded-lg border border-gray-200"
+                    />
+                  </div>
+                </>
+              ) : null}
+
+              {/* Campo de comentario - simplificado */}
+              {!imagePreview.isCompressing && imagePreview.url && (
+                <div className="space-y-2">
+                  <label htmlFor="image-comment" className="block text-sm font-medium text-gray-700">
+                    Comentario (opcional)
+                  </label>
+                  <textarea
+                    id="image-comment"
+                    value={imagePreview.comment}
+                    onChange={(e) => setImagePreview(prev => ({ ...prev, comment: e.target.value }))}
+                    placeholder="Escribe un comentario para tu imagen..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                    rows={3}
+                    maxLength={500}
+                  />
+                  <div className="text-right">
+                    <span className="text-xs text-gray-400">
+                      {imagePreview.comment.length}/500
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer del modal - simplificado */}
+            {!imagePreview.isCompressing && (
+              <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
+                <button
+                  onClick={cancelImageUpload}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                {imagePreview.file && (
+                  <button
+                    onClick={uploadImageWithComment}
+                    className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors flex items-center space-x-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    <span>Enviar</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Visualización de Imagen */}
+      {imageModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="relative w-full h-full flex items-center justify-center">
+            {/* Botón de cerrar */}
+            <button
+              onClick={closeImageModal}
+              className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-75 transition-all"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Imagen - Contenedor que se adapta a la pantalla */}
+            <div className="w-full h-full flex items-center justify-center p-12">
+              <img
+                src={imageModal.imageUrl!}
+                alt={imageModal.alt}
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                style={{
+                  maxWidth: 'calc(100vw - 8rem)',
+                  maxHeight: 'calc(100vh - 8rem)',
+                  width: 'auto',
+                  height: 'auto'
+                }}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                  const fallback = document.createElement('div')
+                  fallback.className = 'w-96 h-96 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400'
+                  fallback.textContent = 'Error al cargar la imagen'
+                  target.parentNode?.insertBefore(fallback, target.nextSibling)
+                }}
+              />
+            </div>
+
+            {/* Información adicional - centrada con el ancho de la imagen */}
+            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white rounded-lg p-2 max-w-fit">
+              <p className="text-xs opacity-90 whitespace-nowrap">Haz clic fuera de la imagen o presiona ESC para cerrar</p>
+            </div>
+          </div>
+
+          {/* Backdrop clickable para cerrar */}
+          <div 
+            className="absolute inset-0 -z-10" 
+            onClick={closeImageModal}
+          ></div>
         </div>
       )}
     </div>

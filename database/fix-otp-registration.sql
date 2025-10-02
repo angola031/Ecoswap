@@ -25,3 +25,5 @@ WHERE n.nspname = 'auth' AND c.relname = 'users' AND t.tgname = 'on_auth_user_cr
 
 
 
+
+
