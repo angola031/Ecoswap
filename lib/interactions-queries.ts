@@ -60,7 +60,13 @@ export async function getInteractions(
           *,
           ubicaciones:ubicacion(*)
         ),
-        chat(*)
+        chat(
+          chat_id,
+          mensajes:mensaje(
+            mensaje_id,
+            contenido
+          )
+        )
       `)
 
     // Aplicar filtros
@@ -212,7 +218,18 @@ export async function getInteractions(
         },
         createdAt: intercambio.fecha_propuesta || new Date().toISOString(),
         updatedAt: intercambio.fecha_respuesta || intercambio.fecha_propuesta || new Date().toISOString(),
-        messagesCount: intercambio.chat?.mensajes?.length || 0,
+        messagesCount: (() => {
+          const raw = (intercambio.chat?.mensajes as any[]) || []
+          // Aplicar el mismo filtro de ChatModule para excluir mensajes automáticos de producto
+          const filtered = raw.filter((m: any) => {
+            const content = m?.contenido || ''
+            const isProductInfo = content.includes('Producto Ofrecido') &&
+                                   content.includes('$') &&
+                                   content.includes('Negociable')
+            return !isProductInfo && content.trim().length > 0
+          })
+          return filtered.length
+        })(),
         chatId: intercambio.chat?.chat_id?.toString() || '',
         additionalAmount: intercambio.monto_adicional || 0,
         meetingPlace: intercambio.lugar_encuentro,
