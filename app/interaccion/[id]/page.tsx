@@ -416,15 +416,31 @@ export default function InteraccionDetailPage() {
     }
 
     const handleSendMessage = async () => {
-        if (!newMessage.trim() || !interaction || !currentUserId) return
+        if (!newMessage.trim() || !interaction || !currentUserId) {
+            console.log('❌ Validación fallida:', {
+                hasMessage: !!newMessage.trim(),
+                hasInteraction: !!interaction,
+                hasCurrentUserId: !!currentUserId,
+                chatId: interaction?.chatId
+            })
+            return
+        }
+
+        console.log('🚀 Enviando mensaje:', {
+            message: newMessage.trim(),
+            chatId: interaction.chatId,
+            currentUserId
+        })
 
         try {
             // Obtener sesión para el token
             const { data: { session }, error: sessionError } = await supabase.auth.getSession()
             if (sessionError || !session?.access_token) {
-                console.error('Error obteniendo sesión:', sessionError)
+                console.error('❌ Error obteniendo sesión:', sessionError)
                 return
             }
+
+            console.log('✅ Sesión obtenida correctamente')
 
             // Enviar mensaje a la API
             const response = await fetch(`/api/chat/${interaction.chatId}/messages`, {
@@ -434,22 +450,34 @@ export default function InteraccionDetailPage() {
                     'Authorization': `Bearer ${session.access_token}`
                 },
                 body: JSON.stringify({
-                    content: newMessage.trim(),
-                    type: 'texto'
+                    contenido: newMessage.trim(),
+                    tipo: 'texto'
                 })
             })
 
+            console.log('📡 Respuesta de la API:', {
+                status: response.status,
+                ok: response.ok
+            })
+
             if (response.ok) {
+                console.log('✅ Mensaje enviado correctamente')
                 // Limpiar el input
                 setNewMessage('')
                 
                 // Recargar la interacción para obtener los mensajes actualizados
                 window.location.reload()
             } else {
-                console.error('Error enviando mensaje:', await response.text())
+                const errorText = await response.text()
+                console.error('❌ Error enviando mensaje:', {
+                    status: response.status,
+                    error: errorText
+                })
+                alert(`Error enviando mensaje: ${errorText}`)
             }
         } catch (error) {
-            console.error('Error enviando mensaje:', error)
+            console.error('❌ Error enviando mensaje:', error)
+            alert(`Error enviando mensaje: ${error}`)
         }
     }
 
