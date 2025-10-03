@@ -451,7 +451,7 @@ export default function InteraccionDetailPage() {
                     <h2 className="text-xl font-semibold text-gray-900 mb-2">Error al cargar</h2>
                     <p className="text-gray-600 mb-4">{error}</p>
                     <button
-                        onClick={() => router.push('/mis-intercambios')}
+                        onClick={() => router.push('/?m=interactions')}
                         className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
                     >
                         Volver
@@ -468,7 +468,7 @@ export default function InteraccionDetailPage() {
                     <h2 className="text-xl font-semibold text-gray-900 mb-2">Interacción no encontrada</h2>
                     <p className="text-gray-600 mb-4">La interacción que buscas no existe o ha sido eliminada.</p>
                     <button
-                        onClick={() => router.push('/mis-intercambios')}
+                        onClick={() => router.push('/?m=interactions')}
                         className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
                     >
                         Volver
@@ -486,7 +486,7 @@ export default function InteraccionDetailPage() {
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center space-x-4">
                            <button
-                               onClick={() => router.push('/mis-intercambios')}
+                               onClick={() => router.push('/?m=interactions')}
                                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
                            >
                                <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
