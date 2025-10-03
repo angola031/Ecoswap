@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { InteractionStats } from '@/lib/types/interactions'
-import { getInteractionStats } from '@/lib/interactions-queries'
+import { getSystemEvents } from '@/lib/interactions-queries'
 import { getAuthenticatedUserFromToken, createAuthErrorResponse, createSuccessResponse } from '@/lib/auth-helper'
 
 export async function GET(req: NextRequest) {
@@ -18,13 +17,21 @@ export async function GET(req: NextRequest) {
 
     const userId = user.user_id
 
-    // Usar la función de consulta optimizada
-    const stats = await getInteractionStats(userId)
+    // Obtener parámetros de consulta
+    const { searchParams } = new URL(req.url)
+    const limit = parseInt(searchParams.get('limit') || '20')
 
-    return createSuccessResponse(stats)
+    // Usar la función de consulta optimizada
+    const result = await getSystemEvents(userId, limit)
+
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 500 })
+    }
+
+    return createSuccessResponse({ events: result.data })
 
   } catch (error) {
-    console.error('Error en API de estadísticas de interacciones:', error)
+    console.error('Error en API de eventos:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }

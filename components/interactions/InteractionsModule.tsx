@@ -54,30 +54,79 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
             try {
                 // Obtener sesión de Supabase
-                const { data: { session } } = await supabase.auth.getSession()
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+                
+                console.log('🔍 DEBUG: Session error:', sessionError)
+                console.log('🔍 DEBUG: Session exists:', !!session)
+                console.log('🔍 DEBUG: Access token exists:', !!session?.access_token)
+                console.log('🔍 DEBUG: Token length:', session?.access_token?.length)
+                
                 if (!session?.access_token) {
-                    console.error('No hay token de sesión')
+                    console.error('❌ ERROR: No hay token de sesión')
+                    console.error('Session error:', sessionError)
                     if (isMounted) {
                         setIsLoading(false)
                     }
                     return
                 }
 
-                // Cargar interacciones desde la API
-                const response = await fetch('/api/interactions', {
+                // Cargar interacciones desde la API con filtros
+                const params = new URLSearchParams()
+                if (filterStatus !== 'all') {
+                    params.append('status', filterStatus)
+                }
+
+                console.log('🔍 DEBUG: Making request to /api/interactions')
+                console.log('🔍 DEBUG: Request URL:', `/api/interactions?${params.toString()}`)
+                console.log('🔍 DEBUG: Authorization header:', `Bearer ${session.access_token.substring(0, 20)}...`)
+
+                const response = await fetch(`/api/interactions?${params.toString()}`, {
                     headers: {
                         'Authorization': `Bearer ${session.access_token}`
                     }
                 })
 
+                console.log('🔍 DEBUG: Response status:', response.status)
+                console.log('🔍 DEBUG: Response headers:', Object.fromEntries(response.headers.entries()))
+
                 if (response.ok) {
                     const data = await response.json()
-                    console.log('Interacciones cargadas:', data)
+                    console.log('✅ SUCCESS: Interacciones cargadas:', data)
                     if (isMounted) {
                         setInteractions(data.interactions || [])
                     }
                 } else {
-                    console.error('Error cargando interacciones:', response.status)
+                    const errorText = await response.text()
+                    console.error('❌ ERROR: Error cargando interacciones:', response.status)
+                    console.error('❌ ERROR: Error response:', errorText)
+                }
+
+                // Cargar actividades del usuario
+                const activitiesResponse = await fetch('/api/interactions/activities', {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                })
+
+                if (activitiesResponse.ok) {
+                    const activitiesData = await activitiesResponse.json()
+                    if (isMounted) {
+                        setActivities(activitiesData.activities || [])
+                    }
+                }
+
+                // Cargar eventos del sistema
+                const eventsResponse = await fetch('/api/interactions/events', {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                })
+
+                if (eventsResponse.ok) {
+                    const eventsData = await eventsResponse.json()
+                    if (isMounted) {
+                        setEvents(eventsData.events || [])
+                    }
                 }
 
             } catch (error) {
@@ -94,7 +143,7 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
         return () => {
             isMounted = false
         }
-    }, [currentUser])
+    }, [currentUser, filterStatus])
 
     const getTypeIcon = (type: string) => {
         const icons: Record<string, JSX.Element> = {

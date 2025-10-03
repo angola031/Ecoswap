@@ -1,52 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { InteractionSummary, InteractionsResponse, InteractionStats } from '@/lib/types/interactions'
+import { InteractionSummary, InteractionsResponse, InteractionStats, InteractionFilters } from '@/lib/types/interactions'
+import { getInteractions } from '@/lib/interactions-queries'
+import { getAuthenticatedUserFromToken, createAuthErrorResponse, createSuccessResponse } from '@/lib/auth-helper'
 
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options)
-              })
-            } catch {
-              // The `setAll` method was called from a Server Component.
-              // This can be ignored if you have middleware refreshing
-              // user sessions.
-            }
-          },
-        },
-      }
-    )
-
     // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const authHeader = req.headers.get('authorization')
+    console.log('🔍 DEBUG: Authorization header:', authHeader ? 'Present' : 'Missing')
+    
+    if (!authHeader) {
+      console.log('❌ ERROR: No authorization header provided')
+      return createAuthErrorResponse('Token de autorización requerido')
+    }
+
+    console.log('🔍 DEBUG: Validating token...')
+    const { user, error: authError } = await getAuthenticatedUserFromToken(authHeader)
+    
     if (authError || !user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      console.log('❌ ERROR: Authentication failed:', authError)
+      return createAuthErrorResponse(authError || 'Usuario no autorizado')
     }
 
-    // Obtener usuario de la base de datos
-    const { data: usuario, error: usuarioError } = await supabase
-      .from('usuario')
-      .select('user_id')
-      .eq('auth_user_id', user.id)
-      .single()
+    console.log('✅ DEBUG: User authenticated:', user.user_id)
 
-    if (usuarioError || !usuario) {
-      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
-    }
-
-    const userId = usuario.user_id
+    const userId = user.user_id
 
     // Obtener parámetros de consulta
     const { searchParams } = new URL(req.url)
@@ -54,233 +32,36 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const status = searchParams.get('status')
     const type = searchParams.get('type')
-    const offset = (page - 1) * limit
+    const search = searchParams.get('search')
+    const dateFrom = searchParams.get('dateFrom')
+    const dateTo = searchParams.get('dateTo')
 
-    // Construir consulta base para intercambios optimizada
-    let query = supabase
-      .from('intercambio')
-      .select(`
-        intercambio_id,
-        producto_ofrecido_id,
-        producto_solicitado_id,
-        usuario_propone_id,
-        usuario_recibe_id,
-        mensaje_propuesta,
-        monto_adicional,
-        condiciones_adicionales,
-        estado,
-        fecha_propuesta,
-        fecha_respuesta,
-        fecha_completado,
-        motivo_rechazo,
-        lugar_encuentro,
-        fecha_encuentro,
-        notas_encuentro,
-        producto_ofrecido:producto!intercambio_producto_ofrecido_id_fkey (
-          producto_id,
-          titulo,
-          precio,
-          estado,
-          tipo_transaccion,
-          condiciones_intercambio,
-          que_busco_cambio,
-          precio_negociable,
-          ciudad_snapshot,
-          departamento_snapshot,
-          usuario:usuario!producto_user_id_fkey (
-            user_id,
-            nombre,
-            apellido,
-            foto_perfil,
-            calificacion_promedio
-          ),
-          imagenes:imagen_producto!es_principal.eq.true (
-            url_imagen
-          ),
-          categoria:categoria (
-            nombre
-          )
-        ),
-        producto_solicitado:producto!intercambio_producto_solicitado_id_fkey (
-          producto_id,
-          titulo,
-          precio,
-          estado,
-          tipo_transaccion,
-          condiciones_intercambio,
-          que_busco_cambio,
-          precio_negociable,
-          ciudad_snapshot,
-          departamento_snapshot,
-          usuario:usuario!producto_user_id_fkey (
-            user_id,
-            nombre,
-            apellido,
-            foto_perfil,
-            calificacion_promedio
-          ),
-          imagenes:imagen_producto!es_principal.eq.true (
-            url_imagen
-          ),
-          categoria:categoria (
-            nombre
-          )
-        ),
-        usuario_propone:usuario!intercambio_usuario_propone_id_fkey (
-          user_id,
-          nombre,
-          apellido,
-          foto_perfil,
-          calificacion_promedio
-        ),
-        usuario_recibe:usuario!intercambio_usuario_recibe_id_fkey (
-          user_id,
-          nombre,
-          apellido,
-          foto_perfil,
-          calificacion_promedio
-        ),
-        chat:chat (
-          chat_id,
-          fecha_creacion,
-          ultimo_mensaje
-        )
-      `)
-      .or(`usuario_propone_id.eq.${userId},usuario_recibe_id.eq.${userId}`)
-      .order('fecha_propuesta', { ascending: false })
-
-    // Aplicar filtros
+    // Construir filtros
+    const filters: InteractionFilters = {}
     if (status && status !== 'all') {
-      query = query.eq('estado', status)
+      filters.status = status as any
     }
-
     if (type) {
-      query = query.eq('producto_ofrecido.tipo_transaccion', type)
+      filters.type = type as any
+    }
+    if (search) {
+      filters.search = search
+    }
+    if (dateFrom) {
+      filters.dateFrom = dateFrom
+    }
+    if (dateTo) {
+      filters.dateTo = dateTo
     }
 
-    // Obtener total para paginación
-    const { count } = await supabase
-      .from('intercambio')
-      .select('*', { count: 'exact', head: true })
-      .or(`usuario_propone_id.eq.${userId},usuario_recibe_id.eq.${userId}`)
+    // Usar la función de consulta optimizada
+    const result = await getInteractions(userId, filters, page, limit)
 
-    // Aplicar paginación
-    query = query.range(offset, offset + limit - 1)
-
-    const { data: intercambios, error } = await query
-
-    if (error) {
-      console.error('Error obteniendo intercambios:', error)
-      return NextResponse.json({ error: 'Error obteniendo intercambios' }, { status: 500 })
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
-    // Obtener contadores de mensajes para cada chat
-    const chatIds = intercambios?.map(i => i.chat?.chat_id).filter(Boolean) || []
-    let messageCounts: Record<number, number> = {}
-    
-    if (chatIds.length > 0) {
-      const { data: messageData } = await supabase
-        .from('mensaje')
-        .select('chat_id')
-        .in('chat_id', chatIds)
-      
-      // Contar mensajes por chat
-      messageCounts = (messageData || []).reduce((acc: Record<number, number>, msg: any) => {
-        acc[msg.chat_id] = (acc[msg.chat_id] || 0) + 1
-        return acc
-      }, {})
-    }
-
-    // Transformar datos a formato de interfaz
-    const interactions: InteractionSummary[] = (intercambios || []).map((intercambio: any) => {
-      // Determinar el otro usuario
-      const otherUser = intercambio.usuario_propone_id === userId 
-        ? intercambio.usuario_recibe 
-        : intercambio.usuario_propone
-
-      // Determinar el producto principal (el que está siendo ofrecido)
-      const mainProduct = intercambio.producto_ofrecido
-
-      // Obtener imagen principal del producto ofrecido (ya filtrada en la consulta)
-      const mainProductImage = mainProduct?.imagenes?.[0]?.url_imagen || '/images/placeholder-product.jpg'
-
-      // Obtener imagen principal del producto solicitado si existe
-      const requestedProductImage = intercambio.producto_solicitado?.imagenes?.[0]?.url_imagen || '/images/placeholder-product.jpg'
-
-      return {
-        id: String(intercambio.intercambio_id),
-        type: mainProduct?.tipo_transaccion || 'intercambio',
-        status: intercambio.estado,
-        title: `${mainProduct?.tipo_transaccion === 'intercambio' ? 'Intercambio' : 
-                mainProduct?.tipo_transaccion === 'venta' ? 'Venta' : 'Donación'} ${mainProduct?.titulo}`,
-        description: intercambio.mensaje_propuesta || 
-                    (intercambio.producto_solicitado ? 
-                      `Intercambio de ${mainProduct?.titulo} por ${intercambio.producto_solicitado.titulo}` :
-                      `Transacción de ${mainProduct?.titulo}`),
-        offeredProduct: {
-          id: String(mainProduct?.producto_id),
-          title: mainProduct?.titulo || '',
-          image: mainProductImage,
-          price: mainProduct?.precio,
-          condition: mainProduct?.estado || 'usado',
-          category: mainProduct?.categoria?.nombre || 'Sin categoría'
-        },
-        requestedProduct: intercambio.producto_solicitado ? {
-          id: String(intercambio.producto_solicitado.producto_id),
-          title: intercambio.producto_solicitado.titulo,
-          image: requestedProductImage,
-          price: intercambio.producto_solicitado.precio,
-          condition: intercambio.producto_solicitado.estado,
-          category: intercambio.producto_solicitado.categoria?.nombre || 'Sin categoría'
-        } : undefined,
-        otherUser: {
-          id: String(otherUser?.user_id),
-          name: otherUser?.nombre || '',
-          lastName: otherUser?.apellido || '',
-          avatar: otherUser?.foto_perfil,
-          location: `${mainProduct?.ciudad_snapshot || ''}, ${mainProduct?.departamento_snapshot || ''}`,
-          rating: otherUser?.calificacion_promedio || 0
-        },
-        createdAt: intercambio.fecha_propuesta,
-        updatedAt: intercambio.fecha_respuesta || intercambio.fecha_propuesta,
-        messagesCount: messageCounts[intercambio.chat?.chat_id] || 0,
-        chatId: String(intercambio.chat?.chat_id || ''),
-        additionalAmount: intercambio.monto_adicional || 0,
-        meetingPlace: intercambio.lugar_encuentro,
-        meetingDate: intercambio.fecha_encuentro,
-        rejectionReason: intercambio.motivo_rechazo
-      }
-    })
-
-    // Obtener estadísticas
-    const statsQuery = supabase
-      .from('intercambio')
-      .select('estado, producto_ofrecido:tipo_transaccion, monto_adicional, producto_ofrecido:precio')
-      .or(`usuario_propone_id.eq.${userId},usuario_recibe_id.eq.${userId}`)
-
-    const { data: statsData } = await statsQuery
-
-    const stats: InteractionStats = {
-      total: count || 0,
-      pending: statsData?.filter(i => i.estado === 'pendiente').length || 0,
-      inProgress: statsData?.filter(i => ['aceptado'].includes(i.estado)).length || 0,
-      completed: statsData?.filter(i => i.estado === 'completado').length || 0,
-      cancelled: statsData?.filter(i => ['rechazado', 'cancelado'].includes(i.estado)).length || 0,
-      totalValue: 0, // Calcular valor total
-      averageRating: 0, // Calcular calificación promedio
-      successRate: 0 // Calcular tasa de éxito
-    }
-
-    const response: InteractionsResponse = {
-      interactions,
-      total: count || 0,
-      page,
-      limit,
-      hasMore: (offset + limit) < (count || 0),
-      stats
-    }
-
-    return NextResponse.json(response)
+    return createSuccessResponse(result.data)
 
   } catch (error) {
     console.error('Error en API de interacciones:', error)

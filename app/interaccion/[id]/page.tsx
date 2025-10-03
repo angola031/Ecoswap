@@ -25,6 +25,8 @@ import {
     TagIcon
 } from '@heroicons/react/24/outline'
 import { useRouter, useParams } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { InteractionDetail } from '@/lib/types/interactions'
 
 interface User {
     id: string
@@ -192,6 +194,7 @@ export default function InteraccionDetailPage() {
 
     const [interaction, setInteraction] = useState<Interaction | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'overview' | 'messages' | 'proposals' | 'delivery'>('overview')
     const [newMessage, setNewMessage] = useState('')
     const [showCancelModal, setShowCancelModal] = useState(false)
@@ -199,10 +202,102 @@ export default function InteraccionDetailPage() {
 
     useEffect(() => {
         const loadInteraction = async () => {
+            if (!interactionId) return
+            
             setIsLoading(true)
-            await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-            setInteraction(mockInteraction) // In a real app, fetch by interactionId
-            setIsLoading(false)
+            setError(null)
+
+            try {
+                // Obtener sesión de Supabase
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+                
+                if (sessionError) {
+                    console.error('Error obteniendo sesión:', sessionError)
+                    setError('Error de autenticación')
+                    setIsLoading(false)
+                    return
+                }
+
+                if (!session?.access_token) {
+                    console.error('No hay token de sesión')
+                    setError('No estás autenticado')
+                    setIsLoading(false)
+                    return
+                }
+
+                console.log('🔍 DEBUG: Cargando detalles de interacción:', interactionId)
+
+                // Cargar detalles de la interacción desde la API
+                const response = await fetch(`/api/interactions/${interactionId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                })
+
+                console.log('🔍 DEBUG: Response status:', response.status)
+
+                if (response.ok) {
+                    const data = await response.json()
+                    console.log('✅ SUCCESS: Detalles cargados:', data)
+                    console.log('🔍 DEBUG: Estructura de datos recibida:', JSON.stringify(data, null, 2))
+                    
+                    // La API devuelve directamente el InteractionDetail, no envuelto en 'interaction'
+                    const interactionData = data
+                    
+                    // Validar que tenemos los datos necesarios
+                    if (!interactionData || !interactionData.id) {
+                        console.error('❌ ERROR: Datos de interacción inválidos:', interactionData)
+                        setError('Datos de interacción inválidos')
+                        return
+                    }
+                    
+                    // Transformar los datos de la API al formato esperado por el componente
+                    const transformedInteraction: Interaction = {
+                        id: interactionData.id,
+                        type: interactionData.type,
+                        status: interactionData.status,
+                        title: interactionData.title,
+                        description: interactionData.description,
+                        product: {
+                            id: interactionData.offeredProduct?.id || '',
+                            title: interactionData.offeredProduct?.title || '',
+                            image: interactionData.offeredProduct?.image || '',
+                            price: interactionData.offeredProduct?.price || 0,
+                            currency: 'COP',
+                            description: interactionData.offeredProduct?.title || '',
+                            condition: interactionData.offeredProduct?.condition || 'usado',
+                            category: interactionData.offeredProduct?.category || 'Sin categoría'
+                        },
+                        otherUser: {
+                            id: interactionData.otherUser?.id || '',
+                            name: interactionData.otherUser?.name || '',
+                            email: '',
+                            avatar: interactionData.otherUser?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face',
+                            location: interactionData.otherUser?.location || '',
+                            rating: interactionData.otherUser?.rating || 0,
+                            phone: interactionData.otherUser?.phone
+                        },
+                        createdAt: interactionData.createdAt || new Date().toISOString(),
+                        updatedAt: interactionData.updatedAt || new Date().toISOString(),
+                        messages: interactionData.messages || [],
+                        proposals: interactionData.proposals || [],
+                        deliveries: interactionData.deliveries || [],
+                        isUrgent: false
+                    }
+                    
+                    console.log('✅ SUCCESS: Interacción transformada:', transformedInteraction)
+                    setInteraction(transformedInteraction)
+                } else {
+                    const errorText = await response.text()
+                    console.error('❌ ERROR: Error cargando detalles:', response.status, errorText)
+                    setError('Error cargando los detalles de la interacción')
+                }
+            } catch (error) {
+                console.error('❌ ERROR: Error inesperado:', error)
+                setError('Error inesperado al cargar la interacción')
+            } finally {
+                setIsLoading(false)
+            }
         }
 
         if (interactionId) {
@@ -340,7 +435,28 @@ export default function InteraccionDetailPage() {
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Cargando detalles de la interacción...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <ExclamationTriangleIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2">Error al cargar</h2>
+                    <p className="text-gray-600 mb-4">{error}</p>
+                    <button
+                        onClick={() => router.back()}
+                        className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+                    >
+                        Volver
+                    </button>
+                </div>
             </div>
         )
     }
@@ -559,33 +675,87 @@ export default function InteraccionDetailPage() {
                                         </div>
 
                                         <div className="space-y-4 max-h-96 overflow-y-auto">
-                                            {interaction.messages.map((message) => (
-                                                <div
-                                                    key={message.id}
-                                                    className={`flex ${message.sender.id === '1' ? 'justify-end' : 'justify-start'}`}
-                                                >
-                                                    <div className={`max-w-xs lg:max-w-md ${message.sender.id === '1' ? 'order-2' : 'order-1'}`}>
-                                                        <div className={`rounded-lg px-4 py-2 ${message.sender.id === '1'
+                                            {interaction.messages.map((message) => {
+                                                // Validar y proporcionar valores por defecto para el sender (como en ChatModule)
+                                                const sender = message.sender || {
+                                                    id: 'unknown',
+                                                    name: 'Usuario',
+                                                    lastName: '',
+                                                    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face'
+                                                }
+                                                
+                                                // Determinar si es el usuario actual (usando la misma lógica que ChatModule)
+                                                const isCurrentUser = sender.id === '1' || sender.id === 'current_user'
+                                                
+                                                return (
+                                                    <div
+                                                        key={message.id}
+                                                        className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} mb-4`}
+                                                    >
+                                                        <div className={`flex items-end space-x-2 max-w-md ${isCurrentUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                                                            {!isCurrentUser && (
+                                                                <img
+                                                                    src={sender.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face'}
+                                                                    alt={sender.name}
+                                                                    className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                                                                    onError={(e) => {
+                                                                        const target = e.target as HTMLImageElement;
+                                                                        target.style.display = 'none';
+                                                                        const fallback = document.createElement('div');
+                                                                        fallback.className = 'w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-600 border border-gray-200 flex-shrink-0';
+                                                                        fallback.textContent = sender.name.charAt(0).toUpperCase();
+                                                                        target.parentNode?.insertBefore(fallback, target.nextSibling);
+                                                                    }}
+                                                                />
+                                                            )}
+
+                                                            <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isCurrentUser
                                                                 ? 'bg-primary-600 text-white'
-                                                                : 'bg-gray-100 text-gray-900'
+                                                                : 'bg-white text-gray-900 border border-gray-200'
                                                             }`}>
-                                                            <p className="text-sm">{message.text}</p>
-                                                        </div>
-                                                        <div className={`text-xs text-gray-500 mt-1 ${message.sender.id === '1' ? 'text-right' : 'text-left'}`}>
-                                                            {new Date(message.timestamp).toLocaleString()}
+                                                                {/* Contenido del mensaje */}
+                                                                {message.type === 'text' && (
+                                                                    <p className="text-sm leading-relaxed">{message.text || 'Mensaje sin contenido'}</p>
+                                                                )}
+
+                                                                {message.type === 'image' && message.metadata?.imageUrl && (
+                                                                    <div className="space-y-2">
+                                                                        {message.text && message.text.trim() && (
+                                                                            <p className="text-sm leading-relaxed">{message.text}</p>
+                                                                        )}
+                                                                        <img
+                                                                            src={message.metadata.imageUrl}
+                                                                            alt="Imagen del chat"
+                                                                            className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200"
+                                                                            onClick={() => {
+                                                                                // Aquí podrías abrir un modal de imagen si lo implementas
+                                                                                console.log('Abrir imagen:', message.metadata.imageUrl)
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Timestamp y sender info */}
+                                                                <div className={`flex items-center justify-between mt-1`}>
+                                                                    <div className="flex items-center space-x-1">
+                                                                        <span className={`text-xs ${isCurrentUser ? 'text-primary-100' : 'text-gray-500'}`}>
+                                                                            {message.timestamp ? new Date(message.timestamp).toLocaleString('es-CO', { 
+                                                                                hour: '2-digit', 
+                                                                                minute: '2-digit',
+                                                                                day: '2-digit',
+                                                                                month: '2-digit'
+                                                                            }) : 'Sin fecha'}
+                                                                        </span>
+                                                                        <span className={`text-xs ${isCurrentUser ? 'text-primary-200' : 'text-gray-400'}`}>
+                                                                            • {sender.name}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    {message.sender.id !== '1' && (
-                                                        <div className="order-2 ml-3">
-                                                            <img
-                                                                src={message.sender.avatar}
-                                                                alt={message.sender.name}
-                                                                className="w-8 h-8 rounded-full"
-                                                            />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                )
+                                            })}
                                         </div>
 
                                         <div className="border-t border-gray-200 pt-4">
@@ -609,51 +779,104 @@ export default function InteraccionDetailPage() {
                                     </div>
                                 )}
 
-                                {/* Pestaña Propuestas */}
-                                {activeTab === 'proposals' && (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="font-medium text-gray-900">Propuestas</h3>
-                                            <button
-                                                onClick={() => setShowNewProposalModal(true)}
-                                                className="bg-primary-600 text-white px-3 py-2 rounded-lg hover:bg-primary-700 transition-colors text-sm"
-                                            >
-                                                Nueva Propuesta
-                                            </button>
-                                        </div>
+                                       {/* Pestaña Propuestas */}
+                                       {activeTab === 'proposals' && (
+                                           <div className="space-y-4">
+                                               <div className="flex items-center justify-between">
+                                                   <h3 className="font-medium text-gray-900">Propuestas</h3>
+                                                   <button
+                                                       onClick={() => setShowNewProposalModal(true)}
+                                                       className="bg-primary-600 text-white px-3 py-2 rounded-lg hover:bg-primary-700 transition-colors text-sm"
+                                                   >
+                                                       Nueva Propuesta
+                                                   </button>
+                                               </div>
 
-                                        <div className="space-y-4">
-                                            {interaction.proposals.map((proposal) => (
-                                                <div key={proposal.id} className="border border-gray-200 rounded-lg p-4">
-                                                    <div className="flex items-center justify-between mb-3">
-                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getProposalStatusColor(proposal.status)}`}>
-                                                            {proposal.status === 'pending' ? 'Pendiente' :
-                                                                proposal.status === 'accepted' ? 'Aceptada' :
-                                                                    proposal.status === 'rejected' ? 'Rechazada' :
-                                                                        proposal.status === 'counter' ? 'Contraoferta' : proposal.status}
-                                                        </span>
-                                                        <span className="text-sm text-gray-500">
-                                                            {new Date(proposal.createdAt).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-
-                                                    <p className="text-gray-900 mb-3">{proposal.description}</p>
-
-                                                    {proposal.proposedPrice && (
-                                                        <div className="text-sm text-gray-600 mb-3">
-                                                            Precio propuesto: {proposal.proposedPrice.toLocaleString()} {interaction.product.currency}
-                                                        </div>
-                                                    )}
-
-                                                    <div className="flex items-center space-x-2 text-xs text-gray-500">
-                                                        <ClockIcon className="w-4 h-4" />
-                                                        <span>Expira: {new Date(proposal.expiresAt).toLocaleDateString()}</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+                                               {interaction.proposals.length === 0 ? (
+                                                   <div className="text-center py-8 text-gray-500">
+                                                       <p className="text-sm">No hay propuestas en esta interacción</p>
+                                                   </div>
+                                               ) : (
+                                                   <div className="space-y-3 max-h-60 overflow-y-auto">
+                                                       {interaction.proposals.map((proposal) => (
+                                                           <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
+                                                               <div className="flex items-start justify-between mb-2">
+                                                                   <div className="flex items-center space-x-2">
+                                                                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                                           proposal.type === 'precio' ? 'bg-blue-100 text-blue-800' :
+                                                                           proposal.type === 'intercambio' ? 'bg-green-100 text-green-800' :
+                                                                           proposal.type === 'encuentro' ? 'bg-purple-100 text-purple-800' :
+                                                                           proposal.type === 'condiciones' ? 'bg-yellow-100 text-yellow-800' :
+                                                                           'bg-gray-100 text-gray-800'
+                                                                       }`}>
+                                                                           {proposal.type}
+                                                                       </span>
+                                                                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                                           proposal.status === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :
+                                                                           proposal.status === 'aceptada' ? 'bg-green-100 text-green-800' :
+                                                                           proposal.status === 'rechazada' ? 'bg-red-100 text-red-800' :
+                                                                           'bg-blue-100 text-blue-800'
+                                                                       }`}>
+                                                                           {proposal.status}
+                                                                       </span>
+                                                                   </div>
+                                                                   <span className="text-xs text-gray-500">
+                                                                       {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
+                                                                   </span>
+                                                               </div>
+                                                               
+                                                               <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                                                               
+                                                               {proposal.proposedPrice && (
+                                                                   <p className="text-sm font-medium text-green-600 mb-2">
+                                                                       Precio propuesto: ${proposal.proposedPrice.toLocaleString('es-CO')}
+                                                                   </p>
+                                                               )}
+                                                               
+                                                               {proposal.meetingDate && (
+                                                                   <p className="text-sm text-gray-600 mb-2">
+                                                                       📅 Encuentro: {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}
+                                                                       {proposal.meetingPlace && ` en ${proposal.meetingPlace}`}
+                                                                   </p>
+                                                               )}
+                                                               
+                                                               {proposal.response && (
+                                                                   <div className="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
+                                                                       <p className="text-sm text-gray-700">
+                                                                           <strong>Respuesta:</strong> {proposal.response}
+                                                                       </p>
+                                                                   </div>
+                                                               )}
+                                                               
+                                                               {/* Botones de acción para propuestas pendientes */}
+                                                               {proposal.status === 'pendiente' && (
+                                                                   <div className="flex space-x-2 mt-3">
+                                                                       <button
+                                                                           onClick={() => {
+                                                                               // TODO: Implementar aceptar propuesta
+                                                                               console.log('Aceptar propuesta:', proposal.id)
+                                                                           }}
+                                                                           className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                                                       >
+                                                                           Aceptar
+                                                                       </button>
+                                                                       <button
+                                                                           onClick={() => {
+                                                                               // TODO: Implementar rechazar propuesta
+                                                                               console.log('Rechazar propuesta:', proposal.id)
+                                                                           }}
+                                                                           className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                                                       >
+                                                                           Rechazar
+                                                                       </button>
+                                                                   </div>
+                                                               )}
+                                                           </div>
+                                                       ))}
+                                                   </div>
+                                               )}
+                                           </div>
+                                       )}
 
                                 {/* Pestaña Entrega */}
                                 {activeTab === 'delivery' && (

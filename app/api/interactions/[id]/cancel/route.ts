@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { InteractionStats } from '@/lib/types/interactions'
-import { getInteractionStats } from '@/lib/interactions-queries'
+import { cancelExchange } from '@/lib/interactions-queries'
 import { getAuthenticatedUserFromToken, createAuthErrorResponse, createSuccessResponse } from '@/lib/auth-helper'
 
-export async function GET(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
+    const exchangeId = params.id
+    const body = await req.json()
+    const { reason } = body || {}
+
     // Verificar autenticación
     const authHeader = req.headers.get('authorization')
     if (!authHeader) {
@@ -19,12 +25,16 @@ export async function GET(req: NextRequest) {
     const userId = user.user_id
 
     // Usar la función de consulta optimizada
-    const stats = await getInteractionStats(userId)
+    const result = await cancelExchange(exchangeId, userId, reason)
 
-    return createSuccessResponse(stats)
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 400 })
+    }
+
+    return createSuccessResponse({ ok: true, data: result.data })
 
   } catch (error) {
-    console.error('Error en API de estadísticas de interacciones:', error)
+    console.error('Error en API de cancelar intercambio:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
