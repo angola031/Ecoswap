@@ -200,6 +200,7 @@ export default function InteraccionDetailPage() {
     const [newMessage, setNewMessage] = useState('')
     const [showCancelModal, setShowCancelModal] = useState(false)
     const [showNewProposalModal, setShowNewProposalModal] = useState(false)
+    const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
 
     useEffect(() => {
         const loadInteraction = async () => {
@@ -324,6 +325,92 @@ export default function InteraccionDetailPage() {
             loadInteraction()
         }
     }, [interactionId])
+
+    // Configurar canal realtime para recibir mensajes en tiempo real
+    useEffect(() => {
+        // Limpiar canal anterior
+        if (realtimeChannel) {
+            console.log('🔌 [InteractionDetail] Removiendo canal realtime anterior')
+            supabase.removeChannel(realtimeChannel)
+            setRealtimeChannel(null)
+        }
+
+        const chatId = interaction?.chatId
+        if (!chatId || !currentUserId) {
+            console.log('⚠️ [InteractionDetail] No hay chatId o currentUserId para realtime')
+            return
+        }
+
+        console.log('🔗 [InteractionDetail] Configurando realtime para chat:', chatId)
+
+        // Crear canal realtime
+        const channel = supabase
+            .channel(`chat_${chatId}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'mensaje',
+                filter: `chat_id=eq.${chatId}`
+            }, (payload: any) => {
+                console.log('📨 [InteractionDetail] Nuevo mensaje realtime recibido:', payload)
+                
+                const m = payload.new
+                if (!m) return
+
+                const messageId = String(m.mensaje_id)
+                
+                // No procesar nuestros propios mensajes (ya los mostramos optimísticamente)
+                if (String(m.usuario_id) === currentUserId) {
+                    console.log('⚠️ [InteractionDetail] Ignorando mensaje propio en realtime:', messageId)
+                    return
+                }
+
+                // Verificar si el mensaje ya existe
+                const messageExists = interaction?.messages.some(msg => msg.id === messageId)
+                if (messageExists) {
+                    console.log('⚠️ [InteractionDetail] Mensaje ya existe, ignorando:', messageId)
+                    return
+                }
+
+                // Crear mensaje con información básica
+                const incomingMessage: Message = {
+                    id: messageId,
+                    text: m.contenido || '',
+                    timestamp: m.fecha_envio,
+                    sender: {
+                        id: String(m.usuario_id),
+                        name: 'Usuario',
+                        lastName: '',
+                        avatar: undefined
+                    },
+                    type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text'
+                }
+
+                console.log('✅ [InteractionDetail] Agregando mensaje realtime:', incomingMessage)
+
+                // Actualizar interacción con el nuevo mensaje
+                setInteraction(prev => {
+                    if (!prev) return null
+                    return {
+                        ...prev,
+                        messages: [...prev.messages, incomingMessage]
+                    }
+                })
+            })
+            .subscribe((status) => {
+                console.log('🔗 [InteractionDetail] Estado del canal realtime:', status)
+            })
+
+        setRealtimeChannel(channel)
+
+        return () => {
+            console.log('🔌 [InteractionDetail] Limpiando canal realtime para chat:', chatId)
+            if (channel) {
+                supabase.removeChannel(channel)
+            }
+            setRealtimeChannel(null)
+        }
+    }, [interaction?.chatId, currentUserId])
 
     const getTypeIcon = (type: string) => {
         switch (type) {
@@ -465,8 +552,27 @@ export default function InteraccionDetailPage() {
                 // Limpiar el input
                 setNewMessage('')
                 
-                // Recargar la interacción para obtener los mensajes actualizados
-                window.location.reload()
+                // Agregar mensaje optimísticamente (sin recargar página)
+                const optimisticMessage: Message = {
+                    id: `temp-${Date.now()}`,
+                    text: newMessage.trim(),
+                    timestamp: new Date().toISOString(),
+                    sender: {
+                        id: currentUserId,
+                        name: 'Tú',
+                        lastName: '',
+                        avatar: undefined
+                    },
+                    type: 'text'
+                }
+
+                setInteraction(prev => {
+                    if (!prev) return null
+                    return {
+                        ...prev,
+                        messages: [...prev.messages, optimisticMessage]
+                    }
+                })
             } else {
                 const errorText = await response.text()
                 console.error('❌ Error enviando mensaje:', {
