@@ -52,8 +52,14 @@ export async function getInteractions(
           usuario:usuario!producto_user_id_fkey(*),
           categoria:categoria(*)
         ),
-        usuario_propone:usuario!intercambio_usuario_propone_id_fkey(*),
-        usuario_recibe:usuario!intercambio_usuario_recibe_id_fkey(*),
+        usuario_propone:usuario!intercambio_usuario_propone_id_fkey(
+          *,
+          ubicaciones:ubicacion(*)
+        ),
+        usuario_recibe:usuario!intercambio_usuario_recibe_id_fkey(
+          *,
+          ubicaciones:ubicacion(*)
+        ),
         chat(*)
       `)
 
@@ -149,6 +155,7 @@ export async function getInteractions(
               usuarioProponeId: intercambio.usuario_propone_id,
               usuarioRecibeId: intercambio.usuario_recibe_id,
               user: user ? {
+                ubicaciones: user.ubicaciones?.length || 0,
                 ciudad_snapshot: user.ciudad_snapshot,
                 departamento_snapshot: user.departamento_snapshot,
                 ciudad: user.ciudad,
@@ -158,6 +165,31 @@ export async function getInteractions(
             
             if (!user) return 'Ubicación no disponible'
             
+            // Buscar ubicación principal del usuario
+            const ubicacionPrincipal = user.ubicaciones?.find((ubicacion: any) => ubicacion.es_principal) || user.ubicaciones?.[0]
+            
+            if (ubicacionPrincipal) {
+              const ciudad = ubicacionPrincipal.ciudad || ''
+              const departamento = ubicacionPrincipal.departamento || ''
+              const barrio = ubicacionPrincipal.barrio || ''
+              
+              let ubicacionCompleta = ''
+              if (ciudad && departamento) {
+                ubicacionCompleta = `${ciudad}, ${departamento}`
+              } else if (ciudad) {
+                ubicacionCompleta = ciudad
+              } else if (departamento) {
+                ubicacionCompleta = departamento
+              }
+              
+              if (barrio && ubicacionCompleta) {
+                ubicacionCompleta = `${barrio}, ${ubicacionCompleta}`
+              }
+              
+              return ubicacionCompleta || 'Ubicación no disponible'
+            }
+            
+            // Fallback a snapshots si no hay ubicaciones
             const ciudad = user.ciudad_snapshot || user.ciudad || ''
             const departamento = user.departamento_snapshot || user.departamento || ''
             
@@ -236,8 +268,14 @@ export async function getInteractionDetail(
           categoria:categoria(*),
           ubicacion:ubicacion(*)
         ),
-        usuario_propone:usuario!intercambio_usuario_propone_id_fkey(*),
-        usuario_recibe:usuario!intercambio_usuario_recibe_id_fkey(*)
+        usuario_propone:usuario!intercambio_usuario_propone_id_fkey(
+          *,
+          ubicaciones:ubicacion(*)
+        ),
+        usuario_recibe:usuario!intercambio_usuario_recibe_id_fkey(
+          *,
+          ubicaciones:ubicacion(*)
+        )
       `)
       .eq('intercambio_id', interactionId)
       .single()
@@ -325,6 +363,31 @@ export async function getInteractionDetail(
           
           if (!user) return 'Ubicación no disponible'
           
+          // Buscar ubicación principal del usuario
+          const ubicacionPrincipal = user.ubicaciones?.find((ubicacion: any) => ubicacion.es_principal) || user.ubicaciones?.[0]
+          
+          if (ubicacionPrincipal) {
+            const ciudad = ubicacionPrincipal.ciudad || ''
+            const departamento = ubicacionPrincipal.departamento || ''
+            const barrio = ubicacionPrincipal.barrio || ''
+            
+            let ubicacionCompleta = ''
+            if (ciudad && departamento) {
+              ubicacionCompleta = `${ciudad}, ${departamento}`
+            } else if (ciudad) {
+              ubicacionCompleta = ciudad
+            } else if (departamento) {
+              ubicacionCompleta = departamento
+            }
+            
+            if (barrio && ubicacionCompleta) {
+              ubicacionCompleta = `${barrio}, ${ubicacionCompleta}`
+            }
+            
+            return ubicacionCompleta || 'Ubicación no disponible'
+          }
+          
+          // Fallback a snapshots si no hay ubicaciones
           const ciudad = user.ciudad_snapshot || user.ciudad || ''
           const departamento = user.departamento_snapshot || user.departamento || ''
           
