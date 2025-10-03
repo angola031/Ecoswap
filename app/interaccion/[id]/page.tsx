@@ -196,6 +196,7 @@ export default function InteraccionDetailPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'overview' | 'messages' | 'proposals' | 'delivery'>('overview')
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [newMessage, setNewMessage] = useState('')
     const [showCancelModal, setShowCancelModal] = useState(false)
     const [showNewProposalModal, setShowNewProposalModal] = useState(false)
@@ -224,6 +225,25 @@ export default function InteraccionDetailPage() {
                     setIsLoading(false)
                     return
                 }
+
+                // Obtener el ID del usuario actual desde la base de datos
+                const { data: usuario, error: usuarioError } = await supabase
+                    .from('usuario')
+                    .select('user_id')
+                    .eq('auth_user_id', session.user.id)
+                    .single()
+
+                if (usuarioError || !usuario) {
+                    console.error('No se pudo obtener el usuario de la base de datos:', usuarioError)
+                    setError('Error de autenticación')
+                    setIsLoading(false)
+                    return
+                }
+
+                const userId = usuario.user_id.toString()
+                setCurrentUserId(userId)
+                console.log('🔍 DEBUG: Usuario actual ID (auth):', session.user.id)
+                console.log('🔍 DEBUG: Usuario actual ID (user_id):', userId)
 
                 console.log('🔍 DEBUG: Cargando detalles de interacción:', interactionId)
 
@@ -683,8 +703,8 @@ export default function InteraccionDetailPage() {
                                                     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face'
                                                 }
                                                 
-                                                // Determinar si es el usuario actual (usando la misma lógica que ChatModule)
-                                                const isCurrentUser = sender.id === '1' || sender.id === 'current_user'
+                                                // Determinar si es el usuario actual comparando con el ID real
+                                                const isCurrentUser = currentUserId && sender.id === currentUserId
                                                 
                                                 return (
                                                     <div
