@@ -331,6 +331,39 @@ export async function getInteractionDetail(
       error: chatError
     })
 
+    // Si no existe chat, crear uno
+    let finalChat = chat
+    if (!chat && !chatError) {
+      console.log('🔍 DEBUG: No existe chat, creando uno nuevo para intercambio:', interactionId)
+      const { data: newChat, error: createChatError } = await supabase
+        .from('chat')
+        .insert({
+          intercambio_id: parseInt(interactionId),
+          activo: true
+        })
+        .select(`
+          *,
+          mensajes:mensaje(
+            *,
+            usuario:usuario!mensaje_usuario_id_fkey(*)
+          ),
+          propuestas:propuesta(
+            *,
+            proposer:usuario!propuesta_usuario_propone_id_fkey(*),
+            receiver:usuario!propuesta_usuario_recibe_id_fkey(*)
+          )
+        `)
+        .single()
+
+      if (createChatError) {
+        console.error('❌ Error creando chat:', createChatError)
+        return { success: false, error: 'Error creando chat para la interacción' }
+      }
+
+      finalChat = newChat
+      console.log('✅ Chat creado exitosamente:', finalChat.chat_id)
+    }
+
     // Obtener calificaciones
     const { data: calificaciones, error: calificacionesError } = await supabase
       .from('calificacion')
@@ -427,8 +460,8 @@ export async function getInteractionDetail(
       },
       createdAt: intercambio.fecha_propuesta,
       updatedAt: intercambio.fecha_respuesta || intercambio.fecha_propuesta,
-      messagesCount: chat?.mensajes?.length || 0,
-      chatId: chat?.chat_id.toString(),
+      messagesCount: finalChat?.mensajes?.length || 0,
+      chatId: finalChat?.chat_id?.toString() || '',
       additionalAmount: intercambio.monto_adicional,
       meetingPlace: intercambio.lugar_encuentro,
       meetingDate: intercambio.fecha_encuentro,
@@ -438,7 +471,7 @@ export async function getInteractionDetail(
       proposer: intercambio.usuario_propone,
       receiver: intercambio.usuario_recibe,
       messages: (() => {
-        const rawMessages = chat?.mensajes || []
+        const rawMessages = finalChat?.mensajes || []
         console.log('🔍 DEBUG: Mensajes raw obtenidos:', rawMessages.length)
         
         const filteredMessages = rawMessages.filter((m: any) => {
@@ -471,7 +504,7 @@ export async function getInteractionDetail(
         return transformedMessages.sort((a, b) => Number(a.id) - Number(b.id)) // Ordenar como en ChatModule
       })(),
       proposals: (() => {
-        const rawProposals = chat?.propuestas || []
+        const rawProposals = finalChat?.propuestas || []
         console.log('🔍 DEBUG: Propuestas raw obtenidas:', rawProposals.length)
         
         const transformedProposals = rawProposals.map((p: any) => ({
@@ -506,7 +539,7 @@ export async function getInteractionDetail(
       })(),
       deliveries: [], // TODO: Implementar entregas
       ratings: calificaciones || [],
-      chat: chat,
+      chat: finalChat,
       isUrgent: false, // TODO: Implementar lógica de urgencia
       notes: intercambio.notas_encuentro
     }
