@@ -381,18 +381,59 @@ export default function InteraccionDetailPage() {
                     return
                 }
 
-                // Crear mensaje con información básica
+                // Verificar si el mensaje es muy reciente (menos de 5 segundos) para evitar duplicados
+                const messageTime = new Date(m.fecha_envio).getTime()
+                const now = Date.now()
+                if (now - messageTime < 5000) {
+                    console.log('⚠️ [InteractionDetail] Mensaje muy reciente, posible duplicado, ignorando:', messageId)
+                    return
+                }
+
+                // Obtener información del usuario que envía el mensaje
+                const getSenderInfo = async () => {
+                    try {
+                        const { data: userData, error: userError } = await supabase
+                            .from('usuario')
+                            .select('user_id, nombre, apellido, foto_perfil')
+                            .eq('user_id', m.usuario_id)
+                            .single()
+
+                        if (userError) {
+                            console.error('❌ [InteractionDetail] Error obteniendo info del usuario:', userError)
+                            return {
+                                id: String(m.usuario_id),
+                                name: 'Usuario',
+                                lastName: '',
+                                avatar: undefined
+                            }
+                        }
+
+                        return {
+                            id: String(userData.user_id),
+                            name: userData.nombre || 'Usuario',
+                            lastName: userData.apellido || '',
+                            avatar: userData.foto_perfil || undefined
+                        }
+                    } catch (error) {
+                        console.error('❌ [InteractionDetail] Error obteniendo info del usuario:', error)
+                        return {
+                            id: String(m.usuario_id),
+                            name: 'Usuario',
+                            lastName: '',
+                            avatar: undefined
+                        }
+                    }
+                }
+
+                // Crear mensaje con información del usuario
+                const senderInfo = await getSenderInfo()
                 const incomingMessage: Message = {
                     id: messageId,
                     text: m.contenido || '',
                     timestamp: m.fecha_envio,
-                    sender: {
-                        id: String(m.usuario_id),
-                        name: 'Usuario',
-                        lastName: '',
-                        avatar: undefined
-                    },
-                    type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text'
+                    sender: senderInfo,
+                    type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
+                    metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
                 }
 
                 console.log('✅ [InteractionDetail] Agregando mensaje realtime:', incomingMessage)
@@ -400,14 +441,33 @@ export default function InteraccionDetailPage() {
                 // Actualizar interacción con el nuevo mensaje
                 setInteraction(prev => {
                     if (!prev) return null
+                    const updatedMessages = [...prev.messages, incomingMessage]
+                        .sort((a, b) => Number(a.id) - Number(b.id)) // Mantener orden correcto
                     return {
                         ...prev,
-                        messages: [...prev.messages, incomingMessage]
+                        messages: updatedMessages
                     }
                 })
+
+                // Scroll automático al final
+                setTimeout(() => {
+                    const messagesContainer = document.querySelector('.messages-container')
+                    if (messagesContainer) {
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight
+                    }
+                }, 100)
             })
             .subscribe((status) => {
-                console.log('🔗 [InteractionDetail] Estado del canal realtime:', status)
+                console.log('🔌 [InteractionDetail] Estado realtime:', status)
+                if (status === 'SUBSCRIBED') {
+                    console.log('✅ [InteractionDetail] Realtime conectado exitosamente para chat:', chatIdNumber)
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error('❌ [InteractionDetail] Error en canal realtime para chat:', chatIdNumber)
+                } else if (status === 'TIMED_OUT') {
+                    console.error('❌ [InteractionDetail] Timeout en canal realtime para chat:', chatIdNumber)
+                } else if (status === 'CLOSED') {
+                    console.log('🔌 [InteractionDetail] Canal realtime cerrado para chat:', chatIdNumber)
+                }
             })
 
         setRealtimeChannel(channel)
@@ -857,7 +917,7 @@ export default function InteraccionDetailPage() {
                                             <span className="text-sm text-gray-500">{interaction.messages.length} mensajes</span>
                                         </div>
 
-                                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                                        <div className="space-y-4 max-h-96 overflow-y-auto messages-container">
                                             {interaction.messages.map((message) => {
                                                 // Validar y proporcionar valores por defecto para el sender (como en ChatModule)
                                                 const sender = message.sender || {
