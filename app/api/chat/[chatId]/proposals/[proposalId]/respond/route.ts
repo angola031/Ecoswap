@@ -16,14 +16,26 @@ async function getAuthUserId(request: NextRequest): Promise<number | null> {
     
     if (error || !user) return null
 
-    // Buscar el usuario en la tabla usuario por auth_user_id
-    const { data: usuario } = await supabaseAdmin
+    // Intentar por auth_user_id
+    const { data: usuarioByAuth } = await supabaseAdmin
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', user.id)
       .single()
 
-    return usuario?.user_id || null
+    if (usuarioByAuth?.user_id) return usuarioByAuth.user_id
+
+    // Fallback por email
+    if (user.email) {
+      const { data: usuarioByEmail } = await supabaseAdmin
+        .from('usuario')
+        .select('user_id')
+        .eq('email', user.email)
+        .single()
+      if (usuarioByEmail?.user_id) return usuarioByEmail.user_id
+    }
+
+    return null
   } catch (error) {
     console.error('Error obteniendo usuario:', error)
     return null

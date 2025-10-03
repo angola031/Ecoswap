@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { ChatInfo, ChatMessage, ChatProposal } from '@/lib/types/chat'
 import ProposalModal from '@/components/chat/ProposalModal'
 import AuthGuard from '@/components/auth/AuthGuard'
-import imageCompression from 'browser-image-compression'
+// import imageCompression from 'browser-image-compression' // Importación dinámica
 
 function ChatPageContent() {
   const params = useParams()
@@ -780,17 +780,20 @@ function ChatPageContent() {
 
   // Funciones para manejo de imágenes
   const compressImage = async (file: File): Promise<File> => {
-    const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1920,
-      useWebWorker: true,
-      fileType: 'image/jpeg' as const,
-      quality: 0.8,
-      initialQuality: 0.8,
-      alwaysKeepResolution: false
-    }
-    
     try {
+      // Importación dinámica solo en el cliente
+      const imageCompression = (await import('browser-image-compression')).default
+      
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        fileType: 'image/jpeg' as const,
+        quality: 0.8,
+        initialQuality: 0.8,
+        alwaysKeepResolution: false
+      }
+      
       const compressedFile = await imageCompression(file, options)
       console.log('✅ [ChatPage] Imagen comprimida:', {
         originalSize: file.size,

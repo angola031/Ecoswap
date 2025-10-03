@@ -187,11 +187,20 @@ export async function GET(
     }
 
     if (chatError || !chat) {
+      console.log('❌ [API Info] Chat no encontrado:', { chatError, chat })
       return NextResponse.json({ error: 'Chat no encontrado' }, { status: 404 })
     }
 
     const intercambio = chat.intercambio as any
+    console.log('🔍 [API Info] Datos del intercambio:', {
+      intercambio,
+      usuario_propone_id: intercambio?.usuario_propone_id,
+      usuario_recibe_id: intercambio?.usuario_recibe_id,
+      currentUserId: userId
+    })
+    
     if (!intercambio || (intercambio.usuario_propone_id !== userId && intercambio.usuario_recibe_id !== userId)) {
+      console.log('❌ [API Info] Usuario no tiene acceso al chat')
       return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
     }
 
@@ -215,7 +224,7 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({
+    const responseData = {
       data: {
         chatId: chat.chat_id,
         seller: {
@@ -227,6 +236,10 @@ export async function GET(
           rating: otherUser.calificacion_promedio || 0,
           totalExchanges: otherUser.total_intercambios || 0,
           memberSince: otherUser.fecha_registro ? new Date(otherUser.fecha_registro).getFullYear().toString() : null
+        },
+        exchangeInfo: {
+          usuarioProponeId: intercambio.usuario_propone_id,
+          usuarioRecibeId: intercambio.usuario_recibe_id
         },
         offeredProduct: {
           id: intercambio.producto_ofrecido.producto_id,
@@ -274,7 +287,15 @@ export async function GET(
         } : null,
         createdAt: chat.fecha_creacion
       }
+    }
+
+    console.log('✅ [API Info] Respuesta enviada:', {
+      exchangeInfo: responseData.data.exchangeInfo,
+      hasOfferedProduct: !!responseData.data.offeredProduct,
+      hasRequestedProduct: !!responseData.data.requestedProduct
     })
+
+    return NextResponse.json(responseData)
 
   } catch (error: any) {
     console.error('Error en API de información del chat:', error)

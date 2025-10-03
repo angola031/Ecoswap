@@ -23,7 +23,7 @@ import {
 } from '@/lib/types'
 import { useUserStatus } from '@/hooks/useUserStatus'
 import { useInactivity } from '@/hooks/useInactivity'
-import imageCompression from 'browser-image-compression'
+// import imageCompression from 'browser-image-compression' // Importación dinámica
 
 
 interface ChatModuleProps {
@@ -331,24 +331,89 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   
   const { onlineUsers, updateUserStatus } = useUserStatus()
   const [requestedProduct, setRequestedProduct] = useState<any>(null)
+  const [exchangeInfo, setExchangeInfo] = useState<{
+    usuarioProponeId: number | null
+    usuarioRecibeId: number | null
+  }>({
+    usuarioProponeId: null,
+    usuarioRecibeId: null
+  })
   
   const isUserOnline = (userId: string): boolean => {
     return onlineUsers.some(user => user.id === userId && user.isOnline)
   }
 
+  // Función para determinar el rol del usuario actual
+  const getUserRole = (): 'vendedor' | 'comprador' | null => {
+    console.log('🔍 [ChatModule] getUserRole - Debug info:', {
+      exchangeInfo,
+      currentUserId: currentUser?.id,
+      usuarioProponeId: exchangeInfo.usuarioProponeId,
+      usuarioRecibeId: exchangeInfo.usuarioRecibeId
+    })
+    
+    if (!exchangeInfo.usuarioProponeId || !exchangeInfo.usuarioRecibeId || !currentUser?.id) {
+      console.log('❌ [ChatModule] getUserRole - Faltan datos:', {
+        hasUsuarioProponeId: !!exchangeInfo.usuarioProponeId,
+        hasUsuarioRecibeId: !!exchangeInfo.usuarioRecibeId,
+        hasCurrentUserId: !!currentUser?.id
+      })
+      return null
+    }
+    
+    const currentUserId = Number(currentUser.id)
+    
+    console.log('🔍 [ChatModule] getUserRole - Comparando IDs:', {
+      currentUserId,
+      usuarioProponeId: exchangeInfo.usuarioProponeId,
+      usuarioRecibeId: exchangeInfo.usuarioRecibeId,
+      isVendedor: currentUserId === exchangeInfo.usuarioProponeId,
+      isComprador: currentUserId === exchangeInfo.usuarioRecibeId
+    })
+    
+    if (currentUserId === exchangeInfo.usuarioProponeId) {
+      console.log('✅ [ChatModule] Usuario es COMPRADOR')
+      return 'comprador' // Usuario que propone -> comprador
+    } else if (currentUserId === exchangeInfo.usuarioRecibeId) {
+      console.log('✅ [ChatModule] Usuario es VENDEDOR')
+      return 'vendedor' // Usuario que recibe -> vendedor
+    }
+    
+    console.log('❌ [ChatModule] Usuario no coincide con ningún rol')
+    return null
+  }
+
+  // Helper fiable para saber si el usuario actual es COMPRADOR según exchangeInfo
+  const isCurrentUserBuyer = (): boolean => {
+    if (!exchangeInfo.usuarioProponeId || !exchangeInfo.usuarioRecibeId || !currentUser?.id) {
+      return false
+    }
+    const buyer = Number(currentUser.id) === exchangeInfo.usuarioProponeId
+    console.log('🔎 [ChatModule] isCurrentUserBuyer check:', {
+      currentUserId: Number(currentUser.id),
+      usuarioProponeId: exchangeInfo.usuarioProponeId,
+      usuarioRecibeId: exchangeInfo.usuarioRecibeId,
+      buyer
+    })
+    return buyer
+  }
+
   // Función para comprimir imágenes
   const compressImage = async (file: File): Promise<File> => {
-    const options = {
-      maxSizeMB: 1, // Máximo 1MB después de compresión
-      maxWidthOrHeight: 1920, // Máximo 1920px de ancho o alto
-      useWebWorker: true,
-      fileType: 'image/jpeg', // Convertir a JPEG para mejor compresión
-      quality: 0.8, // Calidad del 80%
-      initialQuality: 0.8,
-      alwaysKeepResolution: false
-    }
-
     try {
+      // Importación dinámica solo en el cliente
+      const imageCompression = (await import('browser-image-compression')).default
+      
+      const options = {
+        maxSizeMB: 1, // Máximo 1MB después de compresión
+        maxWidthOrHeight: 1920, // Máximo 1920px de ancho o alto
+        useWebWorker: true,
+        fileType: 'image/jpeg', // Convertir a JPEG para mejor compresión
+        quality: 0.8, // Calidad del 80%
+        initialQuality: 0.8,
+        alwaysKeepResolution: false
+      }
+
       console.log('🗜️ [ChatModule] Comprimiendo imagen...', {
         originalSize: `${Math.round(file.size / 1024)} KB`,
         originalType: file.type,
@@ -674,9 +739,19 @@ const getCurrentUserId = () => {
           const data = responseData.data || responseData
           setOfferedProduct(data.offeredProduct)
           setRequestedProduct(data.requestedProduct)
+          
+          // Obtener información del intercambio desde la respuesta
+          if (data.exchangeInfo) {
+            setExchangeInfo({
+              usuarioProponeId: data.exchangeInfo.usuarioProponeId,
+              usuarioRecibeId: data.exchangeInfo.usuarioRecibeId
+            })
+          }
+          
           console.log('📦 [ChatModule] Información de productos cargada:', {
             offered: data.offeredProduct,
-            requested: data.requestedProduct
+            requested: data.requestedProduct,
+            exchangeInfo: data.exchangeInfo
           })
         }
       } catch (error) {
@@ -2119,9 +2194,26 @@ const getCurrentUserId = () => {
               
               {/* Información de productos - Compacta */}
               <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-                <div className="flex items-center space-x-2 mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
                   <span className="text-sm">📦</span>
                   <h3 className="text-sm font-medium text-gray-700">Producto en Negociación</h3>
+                  </div>
+                  {(() => {
+                    const userRole = getUserRole()
+                    if (userRole) {
+                      return (
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          userRole === 'vendedor' 
+                            ? 'bg-green-100 text-green-700 border border-green-200' 
+                            : 'bg-blue-100 text-blue-700 border border-blue-200'
+                        }`}>
+                          {userRole === 'vendedor' ? '🛒 Vendedor' : '💰 Comprador'}
+                        </span>
+                      )
+                    }
+                    return null
+                  })()}
                 </div>
                 <div className="space-y-2">
                   {offeredProduct && renderProductInfoCompact(offeredProduct, 'Ofrecido')}
@@ -2143,8 +2235,10 @@ const getCurrentUserId = () => {
                 <div className="px-4 pb-3 border-t border-gray-200">
                   <div className="flex items-center justify-between py-2">
                     <h4 className="font-medium text-gray-900">Propuestas</h4>
-                    <button
-                      onClick={() => {
+                    {(() => {
+                      const buyer = isCurrentUserBuyer()
+                      const handleClick = () => {
+                        if (!buyer) return
                         if ((window as any).Swal) {
                           (window as any).Swal.fire({
                             title: 'Crear Propuesta',
@@ -2193,11 +2287,20 @@ const getCurrentUserId = () => {
                             }
                           })
                         }
-                      }}
-                      className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      + Nueva propuesta
-                    </button>
+                      }
+                      return (
+                        <button
+                          onClick={handleClick}
+                          disabled={!buyer}
+                          className={`text-sm font-medium ${
+                            !buyer ? 'text-gray-400 cursor-not-allowed' : 'text-primary-600 hover:text-primary-700'
+                          }`}
+                          title={!buyer ? 'Solo los compradores pueden crear propuestas' : 'Crear propuesta'}
+                        >
+                          + Nueva propuesta
+                        </button>
+                      )
+                    })()}
                   </div>
                   
                   {isLoadingProposals ? (
@@ -2260,7 +2363,21 @@ const getCurrentUserId = () => {
                             </div>
                           )}
                           
-                          {proposal.status === 'pendiente' && proposal.receiver.id === parseInt(getCurrentUserId()) && (
+                          {proposal.status === 'pendiente' && (() => {
+                            const role = getUserRole()
+                            const isSeller = role === 'vendedor'
+                            if (isSeller) return false
+                            const isReceiver = (
+                              (proposal as any)?.receiver?.id != null
+                                ? Number((proposal as any).receiver.id) === parseInt(getCurrentUserId())
+                                : (
+                                    (proposal as any)?.proposer?.id != null
+                                      ? Number((proposal as any).proposer.id) !== parseInt(getCurrentUserId())
+                                      : false
+                                  )
+                            )
+                            return isReceiver
+                          })() && (
                             <div className="flex space-x-2 mt-3">
                               <button
                                 onClick={() => handleRespondToProposal(proposal.id, 'aceptar')}
@@ -2368,8 +2485,8 @@ const getCurrentUserId = () => {
                           
                           {/* Imagen */}
                           <div className="relative group">
-                            <img
-                              src={message.metadata.imageUrl}
+                        <img
+                          src={message.metadata.imageUrl}
                               alt="Imagen del chat"
                               className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200"
                               onClick={() => {
@@ -2521,28 +2638,32 @@ const getCurrentUserId = () => {
             {/* Barra de acciones - FIJA */}
             <div className="bg-gray-50 border-t border-gray-200 px-4 py-2 flex-shrink-0">
               <div className="flex items-center justify-center gap-2">
-                <button
-                  onClick={handleSendProposal}
-                  className="flex items-center space-x-1 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
-                >
-                  <span>💰</span>
-                  <span>Enviar</span>
-                </button>
+                {(() => {
+                  const buyer = isCurrentUserBuyer()
+                  return (
+                    <button
+                      onClick={() => { if (buyer) handleSendProposal() }}
+                      disabled={!buyer}
+                      className={`flex items-center space-x-1 px-3 py-1.5 rounded transition-colors text-sm ${
+                        !buyer
+                          ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                          : 'bg-green-600 text-white hover:bg-green-700'
+                      }`}
+                      title={!buyer ? 'Solo los compradores pueden enviar propuestas' : 'Enviar propuesta'}
+                    >
+                      <span>💰</span>
+                      <span>Enviar</span>
+                    </button>
+                  )
+                })()}
                 
                 <button
                   onClick={handleNegotiate}
                   className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                  title="Negociar"
                 >
                   <span>🔄</span>
                   <span>Negociar</span>
-                </button>
-                
-                <button
-                  onClick={handleAccept}
-                  className="flex items-center space-x-1 px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors text-sm"
-                >
-                  <span>✅</span>
-                  <span>Aceptar</span>
                 </button>
               </div>
             </div>
@@ -2632,7 +2753,24 @@ const getCurrentUserId = () => {
             return selectedConversation.product
           })() && (
             <div className="p-4 border-t border-gray-200 space-y-3">
+              <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-gray-900">Producto en Negociación</h4>
+                {(() => {
+                  const userRole = getUserRole()
+                  if (userRole) {
+                    return (
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        userRole === 'vendedor' 
+                          ? 'bg-green-100 text-green-700 border border-green-200' 
+                          : 'bg-blue-100 text-blue-700 border border-blue-200'
+                      }`}>
+                        {userRole === 'vendedor' ? '🛒 Vendedor' : '💰 Comprador'}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+              </div>
               
               {selectedConversation.product.mainImage && (
                 <div className="relative">
