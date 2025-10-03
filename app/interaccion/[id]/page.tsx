@@ -197,7 +197,6 @@ export default function InteraccionDetailPage() {
     const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'overview' | 'messages' | 'proposals' | 'delivery'>('overview')
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-    const [newMessage, setNewMessage] = useState('')
     const [showCancelModal, setShowCancelModal] = useState(false)
     const [showNewProposalModal, setShowNewProposalModal] = useState(false)
 
@@ -415,27 +414,6 @@ export default function InteraccionDetailPage() {
         }
     }
 
-    const handleSendMessage = () => {
-        if (!newMessage.trim() || !interaction) return
-
-        const message: Message = {
-            id: Date.now().toString(),
-            text: newMessage,
-            timestamp: new Date().toISOString(),
-            sender: {
-                id: '1',
-                name: 'Tú',
-                avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face'
-            },
-            type: 'text'
-        }
-
-        setInteraction(prev => prev ? {
-            ...prev,
-            messages: [...prev.messages, message]
-        } : null)
-        setNewMessage('')
-    }
 
     const handleCancelInteraction = () => {
         if (!interaction) return
@@ -777,24 +755,6 @@ export default function InteraccionDetailPage() {
                                             })}
                                         </div>
 
-                                        <div className="border-t border-gray-200 pt-4">
-                                            <div className="flex space-x-3">
-                                                <input
-                                                    type="text"
-                                                    value={newMessage}
-                                                    onChange={(e) => setNewMessage(e.target.value)}
-                                                    placeholder="Escribe un mensaje..."
-                                                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                                />
-                                                <button
-                                                    onClick={handleSendMessage}
-                                                    disabled={!newMessage.trim()}
-                                                    className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    Enviar
-                                                </button>
-                                            </div>
-                                        </div>
                                     </div>
                                 )}
 
