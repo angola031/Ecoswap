@@ -335,22 +335,28 @@ export default function InteraccionDetailPage() {
             setRealtimeChannel(null)
         }
 
-        const chatId = interaction?.chatId
-        if (!chatId || !currentUserId) {
-            console.log('⚠️ [InteractionDetail] No hay chatId o currentUserId para realtime')
+        const chatIdString = interaction?.chatId
+        const chatIdNumber = Number(chatIdString)
+        
+        if (!chatIdString || !chatIdNumber || isNaN(chatIdNumber) || !currentUserId) {
+            console.log('⚠️ [InteractionDetail] No hay chatId válido o currentUserId para realtime:', {
+                chatIdString,
+                chatIdNumber,
+                currentUserId
+            })
             return
         }
 
-        console.log('🔗 [InteractionDetail] Configurando realtime para chat:', chatId)
+        console.log('🔗 [InteractionDetail] Configurando realtime para chat:', chatIdNumber)
 
         // Crear canal realtime
         const channel = supabase
-            .channel(`chat_${chatId}`)
+            .channel(`chat_${chatIdNumber}`)
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
                 table: 'mensaje',
-                filter: `chat_id=eq.${chatId}`
+                filter: `chat_id=eq.${chatIdNumber}`
             }, (payload: any) => {
                 console.log('📨 [InteractionDetail] Nuevo mensaje realtime recibido:', payload)
                 
@@ -404,7 +410,7 @@ export default function InteraccionDetailPage() {
         setRealtimeChannel(channel)
 
         return () => {
-            console.log('🔌 [InteractionDetail] Limpiando canal realtime para chat:', chatId)
+            console.log('🔌 [InteractionDetail] Limpiando canal realtime para chat:', chatIdNumber)
             if (channel) {
                 supabase.removeChannel(channel)
             }
@@ -529,8 +535,17 @@ export default function InteraccionDetailPage() {
 
             console.log('✅ Sesión obtenida correctamente')
 
-            // Enviar mensaje a la API
-            const response = await fetch(`/api/chat/${interaction.chatId}/messages`, {
+            // Enviar mensaje a la API (convertir chatId a número)
+            const chatIdNumber = Number(interaction.chatId)
+            if (!chatIdNumber || isNaN(chatIdNumber)) {
+                console.error('❌ chatId inválido:', interaction.chatId)
+                alert('Error: ID de chat inválido')
+                return
+            }
+
+            console.log('🔢 chatId convertido a número:', chatIdNumber)
+
+            const response = await fetch(`/api/chat/${chatIdNumber}/messages`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
