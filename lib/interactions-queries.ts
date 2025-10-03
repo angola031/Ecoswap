@@ -139,9 +139,38 @@ export async function getInteractions(
           avatar: intercambio.usuario_propone_id === userId 
             ? intercambio.usuario_recibe?.foto_perfil
             : intercambio.usuario_propone?.foto_perfil,
-          location: intercambio.usuario_propone_id === userId 
-            ? `${intercambio.usuario_recibe?.ciudad_snapshot || ''}, ${intercambio.usuario_recibe?.departamento_snapshot || ''}`
-            : `${intercambio.usuario_propone?.ciudad_snapshot || ''}, ${intercambio.usuario_propone?.departamento_snapshot || ''}`,
+          location: (() => {
+            const user = intercambio.usuario_propone_id === userId 
+              ? intercambio.usuario_recibe 
+              : intercambio.usuario_propone
+            
+            console.log('🔍 DEBUG: Construyendo ubicación para usuario:', {
+              userId,
+              usuarioProponeId: intercambio.usuario_propone_id,
+              usuarioRecibeId: intercambio.usuario_recibe_id,
+              user: user ? {
+                ciudad_snapshot: user.ciudad_snapshot,
+                departamento_snapshot: user.departamento_snapshot,
+                ciudad: user.ciudad,
+                departamento: user.departamento
+              } : 'null'
+            })
+            
+            if (!user) return 'Ubicación no disponible'
+            
+            const ciudad = user.ciudad_snapshot || user.ciudad || ''
+            const departamento = user.departamento_snapshot || user.departamento || ''
+            
+            if (ciudad && departamento) {
+              return `${ciudad}, ${departamento}`
+            } else if (ciudad) {
+              return ciudad
+            } else if (departamento) {
+              return departamento
+            } else {
+              return 'Ubicación no disponible'
+            }
+          })(),
           rating: intercambio.usuario_propone_id === userId 
             ? intercambio.usuario_recibe?.calificacion_promedio || 0
             : intercambio.usuario_propone?.calificacion_promedio || 0,
@@ -289,9 +318,26 @@ export async function getInteractionDetail(
         avatar: intercambio.usuario_propone_id === userId 
           ? intercambio.usuario_recibe.foto_perfil
           : intercambio.usuario_propone.foto_perfil,
-        location: intercambio.usuario_propone_id === userId 
-          ? `${intercambio.usuario_recibe.ciudad_snapshot || ''}, ${intercambio.usuario_recibe.departamento_snapshot || ''}`
-          : `${intercambio.usuario_propone.ciudad_snapshot || ''}, ${intercambio.usuario_propone.departamento_snapshot || ''}`,
+        location: (() => {
+          const user = intercambio.usuario_propone_id === userId 
+            ? intercambio.usuario_recibe 
+            : intercambio.usuario_propone
+          
+          if (!user) return 'Ubicación no disponible'
+          
+          const ciudad = user.ciudad_snapshot || user.ciudad || ''
+          const departamento = user.departamento_snapshot || user.departamento || ''
+          
+          if (ciudad && departamento) {
+            return `${ciudad}, ${departamento}`
+          } else if (ciudad) {
+            return ciudad
+          } else if (departamento) {
+            return departamento
+          } else {
+            return 'Ubicación no disponible'
+          }
+        })(),
         rating: intercambio.usuario_propone_id === userId 
           ? intercambio.usuario_recibe.calificacion_promedio
           : intercambio.usuario_propone.calificacion_promedio,
