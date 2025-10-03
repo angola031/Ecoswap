@@ -303,10 +303,13 @@ export default function InteraccionDetailPage() {
                         messages: interactionData.messages || [],
                         proposals: interactionData.proposals || [],
                         deliveries: interactionData.deliveries || [],
+                        chatId: interactionData.chatId || '',
                         isUrgent: false
                     }
                     
                     console.log('✅ SUCCESS: Interacción transformada:', transformedInteraction)
+                    console.log('🔍 DEBUG: chatId en interactionData:', interactionData.chatId)
+                    console.log('🔍 DEBUG: chatId en transformedInteraction:', transformedInteraction.chatId)
                     setInteraction(transformedInteraction)
                 } else {
                     const errorText = await response.text()
