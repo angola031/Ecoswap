@@ -197,6 +197,7 @@ export default function InteraccionDetailPage() {
     const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'overview' | 'messages' | 'proposals' | 'delivery'>('overview')
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+    const [newMessage, setNewMessage] = useState('')
     const [showCancelModal, setShowCancelModal] = useState(false)
     const [showNewProposalModal, setShowNewProposalModal] = useState(false)
 
@@ -414,6 +415,43 @@ export default function InteraccionDetailPage() {
         }
     }
 
+    const handleSendMessage = async () => {
+        if (!newMessage.trim() || !interaction || !currentUserId) return
+
+        try {
+            // Obtener sesión para el token
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+            if (sessionError || !session?.access_token) {
+                console.error('Error obteniendo sesión:', sessionError)
+                return
+            }
+
+            // Enviar mensaje a la API
+            const response = await fetch(`/api/chat/${interaction.chatId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({
+                    content: newMessage.trim(),
+                    type: 'texto'
+                })
+            })
+
+            if (response.ok) {
+                // Limpiar el input
+                setNewMessage('')
+                
+                // Recargar la interacción para obtener los mensajes actualizados
+                window.location.reload()
+            } else {
+                console.error('Error enviando mensaje:', await response.text())
+            }
+        } catch (error) {
+            console.error('Error enviando mensaje:', error)
+        }
+    }
 
     const handleCancelInteraction = () => {
         if (!interaction) return
@@ -639,10 +677,6 @@ export default function InteraccionDetailPage() {
                                         <div className="border-t border-gray-200 pt-6">
                                             <h3 className="font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
                                             <div className="flex flex-wrap gap-3">
-                                                <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2">
-                                                    <ChatBubbleLeftRightIcon className="w-4 h-4" />
-                                                    <span>Enviar Mensaje</span>
-                                                </button>
                                                 <button className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center space-x-2">
                                                     <HandThumbUpIcon className="w-4 h-4" />
                                                     <span>Aceptar</span>
@@ -753,6 +787,31 @@ export default function InteraccionDetailPage() {
                                                     </div>
                                                 )
                                             })}
+                                        </div>
+
+                                        {/* Caja de entrada de mensajes */}
+                                        <div className="mt-6 border-t pt-4">
+                                            <div className="flex space-x-3">
+                                                <input
+                                                    type="text"
+                                                    value={newMessage}
+                                                    onChange={(e) => setNewMessage(e.target.value)}
+                                                    placeholder="Escribe un mensaje..."
+                                                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                                    onKeyPress={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            handleSendMessage()
+                                                        }
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={handleSendMessage}
+                                                    disabled={!newMessage.trim()}
+                                                    className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    Enviar
+                                                </button>
+                                            </div>
                                         </div>
 
                                     </div>
