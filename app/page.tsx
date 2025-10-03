@@ -87,9 +87,7 @@ export default function HomePage() {
                     // Leer query ?m= para abrir módulo específico
                     const params = new URLSearchParams(window.location.search)
                     const m = params.get('m')
-                    if (m) {
-                        setCurrentModule(m)
-                    }
+                    setCurrentModule(m || 'products')
                 } else {
                     // Si no hay usuario, verificar si debe mostrar auth
                     const params = new URLSearchParams(window.location.search)
