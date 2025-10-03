@@ -261,6 +261,8 @@ export default function InteraccionDetailPage() {
                     const data = await response.json()
                     console.log('✅ SUCCESS: Detalles cargados:', data)
                     console.log('🔍 DEBUG: Estructura de datos recibida:', JSON.stringify(data, null, 2))
+                    console.log('🔍 DEBUG: Mensajes en datos:', data.messages)
+                    console.log('🔍 DEBUG: Cantidad de mensajes:', data.messages?.length || 0)
                     
                     // La API devuelve directamente el InteractionDetail, no envuelto en 'interaction'
                     const interactionData = data
@@ -300,7 +302,12 @@ export default function InteraccionDetailPage() {
                         },
                         createdAt: interactionData.createdAt || new Date().toISOString(),
                         updatedAt: interactionData.updatedAt || new Date().toISOString(),
-                        messages: interactionData.messages || [],
+                        messages: (() => {
+                            console.log('🔍 DEBUG: Transformando mensajes:', interactionData.messages)
+                            console.log('🔍 DEBUG: Tipo de mensajes:', typeof interactionData.messages)
+                            console.log('🔍 DEBUG: Es array?:', Array.isArray(interactionData.messages))
+                            return interactionData.messages || []
+                        })(),
                         proposals: interactionData.proposals || [],
                         deliveries: interactionData.deliveries || [],
                         chatId: interactionData.chatId || '',

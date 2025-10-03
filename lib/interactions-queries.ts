@@ -328,7 +328,9 @@ export async function getInteractionDetail(
     console.log('🔍 DEBUG: Chat obtenido:', {
       chatId: chat?.chat_id,
       mensajesCount: chat?.mensajes?.length || 0,
-      error: chatError
+      error: chatError,
+      chatExists: !!chat,
+      rawChat: chat
     })
 
     // Si no existe chat, crear uno
@@ -362,6 +364,8 @@ export async function getInteractionDetail(
 
       finalChat = newChat
       console.log('✅ Chat creado exitosamente:', finalChat.chat_id)
+      console.log('🔍 DEBUG: Chat creado con mensajes:', finalChat.mensajes?.length || 0)
+      console.log('🔍 DEBUG: Chat creado raw:', finalChat)
     }
 
     // Obtener calificaciones
