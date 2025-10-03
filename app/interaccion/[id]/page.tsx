@@ -336,6 +336,106 @@ export default function InteraccionDetailPage() {
         }
     }, [interactionId])
 
+    // Cargar mensajes frescos desde la API (como en ChatModule)
+    useEffect(() => {
+        const loadMessages = async () => {
+            if (!interaction?.chatId || !currentUserId) return
+            
+            const chatId = Number(interaction.chatId)
+            if (!chatId) return
+            
+            try {
+                console.log('🔄 [InteractionDetail] Cargando mensajes frescos para chat:', chatId)
+                
+                const { data: { session } } = await supabase.auth.getSession()
+                const token = session?.access_token
+                if (!token) {
+                    console.error('❌ [InteractionDetail] No hay token de sesión')
+                    return
+                }
+                
+                const controller = new AbortController()
+                const timeoutId = setTimeout(() => controller.abort(), 5000)
+                
+                const res = await fetch(`/api/chat/${chatId}/messages?limit=50`, { 
+                    headers: { Authorization: `Bearer ${token}` },
+                    signal: controller.signal
+                })
+                clearTimeout(timeoutId)
+                
+                const json = await res.json()
+                console.log('📨 [InteractionDetail] Respuesta de mensajes:', { 
+                    status: res.status, 
+                    ok: res.ok, 
+                    json: {
+                        items: json.items?.length || 0,
+                        firstMessage: json.items?.[0],
+                        lastMessage: json.items?.[json.items?.length - 1]
+                    }
+                })
+                
+                if (!res.ok) throw new Error(json?.error || 'Error cargando mensajes')
+                
+                const messages: Message[] = (json.items || [])
+                    .filter((m: any) => {
+                        const content = m.contenido || ''
+                        const isProductInfo = content.includes('Producto Ofrecido') && 
+                                             content.includes('$') && 
+                                             content.includes('Negociable')
+                        return !isProductInfo && content.trim().length > 0
+                    })
+                    .map((m: any) => ({
+                        id: String(m.mensaje_id),
+                        text: m.contenido || '',
+                        timestamp: m.fecha_envio,
+                        sender: {
+                            id: String(m.usuario?.user_id || m.usuario_id),
+                            name: m.usuario?.nombre || 'Usuario',
+                            lastName: m.usuario?.apellido || '',
+                            avatar: m.usuario?.foto_perfil || undefined
+                        },
+                        type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
+                        metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
+                    }))
+                    .sort((a, b) => Number(a.id) - Number(b.id))
+                
+                console.log('💬 [InteractionDetail] Mensajes transformados:', {
+                    count: messages.length,
+                    firstMessage: messages[0],
+                    lastMessage: messages[messages.length - 1]
+                })
+                
+                // Actualizar interacción con mensajes frescos
+                setInteraction(prev => {
+                    if (!prev) return null
+                    return {
+                        ...prev,
+                        messages: messages
+                    }
+                })
+                
+                // Scroll automático al final
+                setTimeout(() => {
+                    const messagesContainer = document.querySelector('.messages-container')
+                    if (messagesContainer) {
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight
+                    }
+                }, 100)
+                
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('⏱️ [InteractionDetail] Timeout cargando mensajes')
+                } else {
+                    console.error('❌ [InteractionDetail] Error cargando mensajes:', error)
+                }
+            }
+        }
+        
+        if (interaction?.chatId) {
+            loadMessages()
+        }
+    }, [interaction?.chatId, currentUserId])
+
     // Configurar canal realtime para recibir mensajes en tiempo real
     useEffect(() => {
         // Limpiar canal anterior
@@ -527,6 +627,104 @@ export default function InteraccionDetailPage() {
         }
     }, [interaction?.chatId, currentUserId])
 
+    // Sistema de polling como respaldo para mensajes (como en ChatModule)
+    useEffect(() => {
+        if (!interaction?.chatId || !currentUserId) return
+
+        const chatId = Number(interaction.chatId)
+        let lastMessageId = interaction.messages.length > 0 
+            ? Number(interaction.messages[interaction.messages.length - 1].id)
+            : 0
+
+        const pollForNewMessages = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session?.access_token) return
+
+                const response = await fetch(`/api/chat/${chatId}/messages?since=${lastMessageId}`, {
+                    headers: { Authorization: `Bearer ${session.access_token}` }
+                })
+
+                if (response.ok) {
+                    const data = await response.json()
+                    const newMessages = data.items || []
+                    
+                    if (newMessages.length > 0) {
+                        console.log('📨 [InteractionDetail] Polling: Nuevos mensajes encontrados:', newMessages.length)
+                        
+                        const transformedMessages = newMessages
+                            .filter((m: any) => {
+                                const messageId = Number(m.mensaje_id)
+                                
+                                // No procesar nuestros propios mensajes
+                                if (String(m.usuario_id) === currentUserId) {
+                                    return false
+                                }
+                                
+                                // Solo mensajes más nuevos que el último
+                                if (messageId <= lastMessageId) {
+                                    return false
+                                }
+                                
+                                // Verificar si el mensaje ya existe en el estado actual
+                                const messageExists = interaction?.messages.some(msg => msg.id === String(messageId))
+                                if (messageExists) {
+                                    return false
+                                }
+                                
+                                return true
+                            })
+                            .map((m: any) => ({
+                                id: String(m.mensaje_id),
+                                text: m.contenido || '',
+                                timestamp: m.fecha_envio,
+                                sender: {
+                                    id: String(m.usuario?.user_id || m.usuario_id),
+                                    name: m.usuario?.nombre || 'Usuario',
+                                    lastName: m.usuario?.apellido || '',
+                                    avatar: m.usuario?.foto_perfil || undefined
+                                },
+                                type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
+                                metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
+                            }))
+
+                        if (transformedMessages.length > 0) {
+                            console.log('✅ [InteractionDetail] Polling: Agregando mensajes:', transformedMessages.length)
+                            
+                            setInteraction(prev => {
+                                if (!prev) return null
+                                let updatedMessages = prev.messages
+                                // Agregar cada mensaje individualmente para evitar duplicados
+                                transformedMessages.forEach(msg => {
+                                    const exists = updatedMessages.some(existingMsg => existingMsg.id === msg.id)
+                                    if (!exists) {
+                                        updatedMessages = [...updatedMessages, msg]
+                                    }
+                                })
+                                return {
+                                    ...prev,
+                                    messages: updatedMessages.sort((a, b) => Number(a.id) - Number(b.id))
+                                }
+                            })
+
+                            // Actualizar último mensaje ID
+                            lastMessageId = Math.max(...transformedMessages.map(m => Number(m.id)))
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('⚠️ [InteractionDetail] Error en polling:', error)
+            }
+        }
+
+        // Polling cada 3 segundos como respaldo
+        const pollInterval = setInterval(pollForNewMessages, 3000)
+
+        return () => {
+            clearInterval(pollInterval)
+        }
+    }, [interaction?.chatId, currentUserId])
+
     const getTypeIcon = (type: string) => {
         switch (type) {
             case 'exchange':
@@ -628,86 +826,124 @@ export default function InteraccionDetailPage() {
             return
         }
 
-        console.log('🚀 Enviando mensaje:', {
-            message: newMessage.trim(),
-            chatId: interaction.chatId,
-            currentUserId
+        const messageContent = newMessage.trim()
+        const chatIdNumber = Number(interaction.chatId)
+        
+        if (!chatIdNumber || isNaN(chatIdNumber)) {
+            console.error('❌ chatId inválido:', interaction.chatId)
+            alert('Error: ID de chat inválido')
+            return
+        }
+
+        console.log('📤 [InteractionDetail] Enviando mensaje:', { message: messageContent, chatId: chatIdNumber, currentUserId })
+
+        const tempId = `temp-${Date.now()}-${Math.random()}`
+        const now = new Date()
+        
+        // Crear mensaje optimístico
+        const optimisticMessage: Message = {
+            id: tempId,
+            text: messageContent,
+            timestamp: now.toISOString(),
+            sender: {
+                id: currentUserId,
+                name: 'Tú',
+                lastName: '',
+                avatar: undefined
+            },
+            type: 'text'
+        }
+
+        // Limpiar input inmediatamente para mejor UX
+        setNewMessage('')
+
+        // Actualizar UI optimísticamente - INMEDIATO
+        setInteraction(prev => {
+            if (!prev) return null
+            const updatedMessages = [...prev.messages, optimisticMessage]
+                .sort((a, b) => Number(a.id) - Number(b.id))
+            return {
+                ...prev,
+                messages: updatedMessages
+            }
         })
 
+        // Scroll inmediato al final
+        requestAnimationFrame(() => {
+            const messagesContainer = document.querySelector('.messages-container')
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight
+            }
+        })
+
+        // Enviar al servidor en background
         try {
-            // Obtener sesión para el token
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-            if (sessionError || !session?.access_token) {
-                console.error('❌ Error obteniendo sesión:', sessionError)
+            const { data: { session } } = await supabase.auth.getSession()
+            const token = session?.access_token
+            if (!token) {
+                console.error('❌ [InteractionDetail] No hay token de sesión')
                 return
             }
 
-            console.log('✅ Sesión obtenida correctamente')
-
-            // Enviar mensaje a la API (convertir chatId a número)
-            const chatIdNumber = Number(interaction.chatId)
-            if (!chatIdNumber || isNaN(chatIdNumber)) {
-                console.error('❌ chatId inválido:', interaction.chatId)
-                alert('Error: ID de chat inválido')
-                return
-            }
-
-            console.log('🔢 chatId convertido a número:', chatIdNumber)
-
-            const response = await fetch(`/api/chat/${chatIdNumber}/messages`, {
+            console.log('📤 [InteractionDetail] Enviando mensaje al servidor:', messageContent)
+            
+            // Usar AbortController para timeout
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 segundos timeout
+            
+            const res = await fetch(`/api/chat/${chatIdNumber}/messages`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    Authorization: `Bearer ${token}` 
                 },
-                body: JSON.stringify({
-                    contenido: newMessage.trim(),
-                    tipo: 'texto'
-                })
+                body: JSON.stringify({ 
+                    contenido: messageContent, 
+                    tipo: 'texto' 
+                }),
+                signal: controller.signal
             })
-
-            console.log('📡 Respuesta de la API:', {
-                status: response.status,
-                ok: response.ok
-            })
-
-            if (response.ok) {
-                console.log('✅ Mensaje enviado correctamente')
-                // Limpiar el input
-                setNewMessage('')
-                
-                // Agregar mensaje optimísticamente (sin recargar página)
-                const optimisticMessage: Message = {
-                    id: `temp-${Date.now()}`,
-                    text: newMessage.trim(),
-                    timestamp: new Date().toISOString(),
-                    sender: {
-                        id: currentUserId,
-                        name: 'Tú',
-                        lastName: '',
-                        avatar: undefined
-                    },
-                    type: 'text'
-                }
-
-                setInteraction(prev => {
-                    if (!prev) return null
-                    return {
-                        ...prev,
-                        messages: [...prev.messages, optimisticMessage]
-                    }
-                })
-            } else {
-                const errorText = await response.text()
-                console.error('❌ Error enviando mensaje:', {
-                    status: response.status,
-                    error: errorText
-                })
-                alert(`Error enviando mensaje: ${errorText}`)
+            
+            clearTimeout(timeoutId)
+            
+            const json = await res.json()
+            if (!res.ok) throw new Error(json?.error || 'Error al enviar')
+            
+            console.log('✅ [InteractionDetail] Mensaje confirmado por servidor:', json.message)
+            
+            // Reemplazar mensaje temporal con el real (con ID del servidor)
+            const realMessage: Message = {
+                id: String(json.message.mensaje_id),
+                text: json.message.contenido || '',
+                timestamp: json.message.fecha_envio,
+                sender: optimisticMessage.sender,
+                type: 'text'
             }
+            
+            // Actualizar con el mensaje real del servidor
+            setInteraction(prev => prev ? {
+                ...prev,
+                messages: prev.messages.map(msg => 
+                    msg.id === tempId ? realMessage : msg
+                ).sort((a, b) => Number(a.id) - Number(b.id)),
+            } : prev)
+            
         } catch (error) {
-            console.error('❌ Error enviando mensaje:', error)
-            alert(`Error enviando mensaje: ${error}`)
+            console.error('❌ [InteractionDetail] Error enviando mensaje:', error)
+            
+            // Remover mensaje temporal en caso de error
+            setInteraction(prev => prev ? {
+                ...prev,
+                messages: prev.messages.filter(msg => msg.id !== tempId)
+            } : prev)
+            
+            // Restaurar mensaje en el input
+            setNewMessage(messageContent)
+            
+            // Mostrar error solo si no es un timeout
+            if (error.name !== 'AbortError') {
+                alert('Error: No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.')
+            }
         }
     }
 
