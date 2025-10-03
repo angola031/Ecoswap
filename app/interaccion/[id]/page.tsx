@@ -426,36 +426,75 @@ export default function InteraccionDetailPage() {
                 }
 
                 // Crear mensaje con información del usuario
-                const senderInfo = await getSenderInfo()
-                const incomingMessage: Message = {
-                    id: messageId,
-                    text: m.contenido || '',
-                    timestamp: m.fecha_envio,
-                    sender: senderInfo,
-                    type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
-                    metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
-                }
-
-                console.log('✅ [InteractionDetail] Agregando mensaje realtime:', incomingMessage)
-
-                // Actualizar interacción con el nuevo mensaje
-                setInteraction(prev => {
-                    if (!prev) return null
-                    const updatedMessages = [...prev.messages, incomingMessage]
-                        .sort((a, b) => Number(a.id) - Number(b.id)) // Mantener orden correcto
-                    return {
-                        ...prev,
-                        messages: updatedMessages
+                getSenderInfo().then(senderInfo => {
+                    const incomingMessage: Message = {
+                        id: messageId,
+                        text: m.contenido || '',
+                        timestamp: m.fecha_envio,
+                        sender: senderInfo,
+                        type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
+                        metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
                     }
+
+                    console.log('✅ [InteractionDetail] Agregando mensaje realtime:', incomingMessage)
+
+                    // Actualizar interacción con el nuevo mensaje
+                    setInteraction(prev => {
+                        if (!prev) return null
+                        const updatedMessages = [...prev.messages, incomingMessage]
+                            .sort((a, b) => Number(a.id) - Number(b.id)) // Mantener orden correcto
+                        return {
+                            ...prev,
+                            messages: updatedMessages
+                        }
+                    })
+
+                    // Scroll automático al final
+                    setTimeout(() => {
+                        const messagesContainer = document.querySelector('.messages-container')
+                        if (messagesContainer) {
+                            messagesContainer.scrollTop = messagesContainer.scrollHeight
+                        }
+                    }, 100)
+                }).catch(error => {
+                    console.error('❌ [InteractionDetail] Error obteniendo info del usuario para mensaje realtime:', error)
+                    
+                    // Crear mensaje con información básica como fallback
+                    const fallbackMessage: Message = {
+                        id: messageId,
+                        text: m.contenido || '',
+                        timestamp: m.fecha_envio,
+                        sender: {
+                            id: String(m.usuario_id),
+                            name: 'Usuario',
+                            lastName: '',
+                            avatar: undefined
+                        },
+                        type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
+                        metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
+                    }
+
+                    console.log('⚠️ [InteractionDetail] Agregando mensaje realtime con fallback:', fallbackMessage)
+
+                    // Actualizar interacción con el mensaje fallback
+                    setInteraction(prev => {
+                        if (!prev) return null
+                        const updatedMessages = [...prev.messages, fallbackMessage]
+                            .sort((a, b) => Number(a.id) - Number(b.id))
+                        return {
+                            ...prev,
+                            messages: updatedMessages
+                        }
+                    })
+
+                    // Scroll automático al final
+                    setTimeout(() => {
+                        const messagesContainer = document.querySelector('.messages-container')
+                        if (messagesContainer) {
+                            messagesContainer.scrollTop = messagesContainer.scrollHeight
+                        }
+                    }, 100)
                 })
-
-                // Scroll automático al final
-                setTimeout(() => {
-                    const messagesContainer = document.querySelector('.messages-container')
-                    if (messagesContainer) {
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight
-                    }
-                }, 100)
             })
             .subscribe((status) => {
                 console.log('🔌 [InteractionDetail] Estado realtime:', status)
