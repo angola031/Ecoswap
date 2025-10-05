@@ -102,6 +102,7 @@ export async function GET(
         fecha_respuesta,
         fecha_encuentro,
         lugar_encuentro,
+        archivo_url,
         usuario_propone_id,
         usuario_recibe_id,
         usuario_propone:usuario!propuesta_usuario_propone_id_fkey (
@@ -143,6 +144,7 @@ export async function GET(
       response: prop.respuesta,
       meetingDate: prop.fecha_encuentro,
       meetingPlace: prop.lugar_encuentro,
+      archivo_url: prop.archivo_url,
       proposer: {
         id: prop.usuario_propone.user_id,
         name: prop.usuario_propone.nombre,
@@ -188,7 +190,7 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { type, description, proposedPrice, conditions, meetingDate, meetingPlace } = body
+    const { type, description, proposedPrice, conditions, meetingDate, meetingPlace, archivo_url } = body
 
     if (!type || !description) {
       return NextResponse.json({ error: 'Tipo y descripción son requeridos' }, { status: 400 })
@@ -234,6 +236,7 @@ export async function POST(
         condiciones: conditions || null,
         fecha_encuentro: meetingDate || null,
         lugar_encuentro: meetingPlace || null,
+        archivo_url: archivo_url || null,
         estado: 'pendiente'
       })
       .select(`
@@ -246,6 +249,7 @@ export async function POST(
         fecha_creacion,
         fecha_encuentro,
         lugar_encuentro,
+        archivo_url,
         usuario_propone_id
       `)
       .single()
@@ -266,6 +270,7 @@ export async function POST(
         createdAt: nuevaPropuesta.fecha_creacion,
         meetingDate: nuevaPropuesta.fecha_encuentro,
         meetingPlace: nuevaPropuesta.lugar_encuentro,
+        archivo_url: nuevaPropuesta.archivo_url,
         proposer: {
           id: nuevaPropuesta.usuario_propone_id
         }

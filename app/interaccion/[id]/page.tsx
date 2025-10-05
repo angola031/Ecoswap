@@ -201,6 +201,19 @@ export default function InteraccionDetailPage() {
     const [showCancelModal, setShowCancelModal] = useState(false)
     const [showNewProposalModal, setShowNewProposalModal] = useState(false)
     const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
+    const [proposalsLoading, setProposalsLoading] = useState(false)
+    const [proposalsError, setProposalsError] = useState<string | null>(null)
+    const [newProposalDescription, setNewProposalDescription] = useState('')
+    const [showAcceptModal, setShowAcceptModal] = useState(false)
+    const [meetingPlace, setMeetingPlace] = useState('')
+    const [meetingDate, setMeetingDate] = useState('')
+    const [meetingTime, setMeetingTime] = useState('')
+    const [meetingNotes, setMeetingNotes] = useState('')
+    const [showRejectInteractionModal, setShowRejectInteractionModal] = useState(false)
+    const [rejectInteractionReason, setRejectInteractionReason] = useState('')
+    const [showRejectProposalModal, setShowRejectProposalModal] = useState(false)
+    const [rejectProposalReason, setRejectProposalReason] = useState('')
+    const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null)
 
     useEffect(() => {
         const loadInteraction = async () => {
@@ -275,7 +288,7 @@ export default function InteraccionDetailPage() {
                     }
                     
                     // Transformar los datos de la API al formato esperado por el componente
-                    const transformedInteraction: Interaction = {
+                    const transformedInteraction: Interaction & { chatId?: string; proposerId?: string; receiverId?: string } = {
                         id: interactionData.id,
                         type: interactionData.type,
                         status: interactionData.status,
@@ -311,6 +324,8 @@ export default function InteraccionDetailPage() {
                         proposals: interactionData.proposals || [],
                         deliveries: interactionData.deliveries || [],
                         chatId: interactionData.chatId || '',
+                        proposerId: interactionData.proposer?.user_id ? String(interactionData.proposer.user_id) : undefined,
+                        receiverId: interactionData.receiver?.user_id ? String(interactionData.receiver.user_id) : undefined,
                         isUrgent: false
                     }
                     
@@ -335,6 +350,50 @@ export default function InteraccionDetailPage() {
             loadInteraction()
         }
     }, [interactionId])
+
+    // Cargar propuestas reales del chat
+    useEffect(() => {
+        const loadProposals = async () => {
+            if (!interaction?.chatId) return
+            setProposalsLoading(true)
+            setProposalsError(null)
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+                const token = session?.access_token
+                if (!token) {
+                    setProposalsError('No autenticado')
+                    setProposalsLoading(false)
+                    return
+                }
+                const chatIdNum = Number(interaction.chatId)
+                if (!chatIdNum || isNaN(chatIdNum)) return
+                const res = await fetch(`/api/chat/${chatIdNum}/proposals`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+                const json = await res.json()
+                if (!res.ok) throw new Error(json?.error || 'Error cargando propuestas')
+                const proposals = (json.data || []).map((p: any) => ({
+                    id: String(p.id),
+                    type: p.type,
+                    status: p.status,
+                    description: p.description,
+                    proposedPrice: p.proposedPrice || undefined,
+                    createdAt: p.createdAt,
+                    meetingDate: p.meetingDate,
+                    meetingPlace: p.meetingPlace,
+                    response: p.response,
+                    proposerId: p.proposer?.id ? String(p.proposer.id) : undefined,
+                    receiverId: p.receiver?.id ? String(p.receiver.id) : undefined
+                }))
+                setInteraction(prev => prev ? { ...prev, proposals } : prev)
+            } catch (e: any) {
+                setProposalsError(e?.message || 'Error cargando propuestas')
+            } finally {
+                setProposalsLoading(false)
+            }
+        }
+        loadProposals()
+    }, [interaction?.chatId])
 
     // Cargar mensajes frescos desde la API (como en ChatModule)
     useEffect(() => {
@@ -957,9 +1016,113 @@ export default function InteraccionDetailPage() {
         setShowCancelModal(false)
     }
 
-    const handleNewProposal = () => {
-        // Implementar lógica para nueva propuesta
-        setShowNewProposalModal(false)
+    const handleCreateProposal = async () => {
+        if (!interaction?.chatId || !newProposalDescription.trim()) {
+            setShowNewProposalModal(false)
+            return
+        }
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            const token = session?.access_token
+            if (!token) throw new Error('No autenticado')
+            const chatIdNum = Number(interaction.chatId)
+            const res = await fetch(`/api/chat/${chatIdNum}/proposals`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ type: 'otro', description: newProposalDescription.trim() })
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json?.error || 'Error creando propuesta')
+            const created = json.data
+            // Prepend nueva propuesta
+            setInteraction(prev => prev ? {
+                ...prev,
+                proposals: [
+                    {
+                        id: String(created.id),
+                        type: created.type,
+                        status: created.status,
+                        description: created.description,
+                        proposedPrice: created.proposedPrice || undefined,
+                        createdAt: created.createdAt,
+                        meetingDate: created.meetingDate,
+                        meetingPlace: created.meetingPlace,
+                        response: created.response
+                    },
+                    ...prev.proposals
+                ]
+            } : prev)
+        } catch (e) {
+            alert('No se pudo crear la propuesta')
+        } finally {
+            setNewProposalDescription('')
+            setShowNewProposalModal(false)
+        }
+    }
+
+    const handleRespondProposal = async (proposalId: string, action: 'aceptar' | 'rechazar', reason?: string) => {
+        if (!interaction?.chatId) return
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            const token = session?.access_token
+            if (!token) throw new Error('No autenticado')
+            const chatIdNum = Number(interaction.chatId)
+            const res = await fetch(`/api/chat/${chatIdNum}/proposals/${proposalId}/respond`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ response: action, reason })
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json?.error || 'Error respondiendo propuesta')
+            const updated = json.data
+            setInteraction(prev => prev ? {
+                ...prev,
+                proposals: prev.proposals.map(p => p.id === String(updated.id) ? {
+                    ...p,
+                    status: updated.status,
+                    response: updated.response,
+                    createdAt: p.createdAt,
+                    proposedPrice: updated.proposedPrice ?? p.proposedPrice
+                } : p)
+            } : prev)
+        } catch (e: any) {
+            alert(e?.message || 'No se pudo responder la propuesta')
+        }
+    }
+
+    const handleUpdateInteractionStatus = async (
+        status: 'aceptado' | 'rechazado' | 'cancelado' | 'completado',
+        extra?: { rejectionReason?: string; meetingPlace?: string; meetingDate?: string; meetingTime?: string; meetingNotes?: string }
+    ) => {
+        if (!interaction) return
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            const token = session?.access_token
+            if (!token) throw new Error('No autenticado')
+            // Combinar fecha y hora si ambas existen
+            const combinedMeetingDate = extra?.meetingDate && extra?.meetingTime
+                ? `${extra.meetingDate}T${extra.meetingTime}`
+                : extra?.meetingDate
+
+            const res = await fetch(`/api/interactions/${interaction.id}/update-status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    status,
+                    rejectionReason: extra?.rejectionReason,
+                    meetingPlace: extra?.meetingPlace,
+                    meetingDate: combinedMeetingDate,
+                    meetingNotes: extra?.meetingNotes
+                })
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json?.error || 'Error actualizando estado')
+            // Mapear estados del backend al UI
+            const mapStatus: any = { pendiente: 'pending', aceptado: 'in_progress', rechazado: 'cancelled', completado: 'completed', cancelado: 'cancelled' }
+            setInteraction(prev => prev ? { ...prev, status: mapStatus[status] || prev.status, updatedAt: new Date().toISOString() } : prev)
+        } catch (e: any) {
+            alert(e?.message || 'No se pudo actualizar el estado')
+        }
     }
 
     if (isLoading) {
@@ -1171,11 +1334,14 @@ export default function InteraccionDetailPage() {
                                         <div className="border-t border-gray-200 pt-6">
                                             <h3 className="font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
                                             <div className="flex flex-wrap gap-3">
-                                                <button className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center space-x-2">
+                                                {/* Aceptar solo si el usuario actual es receptor */}
+                                                {(currentUserId && (interaction as any).receiverId && currentUserId === (interaction as any).receiverId) && (
+                                                <button onClick={() => setShowAcceptModal(true)} className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center space-x-2">
                                                     <HandThumbUpIcon className="w-4 h-4" />
                                                     <span>Aceptar</span>
                                                 </button>
-                                                <button className="bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors flex items-center space-x-2">
+                                                )}
+                                                <button onClick={() => setShowRejectInteractionModal(true)} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors flex items-center space-x-2">
                                                     <HandThumbDownIcon className="w-4 h-4" />
                                                     <span>Rechazar</span>
                                                 </button>
@@ -1324,6 +1490,13 @@ export default function InteraccionDetailPage() {
                                                    </button>
                                                </div>
 
+                                               {proposalsLoading && (
+                                                   <div className="text-sm text-gray-500">Cargando propuestas...</div>
+                                               )}
+                                               {proposalsError && (
+                                                   <div className="text-sm text-red-600">{proposalsError}</div>
+                                               )}
+
                                                {interaction.proposals.length === 0 ? (
                                                    <div className="text-center py-8 text-gray-500">
                                                        <p className="text-sm">No hay propuestas en esta interacción</p>
@@ -1381,22 +1554,16 @@ export default function InteraccionDetailPage() {
                                                                )}
                                                                
                                                                {/* Botones de acción para propuestas pendientes */}
-                                                               {proposal.status === 'pendiente' && (
+                                                               {proposal.status === 'pendiente' && currentUserId && proposal.receiverId && currentUserId === proposal.receiverId && (
                                                                    <div className="flex space-x-2 mt-3">
                                                                        <button
-                                                                           onClick={() => {
-                                                                               // TODO: Implementar aceptar propuesta
-                                                                               console.log('Aceptar propuesta:', proposal.id)
-                                                                           }}
+                                                                           onClick={() => handleRespondProposal(proposal.id, 'aceptar')}
                                                                            className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
                                                                        >
                                                                            Aceptar
                                                                        </button>
                                                                        <button
-                                                                           onClick={() => {
-                                                                               // TODO: Implementar rechazar propuesta
-                                                                               console.log('Rechazar propuesta:', proposal.id)
-                                                                           }}
+                                                                            onClick={() => { setSelectedProposalId(proposal.id); setShowRejectProposalModal(true) }}
                                                                            className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
                                                                        >
                                                                            Rechazar
@@ -1592,6 +1759,8 @@ export default function InteraccionDetailPage() {
                                 placeholder="Describe tu propuesta..."
                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 rows={4}
+                                value={newProposalDescription}
+                                onChange={(e) => setNewProposalDescription(e.target.value)}
                             />
                             <div className="flex space-x-3">
                                 <button
@@ -1601,12 +1770,91 @@ export default function InteraccionDetailPage() {
                                     Cancelar
                                 </button>
                                 <button
-                                    onClick={handleNewProposal}
+                                    onClick={handleCreateProposal}
                                     className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
                                 >
                                     Enviar
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de aceptar (configurar ubicación/fecha/hora) */}
+            {showAcceptModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Confirmar aceptación</h3>
+                        <p className="text-gray-600 mb-4">Configura el lugar y la fecha del encuentro.</p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-gray-700 mb-1">Lugar de encuentro</label>
+                                <input value={meetingPlace} onChange={(e) => setMeetingPlace(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Ej: Centro Comercial ..." />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm text-gray-700 mb-1">Fecha</label>
+                                    <input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-700 mb-1">Hora</label>
+                                    <input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-700 mb-1">Notas</label>
+                                <textarea value={meetingNotes} onChange={(e) => setMeetingNotes(e.target.value)} rows={3} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Notas adicionales (opcional)" />
+                            </div>
+                        </div>
+                        <div className="flex space-x-3 mt-6">
+                            <button onClick={() => setShowAcceptModal(false)} className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">Cancelar</button>
+                            <button onClick={async () => {
+                                await handleUpdateInteractionStatus('aceptado', { meetingPlace, meetingDate, meetingTime, meetingNotes })
+                                setShowAcceptModal(false)
+                                setMeetingPlace(''); setMeetingDate(''); setMeetingTime(''); setMeetingNotes('')
+                            }} className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de rechazo de interacción */}
+            {showRejectInteractionModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Rechazar interacción</h3>
+                        <p className="text-gray-600 mb-4">Indica el motivo del rechazo.</p>
+                        <textarea value={rejectInteractionReason} onChange={(e) => setRejectInteractionReason(e.target.value)} rows={4} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Motivo del rechazo" />
+                        <div className="flex space-x-3 mt-6">
+                            <button onClick={() => setShowRejectInteractionModal(false)} className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">Cancelar</button>
+                            <button onClick={async () => {
+                                if (!rejectInteractionReason.trim()) return
+                                await handleUpdateInteractionStatus('rechazado', { rejectionReason: rejectInteractionReason.trim() })
+                                setShowRejectInteractionModal(false)
+                                setRejectInteractionReason('')
+                            }} className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de rechazo de propuesta */}
+            {showRejectProposalModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Rechazar propuesta</h3>
+                        <p className="text-gray-600 mb-4">Indica el motivo del rechazo de la propuesta.</p>
+                        <textarea value={rejectProposalReason} onChange={(e) => setRejectProposalReason(e.target.value)} rows={4} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Motivo del rechazo" />
+                        <div className="flex space-x-3 mt-6">
+                            <button onClick={() => { setShowRejectProposalModal(false); setRejectProposalReason(''); setSelectedProposalId(null) }} className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">Cancelar</button>
+                            <button onClick={async () => {
+                                if (!rejectProposalReason.trim() || !selectedProposalId) return
+                                await handleRespondProposal(selectedProposalId, 'rechazar', rejectProposalReason.trim())
+                                setShowRejectProposalModal(false)
+                                setRejectProposalReason('')
+                                setSelectedProposalId(null)
+                            }} className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">Confirmar</button>
                         </div>
                     </div>
                 </div>
