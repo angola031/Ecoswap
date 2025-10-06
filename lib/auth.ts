@@ -523,7 +523,7 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
         }
 
         // Obtener el perfil del usuario de la tabla USUARIO por email (sin filtrar por activo)
-        let { data: user, error: fetchError } = await supabase
+        const { data: user, error: fetchError } = await supabase
             .from('usuario')
             .select('*')
             .eq('email', authData.user.email)
@@ -558,7 +558,33 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
                         .eq('user_id', existingUser.user_id)
                     
                     // Continuar con el flujo normal usando el usuario existente
-                    user = existingUser
+                    const userDataExisting = existingUser
+                    // Obtener ubicación principal del usuario
+                    const { data: location } = await supabase
+                        .from('ubicacion')
+                        .select('ciudad, departamento')
+                        .eq('user_id', userDataExisting.user_id)
+                        .eq('es_principal', true)
+                        .single()
+
+                    const userLocation = location
+                        ? `${location.ciudad}, ${location.departamento}`
+                        : 'Colombia'
+
+                    const { isAdmin, roles, adminSince } = await isUserAdmin(userDataExisting.email)
+
+                    const userData: User = {
+                        id: userDataExisting.user_id.toString(),
+                        name: `${userDataExisting.nombre} ${userDataExisting.apellido}`.trim(),
+                        email: userDataExisting.email,
+                        avatar: userDataExisting.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+                        location: userLocation,
+                        phone: userDataExisting.telefono,
+                        isAdmin,
+                        roles,
+                        adminSince
+                    }
+                    return { user: userData, error: null }
                 } else {
                     throw createError
                 }

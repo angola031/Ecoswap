@@ -39,12 +39,13 @@ export async function getAuthenticatedUser(req?: NextRequest) {
     }
 
     // Obtener usuario de la base de datos
-    const { data: usuario, error: usuarioError } = await supabase
+    const { data: usuarioData, error: usuarioError } = await supabase
       .from('usuario')
       .select('user_id, nombre, apellido, email, verificado, activo')
       .eq('auth_user_id', user.id)
       .single()
 
+    let usuario = usuarioData
     if (usuarioError || !usuario) {
       return { user: null, error: 'Usuario no encontrado en la base de datos' }
     }
