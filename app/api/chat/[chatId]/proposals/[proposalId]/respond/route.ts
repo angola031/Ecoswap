@@ -158,7 +158,7 @@ export async function PATCH(
       if (intercambioExistente) {
         // Actualizar intercambio existente
         const intercambioUpdateData: any = {
-          estado: 'aceptado',
+          estado: 'en_progreso',
           fecha_respuesta: new Date().toISOString(),
           mensaje_propuesta: propuesta.descripcion
         }
@@ -205,7 +205,7 @@ export async function PATCH(
           usuario_propone_id: propuesta.usuario_propone_id,
           usuario_recibe_id: propuesta.usuario_recibe_id,
           mensaje_propuesta: propuesta.descripcion,
-          estado: 'aceptado',
+          estado: 'en_progreso',
           fecha_propuesta: new Date().toISOString(),
           fecha_respuesta: new Date().toISOString()
         }

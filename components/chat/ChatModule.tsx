@@ -383,6 +383,188 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
     return null
   }
 
+  // Función para validar encuentro exitoso
+  const handleValidateMeeting = async (intercambioId: number) => {
+    try {
+      const validationResult = await (window as any).Swal.fire({
+        title: '¿El encuentro fue exitoso?',
+        html: `
+          <div class="text-left space-y-4">
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p class="text-sm text-blue-800">
+                <strong>📋 Instrucciones:</strong> Confirma si el intercambio se realizó correctamente según lo acordado.
+              </p>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">¿Cómo calificarías este intercambio?</label>
+              <div class="flex space-x-2 mb-3">
+                <button type="button" class="star-rating" data-rating="1" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">⭐</button>
+                <button type="button" class="star-rating" data-rating="2" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">⭐⭐</button>
+                <button type="button" class="star-rating" data-rating="3" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">⭐⭐⭐</button>
+                <button type="button" class="star-rating" data-rating="4" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">⭐⭐⭐⭐</button>
+                <button type="button" class="star-rating" data-rating="5" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">⭐⭐⭐⭐⭐</button>
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Comentario (opcional)</label>
+              <textarea id="validation-comment" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3" placeholder="¿Cómo fue tu experiencia con este intercambio?"></textarea>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Aspectos destacados (opcional)</label>
+              <textarea id="validation-aspects" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows="2" placeholder="¿Qué aspectos positivos o negativos destacarías?"></textarea>
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Sí, fue exitoso',
+        cancelButtonText: 'No, hubo problemas',
+        confirmButtonColor: '#10B981',
+        cancelButtonColor: '#EF4444',
+        width: '600px',
+        didOpen: () => {
+          // Manejar selección de estrellas
+          const starButtons = document.querySelectorAll('.star-rating')
+          let selectedRating = 0
+          
+          starButtons.forEach((button, index) => {
+            button.addEventListener('click', () => {
+              selectedRating = index + 1
+              starButtons.forEach((btn, i) => {
+                if (i < selectedRating) {
+                  btn.classList.add('bg-yellow-100', 'border-yellow-400')
+                  btn.classList.remove('border-gray-300')
+                } else {
+                  btn.classList.remove('bg-yellow-100', 'border-yellow-400')
+                  btn.classList.add('border-gray-300')
+                }
+              })
+            })
+          })
+        },
+        preConfirm: () => {
+          const comment = (document.getElementById('validation-comment') as HTMLTextAreaElement)?.value
+          const aspects = (document.getElementById('validation-aspects') as HTMLTextAreaElement)?.value
+          const rating = document.querySelector('.star-rating.bg-yellow-100')?.getAttribute('data-rating')
+          
+          return {
+            isValid: true,
+            rating: rating ? parseInt(rating) : null,
+            comment: comment || null,
+            aspects: aspects || null
+          }
+        }
+      })
+
+      if (validationResult.isConfirmed) {
+        // Enviar validación exitosa
+        await submitValidation(intercambioId, validationResult.value)
+      } else if (validationResult.dismiss === Swal.DismissReason.cancel) {
+        // Mostrar modal para problemas
+        const problemResult = await (window as any).Swal.fire({
+          title: '¿Qué problemas hubo?',
+          input: 'textarea',
+          inputLabel: 'Describe los problemas encontrados',
+          inputPlaceholder: 'Explica qué problemas tuviste con este intercambio...',
+          showCancelButton: true,
+          confirmButtonText: 'Reportar problema',
+          cancelButtonText: 'Cancelar',
+          confirmButtonColor: '#EF4444',
+          cancelButtonColor: '#6B7280'
+        })
+
+        if (problemResult.isConfirmed) {
+          await submitValidation(intercambioId, {
+            isValid: false,
+            comment: problemResult.value,
+            rating: null,
+            aspects: null
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error validando encuentro:', error)
+      ;(window as any).Swal.fire({
+        title: 'Error',
+        text: 'No se pudo validar el encuentro. Inténtalo de nuevo.',
+        icon: 'error',
+        confirmButtonText: 'Entendido'
+      })
+    }
+  }
+
+  // Función para enviar validación al servidor
+  const submitValidation = async (intercambioId: number, validationData: any) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      const response = await fetch(`/api/intercambios/${intercambioId}/validate`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId: getCurrentUserId(),
+          ...validationData
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.data.bothValidated) {
+          if (data.data.newEstado === 'completado') {
+            ;(window as any).Swal.fire({
+              title: '¡Intercambio Completado!',
+              html: `
+                <div class="text-center space-y-3">
+                  <div class="text-6xl">🎉</div>
+                  <p class="text-gray-700">El intercambio se ha completado exitosamente.</p>
+                  <p class="text-sm text-gray-600">Ambos usuarios han confirmado que fue exitoso.</p>
+                </div>
+              `,
+              confirmButtonText: 'Entendido',
+              confirmButtonColor: '#10B981',
+              width: '500px'
+            })
+          } else if (data.data.newEstado === 'fallido') {
+            ;(window as any).Swal.fire({
+              title: 'Intercambio Fallido',
+              html: `
+                <div class="text-center space-y-3">
+                  <div class="text-6xl">❌</div>
+                  <p class="text-gray-700">El intercambio no pudo completarse.</p>
+                  <p class="text-sm text-gray-600">Los productos han vuelto a estar disponibles.</p>
+                </div>
+              `,
+              confirmButtonText: 'Entendido',
+              confirmButtonColor: '#EF4444',
+              width: '500px'
+            })
+          }
+        } else {
+          ;(window as any).Swal.fire({
+            title: 'Validación Enviada',
+            text: 'Tu validación ha sido registrada. Esperando confirmación del otro usuario.',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+          })
+        }
+      } else {
+        throw new Error('Error enviando validación')
+      }
+    } catch (error) {
+      console.error('Error enviando validación:', error)
+      throw error
+    }
+  }
+
   // Helper fiable para saber si el usuario actual es COMPRADOR según exchangeInfo
   const isCurrentUserBuyer = (): boolean => {
     if (!exchangeInfo.usuarioProponeId || !exchangeInfo.usuarioRecibeId || !currentUser?.id) {
@@ -2951,6 +3133,8 @@ const getCurrentUserId = () => {
                           )}
                           
                           {proposal.status === 'pendiente' && (() => {
+                            const anyAccepted = proposals.some(p => p.status === 'aceptada')
+                            if (anyAccepted) return false
                             const role = getUserRole()
                             const currentUserId = parseInt(getCurrentUserId())
                             const proposerId = (proposal as any)?.proposer?.id ? Number((proposal as any).proposer.id) : null
@@ -2969,12 +3153,14 @@ const getCurrentUserId = () => {
                           })() && (
                             <div className="flex space-x-2 mt-3">
                               <button
+                                disabled={proposals.some(p => p.status === 'aceptada')}
                                 onClick={() => handleRespondToProposal(proposal.id, 'aceptar')}
-                                className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                className={`px-3 py-1 text-xs rounded ${proposals.some(p => p.status === 'aceptada') ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
                               >
                                 Aceptar
                               </button>
                               <button
+                                disabled={proposals.some(p => p.status === 'aceptada')}
                                 onClick={() => {
                                   if ((window as any).Swal) {
                                     (window as any).Swal.fire({
@@ -2994,7 +3180,7 @@ const getCurrentUserId = () => {
                                     })
                                   }
                                 }}
-                                className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                className={`px-3 py-1 text-xs rounded ${proposals.some(p => p.status === 'aceptada') ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
                               >
                                 Rechazar
                               </button>
@@ -3074,6 +3260,15 @@ const getCurrentUserId = () => {
                               <span>Ver Detalles</span>
                             </button>
                             <button
+                              onClick={() => handleValidateMeeting((proposal as any).intercambioId || proposal.id)}
+                              className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-1"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span>Validar Encuentro</span>
+                            </button>
+                            <button
                               onClick={() => {
                                 if ((window as any).Swal) {
                                   (window as any).Swal.fire({
@@ -3100,6 +3295,33 @@ const getCurrentUserId = () => {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Banner fijo: Pendiente de Validación */}
+            {(() => {
+              const hasAccepted = proposals.some(p => p.status === 'aceptada')
+              const hasPendingValidation = proposals.some(p => p.status === 'pendiente_validacion')
+              if (!hasAccepted && !hasPendingValidation) return null
+              const first = proposals.find(p => p.status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
+              const intercambioId = (first as any)?.intercambioId || first?.id
+              return (
+                <div className="sticky top-0 z-10 bg-yellow-50 border-b border-yellow-200">
+                  <div className="px-4 py-2 flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-yellow-700 text-sm font-medium">⏳ Pendiente de Validación</span>
+                      <span className="text-xs text-yellow-700 hidden sm:inline">Confirma si el encuentro fue exitoso para cerrar el intercambio</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleValidateMeeting(Number(intercambioId))}
+                        className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                      >
+                        Validar Encuentro
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -56,32 +56,62 @@ export async function GET(
             }
         } catch {}
 
-        // Obtener estadísticas del usuario
-        const { data: userStats } = await supabaseAdmin
+    // Obtener estadísticas del usuario (conteo de productos publicados)
+    const { data: userStats } = await supabaseAdmin
             .from('producto')
             .select('producto_id')
             .eq('user_id', product.user_id)
             .eq('estado_validacion', 'approved')
 
-        // Incrementar contador de vistas si el viewer NO es el dueño
-        try {
-            const auth = req.headers.get('authorization') || ''
-            const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
-            let isOwner = false
-            if (token) {
-                const { data } = await supabaseAdmin.auth.getUser(token)
-                const email = data?.user?.email
-                if (email) {
-                    isOwner = email === product.usuario_email
-                }
-            }
-            if (!isOwner) {
-                await supabaseAdmin
-                    .from('producto')
-                    .update({ visualizaciones: (product.visualizaciones || 0) + 1 })
-                    .eq('producto_id', Number(productId))
-            }
-        } catch {}
+    // Resolver usuario autenticado (si viene token) para calcular isOwner y liked
+    const auth = req.headers.get('authorization') || ''
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+    let isOwner = false
+    let currentUsuarioId: number | null = null
+    if (token) {
+      try {
+        const { data } = await supabaseAdmin.auth.getUser(token)
+        const email = data?.user?.email
+        if (email) {
+          isOwner = email === product.usuario_email
+        }
+        // Obtener user_id para verificar like
+        if (data?.user?.id || email) {
+          const { data: usuarioRow } = await supabaseAdmin
+            .from('usuario')
+            .select('user_id')
+            .or(`auth_user_id.eq.${data?.user?.id || '00000000-0000-0000-0000-000000000000'},email.eq.${email || 'none@example.com'}`)
+            .single()
+          if (usuarioRow?.user_id) currentUsuarioId = Number(usuarioRow.user_id)
+        }
+      } catch {}
+    }
+
+    // Consultar like del usuario autenticado (si aplica)
+    let liked = false
+    if (currentUsuarioId) {
+      try {
+        const { data: favRow } = await supabaseAdmin
+          .from('favorito')
+          .select('favorito_id')
+          .eq('usuario_id', currentUsuarioId)
+          .eq('producto_id', Number(productId))
+          .single()
+        liked = !!favRow
+      } catch {}
+    }
+
+    // Incrementar contador de vistas si el viewer NO es el dueño (no bloqueante)
+    ;(async () => {
+      try {
+        if (!isOwner) {
+          await supabaseAdmin
+            .from('producto')
+            .update({ visualizaciones: (product.visualizaciones || 0) + 1 })
+            .eq('producto_id', Number(productId))
+        }
+      } catch {}
+    })()
 
         // Formatear la respuesta
         const formattedProduct = {
@@ -116,7 +146,14 @@ export async function GET(
             total_productos_usuario: userStats?.length || 0
         }
 
-        return NextResponse.json({ product: formattedProduct })
+    return NextResponse.json(
+      { product: formattedProduct, liked, isOwner },
+      {
+        headers: {
+          'Cache-Control': 's-maxage=60, stale-while-revalidate=300'
+        }
+      }
+    )
 
     } catch (error: any) {
         console.error('Error en API de producto:', error)

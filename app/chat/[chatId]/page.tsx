@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 import { ChatInfo, ChatMessage, ChatProposal } from '@/lib/types/chat'
-import ProposalModal from '@/components/chat/ProposalModal'
 import AuthGuard from '@/components/auth/AuthGuard'
 // import imageCompression from 'browser-image-compression' // Importación dinámica
 
@@ -20,6 +19,7 @@ function ChatPageContent() {
   const [newMessage, setNewMessage] = useState('')
   const [showSidebar, setShowSidebar] = useState(true)
   const [showProposalModal, setShowProposalModal] = useState(false)
+  const [showProposals, setShowProposals] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmittingProposal, setIsSubmittingProposal] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -61,6 +61,127 @@ function ChatPageContent() {
   // Función auxiliar para obtener el ID del usuario actual
   const getCurrentUserId = () => {
     return currentUserId
+  }
+
+  // Modal de validación de encuentro con calificación
+  const handleValidateMeeting = async (intercambioId: number) => {
+    try {
+      // Determinar a quién vas a calificar
+      let otherName = 'Usuario'
+      let otherAvatar = '/default-avatar.png'
+      try {
+        const me = currentUserId ? String(currentUserId) : null
+        const seller = (chatInfo as any)?.seller
+        const buyer = (chatInfo as any)?.buyer
+        const sellerId = seller?.id ? String(seller.id) : null
+        const isMeSeller = me && sellerId && me === sellerId
+        const target = isMeSeller ? buyer : seller
+        if (target) {
+          otherName = `${target.name || ''} ${target.lastName || ''}`.trim() || otherName
+          otherAvatar = target.avatar || otherAvatar
+        }
+      } catch {}
+
+      const result = await (window as any).Swal.fire({
+        title: '¿El encuentro fue exitoso?',
+        html: `
+          <div class="text-left space-y-4">
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p class="text-sm text-blue-800">
+                Confirma el resultado y califica al otro usuario.
+              </p>
+            </div>
+            <div class="flex items-center space-x-3">
+              <img src="${otherAvatar}" alt="${otherName}" class="w-10 h-10 rounded-full object-cover border" />
+              <div>
+                <p class="text-sm text-gray-900 font-medium">Vas a calificar a</p>
+                <p class="text-sm text-gray-700">${otherName}</p>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Calificación</label>
+              <div class="flex space-x-2 mb-3">
+                <button type="button" class="star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50" data-rating="1">⭐</button>
+                <button type="button" class="star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50" data-rating="2">⭐⭐</button>
+                <button type="button" class="star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50" data-rating="3">⭐⭐⭐</button>
+                <button type="button" class="star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50" data-rating="4">⭐⭐⭐⭐</button>
+                <button type="button" class="star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50" data-rating="5">⭐⭐⭐⭐⭐</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Comentario (opcional)</label>
+              <textarea id="validation-comment" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3" placeholder="¿Cómo fue tu experiencia?"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Aspectos destacados (opcional)</label>
+              <textarea id="validation-aspects" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows="2" placeholder="Puntualidad, estado del producto, etc."></textarea>
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Fue exitoso',
+        cancelButtonText: 'No fue exitoso',
+        confirmButtonColor: '#10B981',
+        cancelButtonColor: '#EF4444',
+        width: '600px',
+        didOpen: () => {
+          const starButtons = document.querySelectorAll('.star-rating')
+          let selectedRating = 0
+          starButtons.forEach((btn, idx) => {
+            btn.addEventListener('click', () => {
+              selectedRating = idx + 1
+              starButtons.forEach((b, i) => {
+                if (i < selectedRating) {
+                  b.classList.add('bg-yellow-100','border-yellow-400')
+                  b.classList.remove('border-gray-300')
+                } else {
+                  b.classList.remove('bg-yellow-100','border-yellow-400')
+                  b.classList.add('border-gray-300')
+                }
+              })
+            })
+          })
+        },
+        preConfirm: () => {
+          const comment = (document.getElementById('validation-comment') as HTMLTextAreaElement)?.value
+          const aspects = (document.getElementById('validation-aspects') as HTMLTextAreaElement)?.value
+          const rated = Array.from(document.querySelectorAll('.star-rating.bg-yellow-100')).length
+          return { isValid: true, rating: rated || null, comment: comment || null, aspects: aspects || null }
+        }
+      })
+
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      if (result.isConfirmed) {
+        await fetch(`/api/intercambios/${intercambioId}/validate`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(result.value)
+        })
+      } else if (result.dismiss) {
+        const problem = await (window as any).Swal.fire({
+          title: 'Cuéntanos qué pasó',
+          input: 'textarea',
+          inputPlaceholder: 'Describe el problema...',
+          showCancelButton: true,
+          confirmButtonText: 'Reportar',
+          cancelButtonText: 'Cancelar',
+          confirmButtonColor: '#EF4444'
+        })
+        if (problem.isConfirmed) {
+          await fetch(`/api/intercambios/${intercambioId}/validate`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ isValid: false, comment: problem.value || null })
+          })
+        }
+      }
+      window.location.reload()
+    } catch (e) {
+      console.error('Error en validación:', e)
+    }
   }
 
   // Función helper para evitar mensajes duplicados
@@ -214,7 +335,7 @@ function ChatPageContent() {
               month: '2-digit'
             }),
             isRead: msg.leido,
-            type: msg.tipo === 'imagen' ? 'image' : msg.tipo === 'ubicacion' ? 'location' : 'texto',
+            type: msg.tipo === 'imagen' ? 'imagen' : msg.tipo === 'ubicacion' ? 'ubicacion' : 'texto',
             metadata: msg.archivo_url ? { imageUrl: msg.archivo_url } : undefined,
             sender: {
               id: String(msg.usuario?.user_id || msg.usuario_id),
@@ -364,7 +485,7 @@ function ChatPageContent() {
             month: '2-digit'
           }),
           isRead: m.leido,
-          type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'texto',
+          type: m.tipo === 'imagen' ? 'imagen' : m.tipo === 'ubicacion' ? 'ubicacion' : 'texto',
           metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
           sender: {
             id: String(m.usuario_id),
@@ -472,7 +593,7 @@ function ChatPageContent() {
                   month: '2-digit'
                 }),
                 isRead: m.leido,
-                type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'texto',
+                type: m.tipo === 'imagen' ? 'imagen' : m.tipo === 'ubicacion' ? 'ubicacion' : 'texto',
                 metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
                 sender: {
                   id: String(m.usuario?.user_id || m.usuario_id),
@@ -524,6 +645,108 @@ function ChatPageContent() {
       }
     }
   }, [imagePreview.url])
+
+  // Manejar eventos del modal de propuesta
+  useEffect(() => {
+    if (!showProposalModal) return
+
+    const setupProposalModal = () => {
+      // Formateo de precio
+      const priceInput = document.getElementById('proposal-price') as HTMLInputElement
+      if (priceInput) {
+        priceInput.addEventListener('input', () => {
+          const digits = priceInput.value.replace(/[^0-9]/g, '')
+          priceInput.dataset.raw = digits
+          if (!digits) {
+            priceInput.value = ''
+            return
+          }
+          const formatted = new Intl.NumberFormat('es-CO').format(Number(digits))
+          priceInput.value = formatted
+        })
+      }
+
+      // Botón tomar foto
+      const takePhotoBtn = document.getElementById('take-photo-btn')
+      const selectFileBtn = document.getElementById('select-file-btn')
+      const fileInput = document.getElementById('proposal-image') as HTMLInputElement
+      const imagePreview = document.getElementById('image-preview')
+      const previewImg = document.getElementById('preview-img') as HTMLImageElement
+      
+      if (takePhotoBtn && fileInput) {
+        takePhotoBtn.addEventListener('click', () => {
+          // Crear input temporal para cámara
+          const cameraInput = document.createElement('input')
+          cameraInput.type = 'file'
+          cameraInput.accept = 'image/*'
+          cameraInput.capture = 'environment'
+          cameraInput.style.display = 'none'
+          
+          cameraInput.addEventListener('change', (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0]
+            if (file) {
+              // Actualizar el input principal
+              const dataTransfer = new DataTransfer()
+              dataTransfer.items.add(file)
+              fileInput.files = dataTransfer.files
+              
+              // Mostrar vista previa
+              const reader = new FileReader()
+              reader.onload = (e) => {
+                if (previewImg && imagePreview) {
+                  previewImg.src = e.target?.result as string
+                  imagePreview.classList.remove('hidden')
+                }
+              }
+              reader.readAsDataURL(file)
+            }
+          })
+          
+          document.body.appendChild(cameraInput)
+          cameraInput.click()
+          document.body.removeChild(cameraInput)
+        })
+      }
+
+      // Botón seleccionar archivo
+      if (selectFileBtn && fileInput) {
+        selectFileBtn.addEventListener('click', () => {
+          fileInput.click()
+        })
+      }
+
+      // Manejar cambio en input de archivo
+      if (fileInput && previewImg && imagePreview) {
+        fileInput.addEventListener('change', (e) => {
+          const file = (e.target as HTMLInputElement).files?.[0]
+          if (file) {
+            const reader = new FileReader()
+            reader.onload = (e) => {
+              previewImg.src = e.target?.result as string
+              imagePreview.classList.remove('hidden')
+            }
+            reader.readAsDataURL(file)
+          }
+        })
+      }
+
+      // Botón limpiar imagen
+      const clearBtn = document.getElementById('clear-image-btn')
+      if (clearBtn && fileInput && imagePreview) {
+        clearBtn.addEventListener('click', () => {
+          fileInput.value = ''
+          imagePreview.classList.add('hidden')
+        })
+      }
+    }
+
+    // Ejecutar después de que el modal se renderice
+    setTimeout(setupProposalModal, 100)
+
+    return () => {
+      // Cleanup si es necesario
+    }
+  }, [showProposalModal])
 
   // Manejar tecla ESC para cerrar el modal de imagen
   useEffect(() => {
@@ -657,7 +880,7 @@ function ChatPageContent() {
                   month: '2-digit'
                 }),
                 isRead: data.message.leido,
-                type: data.message.tipo === 'imagen' ? 'image' : data.message.tipo === 'ubicacion' ? 'location' : 'texto',
+                type: (data.message.tipo === 'imagen' ? 'imagen' : data.message.tipo === 'ubicacion' ? 'ubicacion' : 'texto') as 'texto' | 'imagen' | 'ubicacion' | 'propuesta' | 'respuesta_propuesta',
                 metadata: data.message.archivo_url ? { imageUrl: data.message.archivo_url } : undefined,
                 sender: {
                   id: currentUserId,
@@ -732,7 +955,269 @@ function ChatPageContent() {
     }
   }
 
+  // Función para redimensionar imágenes (igual que en ChatModule)
+  const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 600, quality: number = 0.8): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      const img = new Image()
+      
+      img.onload = () => {
+        // Calcular nuevas dimensiones manteniendo la proporción
+        let { width, height } = img
+        
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width
+            width = maxWidth
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height
+            height = maxHeight
+          }
+        }
+        
+        canvas.width = width
+        canvas.height = height
+        
+        // Dibujar la imagen redimensionada
+        ctx?.drawImage(img, 0, 0, width, height)
+        
+        // Convertir a blob y luego a File
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const resizedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            })
+            resolve(resizedFile)
+          } else {
+            resolve(file)
+          }
+        }, 'image/jpeg', quality)
+      }
+      
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
+  // Función para ver detalles de una propuesta
+  const handleViewProposal = (proposal: ChatProposal) => {
+    const formatCOP = (n?: number) => typeof n === 'number' ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n) : '—'
+    const rows = [
+      `<tr><td class="py-1 pr-3 text-gray-500">Tipo</td><td class="py-1 font-medium">${proposal.type}</td></tr>`,
+      `<tr><td class="py-1 pr-3 text-gray-500">Estado</td><td class="py-1 font-medium">${proposal.status}</td></tr>`,
+      `<tr><td class="py-1 pr-3 text-gray-500">Precio</td><td class="py-1 font-medium">${formatCOP(proposal.proposedPrice)}</td></tr>`,
+      proposal.conditions ? `<tr><td class="py-1 pr-3 text-gray-500">Condiciones</td><td class="py-1">${proposal.conditions}</td></tr>` : '',
+      proposal.meetingDate ? `<tr><td class="py-1 pr-3 text-gray-500">Encuentro</td><td class="py-1">${new Date(proposal.meetingDate).toLocaleString('es-CO')} ${proposal.meetingPlace ? ' - ' + proposal.meetingPlace : ''}</td></tr>` : '',
+      `<tr><td class="py-1 pr-3 text-gray-500">Creada</td><td class="py-1">${new Date(proposal.createdAt).toLocaleString('es-CO')}</td></tr>`,
+      proposal.respondedAt ? `<tr><td class="py-1 pr-3 text-gray-500">Respondida</td><td class="py-1">${new Date(proposal.respondedAt).toLocaleString('es-CO')}</td></tr>` : '',
+      `<tr><td class="py-1 pr-3 text-gray-500">Propone</td><td class="py-1">${proposal.proposer?.name || ''} ${proposal.proposer?.lastName || ''}</td></tr>`,
+      `<tr><td class="py-1 pr-3 text-gray-500">Recibe</td><td class="py-1">${proposal.receiver?.name || ''} ${proposal.receiver?.lastName || ''}</td></tr>`,
+    ].filter(Boolean).join('')
+
+    if ((window as any).Swal) {
+      ;(window as any).Swal.fire({
+        title: 'Detalle de Propuesta',
+        html: `
+          <div class="text-left space-y-3">
+            <div class="p-2 bg-gray-50 rounded border border-gray-200">
+              <p class="text-sm text-gray-700 whitespace-pre-line">${proposal.description || ''}</p>
+            </div>
+            ${(proposal as any).archivo_url ? `
+              <div class="p-2 bg-gray-50 rounded border border-gray-200">
+                <p class="text-sm font-medium text-gray-700 mb-2">Imagen del producto:</p>
+                <div class="flex justify-center">
+                  <img src="${(proposal as any).archivo_url}" alt="Imagen de la propuesta" class="max-w-full max-h-64 rounded border border-gray-300 object-contain">
+                </div>
+              </div>
+            ` : ''}
+            <table class="w-full text-sm">
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+          </div>
+        `,
+        confirmButtonText: 'Cerrar',
+        confirmButtonColor: '#3B82F6',
+        width: '600px'
+      })
+    }
+  }
+
+  // Función para manejar el envío de propuesta desde el modal
+  const handleSubmitProposalFromModal = async () => {
+    if (!chatId || !currentUserId) return
+
+    try {
+      // Obtener datos del formulario
+      const type = (document.getElementById('proposal-type') as HTMLSelectElement)?.value
+      const description = (document.getElementById('proposal-description') as HTMLTextAreaElement)?.value
+      const priceEl = (document.getElementById('proposal-price') as HTMLInputElement)
+      const raw = priceEl?.dataset?.raw || ''
+      const conditions = (document.getElementById('proposal-conditions') as HTMLTextAreaElement)?.value
+      const meetingDate = (document.getElementById('proposal-date') as HTMLInputElement)?.value
+      const meetingPlace = (document.getElementById('proposal-place') as HTMLInputElement)?.value
+      const imageFile = (document.getElementById('proposal-image') as HTMLInputElement)?.files?.[0]
+      
+      // Validaciones
+      if (!type || !description) {
+        alert('Tipo y descripción son requeridos')
+        return
+      }
+      
+      if (description.length < 10) {
+        alert('La descripción debe tener al menos 10 caracteres')
+        return
+      }
+
+      setIsSubmittingProposal(true)
+      
+      let imageUrl = undefined
+      
+      // Subir imagen si existe
+      if (imageFile) {
+        try {
+          const resizedFile = await resizeImage(imageFile)
+          
+          const formData = new FormData()
+          formData.append('image', resizedFile)
+          formData.append('chatId', chatId)
+          formData.append('userId', currentUserId)
+          
+          const { data: { session } } = await supabase.auth.getSession()
+          const token = session?.access_token
+          if (!token) {
+            throw new Error('No hay sesión activa')
+          }
+          
+          const response = await fetch('/api/chat/upload-image', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            imageUrl = data.data.url
+            console.log('✅ Imagen subida exitosamente:', imageUrl)
+          } else {
+            const errorData = await response.json()
+            console.error('❌ Error subiendo imagen:', errorData)
+            throw new Error('Error subiendo la imagen: ' + (errorData.error || 'Error desconocido'))
+          }
+        } catch (error) {
+          console.error('❌ Error subiendo imagen:', error)
+          alert('Error subiendo la imagen')
+          return
+        }
+      }
+      
+      // Crear propuesta
+      const proposalData = { 
+        type, 
+        description, 
+        proposedPrice: raw ? parseFloat(raw) : undefined,
+        conditions: conditions || undefined,
+        meetingDate: meetingDate || undefined,
+        meetingPlace: meetingPlace || undefined,
+        archivo_url: imageUrl
+      }
+
+      await handleSubmitProposal(proposalData)
+      
+      // Cerrar modal
+      setShowProposalModal(false)
+      
+      // Limpiar formulario
+      const form = document.querySelector('#proposal-type')?.closest('form') || document
+      const inputs = form.querySelectorAll('input, textarea, select')
+      inputs.forEach((input: any) => {
+        if (input.type === 'file') {
+          input.value = ''
+        } else if (input.type === 'checkbox' || input.type === 'radio') {
+          input.checked = false
+        } else {
+          input.value = ''
+        }
+      })
+      
+    } catch (error) {
+      console.error('Error enviando propuesta:', error)
+      alert('Error enviando la propuesta. Inténtalo de nuevo.')
+    } finally {
+      setIsSubmittingProposal(false)
+    }
+  }
+
   const handleNegotiate = () => {
+    // Abrir modal de propuesta para negociación
+    setShowProposalModal(true)
+  }
+
+  // Función para manejar respuestas a propuestas
+  const handleRespondToProposal = async (proposalId: number, response: 'aceptar' | 'rechazar' | 'contrapropuesta', reason?: string) => {
+    if (!chatId) return
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      const responseData = await fetch(`/api/chat/${chatId}/proposals/${proposalId}/respond`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ response, reason })
+      })
+
+      if (responseData.ok) {
+        const data = await responseData.json()
+        setProposals(prev => prev.map(prop => 
+          prop.id === proposalId ? { ...prop, ...data.data } : prop
+        ))
+        
+        if ((window as any).Swal) {
+          (window as any).Swal.fire({
+            title: 'Respuesta enviada',
+            text: `Has ${response === 'rechazar' ? 'rechazado' : 'respondido a'} la propuesta`,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+          })
+        }
+      } else {
+        throw new Error('Error respondiendo a propuesta')
+      }
+    } catch (error) {
+      console.error('Error respondiendo a propuesta:', error)
+      if ((window as any).Swal) {
+        (window as any).Swal.fire({
+          title: 'Error',
+          text: 'No se pudo enviar la respuesta. Inténtalo de nuevo.',
+          icon: 'error',
+          confirmButtonText: 'Entendido'
+        })
+      }
+    }
+  }
+
+  // Función para determinar el rol del usuario
+  const getUserRole = () => {
+    if (!chatInfo) return null
+    
+    // Lógica para determinar si es vendedor o comprador
+    // Esto depende de cómo esté estructurada la información del chat
+    return 'vendedor' // Por ahora asumimos vendedor, se puede ajustar según la lógica de negocio
+  }
+
+  const handleNegotiateOld = () => {
     // Abrir modal de propuesta para negociación
     setShowProposalModal(true)
     
@@ -869,7 +1354,7 @@ function ChatPageContent() {
         month: '2-digit'
       }),
       isRead: false,
-      type: 'image',
+      type: 'imagen',
       metadata: { 
         imageUrl: imagePreview.url!,
         fileName: imagePreview.file.name,
@@ -977,7 +1462,7 @@ function ChatPageContent() {
                 month: '2-digit'
               }),
               isRead: messageData.message.leido,
-              type: 'image',
+              type: 'imagen',
               metadata: { 
                 imageUrl: uploadData.data.url,
                 fileName: uploadData.data.originalName,
@@ -1099,15 +1584,12 @@ function ChatPageContent() {
                   // Intentar obtener el ID del producto de diferentes maneras
                   let productId = null
                   
-                  if (chatInfo?.offeredProduct?.producto_id) {
-                    productId = chatInfo.offeredProduct.producto_id
-                    console.log('✅ [ChatPage] Product ID desde producto_id:', productId)
+                  if (chatInfo?.offeredProduct?.id) {
+                    productId = chatInfo.offeredProduct.id
+                    console.log('✅ [ChatPage] Product ID desde id:', productId)
                   } else if (chatInfo?.offeredProduct?.id) {
                     productId = chatInfo.offeredProduct.id
                     console.log('✅ [ChatPage] Product ID desde id:', productId)
-                  } else if (chatInfo?.intercambio?.producto_ofrecido_id) {
-                    productId = chatInfo.intercambio.producto_ofrecido_id
-                    console.log('✅ [ChatPage] Product ID desde intercambio:', productId)
                   }
                   
                   console.log('🆔 [ChatPage] Product ID final:', productId)
@@ -1276,6 +1758,206 @@ function ChatPageContent() {
         <div className="flex-1 flex flex-col bg-gray-50">
           <div className="flex-1 flex justify-center overflow-hidden">
             <div className="w-full max-w-4xl flex flex-col">
+              {(() => {
+                const hasAccepted = proposals.some(p => p.status === 'aceptada')
+                const hasPendingValidation = proposals.some(p => p.status === 'pendiente_validacion')
+                if (!hasAccepted && !hasPendingValidation) return null
+                const first = proposals.find(p => p.status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
+                const intercambioId = (first as any)?.intercambioId || first?.id
+                return (
+                  <div className="sticky top-0 z-10 bg-yellow-50 border-b border-yellow-200">
+                    <div className="px-4 py-2 flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-yellow-700 text-sm font-medium">⏳ Pendiente de Validación</span>
+                        <span className="text-xs text-yellow-700 hidden sm:inline">Confirma si el encuentro fue exitoso para cerrar el intercambio</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const { data: { session } } = await supabase.auth.getSession()
+                              if (!session?.access_token) return
+                              await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                                body: JSON.stringify({ isValid: true })
+                              })
+                              window.location.reload()
+                            } catch {}
+                          }}
+                          className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                        >
+                          Validar Encuentro
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+              {/* Sección de Propuestas - Arriba */}
+              {proposals.length > 0 && (
+                <div className="bg-white border-b border-gray-200">
+                  <button
+                    onClick={() => setShowProposals(!showProposals)}
+                    className={`w-full flex items-center justify-between px-6 py-3 text-left transition-colors ${
+                      showProposals 
+                        ? 'text-primary-600 bg-primary-50' 
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span className="font-medium">Propuestas</span>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        showProposals 
+                          ? 'bg-primary-200 text-primary-800' 
+                          : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {proposals.length}
+                      </span>
+                    </div>
+                    <svg 
+                      className={`w-5 h-5 transition-transform ${showProposals ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {showProposals && (
+                    <div className="border-t border-gray-200">
+                      <div className="max-h-64 overflow-y-auto">
+                        <div className="p-4 space-y-3">
+                          {proposals.map((proposal) => (
+                            <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                    proposal.type === 'precio' ? 'bg-blue-100 text-blue-800' :
+                                    proposal.type === 'intercambio' ? 'bg-green-100 text-green-800' :
+                                    proposal.type === 'encuentro' ? 'bg-purple-100 text-purple-800' :
+                                    proposal.type === 'condiciones' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {proposal.type}
+                                  </span>
+                                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                    proposal.status === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :
+                                    proposal.status === 'aceptada' ? 'bg-green-100 text-green-800' :
+                                    proposal.status === 'rechazada' ? 'bg-red-100 text-red-800' :
+                                    'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    {proposal.status}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
+                                </span>
+                              </div>
+                              
+                              <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                              
+                              {proposal.proposedPrice && (
+                                <p className="text-sm font-medium text-green-600 mb-2">
+                                  Precio propuesto: ${proposal.proposedPrice.toLocaleString('es-CO')}
+                                </p>
+                              )}
+                              
+                              {proposal.meetingDate && (
+                                <p className="text-sm text-gray-600 mb-2">
+                                  📅 Encuentro: {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}
+                                  {proposal.meetingPlace && ` en ${proposal.meetingPlace}`}
+                                </p>
+                              )}
+                              
+                              {proposal.response && (
+                                <div className="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
+                                  <p className="text-sm text-gray-700">
+                                    <strong>Respuesta:</strong> {proposal.response}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              <div className="mt-3 flex space-x-2">
+                                <button
+                                  onClick={() => handleViewProposal(proposal)}
+                                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-1"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                  <span>Ver</span>
+                                </button>
+                                
+                                {proposal.status === 'pendiente' && (() => {
+                                  const anyAccepted = proposals.some(p => p.status === 'aceptada')
+                                  if (anyAccepted) return false
+                                  const role = getUserRole()
+                                  const currentUserIdNum = parseInt(currentUserId || '0')
+                                  const proposerId = (proposal as any)?.proposer?.id ? Number((proposal as any).proposer.id) : null
+                                  
+                                  // Si soy el vendedor y la propuesta la envió el comprador, puedo aceptar
+                                  if (role === 'vendedor' && proposerId && proposerId !== currentUserIdNum) {
+                                    return true
+                                  }
+                                  
+                                  // Si soy el comprador y la propuesta la envió el vendedor, puedo aceptar
+                                  if (role === 'comprador' && proposerId && proposerId !== currentUserIdNum) {
+                                    return true
+                                  }
+                                  
+                                  return false
+                                })() && (
+                                  <>
+                                    <button
+                                      disabled={proposals.some(p => p.status === 'aceptada')}
+                                      onClick={() => handleRespondToProposal(proposal.id, 'aceptar')}
+                                      className={`px-3 py-1 text-xs rounded ${proposals.some(p => p.status === 'aceptada') ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                                    >
+                                      Aceptar
+                                    </button>
+                                    <button
+                                      disabled={proposals.some(p => p.status === 'aceptada')}
+                                      onClick={() => {
+                                        if ((window as any).Swal) {
+                                          (window as any).Swal.fire({
+                                            title: 'Rechazar Propuesta',
+                                            input: 'textarea',
+                                            inputLabel: 'Motivo del rechazo (opcional)',
+                                            inputPlaceholder: 'Explica por qué rechazas esta propuesta...',
+                                            showCancelButton: true,
+                                            confirmButtonText: 'Rechazar',
+                                            cancelButtonText: 'Cancelar',
+                                            confirmButtonColor: '#EF4444',
+                                            cancelButtonColor: '#6B7280'
+                                          }).then((result: any) => {
+                                            if (result.isConfirmed) {
+                                              handleRespondToProposal(proposal.id, 'rechazar', result.value)
+                                            }
+                                          })
+                                        }
+                                      }}
+                                      className={`px-3 py-1 text-xs rounded ${proposals.some(p => p.status === 'aceptada') ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
+                                    >
+                                      Rechazar
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Chat Box - Mensajes */}
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                 {messages.length === 0 ? (
@@ -1331,7 +2013,7 @@ function ChatPageContent() {
                           : 'bg-white text-gray-900 border border-gray-200'
                         }`}>
                           {/* Contenido del mensaje */}
-                          {message.type === 'image' && message.metadata?.imageUrl ? (
+                          {message.type === 'imagen' && message.metadata?.imageUrl ? (
                             <div className="space-y-2">
                               {/* Comentario si existe */}
                               {message.content && message.content.trim() && message.content !== 'Subiendo imagen...' && (
@@ -1412,6 +2094,7 @@ function ChatPageContent() {
                   </button>
                 </div>
               </div>
+
 
               {/* Input de mensaje */}
               <div className="bg-white border-t border-gray-200 px-6 py-4">
@@ -1610,13 +2293,13 @@ function ChatPageContent() {
         </div>
       )}
 
-      {/* Modal de Propuesta */}
+      {/* Modal de Propuesta - Actualizado como ChatModule */}
       {showProposalModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Hacer Propuesta</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Crear Nueva Propuesta</h2>
                 <button
                   onClick={() => setShowProposalModal(false)}
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -1629,24 +2312,74 @@ function ChatPageContent() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Propuesta</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option>Precio</option>
-                    <option>Intercambio</option>
-                    <option>Encuentro</option>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de propuesta</label>
+                  <select id="proposal-type" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <option value="precio">💰 Propuesta de precio</option>
+                    <option value="intercambio">🔄 Propuesta de intercambio</option>
+                    <option value="encuentro">📅 Propuesta de encuentro</option>
+                    <option value="condiciones">📋 Propuesta de condiciones</option>
+                    <option value="otro">📝 Otra propuesta</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
-                  <textarea
-                    placeholder="Describe tu propuesta..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={4}
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Descripción de la propuesta</label>
+                  <textarea id="proposal-description" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows={4} placeholder="Describe detalladamente tu propuesta..."></textarea>
                 </div>
 
-                <div className="flex space-x-4 pt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Precio propuesto (opcional)</label>
+                  <input type="text" id="proposal-price" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="0" inputMode="numeric" />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Condiciones adicionales (opcional)</label>
+                  <textarea id="proposal-conditions" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows={2} placeholder="Condiciones especiales, garantías, etc..."></textarea>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de encuentro (opcional)</label>
+                    <input type="date" id="proposal-date" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Lugar de encuentro (opcional)</label>
+                    <input type="text" id="proposal-place" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Centro comercial, parque, etc..." />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Imagen del producto (opcional)</label>
+                  <div className="space-y-2">
+                    <input type="file" id="proposal-image" accept="image/*" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" style={{display: 'none'}} />
+                    <div className="flex space-x-2">
+                      <button type="button" id="take-photo-btn" className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        <span>Tomar foto</span>
+                      </button>
+                      <button type="button" id="select-file-btn" className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <span>Seleccionar archivo</span>
+                      </button>
+                      <button type="button" id="clear-image-btn" className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700">
+                        Limpiar
+                      </button>
+                    </div>
+                    <div id="image-preview" className="hidden">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Vista previa:</p>
+                      <img id="preview-img" className="w-full max-w-xs rounded border border-gray-300" alt="Vista previa" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Formatos: JPG, PNG, GIF. Máximo 10MB. Se redimensionará automáticamente.</p>
+                </div>
+              </div>
+
+              <div className="flex space-x-4 pt-6">
                   <button
                     onClick={() => setShowProposalModal(false)}
                     className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
@@ -1654,25 +2387,17 @@ function ChatPageContent() {
                     Cancelar
                   </button>
                   <button
-                    onClick={() => setShowProposalModal(false)}
+                  onClick={handleSubmitProposalFromModal}
                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
                     Enviar Propuesta
                   </button>
-                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Propuesta */}
-      <ProposalModal
-        isOpen={showProposalModal}
-        onClose={() => setShowProposalModal(false)}
-        onSubmit={handleSubmitProposal}
-        isLoading={isSubmittingProposal}
-      />
     </div>
   )
 }

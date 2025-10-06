@@ -1467,6 +1467,124 @@ export default function InteraccionDetailPage() {
                             </div>
 
                             <div className="p-6">
+                                {(() => {
+                                    const hasAccepted = (interaction?.proposals || []).some(p => p.status === 'aceptada')
+                                    const hasPendingValidation = (interaction?.proposals || []).some(p => p.status === 'pendiente_validacion')
+                                    if (!hasAccepted && !hasPendingValidation) return null
+                                    const first = (interaction?.proposals || []).find(p => p.status === 'pendiente_validacion') || (interaction?.proposals || []).find(p => p.status === 'aceptada')
+                                    const intercambioId = (first as any)?.intercambioId || first?.id
+                                    return (
+                                        <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                                            <div className="px-4 py-3 flex items-center justify-between">
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="text-yellow-700 text-sm font-medium">⏳ Pendiente de Validación</span>
+                                                    <span className="text-xs text-yellow-700 hidden sm:inline">Confirma si el encuentro fue exitoso para cerrar el intercambio</span>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const { data: { session } } = await supabase.auth.getSession()
+                                                const token = session?.access_token
+                                                if (!token) return
+                                                // Determinar a quién vas a calificar: el otro usuario de la interacción
+                                                let otherName = interaction?.otherUser?.name || 'Usuario'
+                                                let otherAvatar = interaction?.otherUser?.avatar || '/default-avatar.png'
+                                                const result = await (window as any).Swal.fire({
+                                                    title: '¿El encuentro fue exitoso?',
+                                                    html: `
+                                                      <div class=\"text-left space-y-4\"> 
+                                                        <div class=\"p-3 bg-blue-50 border border-blue-200 rounded-lg\"> 
+                                                          <p class=\"text-sm text-blue-800\">Confirma el resultado y califica al otro usuario.</p>
+                                                        </div>
+                                                        <div class=\"flex items-center space-x-3\"> 
+                                                          <img src=\"${otherAvatar}\" alt=\"${otherName}\" class=\"w-10 h-10 rounded-full object-cover border\" />
+                                                          <div>
+                                                            <p class=\"text-sm text-gray-900 font-medium\">Vas a calificar a</p>
+                                                            <p class=\"text-sm text-gray-700\">${otherName}</p>
+                                                          </div>
+                                                        </div>
+                                                        <div>
+                                                          <label class=\"block text-sm font-medium text-gray-700 mb-2\">Calificación</label>
+                                                          <div class=\"flex space-x-2 mb-3\">
+                                                            <button type=\"button\" class=\"star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50\" data-rating=\"1\">⭐</button>
+                                                            <button type=\"button\" class=\"star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50\" data-rating=\"2\">⭐⭐</button>
+                                                            <button type=\"button\" class=\"star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50\" data-rating=\"3\">⭐⭐⭐</button>
+                                                            <button type=\"button\" class=\"star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50\" data-rating=\"4\">⭐⭐⭐⭐</button>
+                                                            <button type=\"button\" class=\"star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50\" data-rating=\"5\">⭐⭐⭐⭐⭐</button>
+                                                          </div>
+                                                        </div>
+                                                        <div>
+                                                          <label class=\"block text-sm font-medium text-gray-700 mb-2\">Comentario (opcional)</label>
+                                                          <textarea id=\"validation-comment\" class=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\" rows=\"3\" placeholder=\"¿Cómo fue tu experiencia?\"></textarea>
+                                                        </div>
+                                                        <div>
+                                                          <label class=\"block text-sm font-medium text-gray-700 mb-2\">Aspectos destacados (opcional)</label>
+                                                          <textarea id=\"validation-aspects\" class=\"w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500\" rows=\"2\" placeholder=\"Puntualidad, estado del producto, etc.\"></textarea>
+                                                        </div>
+                                                      </div>
+                                                    `,
+                                                    showCancelButton: true,
+                                                    confirmButtonText: 'Fue exitoso',
+                                                    cancelButtonText: 'No fue exitoso',
+                                                    confirmButtonColor: '#10B981',
+                                                    cancelButtonColor: '#EF4444',
+                                                    didOpen: () => {
+                                                        const starButtons = document.querySelectorAll('.star-rating')
+                                                        let selectedRating = 0
+                                                        starButtons.forEach((btn, idx) => {
+                                                            btn.addEventListener('click', () => {
+                                                                selectedRating = idx + 1
+                                                                starButtons.forEach((b, i) => {
+                                                                    if (i < selectedRating) { b.classList.add('bg-yellow-100','border-yellow-400'); b.classList.remove('border-gray-300') }
+                                                                    else { b.classList.remove('bg-yellow-100','border-yellow-400'); b.classList.add('border-gray-300') }
+                                                                })
+                                                            })
+                                                        })
+                                                    },
+                                                    preConfirm: () => {
+                                                        const comment = (document.getElementById('validation-comment') as HTMLTextAreaElement)?.value
+                                                        const aspects = (document.getElementById('validation-aspects') as HTMLTextAreaElement)?.value
+                                                        const rated = Array.from(document.querySelectorAll('.star-rating.bg-yellow-100')).length
+                                                        return { isValid: true, rating: rated || null, comment: comment || null, aspects: aspects || null }
+                                                    }
+                                                })
+                                                if (result.isConfirmed) {
+                                                    await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
+                                                        method: 'PATCH',
+                                                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                                        body: JSON.stringify(result.value)
+                                                    })
+                                                } else if (result.dismiss) {
+                                                    const problem = await (window as any).Swal.fire({
+                                                        title: 'Cuéntanos qué pasó',
+                                                        input: 'textarea',
+                                                        inputPlaceholder: 'Describe el problema...',
+                                                        showCancelButton: true,
+                                                        confirmButtonText: 'Reportar',
+                                                        cancelButtonText: 'Cancelar',
+                                                        confirmButtonColor: '#EF4444'
+                                                    })
+                                                    if (problem.isConfirmed) {
+                                                        await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
+                                                            method: 'PATCH',
+                                                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                                            body: JSON.stringify({ isValid: false, comment: problem.value || null })
+                                                        })
+                                                    }
+                                                }
+                                                window.location.reload()
+                                            } catch {}
+                                        }}
+                                        className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                    >
+                                        Validar Encuentro
+                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
                                 {/* Pestaña Resumen */}
                                 {activeTab === 'overview' && (
                                     <div className="space-y-6">

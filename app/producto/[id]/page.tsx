@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { ArrowLeftIcon, PhoneIcon, EnvelopeIcon, CalendarIcon, EyeIcon, ShareIcon, FlagIcon, StarIcon, MapPinIcon, TagIcon, CurrencyDollarIcon, HeartIcon, ChatBubbleLeftRightIcon, UserIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
@@ -100,7 +101,7 @@ export default function ProductDetailPage() {
         const headers: Record<string, string> = {}
         if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
 
-        // Obtener producto desde la API
+        // Obtener producto desde la API (ya incluye liked e isOwner)
         const response = await fetch(`/api/products/${productId}`, { headers })
         
         if (!response.ok) {
@@ -110,7 +111,7 @@ export default function ProductDetailPage() {
           throw new Error('Error al cargar el producto')
         }
 
-        const { product } = await response.json()
+        const { product, liked, isOwner: ownerFlag } = await response.json()
         
         if (!isMounted) return
         
@@ -122,166 +123,11 @@ export default function ProductDetailPage() {
         if (typeof product.total_likes === 'number') {
           setStats(prev => ({ ...prev, likes: product.total_likes }))
         }
-
-        // VERIFICACIÓN INMEDIATA DEL PROPIETARIO
-        try {
-          const { data: { session } } = await supabase.auth.getSession()
-          // Debug logs solo en desarrollo
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 Debug completo de verificación:', {
-              hasSession: !!session?.access_token,
-              sessionUser: session?.user,
-              productUsuario: product?.usuario,
-              productOwnerEmail: product?.usuario?.email,
-              currentUserEmail: session?.user?.email,
-              emailMatch: product?.usuario?.email === session?.user?.email
-            })
-          }
-          
-          let isProductOwner = false
-          
-          // Método 1: Comparar por email (si está disponible)
-          if (session?.access_token && product?.usuario?.email && session.user?.email) {
-            isProductOwner = product.usuario.email === session.user.email
-            if (process.env.NODE_ENV === 'development') {
-              console.log('🔍 Verificando por email:', {
-                productOwnerEmail: product.usuario.email,
-                currentUserEmail: session.user.email,
-                isOwner: isProductOwner
-              })
-            }
-          } 
-          // Método 2: Comparar por user_id (fallback)
-          else if (session?.access_token && product?.usuario?.user_id) {
-            try {
-              // Obtener el user_id del usuario actual desde la base de datos
-              const { data: currentUser } = await supabase
-                .from('usuario')
-                .select('user_id')
-                .eq('email', session.user.email)
-                .single()
-              
-              if (currentUser) {
-                isProductOwner = currentUser.user_id === product.usuario.user_id
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('🔍 Verificando por user_id:', {
-                    productUserId: product.usuario.user_id,
-                    currentUserId: currentUser.user_id,
-                    isOwner: isProductOwner
-                  })
-                }
-              }
-            } catch (dbError) {
-              console.error('Error obteniendo user_id:', dbError)
-            }
-          }
-          
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 Resultado final de verificación:', {
-              isOwner: isProductOwner,
-              method: product?.usuario?.email ? 'email' : 'user_id'
-            })
-          }
-          
-          if (isMounted) {
-            setIsOwner(isProductOwner)
-            setOwnerCheckComplete(true)
-          }
-          
-        } catch (error) {
-          console.error('Error en verificación inmediata:', error)
-          if (isMounted) {
-            setIsOwner(false)
-            setOwnerCheckComplete(true)
-          }
-        }
-
-        // Obtener estadísticas del producto
-        try {
-          const statsResponse = await fetch(`/api/products/${productId}/stats`)
-          if (statsResponse.ok) {
-            const { stats: productStats } = await statsResponse.json()
-            if (isMounted) {
-              setStats(productStats)
-            }
-          }
-        } catch (statsError) {
-          console.warn('No se pudieron cargar las estadísticas:', statsError)
-        }
-
-        // Cargar estado de like solo si NO es el dueño
-        try {
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session?.access_token && session.user?.id) {
-            // Verificar si es el propietario comparando auth_user_id
-            const isProductOwner = product?.usuario?.user_id ? 
-              await checkIfUserIsOwner(session.user.id, product.usuario.user_id) : false
-            
-            console.log('🔍 DEBUG: Verificando propietario...', { 
-              authUserId: session.user.id, 
-              productOwnerId: product?.usuario?.user_id,
-              isProductOwner 
-            })
-            
-            if (!isProductOwner) {
-              console.log('🔍 DEBUG: Usuario NO es propietario, verificando estado de like...')
-              const likeRes = await fetch(`/api/products/${productId}/like`, {
-                headers: { Authorization: `Bearer ${session.access_token}` }
-              })
-              console.log('🔍 DEBUG: Respuesta de API like:', likeRes.status, likeRes.ok)
-              
-              if (likeRes.ok) {
-                const json = await likeRes.json()
-                console.log('🔍 DEBUG: JSON respuesta like:', json)
-                if (typeof json?.liked === 'boolean') {
-                  console.log('🔍 DEBUG: Estableciendo isLiked a:', json.liked)
-                  if (isMounted) {
-                    setIsLiked(json.liked)
-                  }
-                } else {
-                  console.log('🔍 DEBUG: Respuesta no contiene liked válido:', json)
-                }
-              } else {
-                console.log('🔍 DEBUG: Error en API like:', likeRes.status)
-                const errorText = await likeRes.text()
-                console.log('🔍 DEBUG: Error details:', errorText)
-              }
-            } else {
-              // Si es el dueño, asegurar que no tenga like activo
-              console.log('🔍 DEBUG: Usuario ES propietario, estableciendo isLiked a false')
-              if (isMounted) {
-                setIsLiked(false)
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error cargando estado de like:', error)
-        }
-        
-        // Log final del estado del like
-        console.log('🔍 DEBUG: Estado final del like:', { isLiked, isOwner })
-
-        // Registrar visualización del producto
-        try {
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session?.access_token) {
-            console.log('🔍 DEBUG: Registrando visualización del producto...')
-            const viewRes = await fetch(`/api/products/${productId}/view`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${session.access_token}` }
-            })
-            
-            if (viewRes.ok) {
-              const viewData = await viewRes.json()
-              console.log('🔍 DEBUG: Visualización registrada:', viewData)
-            } else {
-              console.log('🔍 DEBUG: Error registrando visualización:', viewRes.status)
-            }
-          } else {
-            console.log('🔍 DEBUG: No hay sesión, no se registra visualización')
-          }
-        } catch (error) {
-          console.error('Error registrando visualización:', error)
+        // Establecer liked e isOwner directamente del API
+        if (typeof liked === 'boolean') setIsLiked(liked)
+        if (typeof ownerFlag === 'boolean') {
+          setIsOwner(ownerFlag)
+          setOwnerCheckComplete(true)
         }
 
       } catch (error) {
@@ -506,77 +352,16 @@ export default function ProductDetailPage() {
   }
 
   const handleChat = async () => {
-    // Si no hay sesión, redirigir a la interfaz de login del AuthModule
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
         return
       }
-    } catch (e) {
-      router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
-      return
-    }
-
-    if (isOwner) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🚫 Usuario dueño intentando chatear consigo mismo')
-      }
-      await (window as any).Swal.fire({
-        title: 'Acción no permitida',
-        text: 'No puedes enviarte mensajes a ti mismo',
-        icon: 'warning',
-        confirmButtonText: 'Entendido',
-        confirmButtonColor: '#3B82F6'
-      })
-      return
-    }
-
-    // Verificar si el usuario está verificado
-    console.log('🔍 DEBUG: Verificando estado del usuario desde handleChat...')
-    const { isUserVerified } = require('@/lib/auth')
-    const isVerified = await isUserVerified()
-    console.log('🔍 DEBUG: Usuario verificado desde handleChat:', isVerified)
-    
-    if (!isVerified) {
-      console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde handleChat...')
-      // Mostrar mensaje de verificación requerida
-      const result = await (window as any).Swal.fire({
-        title: 'Verificación Requerida',
-        text: 'Por favor, primero verifica tu cuenta para poder enviar mensajes.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ir a Verificación',
-        cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#3B82F6',
-        cancelButtonColor: '#6B7280'
-      })
-      
-      if (result.isConfirmed) {
-        router.push('/verificacion-identidad')
-      }
-      return
-    }
-    
-    // Iniciar chat con el vendedor
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
-        await (window as any).Swal.fire({
-          title: 'Sesión requerida',
-          text: 'Inicia sesión para enviar mensajes',
-          icon: 'warning',
-          confirmButtonText: 'Entendido',
-          confirmButtonColor: '#3B82F6'
-        })
+      if (isOwner) {
+        router.push(`/chat`)
         return
       }
-
-      console.log('🔍 DEBUG: Iniciando chat con vendedor...', {
-        sellerId: product.usuario.user_id,
-        productId: product.id
-      })
-
       const response = await fetch('/api/chat/start', {
         method: 'POST',
         headers: {
@@ -588,44 +373,14 @@ export default function ProductDetailPage() {
           productId: product.id
         })
       })
-
       const result = await response.json()
-      console.log('🔍 DEBUG: Respuesta de iniciar chat:', result)
-
-      if (response.ok) {
-        // Mostrar mensaje de éxito y redirigir al chat
-        await (window as any).Swal.fire({
-          title: 'Chat iniciado',
-          text: `Conversación iniciada con ${result.seller.nombre} ${result.seller.apellido}`,
-          icon: 'success',
-          confirmButtonText: 'Ir al chat',
-          confirmButtonColor: '#3B82F6',
-          showCancelButton: true,
-          cancelButtonText: 'Cancelar',
-          cancelButtonColor: '#6B7280'
-        }).then((swalResult: any) => {
-          if (swalResult.isConfirmed) {
-            router.push(`/chat/${result.chatId}`)
-          }
-        })
+      if (response.ok && result?.chatId) {
+        router.push(`/chat/${result.chatId}`)
       } else {
-        await (window as any).Swal.fire({
-          title: 'Error',
-          text: result.error || 'Error iniciando chat',
-          icon: 'error',
-          confirmButtonText: 'Entendido',
-          confirmButtonColor: '#3B82F6'
-        })
+        router.push('/chat')
       }
-    } catch (error) {
-      console.error('Error iniciando chat:', error)
-      await (window as any).Swal.fire({
-        title: 'Error',
-        text: 'Error iniciando chat. Inténtalo de nuevo.',
-        icon: 'error',
-        confirmButtonText: 'Entendido',
-        confirmButtonColor: '#3B82F6'
-      })
+    } catch {
+      router.push('/chat')
     }
   }
 
@@ -752,12 +507,15 @@ export default function ProductDetailPage() {
           {/* Galería de Imágenes */}
           <div className="space-y-4">
             {/* Imagen Principal */}
-            <div className="relative bg-white rounded-lg overflow-hidden shadow-sm">
+              <div className="relative bg-white rounded-lg overflow-hidden shadow-sm">
               {product.imagenes.length > 0 ? (
-                <img
+                <Image
                   src={product.imagenes[currentImageIndex]}
                   alt={product.titulo}
+                  width={1200}
+                  height={600}
                   className="w-full h-96 object-cover"
+                  priority
                 />
               ) : (
                 <div className="w-full h-96 bg-gray-200 flex items-center justify-center">
@@ -813,10 +571,13 @@ export default function ProductDetailPage() {
                     className={`relative overflow-hidden rounded-lg border-2 ${index === currentImageIndex ? 'border-blue-500' : 'border-gray-200'
                       }`}
                   >
-                    <img
+                    <Image
                       src={image}
                       alt={`${product.titulo} ${index + 1}`}
+                      width={200}
+                      height={120}
                       className="w-full h-20 object-cover"
+                      loading="lazy"
                     />
                   </button>
                 ))}
