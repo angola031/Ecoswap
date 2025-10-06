@@ -60,7 +60,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { response, reason } = body // response: 'aceptar' | 'rechazar' | 'contrapropuesta'
+    const { response, reason, meetingDetails } = body // response: 'aceptar' | 'rechazar' | 'contrapropuesta'
 
     if (!response || !['aceptar', 'rechazar', 'contrapropuesta'].includes(response)) {
       return NextResponse.json({ error: 'Respuesta inválida' }, { status: 400 })
@@ -75,10 +75,17 @@ export async function PATCH(
         usuario_propone_id,
         usuario_recibe_id,
         estado,
+        tipo_propuesta,
+        descripcion,
+        precio_propuesto,
+        condiciones,
         chat:chat (
           intercambio (
+            intercambio_id,
             usuario_propone_id,
-            usuario_recibe_id
+            usuario_recibe_id,
+            producto_ofrecido_id,
+            producto_solicitado_id
           )
         )
       `)
@@ -142,6 +149,121 @@ export async function PATCH(
       return NextResponse.json({ error: 'Error actualizando propuesta' }, { status: 500 })
     }
 
+    // Si se acepta la propuesta, crear o actualizar el intercambio
+    let intercambioId = null
+    if (response === 'aceptar') {
+      const chat = propuesta.chat as any
+      const intercambioExistente = chat.intercambio
+
+      if (intercambioExistente) {
+        // Actualizar intercambio existente
+        const intercambioUpdateData: any = {
+          estado: 'aceptado',
+          fecha_respuesta: new Date().toISOString(),
+          mensaje_propuesta: propuesta.descripcion
+        }
+
+        // Agregar detalles del encuentro si se proporcionan
+        if (meetingDetails) {
+          // Combinar fecha y hora si ambas existen
+          if (meetingDetails.date && meetingDetails.time) {
+            intercambioUpdateData.fecha_encuentro = `${meetingDetails.date}T${meetingDetails.time}`
+          } else if (meetingDetails.date) {
+            intercambioUpdateData.fecha_encuentro = meetingDetails.date
+          }
+          
+          if (meetingDetails.place) {
+            intercambioUpdateData.lugar_encuentro = meetingDetails.place
+          }
+          
+          if (meetingDetails.notes) {
+            intercambioUpdateData.notas_encuentro = meetingDetails.notes
+          }
+        }
+
+        // Agregar precio si es una propuesta de precio
+        if (propuesta.tipo_propuesta === 'precio' && propuesta.precio_propuesto) {
+          intercambioUpdateData.monto_adicional = propuesta.precio_propuesto
+        }
+
+        const { data: intercambioActualizado, error: intercambioUpdateError } = await supabaseAdmin
+          .from('intercambio')
+          .update(intercambioUpdateData)
+          .eq('intercambio_id', intercambioExistente.intercambio_id)
+          .select('intercambio_id')
+          .single()
+
+        if (intercambioUpdateError) {
+          console.error('Error actualizando intercambio:', intercambioUpdateError)
+          return NextResponse.json({ error: 'Error actualizando intercambio' }, { status: 500 })
+        }
+
+        intercambioId = intercambioActualizado.intercambio_id
+      } else {
+        // Crear nuevo intercambio
+        const nuevoIntercambioData: any = {
+          usuario_propone_id: propuesta.usuario_propone_id,
+          usuario_recibe_id: propuesta.usuario_recibe_id,
+          mensaje_propuesta: propuesta.descripcion,
+          estado: 'aceptado',
+          fecha_propuesta: new Date().toISOString(),
+          fecha_respuesta: new Date().toISOString()
+        }
+
+        // Agregar detalles del encuentro si se proporcionan
+        if (meetingDetails) {
+          // Combinar fecha y hora si ambas existen
+          if (meetingDetails.date && meetingDetails.time) {
+            nuevoIntercambioData.fecha_encuentro = `${meetingDetails.date}T${meetingDetails.time}`
+          } else if (meetingDetails.date) {
+            nuevoIntercambioData.fecha_encuentro = meetingDetails.date
+          }
+          
+          if (meetingDetails.place) {
+            nuevoIntercambioData.lugar_encuentro = meetingDetails.place
+          }
+          
+          if (meetingDetails.notes) {
+            nuevoIntercambioData.notas_encuentro = meetingDetails.notes
+          }
+        }
+
+        // Agregar precio si es una propuesta de precio
+        if (propuesta.tipo_propuesta === 'precio' && propuesta.precio_propuesto) {
+          nuevoIntercambioData.monto_adicional = propuesta.precio_propuesto
+        }
+
+        // Agregar condiciones si existen
+        if (propuesta.condiciones) {
+          nuevoIntercambioData.condiciones_adicionales = propuesta.condiciones
+        }
+
+        const { data: nuevoIntercambio, error: intercambioCreateError } = await supabaseAdmin
+          .from('intercambio')
+          .insert(nuevoIntercambioData)
+          .select('intercambio_id')
+          .single()
+
+        if (intercambioCreateError) {
+          console.error('Error creando intercambio:', intercambioCreateError)
+          return NextResponse.json({ error: 'Error creando intercambio' }, { status: 500 })
+        }
+
+        intercambioId = nuevoIntercambio.intercambio_id
+
+        // Actualizar el chat para que apunte al nuevo intercambio
+        const { error: chatUpdateError } = await supabaseAdmin
+          .from('chat')
+          .update({ intercambio_id: intercambioId })
+          .eq('chat_id', chatId)
+
+        if (chatUpdateError) {
+          console.error('Error actualizando chat con intercambio:', chatUpdateError)
+          // No retornamos error aquí porque el intercambio ya se creó
+        }
+      }
+    }
+
     return NextResponse.json({ 
       data: {
         id: propuestaActualizada.propuesta_id,
@@ -155,7 +277,8 @@ export async function PATCH(
         response: propuestaActualizada.respuesta,
         proposer: {
           id: propuestaActualizada.usuario_propone_id
-        }
+        },
+        intercambioId: intercambioId
       }
     })
   } catch (error) {

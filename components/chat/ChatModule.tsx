@@ -1437,6 +1437,13 @@ const getCurrentUserId = () => {
   const handleRespondToProposal = async (proposalId: number, response: 'aceptar' | 'rechazar' | 'contrapropuesta', reason?: string) => {
     if (!selectedConversation) return
 
+    // Si es aceptar, mostrar flujo especial
+    if (response === 'aceptar') {
+      await handleAcceptProposal(proposalId)
+      return
+    }
+
+    // Para rechazar, usar el flujo normal
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
@@ -1460,7 +1467,7 @@ const getCurrentUserId = () => {
         if ((window as any).Swal) {
           (window as any).Swal.fire({
             title: 'Respuesta enviada',
-            text: `Has ${response === 'aceptar' ? 'aceptado' : response === 'rechazar' ? 'rechazado' : 'respondido a'} la propuesta`,
+            text: `Has ${response === 'rechazar' ? 'rechazado' : 'respondido a'} la propuesta`,
             icon: 'success',
             timer: 2000,
             showConfirmButton: false
@@ -1479,6 +1486,208 @@ const getCurrentUserId = () => {
           confirmButtonText: 'Entendido'
         })
       }
+    }
+  }
+
+  const handleAcceptProposal = async (proposalId: number) => {
+    if (!selectedConversation) return
+
+    const proposal = proposals.find(p => p.id === proposalId)
+    if (!proposal) return
+
+    try {
+      // 1. Modal de confirmación de aceptación
+      const confirmResult = await (window as any).Swal.fire({
+        title: '¿Aceptar esta propuesta?',
+        html: `
+          <div class="text-left space-y-3">
+            <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p class="text-sm text-green-800">
+                <strong>⚠️ Importante:</strong> Al aceptar esta propuesta, se iniciará el proceso de intercambio.
+              </p>
+            </div>
+            
+            <div class="space-y-2">
+              <h4 class="font-medium text-gray-900">Detalles de la propuesta:</h4>
+              <p class="text-sm text-gray-700">${proposal.description}</p>
+              ${proposal.proposedPrice ? `<p class="text-sm font-medium text-green-600">Precio: $${proposal.proposedPrice.toLocaleString('es-CO')}</p>` : ''}
+              ${proposal.meetingDate ? `<p class="text-sm text-gray-600">📅 Fecha: ${new Date(proposal.meetingDate).toLocaleDateString('es-CO')}</p>` : ''}
+              ${proposal.meetingPlace ? `<p class="text-sm text-gray-600">📍 Lugar: ${proposal.meetingPlace}</p>` : ''}
+            </div>
+          </div>
+        `,
+        confirmButtonText: 'Sí, Aceptar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#10B981',
+        cancelButtonColor: '#6B7280',
+        width: '500px'
+      })
+
+      if (!confirmResult.isConfirmed) return
+
+      // 2. Si no tiene fecha/lugar, mostrar modal de configuración
+      let meetingDetails = null
+      if (!proposal.meetingDate || !proposal.meetingPlace) {
+        const meetingResult = await (window as any).Swal.fire({
+          title: 'Configurar Encuentro',
+          html: `
+            <div class="text-left space-y-4">
+              <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p class="text-sm text-blue-800">
+                  <strong>💡 Sugerencia:</strong> Coordina el encuentro para completar el intercambio.
+                </p>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Fecha del encuentro</label>
+                  <input type="date" id="meeting-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" min="${new Date().toISOString().split('T')[0]}">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Hora del encuentro</label>
+                  <input type="time" id="meeting-time" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                </div>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Lugar del encuentro</label>
+                <input type="text" id="meeting-place" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Ej: Centro comercial, parque, etc.">
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Notas adicionales (opcional)</label>
+                <textarea id="meeting-notes" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows="3" placeholder="Instrucciones especiales, punto de encuentro específico, etc."></textarea>
+              </div>
+            </div>
+          `,
+          confirmButtonText: 'Confirmar Encuentro',
+          cancelButtonText: 'Cancelar',
+          confirmButtonColor: '#3B82F6',
+          cancelButtonColor: '#6B7280',
+          width: '600px',
+          preConfirm: () => {
+            const date = (document.getElementById('meeting-date') as HTMLInputElement)?.value
+            const time = (document.getElementById('meeting-time') as HTMLInputElement)?.value
+            const place = (document.getElementById('meeting-place') as HTMLInputElement)?.value
+            const notes = (document.getElementById('meeting-notes') as HTMLTextAreaElement)?.value
+
+            if (!date || !time || !place) {
+              (window as any).Swal.showValidationMessage('Fecha, hora y lugar son requeridos')
+              return false
+            }
+
+            return { date, time, place, notes: notes || '' }
+          }
+        })
+
+        if (!meetingResult.isConfirmed) return
+        meetingDetails = meetingResult.value
+      }
+
+      // 3. Mostrar loading
+      ;(window as any).Swal.fire({
+        title: 'Procesando...',
+        text: 'Aceptando propuesta y configurando intercambio',
+        allowOutsideClick: false,
+        didOpen: () => {
+          ;(window as any).Swal.showLoading()
+        }
+      })
+
+      // 4. Enviar aceptación al servidor
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('No hay token de sesión')
+
+      const responseData = await fetch(`/api/chat/${selectedConversation.id}/proposals/${proposalId}/respond`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          response: 'aceptar',
+          meetingDetails: meetingDetails
+        })
+      })
+
+      if (!responseData.ok) {
+        throw new Error('Error aceptando propuesta')
+      }
+
+      const data = await responseData.json()
+      
+      // 5. Actualizar estado local
+      setProposals(prev => prev.map(prop => 
+        prop.id === proposalId ? { ...prop, ...data.data } : prop
+      ))
+
+      // 6. Crear mensaje automático en el chat
+      const systemMessage = {
+        id: `system-${Date.now()}`,
+        senderId: 'system',
+        content: `✅ Propuesta aceptada. Intercambio iniciado. ${meetingDetails ? `Encuentro programado para ${meetingDetails.date} a las ${meetingDetails.time} en ${meetingDetails.place}` : ''}`,
+        timestamp: new Date().toLocaleString('es-CO', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          day: '2-digit',
+          month: '2-digit'
+        }),
+        isRead: true,
+        type: 'text' as const,
+        sender: {
+          id: 'system',
+          name: 'Sistema',
+          lastName: '',
+          avatar: undefined
+        }
+      }
+
+      setSelectedConversation(prev => prev ? {
+        ...prev,
+        messages: [...prev.messages, systemMessage]
+      } : prev)
+
+      setConversations(prev => prev.map(conv => 
+        conv.id === selectedConversation.id ? {
+          ...conv,
+          messages: [...(conv.messages || []), systemMessage],
+          lastMessage: systemMessage.content,
+          lastMessageTime: systemMessage.timestamp
+        } : conv
+      ))
+
+      // 7. Mostrar confirmación final
+      ;(window as any).Swal.fire({
+        title: '¡Propuesta Aceptada!',
+        html: `
+          <div class="text-center space-y-3">
+            <div class="text-6xl">🎉</div>
+            <p class="text-gray-700">Se ha iniciado el proceso de intercambio.</p>
+            <p class="text-sm text-gray-600">El otro usuario ha sido notificado.</p>
+            ${meetingDetails ? `
+              <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-left">
+                <h4 class="font-medium text-blue-900 mb-2">Detalles del encuentro:</h4>
+                <p class="text-sm text-blue-800">📅 ${meetingDetails.date} a las ${meetingDetails.time}</p>
+                <p class="text-sm text-blue-800">📍 ${meetingDetails.place}</p>
+                ${meetingDetails.notes ? `<p class="text-sm text-blue-800">📝 ${meetingDetails.notes}</p>` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `,
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#10B981',
+        width: '500px'
+      })
+
+    } catch (error) {
+      console.error('Error aceptando propuesta:', error)
+      ;(window as any).Swal.fire({
+        title: 'Error',
+        text: 'No se pudo aceptar la propuesta. Inténtalo de nuevo.',
+        icon: 'error',
+        confirmButtonText: 'Entendido'
+      })
     }
   }
 
@@ -1820,56 +2029,47 @@ const getCurrentUserId = () => {
     
     if ((window as any).Swal) {
       (window as any).Swal.fire({
-        title: 'Crear Propuesta de Negociación',
+        title: '💬 Iniciar Negociación',
         html: `
           <div class="text-left space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de propuesta</label>
-              <select id="negotiate-type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
-                <option value="precio">💰 Propuesta de precio</option>
-                <option value="intercambio">🔄 Propuesta de intercambio</option>
-                <option value="encuentro">📅 Propuesta de encuentro</option>
-                <option value="condiciones">📋 Propuesta de condiciones</option>
-                <option value="otro">📝 Otra propuesta</option>
-              </select>
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p class="text-sm text-blue-800">
+                <strong>💡 Negociación:</strong> Propón un precio diferente o condiciones especiales para llegar a un acuerdo.
+              </p>
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Descripción de la propuesta</label>
-              <textarea id="negotiate-description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows="4" placeholder="Describe detalladamente tu propuesta..."></textarea>
+              <label class="block text-sm font-medium text-gray-700 mb-2">💰 Tu oferta de precio</label>
+              <input type="text" id="negotiate-price" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Ej: 150.000" inputmode="numeric">
+              <p class="text-xs text-gray-500 mt-1">Ingresa el precio que estás dispuesto a pagar</p>
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Precio propuesto (opcional)</label>
-              <input type="text" id="negotiate-price" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="0" inputmode="numeric">
+              <label class="block text-sm font-medium text-gray-700 mb-2">📝 Mensaje de negociación</label>
+              <textarea id="negotiate-message" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows="4" placeholder="Ej: Hola, me interesa tu producto. ¿Podrías considerar $150.000? Estoy disponible para encontrarnos esta semana..."></textarea>
+              <p class="text-xs text-gray-500 mt-1">Explica tu propuesta y por qué es justa para ambos</p>
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Condiciones adicionales (opcional)</label>
-              <textarea id="negotiate-conditions" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows="2" placeholder="Condiciones especiales, garantías, etc..."></textarea>
+              <label class="block text-sm font-medium text-gray-700 mb-2">🤝 Condiciones especiales (opcional)</label>
+              <textarea id="negotiate-conditions" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows="2" placeholder="Ej: Incluye garantía de 30 días, entrega a domicilio, etc."></textarea>
             </div>
             
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de encuentro (opcional)</label>
-                <input type="date" id="negotiate-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <label class="block text-sm font-medium text-gray-700 mb-2">📅 ¿Cuándo puedes encontrarte?</label>
+                <input type="date" id="negotiate-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" min="${new Date().toISOString().split('T')[0]}">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Lugar de encuentro (opcional)</label>
-                <input type="text" id="negotiate-place" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Centro comercial, parque, etc...">
+                <label class="block text-sm font-medium text-gray-700 mb-2">📍 ¿Dónde prefieres encontrarte?</label>
+                <input type="text" id="negotiate-place" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Ej: Centro comercial, estación de metro...">
               </div>
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Imagen del producto (opcional)</label>
-              <input type="file" id="negotiate-image" accept="image/*" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
-              <p class="text-xs text-gray-500 mt-1">Formatos: JPG, PNG, GIF. Máximo 10MB</p>
             </div>
           </div>
         `,
-        width: '600px',
+        width: '500px',
         showCancelButton: true,
-        confirmButtonText: 'Enviar Propuesta',
+        confirmButtonText: 'Enviar Oferta',
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#3B82F6',
         cancelButtonColor: '#6B7280',
@@ -1888,104 +2088,57 @@ const getCurrentUserId = () => {
             })
           }
         },
-        preConfirm: async () => {
-          const type = (document.getElementById('negotiate-type') as HTMLSelectElement)?.value
-          const description = (document.getElementById('negotiate-description') as HTMLTextAreaElement)?.value
+        preConfirm: () => {
           const priceEl = (document.getElementById('negotiate-price') as HTMLInputElement)
           const raw = priceEl?.dataset?.raw || ''
+          const message = (document.getElementById('negotiate-message') as HTMLTextAreaElement)?.value
           const conditions = (document.getElementById('negotiate-conditions') as HTMLTextAreaElement)?.value
           const meetingDate = (document.getElementById('negotiate-date') as HTMLInputElement)?.value
           const meetingPlace = (document.getElementById('negotiate-place') as HTMLInputElement)?.value
-          const imageFile = (document.getElementById('negotiate-image') as HTMLInputElement)?.files?.[0]
           
-          if (!type || !description) {
-            (window as any).Swal.showValidationMessage('Tipo y descripción son requeridos')
+          if (!message || message.trim().length < 10) {
+            (window as any).Swal.showValidationMessage('El mensaje de negociación es requerido y debe tener al menos 10 caracteres')
             return false
           }
           
-          if (description.length < 10) {
-            (window as any).Swal.showValidationMessage('La descripción debe tener al menos 10 caracteres')
+          if (!raw) {
+            (window as any).Swal.showValidationMessage('Debes ingresar un precio para tu oferta')
             return false
-          }
-          
-          let imageUrl = undefined
-          
-          // Subir imagen si existe
-          if (imageFile) {
-            try {
-              ;(window as any).Swal.showLoading()
-              
-              const formData = new FormData()
-              formData.append('image', imageFile)
-              formData.append('chatId', selectedConversation.id)
-              formData.append('userId', currentUser?.id || '')
-              
-              const { data: { session } } = await supabase.auth.getSession()
-              const token = session?.access_token
-              if (!token) {
-                console.error('❌ No hay token de sesión')
-                ;(window as any).Swal.showValidationMessage('No hay sesión activa. Por favor, inicia sesión nuevamente.')
-                return false
-              }
-              const response = await fetch('/api/chat/upload-image', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`
-                },
-                body: formData
-              })
-              
-              if (response.ok) {
-                const data = await response.json()
-                imageUrl = data.data.url
-                console.log('✅ Imagen subida exitosamente:', imageUrl)
-              } else {
-                const errorData = await response.json()
-                console.error('❌ Error subiendo imagen:', errorData)
-                ;(window as any).Swal.showValidationMessage('Error subiendo la imagen: ' + (errorData.error || 'Error desconocido'))
-                return false
-              }
-            } catch (error) {
-              console.error('❌ Error subiendo imagen:', error)
-              ;(window as any).Swal.showValidationMessage('Error subiendo la imagen')
-              return false
-            }
           }
           
           return { 
-            type, 
-            description, 
-            proposedPrice: raw ? parseFloat(raw) : undefined,
+            type: 'precio',
+            description: message.trim(),
+            proposedPrice: parseFloat(raw),
             conditions: conditions || undefined,
             meetingDate: meetingDate || undefined,
-            meetingPlace: meetingPlace || undefined,
-            archivo_url: imageUrl
+            meetingPlace: meetingPlace || undefined
           }
         }
       }).then((result: any) => {
         if (result.isConfirmed) {
           handleCreateProposal(result.value)
           
-    const negotiateMessage = {
-      id: `negotiate-${Date.now()}`,
-      senderId: currentUser?.id,
-            content: `🔄 Nueva propuesta de ${result.value.type}: ${result.value.description.substring(0, 50)}${result.value.description.length > 50 ? '...' : ''}`,
-      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-      isRead: true,
-      type: 'text' as const,
-      sender: {
-        id: currentUser?.id,
-        name: currentUser?.name || 'Tú',
-        lastName: '',
-        avatar: currentUser?.avatar
-      }
-    }
-    
-    setSelectedConversation(prev => prev ? {
-      ...prev,
-      messages: [...prev.messages, negotiateMessage]
-    } : prev)
-    
+          const negotiateMessage = {
+            id: `negotiate-${Date.now()}`,
+            senderId: currentUser?.id,
+            content: `💬 Oferta de negociación: $${result.value.proposedPrice.toLocaleString('es-CO')} - ${result.value.description.substring(0, 50)}${result.value.description.length > 50 ? '...' : ''}`,
+            timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+            isRead: true,
+            type: 'text' as const,
+            sender: {
+              id: currentUser?.id,
+              name: currentUser?.name || 'Tú',
+              lastName: '',
+              avatar: currentUser?.avatar
+            }
+          }
+          
+          setSelectedConversation(prev => prev ? {
+            ...prev,
+            messages: [...prev.messages, negotiateMessage]
+          } : prev)
+          
           setShowProposals(true)
         }
       })
@@ -2591,17 +2744,20 @@ const getCurrentUserId = () => {
               </div>
             </div>
 
-              {/* Sección de propuestas */}
-              {showProposals && (
-                <div className="px-4 pb-3 border-t border-gray-200">
-                  <div className="flex items-center justify-between py-2">
+            </div>
+
+            {/* Sección de propuestas - Panel lateral independiente */}
+            {showProposals && (
+              <div className="border-t border-gray-200 bg-white flex-shrink-0" style={{ maxHeight: '300px' }}>
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
                     <h4 className="font-medium text-gray-900">Propuestas</h4>
                     {(() => {
                       const buyer = isCurrentUserBuyer()
                       const handleClick = () => {
                         if (!buyer) return
                         if ((window as any).Swal) {
-                      (window as any).Swal.fire({
+                          (window as any).Swal.fire({
                             title: 'Crear Propuesta',
                             html: `
                               <div class="text-left space-y-3">
@@ -2729,7 +2885,9 @@ const getCurrentUserId = () => {
                       )
                     })()}
                   </div>
-                  
+                </div>
+                
+                <div className="overflow-y-auto" style={{ maxHeight: '240px' }}>
                   {isLoadingProposals ? (
                     <div className="flex items-center justify-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
@@ -2739,7 +2897,7 @@ const getCurrentUserId = () => {
                       <p className="text-sm">No hay propuestas en esta conversación</p>
                     </div>
                   ) : (
-                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                    <div className="p-4 space-y-3">
                       {proposals.map((proposal) => (
                         <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
                           <div className="flex items-start justify-between mb-2">
@@ -2763,9 +2921,9 @@ const getCurrentUserId = () => {
                               </span>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <span className="text-xs text-gray-500">
-                                {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
-                              </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
+                            </span>
                             </div>
                           </div>
                           
@@ -2857,8 +3015,96 @@ const getCurrentUserId = () => {
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Seguimiento de Intercambios Activos */}
+            {(() => {
+              const acceptedProposals = proposals.filter(p => p.status === 'aceptada')
+              return acceptedProposals.length > 0 && (
+                <div className="border-t border-gray-200 bg-blue-50 flex-shrink-0">
+                  <div className="px-4 py-3">
+                    <h4 className="font-medium text-blue-900 mb-3">🔄 Intercambios Activos</h4>
+                    <div className="space-y-3">
+                      {acceptedProposals.map((proposal) => (
+                        <div key={proposal.id} className="bg-white border border-blue-200 rounded-lg p-3">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                Aceptada
+                              </span>
+                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                {proposal.type}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
+                            </span>
+                          </div>
+                          
+                          <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                          
+                          {proposal.proposedPrice && (
+                            <p className="text-sm font-medium text-green-600 mb-2">
+                              Precio acordado: ${proposal.proposedPrice.toLocaleString('es-CO')}
+                            </p>
+                          )}
+                          
+                          {(proposal.meetingDate || proposal.meetingPlace) && (
+                            <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                              <h5 className="text-xs font-medium text-blue-900 mb-1">Detalles del encuentro:</h5>
+                              {proposal.meetingDate && (
+                                <p className="text-xs text-blue-800">📅 {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}</p>
+                              )}
+                              {proposal.meetingPlace && (
+                                <p className="text-xs text-blue-800">📍 {proposal.meetingPlace}</p>
+                              )}
+                            </div>
+                          )}
+                          
+                          <div className="mt-3 flex space-x-2">
+                            <button
+                              onClick={() => handleViewProposal(proposal)}
+                              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-1"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              <span>Ver Detalles</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                if ((window as any).Swal) {
+                                  (window as any).Swal.fire({
+                                    title: '¿Cancelar Intercambio?',
+                                    text: 'Esta acción cancelará el intercambio en curso.',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Sí, Cancelar',
+                                    cancelButtonText: 'No',
+                                    confirmButtonColor: '#EF4444',
+                                    cancelButtonColor: '#6B7280'
+                                  }).then((result: any) => {
+                                    if (result.isConfirmed) {
+                                      // Aquí se implementaría la lógica de cancelación
+                                      console.log('Cancelando intercambio:', proposal.id)
+                                    }
+                                  })
+                                }
+                              }}
+                              className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* MENSAJES - ÁREA MÁS GRANDE CON SCROLL */}
             <div 

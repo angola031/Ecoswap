@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import Swal from 'sweetalert2'
 import {
     ArrowLeftIcon,
     PhoneIcon,
@@ -1062,6 +1063,14 @@ export default function InteraccionDetailPage() {
 
     const handleRespondProposal = async (proposalId: string, action: 'aceptar' | 'rechazar', reason?: string) => {
         if (!interaction?.chatId) return
+
+        // Si es aceptar, mostrar flujo especial
+        if (action === 'aceptar') {
+            await handleAcceptProposal(proposalId)
+            return
+        }
+
+        // Para rechazar, usar el flujo normal
         try {
             const { data: { session } } = await supabase.auth.getSession()
             const token = session?.access_token
@@ -1087,6 +1096,181 @@ export default function InteraccionDetailPage() {
             } : prev)
         } catch (e: any) {
             alert(e?.message || 'No se pudo responder la propuesta')
+        }
+    }
+
+    const handleAcceptProposal = async (proposalId: string) => {
+        if (!interaction?.chatId) return
+
+        const proposal = interaction.proposals.find(p => p.id === proposalId)
+        if (!proposal) return
+
+        try {
+            // 1. Modal de confirmación de aceptación
+            const confirmResult = await Swal.fire({
+                title: '¿Aceptar esta propuesta?',
+                html: `
+                    <div class="text-left space-y-3">
+                        <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <p class="text-sm text-green-800">
+                                <strong>⚠️ Importante:</strong> Al aceptar esta propuesta, se iniciará el proceso de intercambio.
+                            </p>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <h4 class="font-medium text-gray-900">Detalles de la propuesta:</h4>
+                            <p class="text-sm text-gray-700">${proposal.description}</p>
+                            ${proposal.proposedPrice ? `<p class="text-sm font-medium text-green-600">Precio: $${proposal.proposedPrice.toLocaleString('es-CO')}</p>` : ''}
+                            ${proposal.meetingDate ? `<p class="text-sm text-gray-600">📅 Fecha: ${new Date(proposal.meetingDate).toLocaleDateString('es-CO')}</p>` : ''}
+                            ${proposal.meetingPlace ? `<p class="text-sm text-gray-600">📍 Lugar: ${proposal.meetingPlace}</p>` : ''}
+                        </div>
+                    </div>
+                `,
+                confirmButtonText: 'Sí, Aceptar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#10B981',
+                cancelButtonColor: '#6B7280',
+                width: '500px'
+            })
+
+            if (!confirmResult.isConfirmed) return
+
+            // 2. Si no tiene fecha/lugar, mostrar modal de configuración
+            let meetingDetails = null
+            if (!proposal.meetingDate || !proposal.meetingPlace) {
+                const meetingResult = await Swal.fire({
+                    title: 'Configurar Encuentro',
+                    html: `
+                        <div class="text-left space-y-4">
+                            <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p class="text-sm text-blue-800">
+                                    <strong>💡 Sugerencia:</strong> Coordina el encuentro para completar el intercambio.
+                                </p>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Fecha del encuentro</label>
+                                    <input type="date" id="meeting-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" min="${new Date().toISOString().split('T')[0]}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Hora del encuentro</label>
+                                    <input type="time" id="meeting-time" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Lugar del encuentro</label>
+                                <input type="text" id="meeting-place" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Ej: Centro comercial, parque, etc.">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Notas adicionales (opcional)</label>
+                                <textarea id="meeting-notes" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" rows="3" placeholder="Instrucciones especiales, punto de encuentro específico, etc."></textarea>
+                            </div>
+                        </div>
+                    `,
+                    confirmButtonText: 'Confirmar Encuentro',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#3B82F6',
+                    cancelButtonColor: '#6B7280',
+                    width: '600px',
+                    preConfirm: () => {
+                        const date = (document.getElementById('meeting-date') as HTMLInputElement)?.value
+                        const time = (document.getElementById('meeting-time') as HTMLInputElement)?.value
+                        const place = (document.getElementById('meeting-place') as HTMLInputElement)?.value
+                        const notes = (document.getElementById('meeting-notes') as HTMLTextAreaElement)?.value
+
+                        if (!date || !time || !place) {
+                            Swal.showValidationMessage('Fecha, hora y lugar son requeridos')
+                            return false
+                        }
+
+                        return { date, time, place, notes: notes || '' }
+                    }
+                })
+
+                if (!meetingResult.isConfirmed) return
+                meetingDetails = meetingResult.value
+            }
+
+            // 3. Mostrar loading
+            Swal.fire({
+                title: 'Procesando...',
+                text: 'Aceptando propuesta y configurando intercambio',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                }
+            })
+
+            // 4. Enviar aceptación al servidor
+            const { data: { session } } = await supabase.auth.getSession()
+            const token = session?.access_token
+            if (!token) throw new Error('No hay token de sesión')
+
+            const chatIdNum = Number(interaction.chatId)
+            const responseData = await fetch(`/api/chat/${chatIdNum}/proposals/${proposalId}/respond`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ 
+                    response: 'aceptar',
+                    meetingDetails: meetingDetails
+                })
+            })
+
+            if (!responseData.ok) {
+                throw new Error('Error aceptando propuesta')
+            }
+
+            const data = await responseData.json()
+            
+            // 5. Actualizar estado local
+            setInteraction(prev => prev ? {
+                ...prev,
+                proposals: prev.proposals.map(p => p.id === proposalId ? {
+                    ...p,
+                    status: data.data.status,
+                    response: data.data.response,
+                    meetingDate: meetingDetails?.date || p.meetingDate,
+                    meetingPlace: meetingDetails?.place || p.meetingPlace
+                } : p)
+            } : prev)
+
+            // 6. Mostrar confirmación final
+            Swal.fire({
+                title: '¡Propuesta Aceptada!',
+                html: `
+                    <div class="text-center space-y-3">
+                        <div class="text-6xl">🎉</div>
+                        <p class="text-gray-700">Se ha iniciado el proceso de intercambio.</p>
+                        <p class="text-sm text-gray-600">El otro usuario ha sido notificado.</p>
+                        ${meetingDetails ? `
+                            <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-left">
+                                <h4 class="font-medium text-blue-900 mb-2">Detalles del encuentro:</h4>
+                                <p class="text-sm text-blue-800">📅 ${meetingDetails.date} a las ${meetingDetails.time}</p>
+                                <p class="text-sm text-blue-800">📍 ${meetingDetails.place}</p>
+                                ${meetingDetails.notes ? `<p class="text-sm text-blue-800">📝 ${meetingDetails.notes}</p>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `,
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#10B981',
+                width: '500px'
+            })
+
+        } catch (error) {
+            console.error('Error aceptando propuesta:', error)
+            Swal.fire({
+                title: 'Error',
+                text: 'No se pudo aceptar la propuesta. Inténtalo de nuevo.',
+                icon: 'error',
+                confirmButtonText: 'Entendido'
+            })
         }
     }
 
