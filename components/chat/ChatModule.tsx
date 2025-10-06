@@ -2301,26 +2301,26 @@ const getCurrentUserId = () => {
         if (result.isConfirmed) {
           handleCreateProposal(result.value)
           
-          const negotiateMessage = {
-            id: `negotiate-${Date.now()}`,
-            senderId: currentUser?.id,
+    const negotiateMessage = {
+      id: `negotiate-${Date.now()}`,
+      senderId: currentUser?.id,
             content: `💬 Oferta de negociación: $${result.value.proposedPrice.toLocaleString('es-CO')} - ${result.value.description.substring(0, 50)}${result.value.description.length > 50 ? '...' : ''}`,
-            timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-            isRead: true,
-            type: 'text' as const,
-            sender: {
-              id: currentUser?.id,
-              name: currentUser?.name || 'Tú',
-              lastName: '',
-              avatar: currentUser?.avatar
-            }
-          }
-          
-          setSelectedConversation(prev => prev ? {
-            ...prev,
-            messages: [...prev.messages, negotiateMessage]
-          } : prev)
-          
+      timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      isRead: true,
+      type: 'text' as const,
+      sender: {
+        id: currentUser?.id,
+        name: currentUser?.name || 'Tú',
+        lastName: '',
+        avatar: currentUser?.avatar
+      }
+    }
+    
+    setSelectedConversation(prev => prev ? {
+      ...prev,
+      messages: [...prev.messages, negotiateMessage]
+    } : prev)
+    
           setShowProposals(true)
         }
       })
@@ -2705,7 +2705,7 @@ const getCurrentUserId = () => {
   }
 
   return (
-    <div className="flex bg-white rounded-lg shadow-sm border border-gray-200" style={{ height: 'calc(100vh - 200px)', minHeight: '600px' }}>
+    <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" style={{ height: '100vh' }}>
       {/* Lista de conversaciones */}
       <div className="w-80 border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200 space-y-3 flex-shrink-0">
@@ -2792,12 +2792,12 @@ const getCurrentUserId = () => {
       </div>
 
       {/* Área de chat */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         {selectedConversation ? (
           <>
             {/* Header del chat */}
             <div className="border-b border-gray-200 flex-shrink-0">
-              <div className="p-4 flex items-center justify-between">
+              <div className="p-3 flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="relative">
                   <img
@@ -2889,7 +2889,7 @@ const getCurrentUserId = () => {
               </div>
               
               {/* Información de productos - Compacta */}
-              <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+              <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-2">
                   <span className="text-sm">📦</span>
@@ -2929,9 +2929,9 @@ const getCurrentUserId = () => {
             </div>
 
             {/* Sección de propuestas - Panel lateral independiente */}
-            {showProposals && (
-              <div className="border-t border-gray-200 bg-white flex-shrink-0" style={{ maxHeight: '300px' }}>
-                <div className="px-4 py-3 border-b border-gray-200">
+              {showProposals && (
+              <div className="border-t border-gray-200 bg-white flex-shrink-0 overflow-hidden flex flex-col" style={{ maxHeight: '260px' }}>
+                <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <h4 className="font-medium text-gray-900">Propuestas</h4>
                     {(() => {
@@ -3067,9 +3067,9 @@ const getCurrentUserId = () => {
                       )
                     })()}
                   </div>
-                </div>
-                
-                <div className="overflow-y-auto" style={{ maxHeight: '240px' }}>
+                  </div>
+                  
+                <div className="flex-1 overflow-y-auto">
                   {isLoadingProposals ? (
                     <div className="flex items-center justify-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
@@ -3201,16 +3201,18 @@ const getCurrentUserId = () => {
                     </div>
                   )}
                 </div>
-              </div>
-            )}
+                </div>
+              )}
 
             {/* Seguimiento de Intercambios Activos */}
             {(() => {
               const acceptedProposals = proposals.filter(p => p.status === 'aceptada')
               return acceptedProposals.length > 0 && (
-                <div className="border-t border-gray-200 bg-blue-50 flex-shrink-0">
-                  <div className="px-4 py-3">
+                <div className="border-t border-gray-200 bg-blue-50 flex-shrink-0 overflow-hidden flex flex-col" style={{ maxHeight: '220px' }}>
+                  <div className="px-3 py-2 flex-shrink-0">
                     <h4 className="font-medium text-blue-900 mb-3">🔄 Intercambios Activos</h4>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-4 pb-3">
                     <div className="space-y-3">
                       {acceptedProposals.map((proposal) => (
                         <div key={proposal.id} className="bg-white border border-blue-200 rounded-lg p-3">
@@ -3226,7 +3228,7 @@ const getCurrentUserId = () => {
                             <span className="text-xs text-gray-500">
                               {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
                             </span>
-                          </div>
+            </div>
                           
                           <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
                           
@@ -3309,7 +3311,7 @@ const getCurrentUserId = () => {
               const first = proposals.find(p => p.status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
               const intercambioId = (first as any)?.intercambioId || first?.id
               return (
-                <div className="sticky top-0 z-10 bg-yellow-50 border-b border-yellow-200">
+                <div className="bg-yellow-50 border-b border-yellow-200 flex-shrink-0">
                   <div className="px-4 py-2 flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <span className="text-yellow-700 text-sm font-medium">⏳ Pendiente de Validación</span>
@@ -3330,7 +3332,7 @@ const getCurrentUserId = () => {
 
             {/* MENSAJES - ÁREA MÁS GRANDE CON SCROLL */}
             <div 
-              className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
+              className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 min-h-0"
               onScroll={(e) => {
                 const target = e.target as HTMLDivElement
                 const isAtBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 10
