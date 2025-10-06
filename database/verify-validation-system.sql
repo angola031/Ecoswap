@@ -200,3 +200,4 @@ BEGIN
     RAISE NOTICE '   2. Implementar PendingValidationModule en el frontend';
     RAISE NOTICE '   3. Probar el flujo completo de validación';
 END $$;
+

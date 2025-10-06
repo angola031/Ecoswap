@@ -258,3 +258,4 @@ BEGIN
     RAISE NOTICE '📈 Índices de optimización creados';
     RAISE NOTICE '🎉 Sistema listo para usar';
 END $$;
+

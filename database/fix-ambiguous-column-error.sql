@@ -50,3 +50,4 @@ BEGIN
         RAISE NOTICE '⚠️ No hay usuarios para probar la función';
     END IF;
 END $$;
+

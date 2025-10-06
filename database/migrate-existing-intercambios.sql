@@ -118,3 +118,4 @@ BEGIN
     RAISE NOTICE '   - Usuarios con estadísticas actualizadas: %', usuarios_actualizados;
     RAISE NOTICE '✅ Sistema listo para usar el nuevo flujo de validación';
 END $$;
+

@@ -114,3 +114,4 @@ CREATE TRIGGER update_intercambio_stats_trigger
     AFTER UPDATE ON public.intercambio
     FOR EACH ROW
     EXECUTE FUNCTION trigger_update_intercambio_stats();
+
