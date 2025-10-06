@@ -87,7 +87,7 @@ interface Proposal {
   description: string
   proposedPrice?: number
   conditions?: string
-  status: 'pendiente' | 'aceptada' | 'rechazada' | 'contrapropuesta' | 'cancelada'
+  status: 'pendiente' | 'aceptada' | 'rechazada' | 'contrapropuesta' | 'cancelada' | 'pendiente_validacion'
   createdAt: string
   respondedAt?: string
   response?: string
@@ -461,7 +461,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
       if (validationResult.isConfirmed) {
         // Enviar validación exitosa
         await submitValidation(intercambioId, validationResult.value)
-      } else if (validationResult.dismiss === Swal.DismissReason.cancel) {
+      } else if (validationResult.dismiss === (window as any).Swal.DismissReason.cancel) {
         // Mostrar modal para problemas
         const problemResult = await (window as any).Swal.fire({
           title: '¿Qué problemas hubo?',
