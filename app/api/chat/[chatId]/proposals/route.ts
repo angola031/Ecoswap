@@ -259,6 +259,27 @@ export async function POST(
       return NextResponse.json({ error: 'Error creando propuesta' }, { status: 500 })
     }
 
+    // Insertar mensaje del sistema en el chat para que llegue a ambos usuarios via realtime
+    try {
+      const proposalTypeText = `Nueva ${nuevaPropuesta.tipo_propuesta}`
+      const systemContent = `[system_proposal] ${proposalTypeText}`
+
+      const { error: messageError } = await supabaseAdmin
+        .from('mensaje')
+        .insert({
+          chat_id: chatId,
+          usuario_id: userId,
+          contenido: systemContent,
+          tipo: 'texto'
+        })
+
+      if (messageError) {
+        console.error('⚠️ Error insertando mensaje de sistema para propuesta:', messageError)
+      }
+    } catch (e) {
+      console.error('⚠️ Excepción insertando mensaje de sistema para propuesta:', e)
+    }
+
     return NextResponse.json({ 
       data: {
         id: nuevaPropuesta.propuesta_id,

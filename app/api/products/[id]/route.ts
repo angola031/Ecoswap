@@ -101,6 +101,21 @@ export async function GET(
       } catch {}
     }
 
+    // Verificar si el producto está en un intercambio activo
+    let isInActiveExchange = false
+    try {
+      const { data: exchangeData } = await supabaseAdmin
+        .from('intercambio')
+        .select('intercambio_id, estado')
+        .or(`producto_ofrecido_id.eq.${productId},producto_solicitado_id.eq.${productId}`)
+        .in('estado', ['pendiente', 'aceptado', 'en_progreso', 'pendiente_validacion'])
+        .limit(1)
+      
+      isInActiveExchange = !!exchangeData && exchangeData.length > 0
+    } catch (error) {
+      console.error('Error verificando intercambio activo:', error)
+    }
+
     // Incrementar contador de vistas si el viewer NO es el dueño (no bloqueante)
     ;(async () => {
       try {
@@ -147,7 +162,7 @@ export async function GET(
         }
 
     return NextResponse.json(
-      { product: formattedProduct, liked, isOwner },
+      { product: formattedProduct, liked, isOwner, isInActiveExchange },
       {
         headers: {
           'Cache-Control': 's-maxage=60, stale-while-revalidate=300'

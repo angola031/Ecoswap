@@ -324,26 +324,35 @@ function ChatPageContent() {
           console.log('📨 [ChatPage] Mensajes cargados:', messagesData.length)
           
           // Transformar mensajes al formato esperado
-          const transformedMessages = messagesData.map((msg: any) => ({
-            id: String(msg.mensaje_id),
-            senderId: String(msg.usuario_id),
-            content: msg.contenido || '',
-            timestamp: new Date(msg.fecha_envio).toLocaleString('es-CO', { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              day: '2-digit',
-              month: '2-digit'
-            }),
-            isRead: msg.leido,
-            type: msg.tipo === 'imagen' ? 'imagen' : msg.tipo === 'ubicacion' ? 'ubicacion' : 'texto',
-            metadata: msg.archivo_url ? { imageUrl: msg.archivo_url } : undefined,
-            sender: {
-              id: String(msg.usuario?.user_id || msg.usuario_id),
-              name: msg.usuario?.nombre || 'Usuario',
-              lastName: msg.usuario?.apellido || '',
-              avatar: msg.usuario?.foto_perfil || undefined
+          const transformedMessages = messagesData.map((msg: any) => {
+            // Detectar mensajes del sistema de propuestas
+            let contentRaw = msg.contenido || ''
+            const isSystemProposal = typeof contentRaw === 'string' && contentRaw.startsWith('[system_proposal]')
+            if (isSystemProposal) {
+              contentRaw = contentRaw.replace('[system_proposal]', '📝').trim()
             }
-          }))
+
+            return {
+              id: String(msg.mensaje_id),
+              senderId: isSystemProposal ? 'system' : String(msg.usuario_id),
+              content: contentRaw,
+              timestamp: new Date(msg.fecha_envio).toLocaleString('es-CO', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                day: '2-digit',
+                month: '2-digit'
+              }),
+              isRead: msg.leido,
+              type: msg.tipo === 'imagen' ? 'imagen' : msg.tipo === 'ubicacion' ? 'ubicacion' : 'texto',
+              metadata: msg.archivo_url ? { imageUrl: msg.archivo_url } : undefined,
+              sender: {
+                id: isSystemProposal ? 'system' : String(msg.usuario?.user_id || msg.usuario_id),
+                name: isSystemProposal ? 'Sistema' : (msg.usuario?.nombre || 'Usuario'),
+                lastName: isSystemProposal ? '' : (msg.usuario?.apellido || ''),
+                avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTgtMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : (msg.usuario?.foto_perfil || undefined)
+              }
+            }
+          })
           
           // Ordenar mensajes por ID (del más antiguo al más reciente)
           const sortedMessages = transformedMessages.sort((a, b) => Number(a.id) - Number(b.id))
@@ -474,10 +483,16 @@ function ChatPageContent() {
         }
 
         // Crear mensaje con información básica (sin hacer fetch adicional)
+        let contentRaw = m.contenido || ''
+        const isSystemProposal = typeof contentRaw === 'string' && contentRaw.startsWith('[system_proposal]')
+        if (isSystemProposal) {
+          contentRaw = contentRaw.replace('[system_proposal]', '📝').trim()
+        }
+
         const incoming: ChatMessage = {
           id: messageId,
-          senderId: String(m.usuario_id),
-          content: m.contenido || '',
+          senderId: isSystemProposal ? 'system' : String(m.usuario_id),
+          content: contentRaw,
           timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
             hour: '2-digit', 
             minute: '2-digit',
@@ -488,10 +503,10 @@ function ChatPageContent() {
           type: m.tipo === 'imagen' ? 'imagen' : m.tipo === 'ubicacion' ? 'ubicacion' : 'texto',
           metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
           sender: {
-            id: String(m.usuario_id),
-            name: 'Usuario',
+            id: isSystemProposal ? 'system' : String(m.usuario_id),
+            name: isSystemProposal ? 'Sistema' : 'Usuario',
             lastName: '',
-            avatar: undefined
+            avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : undefined
           }
         }
 
@@ -582,26 +597,35 @@ function ChatPageContent() {
                 
                 return true
               })
-              .map((m: any) => ({
-                id: String(m.mensaje_id),
-                senderId: String(m.usuario_id),
-                content: m.contenido || '',
-                timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  day: '2-digit',
-                  month: '2-digit'
-                }),
-                isRead: m.leido,
-                type: m.tipo === 'imagen' ? 'imagen' : m.tipo === 'ubicacion' ? 'ubicacion' : 'texto',
-                metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
-                sender: {
-                  id: String(m.usuario?.user_id || m.usuario_id),
-                  name: m.usuario?.nombre || 'Usuario',
-                  lastName: m.usuario?.apellido || '',
-                  avatar: m.usuario?.foto_perfil || undefined
+              .map((m: any) => {
+                // Detectar mensajes del sistema de propuestas
+                let contentRaw = m.contenido || ''
+                const isSystemProposal = typeof contentRaw === 'string' && contentRaw.startsWith('[system_proposal]')
+                if (isSystemProposal) {
+                  contentRaw = contentRaw.replace('[system_proposal]', '📝').trim()
                 }
-              }))
+
+                return {
+                  id: String(m.mensaje_id),
+                  senderId: isSystemProposal ? 'system' : String(m.usuario_id),
+                  content: contentRaw,
+                  timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    day: '2-digit',
+                    month: '2-digit'
+                  }),
+                  isRead: m.leido,
+                  type: m.tipo === 'imagen' ? 'imagen' : m.tipo === 'ubicacion' ? 'ubicacion' : 'texto',
+                  metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
+                  sender: {
+                    id: isSystemProposal ? 'system' : String(m.usuario?.user_id || m.usuario_id),
+                    name: isSystemProposal ? 'Sistema' : (m.usuario?.nombre || 'Usuario'),
+                    lastName: isSystemProposal ? '' : (m.usuario?.apellido || ''),
+                    avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : (m.usuario?.foto_perfil || undefined)
+                  }
+                }
+              })
 
             if (transformedMessages.length > 0) {
               console.log('✅ [ChatPage] Polling: Agregando mensajes:', transformedMessages.length)
@@ -927,25 +951,14 @@ function ChatPageContent() {
       }
 
       // Actualizar lista de propuestas
-      setProposals(prev => [data.data, ...prev])
+      const newProposal = data.data
+      setProposals(prev => [newProposal, ...prev])
       
-      // Mostrar mensaje de éxito
-      const successMessage: ChatMessage = {
-        id: `proposal-${Date.now()}`,
-        senderId: 'system',
-        content: `Has enviado una propuesta de ${proposalData.type}`,
-        timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-        isRead: true,
-        type: 'propuesta',
-        sender: {
-          id: currentUserId,
-          name: 'Sistema',
-          lastName: '',
-          avatar: undefined
-        }
-      }
+      // Agregar notificación mejorada en el chat sobre la propuesta enviada
+      await addProposalNotificationToChat(newProposal)
       
-      setMessages(prev => [...prev, successMessage])
+      // Enviar notificación push al otro usuario
+      await sendProposalNotification(newProposal)
       
     } catch (error) {
       console.error('Error enviando propuesta:', error)
@@ -1179,9 +1192,16 @@ function ChatPageContent() {
 
       if (responseData.ok) {
         const data = await responseData.json()
+        const updatedProposal = { ...data.data }
         setProposals(prev => prev.map(prop => 
-          prop.id === proposalId ? { ...prop, ...data.data } : prop
+          prop.id === proposalId ? updatedProposal : prop
         ))
+        
+        // Agregar notificación en el chat sobre la respuesta a la propuesta
+        await addProposalResponseNotificationToChat(updatedProposal, response)
+        
+        // Enviar notificación push al otro usuario
+        await sendProposalResponseNotification(updatedProposal, response)
         
         if ((window as any).Swal) {
           (window as any).Swal.fire({
@@ -1205,6 +1225,211 @@ function ChatPageContent() {
           confirmButtonText: 'Entendido'
         })
       }
+    }
+  }
+
+  // Función para agregar notificación de propuesta al chat
+  const addProposalNotificationToChat = async (proposal: any) => {
+    try {
+      // Obtener información del usuario que envió la propuesta
+      const senderId = proposal.usuario_id || proposal.user_id
+      const senderInfo = senderId === currentUserId ? currentUserInfo : chatInfo?.seller
+      
+      // Crear mensaje del sistema sobre la propuesta con información del usuario
+      const systemMessage: ChatMessage = {
+        id: `system-proposal-${proposal.id}-${Date.now()}`,
+        senderId: 'system',
+        content: `📝 ${senderInfo?.nombre || 'Usuario'} envió una nueva propuesta: ${getProposalTypeText(proposal.tipo_propuesta)}`,
+        timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+        isRead: false,
+        type: 'texto',
+        sender: {
+          id: senderId || 'system',
+          name: senderInfo?.nombre || 'Usuario',
+          lastName: senderInfo?.apellido || '',
+          avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'
+        }
+      }
+
+      // Agregar mensaje al chat
+      setMessages(prev => [...prev, systemMessage])
+      
+      console.log('✅ [ChatPage] Notificación de propuesta agregada al chat:', {
+        proposalId: proposal.id,
+        senderId: senderId,
+        senderName: senderInfo?.nombre
+      })
+    } catch (error) {
+      console.error('❌ [ChatPage] Error agregando notificación de propuesta:', error)
+    }
+  }
+
+  // Función para agregar notificación de respuesta a propuesta en el chat
+  const addProposalResponseNotificationToChat = async (proposal: any, response: string) => {
+    try {
+      const responseText = getResponseText(response)
+      const responseIcon = getResponseIcon(response)
+
+      // Obtener información del usuario que respondió a la propuesta
+      const senderId = proposal.usuario_id || proposal.user_id
+      const senderInfo = senderId === currentUserId ? currentUserInfo : chatInfo?.seller
+
+      // Crear mensaje del sistema sobre la respuesta a la propuesta con información del usuario
+      const systemMessage: ChatMessage = {
+        id: `system-response-${proposal.id}-${Date.now()}`,
+        senderId: 'system',
+        content: `${responseIcon} ${senderInfo?.nombre || 'Usuario'} ${responseText} la propuesta: ${getProposalTypeText(proposal.tipo_propuesta)}`,
+        timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+        isRead: false,
+        type: 'texto',
+        sender: {
+          id: senderId || 'system',
+          name: senderInfo?.nombre || 'Usuario',
+          lastName: senderInfo?.apellido || '',
+          avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'
+        }
+      }
+
+      // Agregar mensaje al chat
+      setMessages(prev => [...prev, systemMessage])
+      
+      console.log('✅ [ChatPage] Notificación de respuesta a propuesta agregada al chat:', {
+        proposalId: proposal.id,
+        response: response,
+        senderId: senderId,
+        senderName: senderInfo?.nombre
+      })
+    } catch (error) {
+      console.error('❌ [ChatPage] Error agregando notificación de respuesta:', error)
+    }
+  }
+
+  // Función para obtener texto del tipo de propuesta
+  const getProposalTypeText = (type: string): string => {
+    const types = {
+      'precio': 'Propuesta de precio',
+      'intercambio': 'Propuesta de intercambio',
+      'encuentro': 'Propuesta de encuentro',
+      'condiciones': 'Propuesta de condiciones',
+      'otro': 'Propuesta general'
+    }
+    return types[type as keyof typeof types] || 'Propuesta'
+  }
+
+  // Función para obtener texto de la respuesta
+  const getResponseText = (response: string): string => {
+    const responses = {
+      'aceptar': 'aceptada',
+      'rechazar': 'rechazada',
+      'contrapropuesta': 'respondida con contrapropuesta'
+    }
+    return responses[response as keyof typeof responses] || response
+  }
+
+  // Función para obtener icono de la respuesta
+  const getResponseIcon = (response: string): string => {
+    const icons = {
+      'aceptar': '✅',
+      'rechazar': '❌',
+      'contrapropuesta': '💬'
+    }
+    return icons[response as keyof typeof icons] || '📝'
+  }
+
+  // Función para enviar notificación push sobre la propuesta
+  const sendProposalNotification = async (proposal: any) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      // Determinar el usuario que recibe la notificación
+      const otherUserId = proposal.usuario_propone_id === Number(currentUserId) 
+        ? proposal.usuario_recibe_id 
+        : proposal.usuario_propone_id
+
+      const notificationData = {
+        usuario_id: otherUserId,
+        tipo: 'nueva_propuesta',
+        titulo: `Nueva ${getProposalTypeText(proposal.tipo_propuesta)}`,
+        mensaje: `Un usuario te ha enviado una nueva propuesta en el chat`,
+        datos_adicionales: {
+          propuesta_id: proposal.id,
+          chat_id: chatId,
+          tipo_propuesta: proposal.tipo_propuesta,
+          remitente_id: currentUserId
+        },
+        es_push: true,
+        es_email: false
+      }
+
+      // Enviar notificación a través de la API
+      const response = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(notificationData)
+      })
+
+      if (response.ok) {
+        console.log('✅ [ChatPage] Notificación push enviada exitosamente')
+      } else {
+        console.log('⚠️ [ChatPage] Error enviando notificación push:', response.status)
+      }
+    } catch (error) {
+      console.error('❌ [ChatPage] Error enviando notificación push:', error)
+    }
+  }
+
+  // Función para enviar notificación push sobre la respuesta a propuesta
+  const sendProposalResponseNotification = async (proposal: any, response: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      // Determinar el usuario que recibe la notificación
+      const otherUserId = proposal.usuario_propone_id === Number(currentUserId) 
+        ? proposal.usuario_recibe_id 
+        : proposal.usuario_propone_id
+
+      const responseText = getResponseText(response)
+
+      const notificationData = {
+        usuario_id: otherUserId,
+        tipo: 'respuesta_propuesta',
+        titulo: `Propuesta ${responseText}`,
+        mensaje: `Un usuario ha ${responseText} tu ${getProposalTypeText(proposal.tipo_propuesta)}`,
+        datos_adicionales: {
+          propuesta_id: proposal.id,
+          chat_id: chatId,
+          tipo_propuesta: proposal.tipo_propuesta,
+          respuesta: response,
+          remitente_id: currentUserId
+        },
+        es_push: true,
+        es_email: false
+      }
+
+      // Enviar notificación a través de la API
+      const apiResponse = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(notificationData)
+      })
+
+      if (apiResponse.ok) {
+        console.log('✅ [ChatPage] Notificación push de respuesta enviada exitosamente')
+      } else {
+        console.log('⚠️ [ChatPage] Error enviando notificación push de respuesta:', apiResponse.status)
+      }
+    } catch (error) {
+      console.error('❌ [ChatPage] Error enviando notificación push de respuesta:', error)
     }
   }
 
@@ -1760,9 +1985,9 @@ function ChatPageContent() {
             <div className="w-full max-w-4xl flex flex-col">
               {(() => {
                 const hasAccepted = proposals.some(p => p.status === 'aceptada')
-                const hasPendingValidation = proposals.some(p => p.status === 'pendiente_validacion')
+                const hasPendingValidation = proposals.some(p => (p as any).status === 'pendiente_validacion')
                 if (!hasAccepted && !hasPendingValidation) return null
-                const first = proposals.find(p => p.status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
+                const first = proposals.find(p => (p as any).status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
                 const intercambioId = (first as any)?.intercambioId || first?.id
                 return (
                   <div className="sticky top-0 z-10 bg-yellow-50 border-b border-yellow-200">
@@ -1973,12 +2198,43 @@ function ChatPageContent() {
                 ) : (
                   messages.map((message) => {
                     const isOwnMessage = message.senderId === currentUserId
+                    const isSystemMessage = message.senderId === 'system'
+                    
                     console.log('💬 [ChatPage] Renderizando mensaje:', {
                       messageId: message.id,
                       senderId: message.senderId,
                       currentUserId: currentUserId,
-                      isOwnMessage: isOwnMessage
+                      isOwnMessage: isOwnMessage,
+                      isSystemMessage: isSystemMessage
                     })
+                    
+                    // Renderizar mensaje del sistema como mensaje normal pero con estilo especial
+                    if (isSystemMessage) {
+                      return (
+                        <motion.div
+                          key={message.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex justify-start my-2"
+                        >
+                          <div className="flex items-end space-x-2 max-w-xs lg:max-w-md">
+                            <div className="w-8 h-8 rounded-full border border-gray-200 bg-blue-100 flex items-center justify-center">
+                              <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V9H21ZM3 9H9V6.5L3 7V9ZM12 7.5C13.66 7.5 15 8.84 15 10.5V12H9V10.5C9 8.84 10.34 7.5 12 7.5ZM7.5 13.5C7.5 12.67 8.17 12 9 12H15C15.83 12 16.5 12.67 16.5 13.5V16H7.5V13.5ZM18 10.5C18.83 10.5 19.5 11.17 19.5 12V15H21V17H19.5V20H17.5V17H6.5V20H4.5V17H3V15H4.5V12C4.5 11.17 5.17 10.5 6 10.5H18Z"/>
+                              </svg>
+                            </div>
+                            <div className="bg-blue-50 border border-blue-200 text-gray-900 px-4 py-2 rounded-2xl">
+                              <div className="flex items-center space-x-1 mb-1">
+                                <span className="text-xs font-medium text-blue-600">🔔</span>
+                                <span className="text-xs font-medium text-blue-600">Sistema</span>
+                              </div>
+                              <p className="text-sm">{message.content}</p>
+                              <p className="text-xs text-gray-500 mt-1">{message.timestamp}</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )
+                    }
                     
                     return (
                     <motion.div

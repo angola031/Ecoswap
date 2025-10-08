@@ -81,6 +81,7 @@ export default function ProductDetailPage() {
   const [activeTab, setActiveTab] = useState<'details' | 'specifications' | 'seller'>('details')
   const [isOwner, setIsOwner] = useState(false)
   const [ownerCheckComplete, setOwnerCheckComplete] = useState(false)
+  const [isInActiveExchange, setIsInActiveExchange] = useState(false)
   const [stats, setStats] = useState({
     views: 0,
     likes: 0
@@ -111,7 +112,7 @@ export default function ProductDetailPage() {
           throw new Error('Error al cargar el producto')
         }
 
-        const { product, liked, isOwner: ownerFlag } = await response.json()
+        const { product, liked, isOwner: ownerFlag, isInActiveExchange: exchangeFlag } = await response.json()
         
         if (!isMounted) return
         
@@ -123,11 +124,14 @@ export default function ProductDetailPage() {
         if (typeof product.total_likes === 'number') {
           setStats(prev => ({ ...prev, likes: product.total_likes }))
         }
-        // Establecer liked e isOwner directamente del API
+        // Establecer liked, isOwner e isInActiveExchange directamente del API
         if (typeof liked === 'boolean') setIsLiked(liked)
         if (typeof ownerFlag === 'boolean') {
           setIsOwner(ownerFlag)
           setOwnerCheckComplete(true)
+        }
+        if (typeof exchangeFlag === 'boolean') {
+          setIsInActiveExchange(exchangeFlag)
         }
 
       } catch (error) {
@@ -182,6 +186,18 @@ export default function ProductDetailPage() {
         title: 'Acción no permitida',
         text: 'No puedes mostrar interés en tu propia publicación',
         icon: 'warning',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#3B82F6'
+      })
+      return
+    }
+
+    // Verificar si el producto está en un intercambio activo
+    if (isInActiveExchange) {
+      await (window as any).Swal.fire({
+        title: 'Producto No Disponible',
+        text: 'Este producto está actualmente en proceso de intercambio y no está disponible por el momento.',
+        icon: 'info',
         confirmButtonText: 'Entendido',
         confirmButtonColor: '#3B82F6'
       })
@@ -362,6 +378,19 @@ export default function ProductDetailPage() {
         router.push(`/chat`)
         return
       }
+      
+      // Verificar si el producto está en un intercambio activo
+      if (isInActiveExchange) {
+        await (window as any).Swal.fire({
+          title: 'Producto No Disponible',
+          text: 'Este producto está actualmente en proceso de intercambio y no está disponible por el momento.',
+          icon: 'info',
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#3B82F6'
+        })
+        return
+      }
+      
       const response = await fetch('/api/chat/start', {
         method: 'POST',
         headers: {
@@ -632,21 +661,44 @@ export default function ProductDetailPage() {
                 <span>{product.ubicacion.ciudad}, {product.ubicacion.departamento}</span>
               </div>
 
+              {/* Indicador de intercambio activo */}
+              {isInActiveExchange && (
+                <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="w-5 h-5 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-orange-800">
+                        Producto en proceso de intercambio
+                      </h3>
+                      <p className="text-sm text-orange-700 mt-1">
+                        Este producto no está disponible por el momento ya que se encuentra en un intercambio activo.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               
               {/* Acciones */}
               <div className="flex space-x-3">
                 <button
                   onClick={handleInterest}
-                  disabled={isOwner}
-                  aria-disabled={isOwner}
-                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${isOwner
+                  disabled={isOwner || isInActiveExchange}
+                  aria-disabled={isOwner || isInActiveExchange}
+                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${isOwner || isInActiveExchange
                       ? 'bg-gray-400 text-white cursor-not-allowed pointer-events-none'
                       : isInterested
                         ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                 >
-                  {isOwner ? 'Tu publicación' : (isInterested ? 'Interesado ✓' : 'Me Interesa')}
+                  {isOwner ? 'Tu publicación' : 
+                   isInActiveExchange ? 'No disponible' :
+                   (isInterested ? 'Interesado ✓' : 'Me Interesa')}
                 </button>
                 <button
                   onClick={handleLike}
@@ -667,13 +719,15 @@ export default function ProductDetailPage() {
                 </button>
                 <button
                   onClick={handleChat}
-                  disabled={isOwner}
-                  aria-disabled={isOwner}
-                  className={`p-3 rounded-lg border transition-colors ${isOwner
+                  disabled={isOwner || isInActiveExchange}
+                  aria-disabled={isOwner || isInActiveExchange}
+                  className={`p-3 rounded-lg border transition-colors ${isOwner || isInActiveExchange
                     ? 'border-gray-400 text-gray-300 bg-gray-100 cursor-not-allowed pointer-events-none'
                     : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600'
                   }`}
-                  title={isOwner ? 'No puedes enviarte mensajes a ti mismo' : 'Iniciar chat con el vendedor'}
+                  title={isOwner ? 'No puedes enviarte mensajes a ti mismo' : 
+                        isInActiveExchange ? 'Producto no disponible - en proceso de intercambio' : 
+                        'Iniciar chat con el vendedor'}
                 >
                   <ChatBubbleLeftRightIcon className="w-5 h-5" />
                 </button>

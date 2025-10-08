@@ -386,18 +386,37 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   // Función para validar encuentro exitoso
   const handleValidateMeeting = async (intercambioId: number) => {
     try {
+      // Obtener información del usuario de la conversación
+      const otherUser = selectedConversation?.user
+      const otherUserName = otherUser ? otherUser.name : 'el otro usuario'
+      const otherUserAvatar = otherUser?.avatar || '/default-avatar.png'
+      
       const validationResult = await (window as any).Swal.fire({
         title: '¿El encuentro fue exitoso?',
         html: `
           <div class="text-left space-y-4">
-            <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p class="text-sm text-blue-800">
-                <strong>📋 Instrucciones:</strong> Confirma si el intercambio se realizó correctamente según lo acordado.
-              </p>
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+              <div class="flex items-center space-x-3">
+                <img 
+                  src="${otherUserAvatar}" 
+                  alt="${otherUserName}" 
+                  class="w-10 h-10 rounded-full object-cover border-2 border-blue-200"
+                  onerror="this.src='/default-avatar.png'"
+                />
+                <div>
+                  <p class="text-sm text-blue-800">
+                    <strong>📋 Vas a calificar a ${otherUserName}</strong>
+                  </p>
+                  <p class="text-xs text-blue-600">Confirma si el intercambio se realizó correctamente según lo acordado.</p>
+                </div>
+              </div>
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">¿Cómo calificarías este intercambio?</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Calificación <span class="text-red-500">*</span>
+              </label>
+              <p class="text-xs text-gray-500 mb-2">Selecciona de 1 a 5 estrellas (obligatorio)</p>
               <div class="flex space-x-2 mb-3">
                 <button type="button" class="star-rating" data-rating="1" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">⭐</button>
                 <button type="button" class="star-rating" data-rating="2" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">⭐⭐</button>
@@ -429,6 +448,22 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
           const starButtons = document.querySelectorAll('.star-rating')
           let selectedRating = 0
           
+          // Función para actualizar el estado del botón de confirmación
+          const updateConfirmButton = () => {
+            const confirmButton = document.querySelector('.swal2-confirm') as HTMLButtonElement
+            if (confirmButton) {
+              if (selectedRating > 0) {
+                confirmButton.style.opacity = '1'
+                confirmButton.disabled = false
+                confirmButton.textContent = 'Sí, fue exitoso'
+              } else {
+                confirmButton.style.opacity = '0.6'
+                confirmButton.disabled = true
+                confirmButton.textContent = 'Selecciona una calificación'
+              }
+            }
+          }
+          
           starButtons.forEach((button, index) => {
             button.addEventListener('click', () => {
               selectedRating = index + 1
@@ -441,17 +476,35 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
                   btn.classList.add('border-gray-300')
                 }
               })
+              
+              // Actualizar estado del botón después de seleccionar
+              updateConfirmButton()
             })
           })
+          
+          // Inicializar estado del botón
+          setTimeout(updateConfirmButton, 100)
         },
         preConfirm: () => {
           const comment = (document.getElementById('validation-comment') as HTMLTextAreaElement)?.value
           const aspects = (document.getElementById('validation-aspects') as HTMLTextAreaElement)?.value
           const rating = document.querySelector('.star-rating.bg-yellow-100')?.getAttribute('data-rating')
           
+          // Validación obligatoria de calificación
+          if (!rating) {
+            ;(window as any).Swal.showValidationMessage('⚠️ Por favor selecciona una calificación con estrellas')
+            return false
+          }
+          
+          // Validación de calificación válida
+          if (parseInt(rating) < 1 || parseInt(rating) > 5) {
+            ;(window as any).Swal.showValidationMessage('⚠️ La calificación debe ser entre 1 y 5 estrellas')
+            return false
+          }
+          
           return {
             isValid: true,
-            rating: rating ? parseInt(rating) : null,
+            rating: parseInt(rating),
             comment: comment || null,
             aspects: aspects || null
           }
@@ -460,7 +513,11 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
 
       if (validationResult.isConfirmed) {
         // Enviar validación exitosa
-        await submitValidation(intercambioId, validationResult.value)
+        const submitResult = await submitValidation(intercambioId, validationResult.value)
+        if (!submitResult) {
+          console.log('🔍 DEBUG: La validación falló, no continuar')
+          return
+        }
       } else if (validationResult.dismiss === (window as any).Swal.DismissReason.cancel) {
         // Mostrar modal para problemas
         const problemResult = await (window as any).Swal.fire({
@@ -476,12 +533,16 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
         })
 
         if (problemResult.isConfirmed) {
-          await submitValidation(intercambioId, {
+          const submitResult = await submitValidation(intercambioId, {
             isValid: false,
             comment: problemResult.value,
             rating: null,
             aspects: null
           })
+          if (!submitResult) {
+            console.log('🔍 DEBUG: El reporte de problema falló, no continuar')
+            return
+          }
         }
       }
     } catch (error) {
@@ -500,7 +561,24 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
-      if (!token) return
+      
+      console.log('🔍 DEBUG: Enviando validación:', { 
+        intercambioId, 
+        validationData, 
+        hasToken: !!token,
+        userId: getCurrentUserId()
+      })
+      
+      if (!token) {
+        throw new Error('No hay token de sesión')
+      }
+
+      const requestBody = {
+        userId: getCurrentUserId(),
+        ...validationData
+      }
+      
+      console.log('🔍 DEBUG: Request body:', requestBody)
 
       const response = await fetch(`/api/intercambios/${intercambioId}/validate`, {
         method: 'PATCH',
@@ -508,14 +586,18 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          userId: getCurrentUserId(),
-          ...validationData
-        })
+        body: JSON.stringify(requestBody)
+      })
+
+      console.log('🔍 DEBUG: Respuesta del servidor:', {
+        status: response.status,
+        ok: response.ok,
+        url: response.url
       })
 
       if (response.ok) {
         const data = await response.json()
+        console.log('🔍 DEBUG: Datos de respuesta:', data)
         
         if (data.data.bothValidated) {
           if (data.data.newEstado === 'completado') {
@@ -557,11 +639,66 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
           })
         }
       } else {
-        throw new Error('Error enviando validación')
+        // Manejar errores específicos
+        let errorMessage = 'Error enviando validación'
+        
+        if (response.status === 404) {
+          errorMessage = 'Intercambio no encontrado. Verifica que el intercambio existe y tienes permisos para validarlo.'
+        } else if (response.status === 403) {
+          errorMessage = 'No tienes permisos para validar este intercambio.'
+        } else if (response.status === 400) {
+          errorMessage = 'Datos de validación inválidos. Verifica que seleccionaste una calificación.'
+        } else if (response.status >= 500) {
+          errorMessage = 'Error del servidor. Inténtalo de nuevo en unos momentos.'
+        }
+        
+        try {
+          const errorData = await response.json()
+          console.log('🔍 DEBUG: Datos de error del servidor:', errorData)
+          if (errorData.error) {
+            errorMessage = errorData.error
+          }
+        } catch (parseError) {
+          console.log('🔍 DEBUG: No se pudo parsear el error del servidor')
+        }
+        
+        throw new Error(errorMessage)
       }
     } catch (error) {
-      console.error('Error enviando validación:', error)
-      throw error
+      console.error('❌ ERROR: Error enviando validación:', error)
+      
+      // Mostrar error detallado al usuario
+      await (window as any).Swal.fire({
+        title: 'Error al Validar',
+        html: `
+          <div class="text-center space-y-3">
+            <div class="text-4xl">⚠️</div>
+            <p class="text-gray-700">No se pudo validar el encuentro.</p>
+            <p class="text-sm text-red-600">${error instanceof Error ? error.message : 'Error desconocido'}</p>
+            <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p class="text-sm text-red-800">
+                💡 Verifica tu conexión a internet<br/>
+                💡 Intenta nuevamente en unos momentos<br/>
+                💡 Si el problema persiste, contacta soporte
+              </p>
+            </div>
+            <div class="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+              <strong>Detalles técnicos:</strong><br/>
+              Intercambio ID: ${intercambioId}<br/>
+              Usuario ID: ${getCurrentUserId()}<br/>
+              Error: ${error instanceof Error ? error.message : 'Desconocido'}
+            </div>
+          </div>
+        `,
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#EF4444',
+        width: '600px',
+        allowOutsideClick: false,
+        allowEscapeKey: false
+      })
+      
+      // No hacer throw para evitar que se propague el error
+      return false
     }
   }
 
@@ -578,6 +715,259 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
       buyer
     })
     return buyer
+  }
+
+  // Función para agregar notificación de propuesta al chat
+  const addProposalNotificationToChat = async (proposal: any) => {
+    if (!selectedConversation || !currentUser) return
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      // Crear mensaje del sistema sobre la propuesta
+      const systemMessage: ChatMessage = {
+        id: `system-proposal-${proposal.id}-${Date.now()}`,
+        senderId: 'system',
+        content: `📝 Nueva propuesta enviada: ${getProposalTypeText(proposal.tipo_propuesta)}`,
+        timestamp: new Date().toLocaleString('es-CO', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          day: '2-digit',
+          month: '2-digit'
+        }),
+        isRead: false,
+        type: 'text',
+        sender: {
+          id: 'system',
+          name: 'Sistema',
+          lastName: '',
+          avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'
+        }
+      }
+
+      // Agregar mensaje al chat actual
+      setSelectedConversation(prev => {
+        if (!prev) return prev
+        const updatedMessages = [...prev.messages, systemMessage]
+          .sort((a, b) => Number(a.id) - Number(b.id))
+        
+        return {
+          ...prev,
+          messages: updatedMessages,
+          lastMessage: systemMessage.content,
+          lastMessageTime: systemMessage.timestamp
+        }
+      })
+
+      // Actualizar también la lista de conversaciones
+      setConversations(prev => prev.map(conv => 
+        conv.id === selectedConversation.id ? {
+          ...conv,
+          lastMessage: systemMessage.content,
+          lastMessageTime: systemMessage.timestamp
+        } : conv
+      ))
+
+      // Enviar notificación push al otro usuario
+      await sendProposalNotification(proposal)
+
+      console.log('✅ [ChatModule] Notificación de propuesta agregada al chat')
+    } catch (error) {
+      console.error('❌ [ChatModule] Error agregando notificación de propuesta:', error)
+    }
+  }
+
+  // Función para obtener texto del tipo de propuesta
+  const getProposalTypeText = (type: string): string => {
+    const types = {
+      'precio': 'Propuesta de precio',
+      'intercambio': 'Propuesta de intercambio',
+      'encuentro': 'Propuesta de encuentro',
+      'condiciones': 'Propuesta de condiciones',
+      'otro': 'Propuesta general'
+    }
+    return types[type as keyof typeof types] || 'Propuesta'
+  }
+
+  // Función para agregar notificación de respuesta a propuesta en el chat
+  const addProposalResponseNotificationToChat = async (proposal: any, response: string) => {
+    if (!selectedConversation || !currentUser) return
+
+    try {
+      const responseText = getResponseText(response)
+      const responseIcon = getResponseIcon(response)
+
+      // Crear mensaje del sistema sobre la respuesta a la propuesta
+      const systemMessage: ChatMessage = {
+        id: `system-response-${proposal.id}-${Date.now()}`,
+        senderId: 'system',
+        content: `${responseIcon} Propuesta ${responseText}: ${getProposalTypeText(proposal.tipo_propuesta)}`,
+        timestamp: new Date().toLocaleString('es-CO', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          day: '2-digit',
+          month: '2-digit'
+        }),
+        isRead: false,
+        type: 'text',
+        sender: {
+          id: 'system',
+          name: 'Sistema',
+          lastName: '',
+          avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'
+        }
+      }
+
+      // Agregar mensaje al chat actual
+      setSelectedConversation(prev => {
+        if (!prev) return prev
+        const updatedMessages = [...prev.messages, systemMessage]
+          .sort((a, b) => Number(a.id) - Number(b.id))
+        
+        return {
+          ...prev,
+          messages: updatedMessages,
+          lastMessage: systemMessage.content,
+          lastMessageTime: systemMessage.timestamp
+        }
+      })
+
+      // Actualizar también la lista de conversaciones
+      setConversations(prev => prev.map(conv => 
+        conv.id === selectedConversation.id ? {
+          ...conv,
+          lastMessage: systemMessage.content,
+          lastMessageTime: systemMessage.timestamp
+        } : conv
+      ))
+
+      // Enviar notificación push al otro usuario
+      await sendProposalResponseNotification(proposal, response)
+
+      console.log('✅ [ChatModule] Notificación de respuesta a propuesta agregada al chat')
+    } catch (error) {
+      console.error('❌ [ChatModule] Error agregando notificación de respuesta:', error)
+    }
+  }
+
+  // Función para obtener texto de la respuesta
+  const getResponseText = (response: string): string => {
+    const responses = {
+      'aceptar': 'aceptada',
+      'rechazar': 'rechazada',
+      'contrapropuesta': 'respondida con contrapropuesta'
+    }
+    return responses[response as keyof typeof responses] || response
+  }
+
+  // Función para obtener icono de la respuesta
+  const getResponseIcon = (response: string): string => {
+    const icons = {
+      'aceptar': '✅',
+      'rechazar': '❌',
+      'contrapropuesta': '💬'
+    }
+    return icons[response as keyof typeof icons] || '📝'
+  }
+
+  // Función para enviar notificación push sobre la respuesta a propuesta
+  const sendProposalResponseNotification = async (proposal: any, response: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      // Determinar el usuario que recibe la notificación
+      const otherUserId = proposal.usuario_propone_id === Number(currentUser?.id) 
+        ? proposal.usuario_recibe_id 
+        : proposal.usuario_propone_id
+
+      const responseText = getResponseText(response)
+      const responseIcon = getResponseIcon(response)
+
+      const notificationData = {
+        usuario_id: otherUserId,
+        tipo: 'respuesta_propuesta',
+        titulo: `Propuesta ${responseText}`,
+        mensaje: `${currentUser?.email || 'Usuario'} ha ${responseText} tu ${getProposalTypeText(proposal.tipo_propuesta)}`,
+        datos_adicionales: {
+          propuesta_id: proposal.id,
+          chat_id: selectedConversation?.id,
+          tipo_propuesta: proposal.tipo_propuesta,
+          respuesta: response,
+          remitente_id: currentUser?.id
+        },
+        es_push: true,
+        es_email: false
+      }
+
+      // Enviar notificación a través de la API
+      const apiResponse = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(notificationData)
+      })
+
+      if (apiResponse.ok) {
+        console.log('✅ [ChatModule] Notificación push de respuesta enviada exitosamente')
+      } else {
+        console.log('⚠️ [ChatModule] Error enviando notificación push de respuesta:', apiResponse.status)
+      }
+    } catch (error) {
+      console.error('❌ [ChatModule] Error enviando notificación push de respuesta:', error)
+    }
+  }
+
+  // Función para enviar notificación push sobre la propuesta
+  const sendProposalNotification = async (proposal: any) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      // Determinar el usuario que recibe la notificación
+      const otherUserId = proposal.usuario_propone_id === Number(currentUser?.id) 
+        ? proposal.usuario_recibe_id 
+        : proposal.usuario_propone_id
+
+      const notificationData = {
+        usuario_id: otherUserId,
+        tipo: 'nueva_propuesta',
+        titulo: `Nueva ${getProposalTypeText(proposal.tipo_propuesta)}`,
+        mensaje: `${currentUser?.email || 'Usuario'} te ha enviado una nueva propuesta en el chat`,
+        datos_adicionales: {
+          propuesta_id: proposal.id,
+          chat_id: selectedConversation?.id,
+          tipo_propuesta: proposal.tipo_propuesta,
+          remitente_id: currentUser?.id
+        },
+        es_push: true,
+        es_email: false
+      }
+
+      // Enviar notificación a través de la API
+      const response = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(notificationData)
+      })
+
+      if (response.ok) {
+        console.log('✅ [ChatModule] Notificación push enviada exitosamente')
+      } else {
+        console.log('⚠️ [ChatModule] Error enviando notificación push:', response.status)
+      }
+    } catch (error) {
+      console.error('❌ [ChatModule] Error enviando notificación push:', error)
+    }
   }
 
   // Función para comprimir imágenes
@@ -825,26 +1215,35 @@ const getCurrentUserId = () => {
                                  content.includes('Negociable')
             return !isProductInfo && content.trim().length > 0
           })
-          .map((m: any) => ({
-          id: String(m.mensaje_id),
-          senderId: String(m.usuario_id),
-          content: m.contenido || '',
-            timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              day: '2-digit',
-              month: '2-digit'
-            }),
-          isRead: m.leido,
-          type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
-            metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
-            sender: {
-              id: String(m.usuario?.user_id || m.usuario_id),
-              name: m.usuario?.nombre || 'Usuario',
-              lastName: m.usuario?.apellido || '',
-              avatar: m.usuario?.foto_perfil || undefined
+          .map((m: any) => {
+            // Detectar mensajes del sistema de propuestas
+            let contentRaw = m.contenido || ''
+            const isSystemProposal = typeof contentRaw === 'string' && contentRaw.startsWith('[system_proposal]')
+            if (isSystemProposal) {
+              contentRaw = contentRaw.replace('[system_proposal]', '📝').trim()
             }
-          }))
+
+            return {
+              id: String(m.mensaje_id),
+              senderId: isSystemProposal ? 'system' : String(m.usuario_id),
+              content: contentRaw,
+              timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                day: '2-digit',
+                month: '2-digit'
+              }),
+              isRead: m.leido,
+              type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
+              metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
+              sender: {
+                id: isSystemProposal ? 'system' : String(m.usuario?.user_id || m.usuario_id),
+                name: isSystemProposal ? 'Sistema' : (m.usuario?.nombre || 'Usuario'),
+                lastName: isSystemProposal ? '' : (m.usuario?.apellido || ''),
+                avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : (m.usuario?.foto_perfil || undefined)
+              }
+            }
+          })
           .sort((a, b) => Number(a.id) - Number(b.id)) // Ordenar por ID (del más antiguo al más reciente)
         
         console.log('💬 [ChatModule] Mensajes transformados:', {
@@ -1585,6 +1984,9 @@ const getCurrentUserId = () => {
         console.log('✅ [ChatModule] Propuesta creada exitosamente:', data)
         setProposals(prev => [data.data, ...prev])
         
+        // Agregar notificación en el chat sobre la propuesta enviada
+        await addProposalNotificationToChat(data.data)
+        
         if ((window as any).Swal) {
           (window as any).Swal.fire({
             title: 'Propuesta enviada',
@@ -1642,9 +2044,13 @@ const getCurrentUserId = () => {
 
       if (responseData.ok) {
         const data = await responseData.json()
+        const updatedProposal = { ...data.data }
         setProposals(prev => prev.map(prop => 
-          prop.id === proposalId ? { ...prop, ...data.data } : prop
+          prop.id === proposalId ? updatedProposal : prop
         ))
+        
+        // Agregar notificación en el chat sobre la respuesta a la propuesta
+        await addProposalResponseNotificationToChat(updatedProposal, response)
         
         if ((window as any).Swal) {
           (window as any).Swal.fire({
@@ -3324,6 +3730,65 @@ const getCurrentUserId = () => {
                       >
                         Validar Encuentro
                       </button>
+                      
+                      {/* Botón de diagnóstico temporal */}
+                      <button
+                        onClick={async () => {
+                          console.log('🔍 DEBUG: Probando conexión directa a la API...')
+                          try {
+                            const { data: { session } } = await supabase.auth.getSession()
+                            const token = session?.access_token
+                            
+                            if (!token) {
+                              console.log('❌ No hay token de sesión')
+                              return
+                            }
+                            
+                            console.log('🔍 DEBUG: Token disponible:', token.substring(0, 20) + '...')
+                            console.log('🔍 DEBUG: Intercambio ID:', intercambioId)
+                            console.log('🔍 DEBUG: Usuario ID:', getCurrentUserId())
+                            
+                            // Probar con datos de prueba
+                            const testResponse = await fetch(`/api/intercambios/${intercambioId}/validate`, {
+                              method: 'PATCH',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                              },
+                              body: JSON.stringify({
+                                userId: getCurrentUserId(),
+                                isValid: true,
+                                rating: 5,
+                                comment: 'Prueba de conexión',
+                                aspects: 'Conexión funcionando'
+                              })
+                            })
+                            
+                            console.log('🔍 DEBUG: Respuesta de prueba:', {
+                              status: testResponse.status,
+                              ok: testResponse.ok,
+                              statusText: testResponse.statusText,
+                              url: testResponse.url
+                            })
+                            
+                            if (testResponse.ok) {
+                              const data = await testResponse.json()
+                              console.log('✅ Prueba exitosa:', data)
+                              alert('✅ Conexión a la API funcionando correctamente')
+                            } else {
+                              const errorText = await testResponse.text()
+                              console.log('❌ Error en prueba:', errorText)
+                              alert(`❌ Error ${testResponse.status}: ${testResponse.statusText}\n\nDetalles: ${errorText}`)
+                            }
+                          } catch (error) {
+                            console.log('❌ Error en prueba:', error)
+                            alert(`❌ Error de conexión: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+                          }
+                        }}
+                        className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 ml-2"
+                      >
+                        🔍 Probar API
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -3347,12 +3812,43 @@ const getCurrentUserId = () => {
                   </div>
                 </div>
               ) : (
-                selectedConversation.messages.map((message) => (
+                selectedConversation.messages.map((message) => {
+                  const isOwnMsg = isOwnMessage(message)
+                  const isSystemMsg = message.senderId === 'system'
+                  
+                  // Renderizar mensaje del sistema de manera especial
+                  if (isSystemMsg) {
+                    return (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex justify-center mb-4"
+                      >
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 max-w-md">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-6 h-6 rounded-full border border-gray-200 bg-blue-100 flex items-center justify-center">
+                              <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V9H21ZM3 9H9V6.5L3 7V9ZM12 7.5C13.66 7.5 15 8.84 15 10.5V12H9V10.5C9 8.84 10.34 7.5 12 7.5ZM7.5 13.5C7.5 12.67 8.17 12 9 12H15C15.83 12 16.5 12.67 16.5 13.5V16H7.5V13.5ZM18 10.5C18.83 10.5 19.5 11.17 19.5 12V15H21V17H19.5V20H17.5V17H6.5V20H4.5V17H3V15H4.5V12C4.5 11.17 5.17 10.5 6 10.5H18Z"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-blue-800">Sistema</p>
+                              <p className="text-sm text-blue-700">{message.content}</p>
+                              <p className="text-xs text-blue-600 mt-1">{message.timestamp}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )
+                  }
+                  
+                  return (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${isOwnMessage(message) ? 'justify-end' : 'justify-start'} mb-4`}
+                  className={`flex ${isOwnMsg ? 'justify-end' : 'justify-start'} mb-4`}
                 >
                   <div className={`flex items-end space-x-2 max-w-md ${isOwnMessage(message) ? 'flex-row-reverse space-x-reverse' : ''}`}>
                     {!isOwnMessage(message) && (
