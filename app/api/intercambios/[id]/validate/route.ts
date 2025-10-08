@@ -62,13 +62,36 @@ export async function PATCH(
 
     if (intercambioError) {
       console.log('❌ ERROR API: Error consultando intercambio:', intercambioError)
+      console.log('❌ ERROR API: Detalles del error:', {
+        code: intercambioError.code,
+        message: intercambioError.message,
+        details: intercambioError.details,
+        hint: intercambioError.hint
+      })
+      
+      // Si el intercambio no existe, devolver 404
+      if (intercambioError.code === 'PGRST116') {
+        return NextResponse.json(
+          { 
+            error: 'Intercambio no encontrado', 
+            details: `No existe un intercambio con ID ${intercambioId}`,
+            intercambioId,
+            userId 
+          },
+          { status: 404 }
+        )
+      }
+      
+      // Para otros errores de base de datos
       return NextResponse.json(
         { 
           error: 'Error consultando intercambio', 
           details: intercambioError.message,
-          intercambioId 
+          intercambioId,
+          userId,
+          errorCode: intercambioError.code
         },
-        { status: 404 }
+        { status: 500 }
       )
     }
 

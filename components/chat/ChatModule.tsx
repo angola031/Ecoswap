@@ -3997,7 +3997,8 @@ const getCurrentUserId = () => {
                     </div>
                   </div>
                 </motion.div>
-                ))
+                  )
+                })
               )}
               {isTyping && (
                 <div className="flex justify-start">
