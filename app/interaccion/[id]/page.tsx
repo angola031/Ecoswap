@@ -1624,7 +1624,7 @@ export default function InteraccionDetailPage() {
                                                           </div>
                                                         </div>
                                                         <div>
-                                                          <label class=\"block text-sm font-medium text-gray-700 mb-2\">Calificación</label>
+                                                          <label class=\"block text-sm font-medium text-gray-700 mb-2\">Calificación <span class=\"text-red-500\">*</span></label>
                                                           <div class=\"flex space-x-2 mb-3\">
                                                             <button type=\"button\" class=\"star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50\" data-rating=\"1\">⭐</button>
                                                             <button type=\"button\" class=\"star-rating px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50\" data-rating=\"2\">⭐⭐</button>
@@ -1665,7 +1665,14 @@ export default function InteraccionDetailPage() {
                                                         const comment = (document.getElementById('validation-comment') as HTMLTextAreaElement)?.value
                                                         const aspects = (document.getElementById('validation-aspects') as HTMLTextAreaElement)?.value
                                                         const rated = Array.from(document.querySelectorAll('.star-rating.bg-yellow-100')).length
-                                                        return { isValid: true, rating: rated || null, comment: comment || null, aspects: aspects || null }
+                                                        
+                                                        // Validar que la calificación sea obligatoria
+                                                        if (rated === 0) {
+                                                            (window as any).Swal.showValidationMessage('La calificación es obligatoria')
+                                                            return false
+                                                        }
+                                                        
+                                                        return { isValid: true, rating: rated, comment: comment || null, aspects: aspects || null }
                                                     }
                                                 })
                                                 if (result.isConfirmed) {
@@ -1692,7 +1699,20 @@ export default function InteraccionDetailPage() {
                                                         })
                                                     }
                                                 }
-                                                window.location.reload()
+                                                
+                                                // Actualizar el estado local sin recargar la página
+                                                try {
+                                                    // Recargar la interacción para obtener el estado actualizado
+                                                    const response = await fetch(`/api/interactions/${interactionId}`)
+                                                    if (response.ok) {
+                                                        const updatedInteraction = await response.json()
+                                                        setInteraction(updatedInteraction)
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Error al actualizar el estado:', error)
+                                                    // Fallback: recargar la página si falla la actualización
+                                                    window.location.reload()
+                                                }
                                             } catch {}
                                         }}
                                         className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
