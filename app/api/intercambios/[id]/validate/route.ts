@@ -179,20 +179,18 @@ export async function PATCH(
         ? intercambio.usuario_recibe_id 
         : intercambio.usuario_propone_id
 
-      // Crear validación automática para el usuario que no ha validado
-      await supabaseAdmin
-        .from('validacion_intercambio')
-        .insert({
-          intercambio_id: parseInt(intercambioId),
-          usuario_id: otherUserId,
-          es_exitoso: true,
-          calificacion: 4, // Calificación neutral-alta
-          comentario: 'Validación automática por timeout (7 días)',
-          aspectos_destacados: 'Intercambio completado automáticamente',
-          fecha_validacion: new Date().toISOString()
-        })
-        .onConflict('intercambio_id,usuario_id')
-        .ignore()
+        // Crear validación automática para el usuario que no ha validado
+        await supabaseAdmin
+          .from('validacion_intercambio')
+          .insert({
+            intercambio_id: parseInt(intercambioId),
+            usuario_id: otherUserId,
+            es_exitoso: true,
+            calificacion: 4, // Calificación neutral-alta
+            comentario: 'Validación automática por timeout (7 días)',
+            aspectos_destacados: 'Intercambio completado automáticamente',
+            fecha_validacion: new Date().toISOString()
+          })
     }
 
     // Crear o actualizar la validación del usuario usando UPSERT
@@ -320,12 +318,21 @@ export async function PATCH(
         // Dar eco-puntos por completar intercambio exitosamente
         const ecoPointsEarned = 50 // Puntos por intercambio completado
         
-        await supabaseAdmin
-          .from('usuario')
-          .update({ 
-            eco_puntos: supabaseAdmin.sql`eco_puntos + ${ecoPointsEarned}` 
-          })
-          .in('user_id', [intercambio.usuario_propone_id, intercambio.usuario_recibe_id])
+        // Actualizar eco-puntos para ambos usuarios
+        for (const userId of [intercambio.usuario_propone_id, intercambio.usuario_recibe_id]) {
+          const { data: userData } = await supabaseAdmin
+            .from('usuario')
+            .select('eco_puntos')
+            .eq('user_id', userId)
+            .single()
+          
+          if (userData) {
+            await supabaseAdmin
+              .from('usuario')
+              .update({ eco_puntos: (userData.eco_puntos || 0) + ecoPointsEarned })
+              .eq('user_id', userId)
+          }
+        }
 
         // Crear notificaciones para ambos usuarios
         await supabaseAdmin
