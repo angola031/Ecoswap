@@ -1611,6 +1611,8 @@ export default function InteraccionDetailPage() {
                                                 const otherAvatar = interaction?.otherUser?.avatar || '/default-avatar.png'
                                                 const result = await (window as any).Swal.fire({
                                                     title: '¿El encuentro fue exitoso?',
+                                                    allowOutsideClick: false,
+                                                    allowEscapeKey: false,
                                                     html: `
                                                       <div class=\"text-left space-y-4\"> 
                                                         <div class=\"p-3 bg-blue-50 border border-blue-200 rounded-lg\"> 
