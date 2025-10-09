@@ -1678,10 +1678,16 @@ export default function InteraccionDetailPage() {
                                                     }
                                                 })
                                                 if (result.isConfirmed) {
-                                                    await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
-                                                        method: 'PATCH',
+                                                    // Enviar calificación usando el nuevo endpoint
+                                                    await fetch(`/api/intercambios/${Number(intercambioId)}/rate`, {
+                                                        method: 'POST',
                                                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                                                        body: JSON.stringify(result.value)
+                                                        body: JSON.stringify({
+                                                            userId: session?.user?.id,
+                                                            rating: result.value.rating,
+                                                            comment: result.value.comment,
+                                                            aspects: result.value.aspects
+                                                        })
                                                     })
                                                 } else if (result.dismiss) {
                                                     const problem = await (window as any).Swal.fire({
