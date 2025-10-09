@@ -1679,7 +1679,7 @@ export default function InteraccionDetailPage() {
                                                 })
                                                 if (result.isConfirmed) {
                                                     // Enviar validación usando el mismo endpoint que ChatModule
-                                                    await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
+                                                    const response = await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
                                                         method: 'PATCH',
                                                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                                                         body: JSON.stringify({
@@ -1690,6 +1690,38 @@ export default function InteraccionDetailPage() {
                                                             aspects: result.value.aspects
                                                         })
                                                     })
+
+                                                    if (response.ok) {
+                                                        const data = await response.json()
+                                                        
+                                                        // Mostrar mensaje de éxito
+                                                        await (window as any).Swal.fire({
+                                                            title: '¡Validación Enviada!',
+                                                            html: `
+                                                                <div class="text-center space-y-3">
+                                                                    <div class="text-6xl">✅</div>
+                                                                    <p class="text-gray-700">Tu calificación ha sido registrada exitosamente.</p>
+                                                                    ${data.data?.bothValidated ? 
+                                                                        '<p class="text-sm text-green-600 font-medium">🎉 ¡El intercambio se ha completado! Ambos usuarios han confirmado.</p>' :
+                                                                        '<p class="text-sm text-gray-600">Esperando confirmación del otro usuario...</p>'
+                                                                    }
+                                                                </div>
+                                                            `,
+                                                            confirmButtonText: 'Entendido',
+                                                            confirmButtonColor: '#10B981',
+                                                            width: '500px'
+                                                        })
+                                                    } else {
+                                                        // Manejar error
+                                                        const errorData = await response.json()
+                                                        await (window as any).Swal.fire({
+                                                            title: 'Error',
+                                                            text: errorData.error || 'No se pudo validar el encuentro',
+                                                            icon: 'error',
+                                                            confirmButtonText: 'Entendido'
+                                                        })
+                                                        return
+                                                    }
                                                 } else if (result.dismiss) {
                                                     const problem = await (window as any).Swal.fire({
                                                         title: 'Cuéntanos qué pasó',
@@ -1701,7 +1733,7 @@ export default function InteraccionDetailPage() {
                                                         confirmButtonColor: '#EF4444'
                                                     })
                                                     if (problem.isConfirmed) {
-                                                        await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
+                                                        const failResponse = await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
                                                             method: 'PATCH',
                                                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                                                             body: JSON.stringify({ 
@@ -1710,16 +1742,46 @@ export default function InteraccionDetailPage() {
                                                             comment: problem.value || null 
                                                         })
                                                         })
+                                                        
+                                                        if (failResponse.ok) {
+                                                            // Mostrar mensaje de intercambio fallido
+                                                            await (window as any).Swal.fire({
+                                                                title: 'Intercambio Reportado',
+                                                                html: `
+                                                                    <div class="text-center space-y-3">
+                                                                        <div class="text-6xl">⚠️</div>
+                                                                        <p class="text-gray-700">Has reportado que el intercambio no fue exitoso.</p>
+                                                                        <p class="text-sm text-gray-600">Los administradores revisarán tu reporte.</p>
+                                                                    </div>
+                                                                `,
+                                                                confirmButtonText: 'Entendido',
+                                                                confirmButtonColor: '#EF4444',
+                                                                width: '500px'
+                                                            })
+                                                        }
                                                     }
                                                 }
                                                 
                                                 // Actualizar el estado local sin recargar la página
                                                 try {
                                                     // Recargar la interacción para obtener el estado actualizado
-                                                    const response = await fetch(`/api/interactions/${interactionId}`)
-                                                    if (response.ok) {
-                                                        const updatedInteraction = await response.json()
+                                                    const updateResponse = await fetch(`/api/interactions/${interactionId}`)
+                                                    if (updateResponse.ok) {
+                                                        const updatedInteraction = await updateResponse.json()
                                                         setInteraction(updatedInteraction)
+                                                        
+                                                        // Mostrar mensaje de estado actualizado si es exitoso
+                                                        if (result.isConfirmed) {
+                                                            setTimeout(() => {
+                                                                (window as any).Swal.fire({
+                                                                    title: 'Estado Actualizado',
+                                                                    text: 'La información de la interacción se ha actualizado correctamente.',
+                                                                    icon: 'success',
+                                                                    timer: 2000,
+                                                                    showConfirmButton: false
+                                                                })
+                                                            }, 1000)
+                                                        }
                                                     }
                                                 } catch (error) {
                                                     console.error('Error al actualizar el estado:', error)
