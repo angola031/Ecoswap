@@ -866,6 +866,12 @@ export default function InteraccionDetailPage() {
         }
     }
 
+    // Función para verificar si ya hay un intercambio aceptado
+    const hasAcceptedExchange = () => {
+        if (!interaction?.proposals) return false
+        return interaction.proposals.some(proposal => proposal.status === 'accepted')
+    }
+
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !interaction || !currentUserId) {
             console.log('❌ Validación fallida:', {
@@ -1881,6 +1887,20 @@ export default function InteraccionDetailPage() {
                                                    </div>
                                                ) : (
                                                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                                                       {/* Indicador de intercambio aceptado */}
+                                                       {hasAcceptedExchange() && (
+                                                           <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                                                               <div className="flex items-center space-x-2">
+                                                                   <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                   </svg>
+                                                                   <p className="text-sm font-medium text-green-800">
+                                                                       Intercambio ya aceptado - Las nuevas propuestas están deshabilitadas
+                                                                   </p>
+                                                               </div>
+                                                           </div>
+                                                       )}
+                                                       
                                                        {interaction.proposals.map((proposal) => (
                                                            <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
                                                                <div className="flex items-start justify-between mb-2">
@@ -1932,17 +1952,29 @@ export default function InteraccionDetailPage() {
                                                                )}
                                                                
                                                                {/* Botones de acción para propuestas pendientes */}
-                                                               {proposal.status === 'pendiente' && currentUserId && proposal.receiverId && currentUserId === proposal.receiverId && (
+                                                               {proposal.status === 'pending' && currentUserId && (proposal as any).receiverId && currentUserId === (proposal as any).receiverId && (
                                                                    <div className="flex space-x-2 mt-3">
                                                                        <button
                                                                            onClick={() => handleRespondProposal(proposal.id, 'aceptar')}
-                                                                           className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                                                           disabled={hasAcceptedExchange()}
+                                                                           className={`px-3 py-1 text-xs rounded ${
+                                                                               hasAcceptedExchange() 
+                                                                                   ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                                                                                   : 'bg-green-600 text-white hover:bg-green-700'
+                                                                           }`}
+                                                                           title={hasAcceptedExchange() ? 'Ya hay un intercambio aceptado' : ''}
                                                                        >
                                                                            Aceptar
                                                                        </button>
                                                                        <button
                                                                             onClick={() => { setSelectedProposalId(proposal.id); setShowRejectProposalModal(true) }}
-                                                                           className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                                                            disabled={hasAcceptedExchange()}
+                                                                            className={`px-3 py-1 text-xs rounded ${
+                                                                                hasAcceptedExchange() 
+                                                                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                                                                                    : 'bg-red-600 text-white hover:bg-red-700'
+                                                                            }`}
+                                                                            title={hasAcceptedExchange() ? 'Ya hay un intercambio aceptado' : ''}
                                                                        >
                                                                            Rechazar
                                                                        </button>
