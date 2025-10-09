@@ -375,6 +375,7 @@ export default function InteraccionDetailPage() {
                         })(),
                         proposals: interactionData.proposals || [],
                         deliveries: interactionData.deliveries || [],
+                        userValidations: interactionData.userValidations || [],
                         chatId: interactionData.chatId || '',
                         proposerId: interactionData.proposer?.user_id ? String(interactionData.proposer.user_id) : undefined,
                         receiverId: interactionData.receiver?.user_id ? String(interactionData.receiver.user_id) : undefined,
@@ -382,6 +383,12 @@ export default function InteraccionDetailPage() {
                     }
                     
                     setInteraction(transformedInteraction)
+                    
+                    console.log('🔍 DEBUG: Interaction cargada:', {
+                        userValidations: transformedInteraction.userValidations,
+                        interactionId: transformedInteraction.id,
+                        currentUserId
+                    })
                 } else {
                     const errorText = await response.text()
                     console.error('❌ ERROR: Error cargando detalles:', response.status, errorText)
@@ -1596,9 +1603,17 @@ export default function InteraccionDetailPage() {
                                     const hasPendingValidation = (interaction?.proposals || []).some(p => p.status === 'pendiente_validacion')
                                     
                                     // Verificar si el usuario actual ya validó el encuentro
+                                    console.log('🔍 DEBUG: Verificando validaciones:', {
+                                        currentUserId,
+                                        userValidations: interaction?.userValidations,
+                                        interactionId
+                                    })
+                                    
                                     const userAlreadyValidated = interaction?.userValidations?.some(
                                         validation => validation.usuario_id === parseInt(currentUserId)
                                     ) || false
+                                    
+                                    console.log('🔍 DEBUG: userAlreadyValidated:', userAlreadyValidated)
                                     
                                     // Si el usuario ya validó, no mostrar el mensaje de validación pendiente
                                     if (userAlreadyValidated) return null
