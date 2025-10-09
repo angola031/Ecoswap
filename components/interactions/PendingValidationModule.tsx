@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import Swal from 'sweetalert2'
 
 interface PendingValidation {
   id: number
@@ -79,6 +80,8 @@ export default function PendingValidationModule({
     
     // Variables para el contador de tiempo (fuera del scope de didOpen)
     let countdownTimer: NodeJS.Timeout | null = null
+    let timeRemaining = 20
+    let canConfirm = false
     
     try {
       // Obtener información del intercambio para mostrar el nombre del usuario
@@ -181,13 +184,9 @@ export default function PendingValidationModule({
           const starButtons = document.querySelectorAll('.star-rating')
           let selectedRating = 0
           
-          // Variables para el contador de tiempo
-          let timeRemaining = 20
-          let canConfirm = false
-          
           // Función para actualizar el estado visual de validación
           const updateValidationState = () => {
-            const confirmButton = document.querySelector('.swal2-confirm') as HTMLElement
+            const confirmButton = document.querySelector('.swal2-confirm') as HTMLButtonElement
             if (confirmButton) {
               if (selectedRating > 0 && canConfirm) {
                 confirmButton.style.opacity = '1'
