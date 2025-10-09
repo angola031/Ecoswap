@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
       .from('intercambio')
       .select(`
         intercambio_id,
+        usuario_propone_id,
+        usuario_recibe_id,
         estado,
         fecha_propuesta,
         fecha_encuentro,
@@ -85,6 +87,7 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       )
     }
+    console.log('🔍 DEBUG: Intercambios obtenidos:', intercambios)
 
     // Transformar los datos para el frontend
     const transformedIntercambios = intercambios.map(intercambio => {
