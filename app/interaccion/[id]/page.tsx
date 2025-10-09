@@ -57,9 +57,16 @@ interface Message {
     sender: {
         id: string
         name: string
+        lastName?: string
         avatar: string
     }
-    type: 'text' | 'system' | 'proposal' | 'delivery'
+    type: 'text' | 'system' | 'proposal' | 'delivery' | 'image' | 'location'
+    metadata?: {
+        imageUrl?: string
+        fileName?: string
+        fileSize?: string
+        coordinates?: { lat: number; lng: number }
+    }
 }
 
 interface Proposal {
@@ -101,6 +108,7 @@ interface Delivery {
 
 interface Interaction {
     id: string
+    chatId?: string
     type: 'exchange' | 'purchase' | 'donation' | 'collaboration'
     status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
     title: string
@@ -118,6 +126,7 @@ interface Interaction {
 // Mock data para la interacción
 const mockInteraction: Interaction = {
     id: '1',
+    chatId: '1',
     type: 'exchange',
     status: 'in_progress',
     title: 'Intercambio Guitarra por Amplificador',
