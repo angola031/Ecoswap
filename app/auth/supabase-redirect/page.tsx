@@ -20,7 +20,6 @@ export default function SupabaseRedirectPage() {
 
                 // Si es un reset de contraseña, redirigir a la página de reset con tokens
                 if (type === 'recovery') {
-                    console.log('🔄 Procesando reset de contraseña...')
                     
                     // Construir URL con tokens para la página de reset
                     const resetUrl = new URL('/auth/reset-password', window.location.origin)
@@ -28,7 +27,6 @@ export default function SupabaseRedirectPage() {
                     if (accessToken) resetUrl.searchParams.set('access_token', accessToken)
                     if (refreshToken) resetUrl.searchParams.set('refresh_token', refreshToken)
                     
-                    console.log('🚀 Redirigiendo a:', resetUrl.toString())
                     router.replace(resetUrl.toString())
                     return
                 }

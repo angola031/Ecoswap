@@ -48,7 +48,6 @@ export async function GET(
 ) {
   try {
     const chatId = parseInt(params.chatId)
-    console.log('🔍 [API Proposals] Chat ID recibido:', chatId)
     
     if (isNaN(chatId)) {
       console.error('❌ [API Proposals] ID de chat inválido:', params.chatId)
@@ -56,7 +55,6 @@ export async function GET(
     }
 
     const userId = await getAuthUserId(request)
-    console.log('🔍 [API Proposals] Usuario ID:', userId)
     
     if (!userId) {
       console.error('❌ [API Proposals] Usuario no autenticado')
@@ -86,7 +84,6 @@ export async function GET(
     }
 
     // Obtener propuestas del chat
-    console.log('🔍 [API Proposals] Buscando propuestas para chat:', chatId)
     
     const { data: propuestas, error: propuestasError } = await supabaseAdmin
       .from('propuesta')
@@ -121,10 +118,6 @@ export async function GET(
       .eq('chat_id', chatId)
       .order('fecha_creacion', { ascending: false })
 
-    console.log('🔍 [API Proposals] Query result:', { 
-      propuestas: propuestas?.length || 0, 
-      error: propuestasError 
-    })
 
     if (propuestasError) {
       console.error('❌ [API Proposals] Error obteniendo propuestas:', propuestasError)
@@ -159,13 +152,6 @@ export async function GET(
       }
     }))
 
-    console.log('✅ [API Proposals] Propuestas transformadas:', transformedProposals.length)
-    console.log('📋 [API Proposals] Datos finales:', { 
-      chatId, 
-      userId, 
-      propuestasCount: transformedProposals.length,
-      propuestas: transformedProposals.map(p => ({ id: p.id, type: p.type, status: p.status }))
-    })
 
     return NextResponse.json({ data: transformedProposals })
   } catch (error) {

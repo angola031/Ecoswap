@@ -45,7 +45,7 @@ export async function getAuthenticatedUser(req?: NextRequest) {
       .eq('auth_user_id', user.id)
       .single()
 
-    let usuario = usuarioData
+    const usuario = usuarioData
     if (usuarioError || !usuario) {
       return { user: null, error: 'Usuario no encontrado en la base de datos' }
     }
@@ -106,7 +106,6 @@ export async function getAuthenticatedUserFromToken(authHeader: string) {
       console.error('Error obteniendo usuario de BD por auth_user_id:', usuarioError)
       
       // Intentar buscar por email y actualizar el auth_user_id
-      console.log('🔄 Buscando usuario por email...')
       
       try {
         const { data: existingUser, error: emailError } = await supabase
@@ -116,7 +115,6 @@ export async function getAuthenticatedUserFromToken(authHeader: string) {
           .single()
 
         if (emailError || !existingUser) {
-          console.log('🔄 Usuario no encontrado por email, creando nuevo...')
           
           // Crear usuario básico en la tabla usuario
           const { data: newUsuario, error: createError } = await supabase
@@ -140,13 +138,9 @@ export async function getAuthenticatedUserFromToken(authHeader: string) {
           }
 
           usuario = newUsuario
-          console.log('✅ Usuario creado exitosamente:', usuario.user_id)
           
         } else {
           // Usuario existe pero sin auth_user_id o con uno diferente
-          console.log('🔄 Usuario encontrado por email, actualizando auth_user_id...')
-          console.log('  - Auth User ID actual:', existingUser.auth_user_id)
-          console.log('  - Auth User ID nuevo:', user.id)
           
           // Actualizar el auth_user_id
           const { data: updatedUser, error: updateError } = await supabase
@@ -166,7 +160,6 @@ export async function getAuthenticatedUserFromToken(authHeader: string) {
           }
 
           usuario = updatedUser
-          console.log('✅ Usuario actualizado exitosamente:', usuario.user_id)
         }
         
       } catch (createError) {

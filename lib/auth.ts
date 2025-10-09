@@ -51,7 +51,6 @@ export interface AdminUser extends User {
 export async function registerUser(data: RegisterData): Promise<{ user: User | null; error: string | null; needsVerification?: boolean }> {
     try {
         // 1. Verificar si el usuario ya existe en la tabla USUARIO
-        console.log('🔍 DEBUG: registerUser - Verificando usuario existente para email:', data.email)
         
         const { data: existingUser, error: checkError } = await supabase
             .from('usuario')
@@ -66,7 +65,6 @@ export async function registerUser(data: RegisterData): Promise<{ user: User | n
             return { user: null, error: 'Error interno del servidor' }
         }
 
-        console.log('🔍 DEBUG: registerUser - Usuario existente encontrado:', existingUser)
 
         if (existingUser) {
             if (existingUser.activo) {
@@ -74,7 +72,6 @@ export async function registerUser(data: RegisterData): Promise<{ user: User | n
                     return { user: null, error: 'Este correo electrónico ya está registrado y verificado. Inicia sesión en su lugar.' }
                 } else {
                     // Usuario existe pero no está verificado - permitir reenvío de código
-                    console.log('🔍 DEBUG: registerUser - Usuario existe pero no verificado, permitiendo reenvío de código')
                 }
             } else {
                 return { user: null, error: 'Esta cuenta está desactivada. Contacta al soporte para reactivarla.' }
@@ -85,8 +82,6 @@ export async function registerUser(data: RegisterData): Promise<{ user: User | n
         // No necesitamos verificar manualmente ya que Supabase Auth maneja duplicados
 
         // 3. NUEVO FLUJO: Enviar código OTP al correo (no crear usuario todavía)
-        console.log('🔍 DEBUG: registerUser - Enviando código OTP a:', data.email)
-        console.log('🔍 DEBUG: registerUser - URL de redirección:', `${window.location.origin}/auth/callback`)
         
         const { data: otpData, error: otpError } = await supabase.auth.signInWithOtp({
             email: data.email,
@@ -111,7 +106,6 @@ export async function registerUser(data: RegisterData): Promise<{ user: User | n
             }
         }
 
-        console.log('✅ DEBUG: registerUser - Código OTP enviado exitosamente:', otpData)
         
         // 4. Indicar al frontend que debe mostrar la pantalla para ingresar el código
         return {
@@ -129,7 +123,6 @@ export async function registerUser(data: RegisterData): Promise<{ user: User | n
 // NUEVO: Solicitar código de verificación por email (puede usarse independiente del formulario completo)
 export async function requestRegistrationCode(data: RequestCodeData): Promise<{ error: string | null }> {
     try {
-        console.log('🔍 DEBUG: requestRegistrationCode - Enviando código OTP a:', data.email)
         
         const { data: otpData, error } = await supabase.auth.signInWithOtp({
             email: data.email,
@@ -145,7 +138,6 @@ export async function requestRegistrationCode(data: RequestCodeData): Promise<{ 
             return { error: error.message }
         }
         
-        console.log('✅ DEBUG: requestRegistrationCode - Código OTP enviado exitosamente:', otpData)
         return { error: null }
     } catch (e) {
         console.error('❌ ERROR: requestRegistrationCode - Excepción:', e)
@@ -192,7 +184,6 @@ export async function completeRegistrationWithCode(data: CompleteRegistrationDat
         const effectiveAuthUser = updateRes?.user || authUser
 
         // 3) Crear/actualizar el perfil en la tabla USUARIO con los datos correctos
-        console.log('🔍 DEBUG: completeRegistrationWithCode - Creando/actualizando perfil de usuario...')
         
         // Verificar si ya existe un usuario con este email
         const { data: existingUser, error: checkError } = await supabase
@@ -205,7 +196,6 @@ export async function completeRegistrationWithCode(data: CompleteRegistrationDat
         
         if (existingUser) {
             // Usuario ya existe, actualizar con los datos del formulario
-            console.log('🔍 DEBUG: completeRegistrationWithCode - Usuario existe, actualizando datos...')
             
             const { data: updatedUser, error: updateError } = await supabase
                 .from('usuario')
@@ -229,7 +219,6 @@ export async function completeRegistrationWithCode(data: CompleteRegistrationDat
             userData = updatedUser
         } else {
             // Usuario no existe, crear nuevo
-            console.log('🔍 DEBUG: completeRegistrationWithCode - Usuario no existe, creando nuevo...')
             
             const { data: newUser, error: createError } = await supabase
                 .from('usuario')
@@ -275,7 +264,6 @@ export async function completeRegistrationWithCode(data: CompleteRegistrationDat
                 })
         }
         
-        console.log('✅ DEBUG: completeRegistrationWithCode - Usuario obtenido exitosamente:', userData)
         
         // Crear objeto User para el frontend
         const user: User = {
@@ -329,7 +317,6 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
     const nombre = registerData.firstName.trim()
     const apellido = registerData.lastName.trim()
     
-    console.log('🔍 DEBUG: createUserProfile - Nombre recibido:', { nombre, apellido })
 
     // Crear el usuario en la tabla USUARIO (usando la estructura existente)
     // Campos mínimos requeridos según el esquema
@@ -358,8 +345,6 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
     }
     
     try {
-      console.log('🔍 DEBUG: Intentando insertar usuario con datos completos')
-      console.log('🔍 DEBUG: Datos a insertar:', JSON.stringify(userData, null, 2))
       
       const { data: newUser, error: insertError } = await supabase
         .from('usuario')
@@ -386,8 +371,6 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
           auth_user_id: authUser.id
         }
         
-        console.log('🔍 DEBUG: Intentando inserción con campos mínimos')
-        console.log('🔍 DEBUG: Datos mínimos:', JSON.stringify(minimalUserData, null, 2))
         
         const { data: newUserMinimal, error: insertErrorMinimal } = await supabase
           .from('usuario')
@@ -537,7 +520,6 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
             } catch (createError: any) {
                 // Si falla por duplicado, intentar obtener el usuario existente
                 if (createError.code === '23505') {
-                    console.log('🔄 Usuario ya existe, obteniendo perfil existente...')
                     const { data: existingUser, error: existingError } = await supabase
                         .from('usuario')
                         .select('*')
@@ -593,7 +575,6 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
 
         // Actualizar última conexión y marcar como activo (solo si no está ya activo)
         if (!user.activo) {
-            console.log('🔄 Reactivando usuario inactivo...')
         }
         await supabase
             .from('usuario')
@@ -644,7 +625,6 @@ async function createUserProfileWithData(authUser: any, formData: CompleteRegist
     const nombre = formData.firstName.trim()
     const apellido = formData.lastName.trim()
     
-    console.log('🔍 DEBUG: createUserProfileWithData - Datos del formulario:', { nombre, apellido })
 
     // Crear el usuario en la tabla USUARIO (usando la estructura existente)
     const userDataToInsert = {
@@ -665,13 +645,11 @@ async function createUserProfileWithData(authUser: any, formData: CompleteRegist
         auth_user_id: authUser.id // Agregar el auth_user_id requerido
     }
     
-    console.log('🔍 DEBUG: createUserProfileFromAuth - Intentando insertar usuario')
     console.log('🔍 DEBUG: createUserProfileFromAuth - AuthUser:', {
         id: authUser.id,
         email: authUser.email,
         user_metadata: authUser.user_metadata
     })
-    console.log('🔍 DEBUG: createUserProfileFromAuth - Datos a insertar:', JSON.stringify(userDataToInsert, null, 2))
     
     const { data: newUser, error: insertError } = await supabase
         .from('usuario')
@@ -695,7 +673,6 @@ async function createUserProfileWithData(authUser: any, formData: CompleteRegist
         throw insertError
     }
     
-    console.log('✅ DEBUG: createUserProfileFromAuth - Usuario creado exitosamente:', newUser)
 
     // Crear ubicación principal usando datos del formulario
     if (formData.location) {
@@ -755,12 +732,9 @@ async function createUserProfileWithData(authUser: any, formData: CompleteRegist
 // Función para verificar si el usuario actual está verificado
 export async function isUserVerified(): Promise<boolean> {
     try {
-        console.log('🔍 DEBUG: isUserVerified - Iniciando verificación...')
         const { data: { user } } = await supabase.auth.getUser()
-        console.log('🔍 DEBUG: isUserVerified - Usuario de auth:', user?.email, 'ID:', user?.id)
         
         if (!user?.id) {
-            console.log('🔍 DEBUG: isUserVerified - No hay usuario autenticado')
             return false
         }
 
@@ -771,16 +745,12 @@ export async function isUserVerified(): Promise<boolean> {
             .eq('auth_user_id', user.id)
             .single()
 
-        console.log('🔍 DEBUG: isUserVerified - Usuario en BD:', usuario)
-        console.log('🔍 DEBUG: isUserVerified - Error:', error)
 
         if (error || !usuario) {
-            console.log('🔍 DEBUG: isUserVerified - Error o usuario no encontrado:', error?.message)
             return false
         }
         
         const isVerified = usuario.verificado === true
-        console.log('🔍 DEBUG: isUserVerified - Estado verificado:', isVerified)
         return isVerified
     } catch (error) {
         console.error('❌ ERROR: isUserVerified - Error verificando estado del usuario:', error)
@@ -793,8 +763,6 @@ async function createUserProfileFromAuth(authUser: any): Promise<User> {
     const name = authUser.user_metadata?.name || 'Usuario'
     const { nombre, apellido } = splitFullName(name)
     
-    console.log('🔍 DEBUG: createUserProfileFromAuth - Nombre completo:', name)
-    console.log('🔍 DEBUG: createUserProfileFromAuth - Nombre separado:', { nombre, apellido })
 
     // Crear el usuario en la tabla USUARIO (usando la estructura existente)
     const userDataToInsert = {
@@ -815,13 +783,11 @@ async function createUserProfileFromAuth(authUser: any): Promise<User> {
         auth_user_id: authUser.id // Agregar el auth_user_id requerido
     }
     
-    console.log('🔍 DEBUG: createUserProfileFromAuth - Intentando insertar usuario')
     console.log('🔍 DEBUG: createUserProfileFromAuth - AuthUser:', {
         id: authUser.id,
         email: authUser.email,
         user_metadata: authUser.user_metadata
     })
-    console.log('🔍 DEBUG: createUserProfileFromAuth - Datos a insertar:', JSON.stringify(userDataToInsert, null, 2))
     
     const { data: newUser, error: insertError } = await supabase
         .from('usuario')
@@ -838,7 +804,6 @@ async function createUserProfileFromAuth(authUser: any): Promise<User> {
         throw insertError
     }
     
-    console.log('✅ DEBUG: createUserProfileFromAuth - Usuario creado exitosamente:', newUser)
 
     // Crear ubicación principal si se proporciona
     if (authUser.user_metadata?.location) {
@@ -992,7 +957,6 @@ export async function logoutUser(): Promise<void> {
                 if (updateError) {
                     console.error('Error actualizando estado del usuario:', updateError)
                 } else {
-                    console.log('✅ Estado del usuario actualizado a inactivo')
                 }
             } catch (dbError) {
                 console.error('Error en actualización de base de datos:', dbError)
@@ -1001,7 +965,6 @@ export async function logoutUser(): Promise<void> {
         
         // Limpiar localStorage
         localStorage.removeItem(config.auth.sessionKey)
-        console.log('🚪 Usuario desconectado y marcado como inactivo')
         
     } catch (error) {
         console.error('Error en logout:', error)
@@ -1103,8 +1066,6 @@ export async function verifyEmailAndCreateProfile(token: string): Promise<{ user
         const fullName = userMetadata.name || (authData.user.email ? authData.user.email.split('@')[0] : 'Usuario')
         const { nombre, apellido } = splitFullName(fullName)
         
-        console.log('🔍 DEBUG: loginUser - Nombre completo:', fullName)
-        console.log('🔍 DEBUG: loginUser - Nombre separado:', { nombre, apellido })
 
         // Crear el perfil del usuario
         const { data: newUser, error: insertError } = await supabase

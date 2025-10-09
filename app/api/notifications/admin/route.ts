@@ -20,7 +20,6 @@ export async function POST(request: NextRequest) {
             }, { status: 400 })
         }
 
-        console.log('📢 Creando notificación de verificación para administradores...')
 
         // Obtener todos los administradores activos
         const { data: admins, error: adminsError } = await supabase
@@ -41,11 +40,9 @@ export async function POST(request: NextRequest) {
         }
 
         if (!admins || admins.length === 0) {
-            console.log('⚠️ No se encontraron administradores activos')
             return NextResponse.json({ error: 'No hay administradores activos' }, { status: 404 })
         }
 
-        console.log(`📋 Encontrados ${admins.length} administradores activos`)
 
         // Crear notificaciones para cada administrador
         const notifications = admins.map(admin => ({
@@ -77,7 +74,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Error creando notificaciones' }, { status: 500 })
         }
 
-        console.log(`✅ ${createdNotifications?.length || 0} notificaciones creadas para administradores`)
 
         return NextResponse.json({ 
             success: true,

@@ -257,10 +257,7 @@ export default function InteraccionDetailPage() {
 
                 const userId = usuario.user_id.toString()
                 setCurrentUserId(userId)
-                console.log('🔍 DEBUG: Usuario actual ID (auth):', session.user.id)
-                console.log('🔍 DEBUG: Usuario actual ID (user_id):', userId)
 
-                console.log('🔍 DEBUG: Cargando detalles de interacción:', interactionId)
 
                 // Cargar detalles de la interacción desde la API
                 const response = await fetch(`/api/interactions/${interactionId}`, {
@@ -269,14 +266,9 @@ export default function InteraccionDetailPage() {
                     }
                 })
 
-                console.log('🔍 DEBUG: Response status:', response.status)
 
                 if (response.ok) {
                     const data = await response.json()
-                    console.log('✅ SUCCESS: Detalles cargados:', data)
-                    console.log('🔍 DEBUG: Estructura de datos recibida:', JSON.stringify(data, null, 2))
-                    console.log('🔍 DEBUG: Mensajes en datos:', data.messages)
-                    console.log('🔍 DEBUG: Cantidad de mensajes:', data.messages?.length || 0)
                     
                     // La API devuelve directamente el InteractionDetail, no envuelto en 'interaction'
                     const interactionData = data
@@ -317,9 +309,6 @@ export default function InteraccionDetailPage() {
                         createdAt: interactionData.createdAt || new Date().toISOString(),
                         updatedAt: interactionData.updatedAt || new Date().toISOString(),
                         messages: (() => {
-                            console.log('🔍 DEBUG: Transformando mensajes:', interactionData.messages)
-                            console.log('🔍 DEBUG: Tipo de mensajes:', typeof interactionData.messages)
-                            console.log('🔍 DEBUG: Es array?:', Array.isArray(interactionData.messages))
                             return interactionData.messages || []
                         })(),
                         proposals: interactionData.proposals || [],
@@ -330,9 +319,6 @@ export default function InteraccionDetailPage() {
                         isUrgent: false
                     }
                     
-                    console.log('✅ SUCCESS: Interacción transformada:', transformedInteraction)
-                    console.log('🔍 DEBUG: chatId en interactionData:', interactionData.chatId)
-                    console.log('🔍 DEBUG: chatId en transformedInteraction:', transformedInteraction.chatId)
                     setInteraction(transformedInteraction)
                 } else {
                     const errorText = await response.text()
@@ -405,7 +391,6 @@ export default function InteraccionDetailPage() {
             if (!chatId) return
             
             try {
-                console.log('🔄 [InteractionDetail] Cargando mensajes frescos para chat:', chatId)
                 
                 const { data: { session } } = await supabase.auth.getSession()
                 const token = session?.access_token
@@ -484,7 +469,6 @@ export default function InteraccionDetailPage() {
                 
             } catch (error) {
                 if (error.name === 'AbortError') {
-                    console.log('⏱️ [InteractionDetail] Timeout cargando mensajes')
                 } else {
                     console.error('❌ [InteractionDetail] Error cargando mensajes:', error)
                 }
@@ -500,7 +484,6 @@ export default function InteraccionDetailPage() {
     useEffect(() => {
         // Limpiar canal anterior
         if (realtimeChannel) {
-            console.log('🔌 [InteractionDetail] Removiendo canal realtime anterior')
             supabase.removeChannel(realtimeChannel)
             setRealtimeChannel(null)
         }
@@ -517,7 +500,6 @@ export default function InteraccionDetailPage() {
             return
         }
 
-        console.log('🔗 [InteractionDetail] Configurando realtime para chat:', chatIdNumber)
 
         // Crear canal realtime
         const channel = supabase
@@ -528,7 +510,6 @@ export default function InteraccionDetailPage() {
                 table: 'mensaje',
                 filter: `chat_id=eq.${chatIdNumber}`
             }, (payload: any) => {
-                console.log('📨 [InteractionDetail] Nuevo mensaje realtime recibido:', payload)
                 
                 const m = payload.new
                 if (!m) return
@@ -537,14 +518,12 @@ export default function InteraccionDetailPage() {
                 
                 // No procesar nuestros propios mensajes (ya los mostramos optimísticamente)
                 if (String(m.usuario_id) === currentUserId) {
-                    console.log('⚠️ [InteractionDetail] Ignorando mensaje propio en realtime:', messageId)
                     return
                 }
 
                 // Verificar si el mensaje ya existe
                 const messageExists = interaction?.messages.some(msg => msg.id === messageId)
                 if (messageExists) {
-                    console.log('⚠️ [InteractionDetail] Mensaje ya existe, ignorando:', messageId)
                     return
                 }
 
@@ -552,7 +531,6 @@ export default function InteraccionDetailPage() {
                 const messageTime = new Date(m.fecha_envio).getTime()
                 const now = Date.now()
                 if (now - messageTime < 5000) {
-                    console.log('⚠️ [InteractionDetail] Mensaje muy reciente, posible duplicado, ignorando:', messageId)
                     return
                 }
 
@@ -603,7 +581,6 @@ export default function InteraccionDetailPage() {
                         metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
                     }
 
-                    console.log('✅ [InteractionDetail] Agregando mensaje realtime:', incomingMessage)
 
                     // Actualizar interacción con el nuevo mensaje
                     setInteraction(prev => {
@@ -641,7 +618,6 @@ export default function InteraccionDetailPage() {
                         metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
                     }
 
-                    console.log('⚠️ [InteractionDetail] Agregando mensaje realtime con fallback:', fallbackMessage)
 
                     // Actualizar interacción con el mensaje fallback
                     setInteraction(prev => {
@@ -664,22 +640,18 @@ export default function InteraccionDetailPage() {
                 })
             })
             .subscribe((status) => {
-                console.log('🔌 [InteractionDetail] Estado realtime:', status)
                 if (status === 'SUBSCRIBED') {
-                    console.log('✅ [InteractionDetail] Realtime conectado exitosamente para chat:', chatIdNumber)
                 } else if (status === 'CHANNEL_ERROR') {
                     console.error('❌ [InteractionDetail] Error en canal realtime para chat:', chatIdNumber)
                 } else if (status === 'TIMED_OUT') {
                     console.error('❌ [InteractionDetail] Timeout en canal realtime para chat:', chatIdNumber)
                 } else if (status === 'CLOSED') {
-                    console.log('🔌 [InteractionDetail] Canal realtime cerrado para chat:', chatIdNumber)
                 }
             })
 
         setRealtimeChannel(channel)
 
         return () => {
-            console.log('🔌 [InteractionDetail] Limpiando canal realtime para chat:', chatIdNumber)
             if (channel) {
                 supabase.removeChannel(channel)
             }
@@ -710,7 +682,6 @@ export default function InteraccionDetailPage() {
                     const newMessages = data.items || []
                     
                     if (newMessages.length > 0) {
-                        console.log('📨 [InteractionDetail] Polling: Nuevos mensajes encontrados:', newMessages.length)
                         
                         const transformedMessages = newMessages
                             .filter((m: any) => {
@@ -749,7 +720,6 @@ export default function InteraccionDetailPage() {
                             }))
 
                         if (transformedMessages.length > 0) {
-                            console.log('✅ [InteractionDetail] Polling: Agregando mensajes:', transformedMessages.length)
                             
                             setInteraction(prev => {
                                 if (!prev) return null
@@ -773,7 +743,6 @@ export default function InteraccionDetailPage() {
                     }
                 }
             } catch (error) {
-                console.log('⚠️ [InteractionDetail] Error en polling:', error)
             }
         }
 
@@ -895,7 +864,6 @@ export default function InteraccionDetailPage() {
             return
         }
 
-        console.log('📤 [InteractionDetail] Enviando mensaje:', { message: messageContent, chatId: chatIdNumber, currentUserId })
 
         const tempId = `temp-${Date.now()}-${Math.random()}`
         const now = new Date()
@@ -945,7 +913,6 @@ export default function InteraccionDetailPage() {
                 return
             }
 
-            console.log('📤 [InteractionDetail] Enviando mensaje al servidor:', messageContent)
             
             // Usar AbortController para timeout
             const controller = new AbortController()
@@ -969,7 +936,6 @@ export default function InteraccionDetailPage() {
             const json = await res.json()
             if (!res.ok) throw new Error(json?.error || 'Error al enviar')
             
-            console.log('✅ [InteractionDetail] Mensaje confirmado por servidor:', json.message)
             
             // Reemplazar mensaje temporal con el real (con ID del servidor)
             const realMessage: Message = {
@@ -1488,8 +1454,8 @@ export default function InteraccionDetailPage() {
                                                 const token = session?.access_token
                                                 if (!token) return
                                                 // Determinar a quién vas a calificar: el otro usuario de la interacción
-                                                let otherName = interaction?.otherUser?.name || 'Usuario'
-                                                let otherAvatar = interaction?.otherUser?.avatar || '/default-avatar.png'
+                                                const otherName = interaction?.otherUser?.name || 'Usuario'
+                                                const otherAvatar = interaction?.otherUser?.avatar || '/default-avatar.png'
                                                 const result = await (window as any).Swal.fire({
                                                     title: '¿El encuentro fue exitoso?',
                                                     html: `
@@ -1722,7 +1688,6 @@ export default function InteraccionDetailPage() {
                                                                             className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200"
                                                                             onClick={() => {
                                                                                 // Aquí podrías abrir un modal de imagen si lo implementas
-                                                                                console.log('Abrir imagen:', message.metadata.imageUrl)
                                                                             }}
                                                                         />
                                                                     </div>

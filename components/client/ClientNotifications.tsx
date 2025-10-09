@@ -30,16 +30,13 @@ export default function ClientNotifications() {
 
             // Obtener el usuario actual
             const { data: { user } } = await supabase.auth.getUser()
-            console.log('🔔 [ClientNotifications] Usuario autenticado:', user?.email)
             
             if (!user) {
-                console.log('🔔 [ClientNotifications] Usuario no autenticado')
                 setError('Usuario no autenticado')
                 return
             }
 
             // Obtener el ID del usuario de la tabla usuario
-            console.log('🔔 [ClientNotifications] Buscando usuario en BD con email:', user.email)
             const { data: userData, error: userError } = await supabase
                 .from('usuario')
                 .select('user_id')
@@ -52,10 +49,8 @@ export default function ClientNotifications() {
                 return
             }
 
-            console.log('🔔 [ClientNotifications] Usuario encontrado en BD:', userData.user_id)
 
             // Obtener notificaciones del usuario
-            console.log('🔔 [ClientNotifications] Buscando notificaciones para usuario:', userData.user_id)
             const { data, error } = await supabase
                 .from('notificacion')
                 .select(`
@@ -81,8 +76,6 @@ export default function ClientNotifications() {
                 return
             }
 
-            console.log('🔔 [ClientNotifications] Notificaciones obtenidas:', data?.length || 0)
-            console.log('🔔 [ClientNotifications] Datos de notificaciones:', data)
 
             setNotifications(data || [])
             setUnreadCount(data?.filter(n => !n.leida).length || 0)

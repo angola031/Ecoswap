@@ -24,13 +24,10 @@ export default function ResetPasswordPage() {
 
         // Obtener información del usuario actual
         const getUserInfo = async () => {
-            console.log('🔍 Verificando usuario en reset password...')
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
-                console.log('✅ Usuario autenticado encontrado:', user.email)
                 setUserInfo(user)
             } else {
-                console.log('⚠️ No hay usuario autenticado, buscando tokens...')
                 
                 // Buscar tokens en query parameters (de la reactivación)
                 const accessToken = searchParams.get('access_token')
@@ -51,7 +48,6 @@ export default function ResetPasswordPage() {
                 })
 
                 if (finalAccessToken && finalRefreshToken) {
-                    console.log('🔐 Estableciendo sesión con tokens...')
                     // Establecer la sesión con los tokens
                     const { data, error } = await supabase.auth.setSession({
                         access_token: finalAccessToken,
@@ -65,11 +61,9 @@ export default function ResetPasswordPage() {
                     }
 
                     if (data.user) {
-                        console.log('✅ Sesión establecida exitosamente:', data.user.email)
                         setUserInfo(data.user)
                     }
                 } else {
-                    console.log('❌ No hay tokens disponibles, redirigiendo al login')
                     // Si no hay tokens y no hay sesión, redirigir al login de admin
                     router.push('/login')
                 }
@@ -104,14 +98,11 @@ export default function ResetPasswordPage() {
                 setError(error.message)
             } else {
                 setSuccess(true)
-                console.log('✅ Contraseña actualizada exitosamente')
                 // Redirigir después de 3 segundos al dashboard correcto
                 setTimeout(() => {
                     if (isReactivation) {
-                        console.log('🔄 Redirigiendo al dashboard de admin...')
                         router.push('/admin/verificaciones')
                     } else {
-                        console.log('🔄 Redirigiendo al dashboard...')
                         router.push('/admin/verificaciones')
                     }
                 }, 3000)

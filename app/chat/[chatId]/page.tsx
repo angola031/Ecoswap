@@ -188,7 +188,6 @@ function ChatPageContent() {
   const addMessageIfNotExists = (messages: ChatMessage[], newMessage: ChatMessage): ChatMessage[] => {
     const exists = messages.some(msg => msg.id === newMessage.id)
     if (exists) {
-      console.log('⚠️ [ChatPage] Mensaje duplicado detectado, ignorando:', newMessage.id)
       return messages
     }
     return [...messages, newMessage].sort((a, b) => Number(a.id) - Number(b.id))
@@ -212,18 +211,14 @@ function ChatPageContent() {
               const userData = await response.json()
               setCurrentUserId(String(userData.user_id))
               setCurrentUserInfo(userData)
-              console.log('👤 [ChatPage] Usuario actual establecido:', userData.user_id, userData)
-              console.log('🖼️ [ChatPage] Foto del usuario:', userData.foto_perfil)
             } else {
               // Fallback al auth user ID si no se puede obtener el user_id
               setCurrentUserId(user.id)
               setCurrentUserInfo({ user_id: user.id, nombre: 'Usuario', apellido: '', foto_perfil: null })
-              console.log('👤 [ChatPage] Usando auth user ID como fallback:', user.id)
             }
           } else {
             setCurrentUserId(user.id)
             setCurrentUserInfo({ user_id: user.id, nombre: 'Usuario', apellido: '', foto_perfil: null })
-            console.log('👤 [ChatPage] Usando auth user ID:', user.id)
           }
         }
       } catch (error) {
@@ -270,7 +265,6 @@ function ChatPageContent() {
         }
         
         if (isMounted) {
-          console.log('📦 [ChatPage] Información del chat cargada:', data.data)
           setChatInfo(data.data)
         }
       } catch (error) {
@@ -300,12 +294,10 @@ function ChatPageContent() {
       if (!chatId || !currentUserId || !isMounted) return
       
       try {
-        console.log('📨 [ChatPage] Cargando mensajes para chat:', chatId)
         
         // Obtener token de sesión
         const { data: { session } } = await supabase.auth.getSession()
         if (!session?.access_token) {
-          console.log('❌ [ChatPage] No hay token para cargar mensajes')
           return
         }
         
@@ -315,13 +307,11 @@ function ChatPageContent() {
           }
         })
         
-        console.log('📨 [ChatPage] Respuesta de mensajes:', { status: response.status, ok: response.ok })
         
         if (response.ok && isMounted) {
           const data = await response.json()
           const messagesData = data.items || data.data || []
           
-          console.log('📨 [ChatPage] Mensajes cargados:', messagesData.length)
           
           // Transformar mensajes al formato esperado
           const transformedMessages = messagesData.map((msg: any) => {
@@ -357,7 +347,6 @@ function ChatPageContent() {
           // Ordenar mensajes por ID (del más antiguo al más reciente)
           const sortedMessages = transformedMessages.sort((a, b) => Number(a.id) - Number(b.id))
           
-          console.log('📨 [ChatPage] Mensajes ordenados:', sortedMessages.length, 'primer mensaje ID:', sortedMessages[0]?.id, 'último mensaje ID:', sortedMessages[sortedMessages.length - 1]?.id)
           
           setMessages(sortedMessages)
         } else {
@@ -431,18 +420,15 @@ function ChatPageContent() {
   useEffect(() => {
     // Limpiar canal anterior
     if (realtimeChannel) {
-      console.log('🔌 [ChatPage] Removiendo canal realtime anterior')
       supabase.removeChannel(realtimeChannel)
       setRealtimeChannel(null)
     }
 
     const chatIdNum = Number(chatId)
     if (!chatIdNum || !currentUserId) {
-      console.log('⚠️ [ChatPage] No hay chatId o currentUserId para realtime')
       return
     }
 
-    console.log('🔗 [ChatPage] Configurando realtime para chat:', chatIdNum)
 
     // Crear canal más simple y directo
     const channel = supabase
@@ -453,7 +439,6 @@ function ChatPageContent() {
         table: 'mensaje',
         filter: `chat_id=eq.${chatIdNum}`
       }, (payload: any) => {
-        console.log('📨 [ChatPage] Nuevo mensaje realtime recibido:', payload)
         
         const m = payload.new
         if (!m) return
@@ -463,14 +448,12 @@ function ChatPageContent() {
         
         // No procesar nuestros propios mensajes
         if (String(m.usuario_id) === currentUserIdStr) {
-          console.log('⚠️ [ChatPage] Ignorando mensaje propio en realtime:', messageId)
           return
         }
 
         // Verificar si el mensaje ya existe
         const messageExists = messages.some(msg => msg.id === messageId)
         if (messageExists) {
-          console.log('⚠️ [ChatPage] Mensaje ya existe, ignorando:', messageId)
           return
         }
 
@@ -478,7 +461,6 @@ function ChatPageContent() {
         const messageTime = new Date(m.fecha_envio).getTime()
         const now = Date.now()
         if (now - messageTime < 5000) {
-          console.log('⚠️ [ChatPage] Mensaje muy reciente, posible duplicado con polling, ignorando:', messageId)
           return
         }
 
@@ -510,7 +492,6 @@ function ChatPageContent() {
           }
         }
 
-        console.log('✅ [ChatPage] Agregando mensaje realtime:', incoming)
 
         // Actualizar mensajes usando función helper para evitar duplicados
         setMessages(prev => addMessageIfNotExists(prev, incoming))
@@ -526,22 +507,18 @@ function ChatPageContent() {
         }, 100)
       })
       .subscribe((status) => {
-        console.log('🔌 [ChatPage] Estado realtime:', status)
         if (status === 'SUBSCRIBED') {
-          console.log('✅ [ChatPage] Realtime conectado exitosamente para chat:', chatIdNum)
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ [ChatPage] Error en canal realtime para chat:', chatIdNum)
         } else if (status === 'TIMED_OUT') {
           console.error('❌ [ChatPage] Timeout en canal realtime para chat:', chatIdNum)
         } else if (status === 'CLOSED') {
-          console.log('🔌 [ChatPage] Canal realtime cerrado para chat:', chatIdNum)
         }
       })
 
     setRealtimeChannel(channel)
 
     return () => {
-      console.log('🔌 [ChatPage] Limpiando canal realtime para chat:', chatIdNum)
       if (channel) {
         supabase.removeChannel(channel)
       }
@@ -572,7 +549,6 @@ function ChatPageContent() {
           const newMessages = data.items || []
           
           if (newMessages.length > 0) {
-            console.log('📨 [ChatPage] Polling: Nuevos mensajes encontrados:', newMessages.length)
             
             const transformedMessages = newMessages
               .filter((m: any) => {
@@ -628,7 +604,6 @@ function ChatPageContent() {
               })
 
             if (transformedMessages.length > 0) {
-              console.log('✅ [ChatPage] Polling: Agregando mensajes:', transformedMessages.length)
               
               setMessages(prev => {
                 let updatedMessages = prev
@@ -645,7 +620,6 @@ function ChatPageContent() {
           }
         }
       } catch (error) {
-        console.log('⚠️ [ChatPage] Error en polling:', error)
       }
     }
 
@@ -887,7 +861,6 @@ function ChatPageContent() {
       }
       
       const data = await response.json()
-      console.log('✅ [ChatPage] Mensaje enviado exitosamente:', data)
       
       // Reemplazar mensaje temporal con el real
       setMessages(prev => {
@@ -1117,7 +1090,6 @@ function ChatPageContent() {
           if (response.ok) {
             const data = await response.json()
             imageUrl = data.data.url
-            console.log('✅ Imagen subida exitosamente:', imageUrl)
           } else {
             const errorData = await response.json()
             console.error('❌ Error subiendo imagen:', errorData)
@@ -1374,9 +1346,7 @@ function ChatPageContent() {
       })
 
       if (response.ok) {
-        console.log('✅ [ChatPage] Notificación push enviada exitosamente')
       } else {
-        console.log('⚠️ [ChatPage] Error enviando notificación push:', response.status)
       }
     } catch (error) {
       console.error('❌ [ChatPage] Error enviando notificación push:', error)
@@ -1424,9 +1394,7 @@ function ChatPageContent() {
       })
 
       if (apiResponse.ok) {
-        console.log('✅ [ChatPage] Notificación push de respuesta enviada exitosamente')
       } else {
-        console.log('⚠️ [ChatPage] Error enviando notificación push de respuesta:', apiResponse.status)
       }
     } catch (error) {
       console.error('❌ [ChatPage] Error enviando notificación push de respuesta:', error)
@@ -1485,7 +1453,6 @@ function ChatPageContent() {
     setMessages(prev => [...prev, acceptMessage])
     
     // Aquí puedes implementar lógica adicional para actualizar el estado del intercambio
-    console.log('Intercambio aceptado por el usuario')
   }
 
   // Funciones para manejo de imágenes
@@ -1564,7 +1531,6 @@ function ChatPageContent() {
   const uploadImageWithComment = async () => {
     if (!imagePreview.file || !chatId || !currentUserId || !currentUserInfo) return
 
-    console.log('📤 [ChatPage] Subiendo imagen con comentario...')
 
     // Crear mensaje temporal optimista
     const tempId = `temp-image-${Date.now()}`
@@ -1649,7 +1615,6 @@ function ChatPageContent() {
       }
 
       const uploadData = await uploadResponse.json()
-      console.log('✅ [ChatPage] Imagen subida exitosamente:', uploadData.data)
 
       // Ahora enviar el mensaje con la imagen al chat
       const messageResponse = await fetch(`/api/chat/${chatId}/messages`, {
@@ -1671,7 +1636,6 @@ function ChatPageContent() {
       }
 
       const messageData = await messageResponse.json()
-      console.log('✅ [ChatPage] Mensaje con imagen enviado:', messageData)
 
       // Reemplazar mensaje temporal con el real
       setMessages(prev => prev.map(msg => 
@@ -1802,28 +1766,20 @@ function ChatPageContent() {
             <div className="flex items-center space-x-4">
               <button 
                 onClick={() => {
-                  console.log('🔙 [ChatPage] Botón volver presionado')
-                  console.log('📦 [ChatPage] chatInfo:', chatInfo)
-                  console.log('📦 [ChatPage] offeredProduct:', chatInfo?.offeredProduct)
                   
                   // Intentar obtener el ID del producto de diferentes maneras
                   let productId = null
                   
                   if (chatInfo?.offeredProduct?.id) {
                     productId = chatInfo.offeredProduct.id
-                    console.log('✅ [ChatPage] Product ID desde id:', productId)
                   } else if (chatInfo?.offeredProduct?.id) {
                     productId = chatInfo.offeredProduct.id
-                    console.log('✅ [ChatPage] Product ID desde id:', productId)
                   }
                   
-                  console.log('🆔 [ChatPage] Product ID final:', productId)
                   
                   if (productId) {
-                    console.log('✅ [ChatPage] Redirigiendo a producto:', productId)
                     router.push(`/producto/${productId}`)
                   } else {
-                    console.log('⚠️ [ChatPage] No se encontró product ID, redirigiendo a productos')
                     // En lugar de router.back(), redirigir a la página principal con módulo de productos
                     router.push('/?m=products')
                   }

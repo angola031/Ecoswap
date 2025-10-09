@@ -183,13 +183,10 @@ function HomeScreen({ stats, currentUser }: { stats: any, currentUser: User | nu
     }
 
     // Si está autenticado, verificar si está verificado
-    console.log('🔍 DEBUG: Verificando estado del usuario desde HomeScreen...')
     const { isUserVerified } = await import('@/lib/auth')
     const isVerified = await isUserVerified()
-    console.log('🔍 DEBUG: Usuario verificado desde HomeScreen:', isVerified)
     
     if (!isVerified) {
-      console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde HomeScreen...')
       // Mostrar mensaje de verificación requerida
       const result = await (window as any).Swal.fire({
         title: 'Verificación Requerida',

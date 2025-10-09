@@ -3,7 +3,6 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🧪 [Test Proposals] Iniciando prueba de conexión...')
 
     // Probar conexión básica a la tabla propuesta
     const { data: propuestas, error } = await supabaseAdmin
@@ -20,7 +19,6 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    console.log('✅ [Test Proposals] Consulta exitosa:', propuestas?.length || 0, 'propuestas encontradas')
 
     // Probar consulta con joins
     const { data: propuestasConJoins, error: joinError } = await supabaseAdmin
@@ -55,7 +53,6 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    console.log('✅ [Test Proposals] Consulta con joins exitosa:', propuestasConJoins?.length || 0, 'propuestas')
 
     // Probar consulta de chats
     const { data: chats, error: chatError } = await supabaseAdmin
@@ -73,7 +70,6 @@ export async function GET(request: NextRequest) {
     if (chatError) {
       console.error('❌ [Test Proposals] Error en consulta de chats:', chatError)
     } else {
-      console.log('✅ [Test Proposals] Consulta de chats exitosa:', chats?.length || 0, 'chats')
     }
 
     return NextResponse.json({

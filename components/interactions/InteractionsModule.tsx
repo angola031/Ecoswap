@@ -56,10 +56,6 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                 // Obtener sesión de Supabase
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession()
                 
-                console.log('🔍 DEBUG: Session error:', sessionError)
-                console.log('🔍 DEBUG: Session exists:', !!session)
-                console.log('🔍 DEBUG: Access token exists:', !!session?.access_token)
-                console.log('🔍 DEBUG: Token length:', session?.access_token?.length)
                 
                 if (!session?.access_token) {
                     console.error('❌ ERROR: No hay token de sesión')
@@ -76,9 +72,6 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                     params.append('status', filterStatus)
                 }
 
-                console.log('🔍 DEBUG: Making request to /api/interactions')
-                console.log('🔍 DEBUG: Request URL:', `/api/interactions?${params.toString()}`)
-                console.log('🔍 DEBUG: Authorization header:', `Bearer ${session.access_token.substring(0, 20)}...`)
 
                 const response = await fetch(`/api/interactions?${params.toString()}`, {
                     headers: {
@@ -86,12 +79,9 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                     }
                 })
 
-                console.log('🔍 DEBUG: Response status:', response.status)
-                console.log('🔍 DEBUG: Response headers:', Object.fromEntries(response.headers.entries()))
 
                 if (response.ok) {
                     const data = await response.json()
-                    console.log('✅ SUCCESS: Interacciones cargadas:', data)
                     if (isMounted) {
                         setInteractions(data.interactions || [])
                     }

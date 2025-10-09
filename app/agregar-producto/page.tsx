@@ -287,13 +287,10 @@ export default function AgregarProductoPage() {
     e.preventDefault()
 
     // Verificar si el usuario está verificado
-    console.log('🔍 DEBUG: Verificando estado del usuario en página agregar producto...')
     const { isUserVerified } = await import('@/lib/auth')
     const isVerified = await isUserVerified()
-    console.log('🔍 DEBUG: Usuario verificado en página:', isVerified)
     
     if (!isVerified) {
-      console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde página...')
       // Mostrar mensaje de verificación requerida
       const result = await (window as any).Swal.fire({
         title: 'Verificación Requerida',
@@ -371,7 +368,6 @@ export default function AgregarProductoPage() {
       }
 
       const result = await response.json()
-      console.log('✅ Formulario: Producto creado:', result)
       console.log('📦 Formulario: Estructura de respuesta:', {
         hasProduct: !!result.producto,
         productId: result.producto?.producto_id,
@@ -379,9 +375,6 @@ export default function AgregarProductoPage() {
       })
 
       // Subir imágenes al bucket de Supabase Storage
-      console.log('🖼️ Formulario: Iniciando subida de imágenes')
-      console.log('📊 Formulario: Imágenes a subir:', images.length)
-      console.log('📦 Formulario: Producto ID:', result.producto?.producto_id)
       
       if (images.length > 0 && result.producto?.producto_id) {
         const uploadedImages = []
@@ -394,7 +387,6 @@ export default function AgregarProductoPage() {
           // Crear estructura: productos/user_{user_id}/{id_producto}/
           const filePath = `productos/user_${result.producto.user_id}/${result.producto.producto_id}/${fileName}`
 
-          console.log(`📤 Formulario: Subiendo imagen ${i + 1}:`, { fileName, filePath, fileSize: file.size })
 
           try {
             // Subir imagen al bucket
@@ -410,7 +402,6 @@ export default function AgregarProductoPage() {
               throw new Error(`Error subiendo imagen ${i + 1}: ${uploadError.message}`)
             }
 
-            console.log(`✅ Formulario: Imagen ${i + 1} subida a Storage:`, uploadData)
 
             // Obtener URL pública de la imagen
             const { data: urlData } = supabase.storage
@@ -424,7 +415,6 @@ export default function AgregarProductoPage() {
               orden: i + 1
             })
 
-            console.log(`✅ Formulario: Imagen ${i + 1} URL generada:`, urlData.publicUrl)
           } catch (imageError) {
             console.error(`❌ Formulario: Error con imagen ${i + 1}:`, imageError)
             throw imageError
@@ -433,7 +423,6 @@ export default function AgregarProductoPage() {
 
         // Guardar referencias de imágenes en la base de datos
         if (uploadedImages.length > 0) {
-          console.log('💾 Formulario: Enviando referencias de imágenes a la API:', uploadedImages)
           
           const imagesResponse = await fetch('/api/products/images', {
             method: 'POST',
@@ -458,7 +447,6 @@ export default function AgregarProductoPage() {
             // No lanzamos error aquí porque el producto ya se creó
           } else {
             const successData = await imagesResponse.json()
-            console.log('✅ Formulario: Referencias de imágenes guardadas:', successData)
           }
         }
       }

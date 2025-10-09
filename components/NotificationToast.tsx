@@ -48,7 +48,6 @@ export default function NotificationToast({ userId }: NotificationToastProps) {
                 oscillator.start(audioContext.currentTime)
                 oscillator.stop(audioContext.currentTime + 0.5)
             } catch (error) {
-                console.log('No se pudo reproducir sonido de notificación:', error)
             }
         }
 
@@ -77,7 +76,6 @@ export default function NotificationToast({ userId }: NotificationToastProps) {
                     filter: `usuario_id=eq.${userId}`
                 },
                 (payload) => {
-                    console.log('🔔 Nueva notificación recibida:', payload.new)
                     const newNotification = payload.new as Notification
                     showNotificationToast(newNotification)
                 }

@@ -25,16 +25,12 @@ export default function LoginPage() {
         }
         
         if (searchParams.get('logout') === 'true' || searchParams.get('timeout') === 'true') {
-            console.log('🧹 Limpiando sesión residual después del logout/timeout...')
             const cleanup = async () => {
                 try {
                     await supabase.auth.signOut()
-                    console.log('✅ Sesión residual limpiada')
                     // Limpiar localStorage también
                     localStorage.clear()
-                    console.log('✅ localStorage limpiado')
                 } catch (error) {
-                    console.log('⚠️ Error limpiando sesión residual:', error)
                 }
             }
             cleanup()
@@ -55,16 +51,13 @@ export default function LoginPage() {
             })
 
             if (error) {
-                console.log('❌ Error de autenticación:', error)
                 setError(error.message)
                 return
             }
 
-            console.log('✅ Usuario autenticado:', data.user?.email)
 
             // Paso 2: VERIFICAR la sesión antes de consultar
             const { data: { session } } = await supabase.auth.getSession()
-            console.log('🔍 Sesión actual:', session)
 
             if (!session) {
                 setError('No se pudo establecer la sesión')
@@ -78,7 +71,6 @@ export default function LoginPage() {
                 .eq('email', email)
                 .single()
 
-            console.log('📊 Resultado de la consulta:', { userData, userError })
 
             if (userError) {
                 console.error('❌ Error en la consulta:', userError)
@@ -94,7 +86,6 @@ export default function LoginPage() {
             // Mostrar mensaje de éxito y dejar que el middleware maneje la redirección
             if (userData.es_admin && userData.activo) {
                 setSuccess('¡Autenticación exitosa! Redirigiendo al dashboard...')
-                console.log('🔑 Admin autenticado, redirigiendo...')
                 
                 // Recargar la página para que el middleware maneje la redirección
                 setTimeout(() => {
@@ -102,7 +93,6 @@ export default function LoginPage() {
                 }, 1000)
             } else if (userData && !userData.es_admin) {
                 setSuccess('¡Autenticación exitosa! Redirigiendo...')
-                console.log('👤 Usuario normal, redirigiendo...')
                 
                 // Recargar la página para que el middleware maneje la redirección
                 setTimeout(() => {

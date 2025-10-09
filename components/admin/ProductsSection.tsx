@@ -52,7 +52,6 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
 
         const fetchProducts = async () => {
             try {
-                console.log('📦 ProductsSection: Cargando productos directamente desde BD...')
                 
                 // Consultar directamente la base de datos como hace UsersSection
                 const { data: products, error } = await supabase
@@ -93,7 +92,6 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                     return
                 }
 
-                console.log('✅ ProductsSection: Productos obtenidos de BD:', products?.length || 0)
 
                 // Transformar los datos como lo hace la API
                 const transformedProducts = products?.map(product => {
@@ -125,7 +123,6 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
 
                 if (isMounted) {
                     setProducts(transformedProducts)
-                    console.log('✅ ProductsSection: Productos transformados y cargados:', transformedProducts.length)
                 }
 
             } catch (error) {
@@ -251,7 +248,6 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                     es_email: false
                 }
 
-                console.log('📧 ProductsSection: Enviando notificación:', notificationData)
 
                 const { error: notificationError } = await supabase
                     .from('notificacion')
@@ -260,7 +256,6 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                 if (notificationError) {
                     console.error('❌ ProductsSection: Error enviando notificación:', notificationError)
                 } else {
-                    console.log('✅ ProductsSection: Notificación enviada exitosamente')
                 }
             } catch (notificationError) {
                 console.error('⚠️ ProductsSection: Error enviando notificación:', notificationError)
@@ -278,7 +273,6 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                     : product
             ))
 
-            console.log(`✅ ProductsSection: Producto ${estadoValidacion === 'approved' ? 'aprobado' : 'rechazado'} exitosamente`)
             
             // Mostrar mensaje de éxito
             alert(estadoValidacion === 'approved' 
@@ -711,7 +705,7 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                                         <div className="mt-1 text-sm text-blue-700">
                                             <ul className="list-disc list-inside space-y-1">
                                                 <li>El usuario recibirá una notificación con el motivo del rechazo</li>
-                                                <li>El producto volverá a estado "Pendiente" para modificaciones</li>
+                                                <li>El producto volverá a estado &quot;Pendiente&quot; para modificaciones</li>
                                                 <li>El usuario podrá editar el producto y volver a enviarlo</li>
                                                 <li>Las imágenes existentes se pueden sobrescribir</li>
                                             </ul>

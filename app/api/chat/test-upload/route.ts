@@ -3,7 +3,6 @@ import { supabase, supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🧪 [API] Probando conectividad con Supabase...')
     
     // Verificar que el cliente admin esté disponible
     if (!supabaseAdmin) {
@@ -24,7 +23,6 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
     
-    console.log('✅ [API] Buckets encontrados:', buckets.map(b => b.name))
     
     // Verificar si el bucket Ecoswap existe
     const ecoswapBucket = buckets.find(bucket => bucket.name === 'Ecoswap')
@@ -35,7 +33,6 @@ export async function GET(request: NextRequest) {
       }, { status: 404 })
     }
     
-    console.log('✅ [API] Bucket Ecoswap encontrado:', ecoswapBucket)
     
     // Probar listado de archivos en mensajes
     const { data: files, error: filesError } = await supabaseAdmin.storage
@@ -43,9 +40,7 @@ export async function GET(request: NextRequest) {
       .list('mensajes', { limit: 10 })
     
     if (filesError) {
-      console.log('⚠️ [API] Error listando mensajes (puede ser normal si no existe):', filesError.message)
     } else {
-      console.log('✅ [API] Archivos en mensajes:', files)
     }
     
     return NextResponse.json({
@@ -66,14 +61,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🧪 [API] Probando subida de archivo de prueba...')
     
     // Crear un archivo de prueba simple
     const testContent = Buffer.from('Archivo de prueba para verificar conectividad')
     const testFileName = `test_${Date.now()}.txt`
     const testPath = `mensajes/test/${testFileName}`
     
-    console.log('📤 [API] Subiendo archivo de prueba:', testPath)
     
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('Ecoswap')
@@ -90,14 +83,12 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
     
-    console.log('✅ [API] Archivo de prueba subido:', uploadData)
     
     // Obtener URL pública
     const { data: { publicUrl } } = supabaseAdmin.storage
       .from('Ecoswap')
       .getPublicUrl(testPath)
     
-    console.log('🔗 [API] URL pública generada:', publicUrl)
     
     // Limpiar archivo de prueba
     const { error: deleteError } = await supabaseAdmin.storage
@@ -107,7 +98,6 @@ export async function POST(request: NextRequest) {
     if (deleteError) {
       console.warn('⚠️ [API] Error eliminando archivo de prueba:', deleteError.message)
     } else {
-      console.log('🗑️ [API] Archivo de prueba eliminado')
     }
     
     return NextResponse.json({

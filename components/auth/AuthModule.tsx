@@ -185,8 +185,6 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
         password: registerForm.password
       }
 
-      console.log('🔍 DEBUG: Frontend - Iniciando proceso de registro')
-      console.log('🔍 DEBUG: Frontend - Datos del formulario:', registerData)
       console.log('🔍 DEBUG: Frontend - Estado de validaciones:', {
         emailValidation,
         phoneValidation
@@ -244,12 +242,9 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
         password: registerForm.password
       }
       
-      console.log('🔍 DEBUG: Frontend - Iniciando verificación de código')
-      console.log('🔍 DEBUG: Frontend - Datos de verificación:', verificationData)
       
       const { user, error } = await completeRegistrationWithCode(verificationData)
       
-      console.log('🔍 DEBUG: Frontend - Resultado de verificación:', { user, error })
 
       if (error) {
         setError(error)

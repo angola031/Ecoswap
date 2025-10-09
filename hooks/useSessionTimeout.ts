@@ -20,29 +20,22 @@ export function useSessionTimeout({
     const supabase = createClient()
 
     const clearSession = useCallback(async () => {
-        console.log('⏰ Sesión expirada por inactividad, cerrando sesión...')
         
         try {
             // PASO 1: Cerrar sesión en Supabase PRIMERO
-            console.log('🔐 Cerrando sesión en Supabase por timeout...')
             await supabase.auth.signOut()
-            console.log('✅ Sesión cerrada por timeout')
 
             // PASO 2: Limpiar localStorage
             if (typeof window !== 'undefined') {
                 localStorage.clear()
-                console.log('✅ localStorage limpiado por timeout')
             }
 
             // PASO 3: Limpiar TODAS las cookies de forma más exhaustiva
-            console.log('🍪 Limpiando TODAS las cookies por timeout...')
             const allCookies = document.cookie.split(";")
-            console.log(`📋 Total de cookies encontradas: ${allCookies.length}`)
             
             allCookies.forEach(cookie => {
                 if (cookie.trim()) {
                     const cookieName = cookie.split('=')[0].trim()
-                    console.log(`🧹 Limpiando cookie por timeout: ${cookieName}`)
                     
                     // Limpiar cookie con múltiples configuraciones más exhaustivas
                     const domain = window.location.hostname
@@ -75,9 +68,7 @@ export function useSessionTimeout({
             // Verificar que las cookies se limpiaron
             const remainingCookies = document.cookie
             if (remainingCookies) {
-                console.log('⚠️ Cookies restantes después de limpieza por timeout:', remainingCookies)
             } else {
-                console.log('✅ Confirmado: Todas las cookies limpiadas por timeout')
             }
 
             // Ejecutar callback personalizado si existe
@@ -97,16 +88,13 @@ export function useSessionTimeout({
             // Aún así limpiar y redirigir con limpieza exhaustiva
             try {
                 localStorage.clear()
-                console.log('🧹 Limpieza de emergencia: localStorage limpiado')
                 
                 // Limpieza exhaustiva de cookies en caso de emergencia
                 const allCookies = document.cookie.split(";")
-                console.log(`🧹 Limpieza de emergencia: ${allCookies.length} cookies encontradas`)
                 
                 allCookies.forEach(cookie => {
                     if (cookie.trim()) {
                         const cookieName = cookie.split('=')[0].trim()
-                        console.log(`🧹 Limpieza de emergencia: ${cookieName}`)
                         
                         // Configuraciones básicas de emergencia
                         const emergencyConfigs = [
@@ -122,14 +110,12 @@ export function useSessionTimeout({
                     }
                 })
                 
-                console.log('✅ Limpieza de emergencia completada')
             } catch (cleanupErr) {
                 console.error('❌ Error en limpieza de emergencia por timeout:', cleanupErr)
             }
             
             // Redirigir según la página actual
             const redirectUrl = window.location.pathname.startsWith('/admin') ? '/login?timeout=true' : '/?timeout=true'
-            console.log(`🚀 Redirigiendo a: ${redirectUrl}`)
             window.location.href = redirectUrl
         }
     }, [onTimeout, supabase.auth])
@@ -137,7 +123,6 @@ export function useSessionTimeout({
     const resetTimeout = useCallback(() => {
         if (!enabled) return
 
-        console.log('🔄 Reiniciando timeout de sesión...')
         lastActivityRef.current = Date.now()
         
         // Limpiar timeouts existentes
@@ -150,11 +135,9 @@ export function useSessionTimeout({
 
         // Configurar nuevo timeout
         timeoutRef.current = setTimeout(() => {
-            console.log('⏰ Timeout alcanzado, cerrando sesión...')
             clearSession()
         }, timeoutMinutes * 60 * 1000)
 
-        console.log(`✅ Timeout de sesión reiniciado (${timeoutMinutes} minutos)`)
     }, [enabled, timeoutMinutes, clearSession])
 
     const handleActivity = useCallback(() => {
@@ -164,7 +147,6 @@ export function useSessionTimeout({
         // Solo reiniciar si han pasado al menos 30 segundos desde la última actividad
         // para evitar reiniciar constantemente
         if (timeSinceLastActivity > 30000) {
-            console.log('🔄 Actividad detectada, reiniciando timeout...')
             resetTimeout()
         }
     }, [resetTimeout])
@@ -215,7 +197,6 @@ export function useSessionTimeout({
     const getMinutesRemaining = useCallback(() => {
         const milliseconds = getTimeUntilTimeout()
         const minutes = Math.ceil(milliseconds / (60 * 1000))
-        console.log(`⏱️ Minutos restantes: ${minutes}`)
         return minutes
     }, [getTimeUntilTimeout])
 

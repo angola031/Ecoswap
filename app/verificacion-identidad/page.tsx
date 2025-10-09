@@ -47,7 +47,6 @@ export default function VerificacionIdentidadPage() {
                 await videoRef.current.play()
             }
             
-            console.log('📷 Cámara inicializada correctamente')
         } catch (error: any) {
             console.error('❌ Error inicializando cámara:', error)
             setCameraError('No se pudo acceder a la cámara. Verifica los permisos.')
@@ -129,7 +128,6 @@ export default function VerificacionIdentidadPage() {
                         break
                 }
 
-                console.log(`📸 Foto capturada para ${type}`)
                 
                 // Mostrar vista previa en lugar de cerrar inmediatamente
                 setUseCamera(false)
@@ -250,7 +248,6 @@ export default function VerificacionIdentidadPage() {
                     const notificationJson = await notificationResp.json()
                     
                     if (notificationResp.ok) {
-                        console.log('✅ Notificación enviada a administradores:', notificationJson)
                     } else {
                         console.error('⚠️ Error enviando notificación:', notificationJson)
                     }

@@ -7,22 +7,17 @@ export async function GET(req: NextRequest) {
   try {
     // Verificar autenticación
     const authHeader = req.headers.get('authorization')
-    console.log('🔍 DEBUG: Authorization header:', authHeader ? 'Present' : 'Missing')
     
     if (!authHeader) {
-      console.log('❌ ERROR: No authorization header provided')
       return createAuthErrorResponse('Token de autorización requerido')
     }
 
-    console.log('🔍 DEBUG: Validating token...')
     const { user, error: authError } = await getAuthenticatedUserFromToken(authHeader)
     
     if (authError || !user) {
-      console.log('❌ ERROR: Authentication failed:', authError)
       return createAuthErrorResponse(authError || 'Usuario no autorizado')
     }
 
-    console.log('✅ DEBUG: User authenticated:', user.user_id)
 
     const userId = user.user_id
 

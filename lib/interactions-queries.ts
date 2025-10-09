@@ -102,14 +102,11 @@ export async function getInteractions(
       return { success: false, error: error.message }
     }
 
-    console.log('🔍 DEBUG: Intercambios obtenidos:', data?.length || 0)
     if (data && data.length > 0) {
-      console.log('🔍 DEBUG: Primer intercambio:', JSON.stringify(data[0], null, 2))
     }
 
     // Transformar datos a InteractionSummary
     const interactions: InteractionSummary[] = (data || []).map((intercambio, index) => {
-      console.log(`🔍 DEBUG: Procesando intercambio ${index + 1}:`, intercambio.intercambio_id)
       // Validar datos requeridos
       if (!intercambio.producto_ofrecido) {
         console.warn('Intercambio sin producto ofrecido:', intercambio.intercambio_id)
@@ -307,7 +304,6 @@ export async function getInteractionDetail(
     }
 
     // Obtener chat y mensajes con la misma lógica que ChatModule
-    console.log('🔍 DEBUG: Obteniendo chat para intercambio:', interactionId)
     const { data: chat, error: chatError } = await supabase
       .from('chat')
       .select(`
@@ -336,7 +332,6 @@ export async function getInteractionDetail(
     // Si no existe chat, crear uno
     let finalChat = chat
     if (!chat && !chatError) {
-      console.log('🔍 DEBUG: No existe chat, creando uno nuevo para intercambio:', interactionId)
       const { data: newChat, error: createChatError } = await supabase
         .from('chat')
         .insert({
@@ -363,9 +358,6 @@ export async function getInteractionDetail(
       }
 
       finalChat = newChat
-      console.log('✅ Chat creado exitosamente:', finalChat.chat_id)
-      console.log('🔍 DEBUG: Chat creado con mensajes:', finalChat.mensajes?.length || 0)
-      console.log('🔍 DEBUG: Chat creado raw:', finalChat)
     }
 
     // Obtener calificaciones
@@ -476,7 +468,6 @@ export async function getInteractionDetail(
       receiver: intercambio.usuario_recibe,
       messages: (() => {
         const rawMessages = finalChat?.mensajes || []
-        console.log('🔍 DEBUG: Mensajes raw obtenidos:', rawMessages.length)
         
         const filteredMessages = rawMessages.filter((m: any) => {
           // Filtrar mensajes como en ChatModule
@@ -487,7 +478,6 @@ export async function getInteractionDetail(
           return !isProductInfo && content.trim().length > 0
         })
         
-        console.log('🔍 DEBUG: Mensajes después del filtro:', filteredMessages.length)
         
         const transformedMessages = filteredMessages.map((m: any) => ({
           id: m.mensaje_id.toString(),
@@ -503,13 +493,11 @@ export async function getInteractionDetail(
           metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
         }))
         
-        console.log('🔍 DEBUG: Mensajes transformados:', transformedMessages.length)
         
         return transformedMessages.sort((a, b) => Number(a.id) - Number(b.id)) // Ordenar como en ChatModule
       })(),
       proposals: (() => {
         const rawProposals = finalChat?.propuestas || []
-        console.log('🔍 DEBUG: Propuestas raw obtenidas:', rawProposals.length)
         
         const transformedProposals = rawProposals.map((p: any) => ({
           id: p.propuesta_id,
@@ -537,7 +525,6 @@ export async function getInteractionDetail(
           }
         }))
         
-        console.log('🔍 DEBUG: Propuestas transformadas:', transformedProposals.length)
         
         return transformedProposals
       })(),

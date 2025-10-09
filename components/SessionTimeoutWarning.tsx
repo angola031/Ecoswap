@@ -41,14 +41,11 @@ export default function SessionTimeoutWarning({
             const remaining = finalGetMinutesRemaining()
             setMinutesRemaining(remaining)
             
-            console.log(`⏱️ Verificando timeout: ${remaining} minutos restantes, período de advertencia: ${finalIsInWarningPeriod(warningMinutes)}`)
             
             // Mostrar advertencia cuando queden menos de warningMinutes y no se haya extendido recientemente
             if (finalIsInWarningPeriod(warningMinutes) && !isExtended) {
-                console.log('⚠️ Mostrando advertencia de timeout')
                 setShowWarning(true)
             } else if (remaining === 0 || remaining > warningMinutes) {
-                console.log('✅ Ocultando advertencia de timeout')
                 setShowWarning(false)
                 setIsExtended(false) // Reset del estado de extensión
             }
@@ -62,7 +59,6 @@ export default function SessionTimeoutWarning({
     }, [finalGetMinutesRemaining, finalIsInWarningPeriod, warningMinutes, isExtended])
 
     const handleExtendSession = () => {
-        console.log('🔄 Extendiendo sesión...')
         
         // Marcar como extendido para evitar que vuelva a aparecer inmediatamente
         setIsExtended(true)
@@ -76,11 +72,9 @@ export default function SessionTimeoutWarning({
             onExtendSession()
         }
         
-        console.log('✅ Sesión extendida exitosamente')
     }
 
     const handleLogout = () => {
-        console.log('🚪 Usuario eligió cerrar sesión manualmente')
         setShowWarning(false)
         setIsExtended(false)
         // El timeout se encargará del logout automático

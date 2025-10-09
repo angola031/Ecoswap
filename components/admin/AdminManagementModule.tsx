@@ -298,11 +298,9 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
     useEffect(() => {
         const checkPermissions = async () => {
             try {
-                console.log('🔍 Verificando permisos de super admin...')
                 const { data: { session } } = await supabase.auth.getSession()
                 
                 if (!session?.user?.email) {
-                    console.log('❌ No hay sesión activa')
                     setIsSuperAdmin(false)
                     setPermissionsLoading(false)
                     return
@@ -316,7 +314,6 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                     .single()
 
                 if (userError || !userData?.es_admin) {
-                    console.log('❌ Usuario no es administrador')
                     setIsSuperAdmin(false)
                     setPermissionsLoading(false)
                     return
@@ -330,7 +327,6 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                     .eq('activo', true)
 
                 if (rolesError || !userRoles || userRoles.length === 0) {
-                    console.log('❌ Usuario no tiene roles activos')
                     setIsSuperAdmin(false)
                     setPermissionsLoading(false)
                     return
@@ -345,7 +341,6 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                     .eq('activo', true)
 
                 if (roleNamesError || !roleNames) {
-                    console.log('❌ Error obteniendo nombres de roles')
                     setIsSuperAdmin(false)
                     setPermissionsLoading(false)
                     return
@@ -462,7 +457,6 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
         setSuccessMessage('')
         
         try {
-            console.log('🔍 Validando email antes de crear administrador:', newAdmin.email)
             
             const { data: { session } } = await supabase.auth.getSession()
             const token = session?.access_token
@@ -471,7 +465,6 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                 return
             }
 
-            console.log('📤 Enviando solicitud de creación de administrador...')
             const res = await fetch('/api/admin/roles', {
                 method: 'POST',
                 headers: {
@@ -482,7 +475,6 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
             })
 
             const data = await res.json()
-            console.log('📊 Respuesta de creación:', { status: res.status, data })
 
             if (!res.ok) {
                 // Manejar diferentes tipos de errores
@@ -558,7 +550,6 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
         setSuccessMessage('')
         
         try {
-            console.log('🔍 Verificando sesión antes de eliminar administrador...')
             const { data: { session }, error: sessionError } = await supabase.auth.getSession()
             
             if (sessionError) {
@@ -587,9 +578,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                 return
             }
             
-            console.log('✅ Sesión y token verificados correctamente')
 
-            console.log('🗑️ Eliminando administrador:', adminId)
 
             const res = await fetch(`/api/admin/roles/${adminId}`, {
                 method: 'DELETE',
@@ -600,7 +589,6 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
             })
 
             const data = await res.json()
-            console.log('📊 Respuesta de eliminación:', { status: res.status, data })
 
             if (!res.ok) {
                 throw new Error(data.error || `Error del servidor: ${res.status}`)

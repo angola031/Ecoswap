@@ -23,7 +23,6 @@ export function useInactivity({
     timeoutRef.current = setTimeout(() => {
       if (isActiveRef.current) {
         isActiveRef.current = false
-        console.log('🕐 [Inactivity] Sesión expirada por inactividad')
         
         // Ejecutar callback personalizado si existe
         if (onInactive) {
@@ -38,7 +37,6 @@ export function useInactivity({
 
   const handleInactivityLogout = async () => {
     try {
-      console.log('🚪 [Inactivity] Cerrando sesión por inactividad...')
       
       // Actualizar estado del usuario a inactivo
       await logoutUser()

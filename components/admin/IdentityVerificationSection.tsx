@@ -89,7 +89,6 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                 return
             }
 
-            console.log('📋 Validaciones encontradas:', validationsData?.length || 0)
 
             // Los datos ya vienen con el JOIN, solo necesitamos transformarlos
             const data = validationsData || []
@@ -128,7 +127,6 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                 }
             }) || []
 
-            console.log('📋 Datos transformados para UI:', transformedData)
             
             // Log de URLs generadas para debugging
             transformedData.forEach((item, index) => {
@@ -227,7 +225,6 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                     es_email: false
                 }
 
-                console.log('📧 Datos de notificación:', notificationData)
 
                 const { data: notificationResult, error: notificationError } = await supabase
                     .from('notificacion')
@@ -238,7 +235,6 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                     console.error('❌ Error enviando notificación al usuario:', notificationError)
                     alert(`Verificación ${decision === 'aprobado' ? 'aprobada' : 'rechazada'} pero error enviando notificación: ${notificationError.message}`)
                 } else {
-                    console.log('✅ Notificación enviada exitosamente:', notificationResult)
                 }
             } catch (notificationError) {
                 console.error('⚠️ Error enviando notificación al usuario:', notificationError)
@@ -259,7 +255,6 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
             )
 
             // Refrescar los datos para obtener las URLs actualizadas
-            console.log('🔄 Refrescando datos después de procesar validación...')
             setTimeout(() => {
                 fetchVerificationRequests()
             }, 1000) // Esperar 1 segundo para que se actualice la BD

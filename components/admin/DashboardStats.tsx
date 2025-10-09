@@ -93,7 +93,6 @@ export default function DashboardStats() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                console.log('📊 Cargando estadísticas del dashboard...')
 
                 // Obtener estadísticas de usuarios
                 const { data: users, error: usersError } = await supabase
@@ -173,7 +172,6 @@ export default function DashboardStats() {
                 }
 
                 setStats(newStats)
-                console.log('✅ Estadísticas cargadas:', newStats)
 
             } catch (error) {
                 console.error('💥 Error cargando estadísticas:', error)
@@ -192,7 +190,6 @@ export default function DashboardStats() {
                 .on('postgres_changes', 
                     { event: '*', schema: 'public', table: 'usuario' },
                     (payload) => {
-                        console.log('🔄 Cambio detectado en usuario (stats):', payload)
                         fetchStats()
                     }
                 )
@@ -204,7 +201,6 @@ export default function DashboardStats() {
                 .on('postgres_changes',
                     { event: '*', schema: 'public', table: 'producto' },
                     (payload) => {
-                        console.log('🔄 Cambio detectado en producto (stats):', payload)
                         fetchStats()
                     }
                 )

@@ -27,7 +27,6 @@ export default function MessagesSection() {
     useEffect(() => {
         const fetchMessages = async () => {
             try {
-                console.log('💬 Cargando mensajes...')
                 
                 const { data, error } = await supabase
                     .from('mensaje')
@@ -52,7 +51,6 @@ export default function MessagesSection() {
                 }
 
                 setMessages(data || [])
-                console.log('✅ Mensajes cargados:', data?.length)
 
             } catch (error) {
                 console.error('💥 Error cargando mensajes:', error)
@@ -98,7 +96,6 @@ export default function MessagesSection() {
                     : message
             ))
 
-            console.log('✅ Mensaje marcado como leído')
         } catch (error) {
             console.error('💥 Error:', error)
         }
@@ -123,7 +120,6 @@ export default function MessagesSection() {
                     : message
             ))
 
-            console.log('✅ Mensaje marcado como no leído')
         } catch (error) {
             console.error('💥 Error:', error)
         }

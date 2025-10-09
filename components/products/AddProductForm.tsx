@@ -93,13 +93,10 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
         e.preventDefault()
 
         // Verificar si el usuario está verificado
-        console.log('🔍 DEBUG: Verificando estado del usuario...')
         const { isUserVerified } = await import('@/lib/auth')
         const isVerified = await isUserVerified()
-        console.log('🔍 DEBUG: Usuario verificado:', isVerified)
         
         if (!isVerified) {
-            console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje...')
             // Mostrar mensaje de verificación requerida
             const result = await (window as any).Swal.fire({
                 title: 'Verificación Requerida',

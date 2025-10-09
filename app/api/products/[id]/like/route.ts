@@ -47,7 +47,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 400 })
 
       // El trigger automáticamente actualizará el contador de likes
-      console.log(`✅ Like agregado para producto ${productoId} por usuario ${userId}`)
     }
 
     return NextResponse.json({ ok: true })
@@ -62,10 +61,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!productoId) return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
     
     const userId = await getAuthUserId(req)
-    console.log('🔍 DEBUG API Like GET:', { productoId, userId })
     
     if (!userId) {
-      console.log('🔍 DEBUG: No userId found, returning liked: false')
       return NextResponse.json({ liked: false })
     }
 
@@ -76,10 +73,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       .eq('producto_id', productoId)
       .maybeSingle()
 
-    console.log('🔍 DEBUG: Favorito query result:', { data, error })
     
     const liked = !!data
-    console.log('🔍 DEBUG: Returning liked:', liked)
     
     return NextResponse.json({ liked })
   } catch (e: any) {
@@ -91,12 +86,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const productoId = Number(params.id)
-    console.log('🔍 DEBUG API DELETE: Iniciando eliminación de like para producto:', productoId)
     
     if (!productoId) return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
     
     const userId = await getAuthUserId(req)
-    console.log('🔍 DEBUG API DELETE: Usuario ID obtenido:', userId)
     
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -108,7 +101,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       .eq('producto_id', productoId)
       .maybeSingle()
     
-    console.log('🔍 DEBUG API DELETE: Favorito existente:', existingFavorito)
 
     const { error } = await supabaseAdmin
       .from('favorito')
@@ -122,7 +114,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     }
 
     // El trigger automáticamente actualizará el contador de likes
-    console.log(`✅ Like removido exitosamente para producto ${productoId} por usuario ${userId}`)
 
     return NextResponse.json({ ok: true })
   } catch (e: any) {

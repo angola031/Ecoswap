@@ -269,7 +269,6 @@ export default function EditarPerfilPage() {
             // Simular cambio de contraseña
             await new Promise(resolve => setTimeout(resolve, 2000))
 
-            console.log('Contraseña cambiada')
             setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
             setShowPasswordSection(false)
         } catch (error) {

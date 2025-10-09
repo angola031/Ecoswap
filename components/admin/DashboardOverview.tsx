@@ -48,7 +48,6 @@ export default function DashboardOverview({
                 .on('postgres_changes', 
                     { event: '*', schema: 'public', table: 'usuario' },
                     (payload) => {
-                        console.log('🔄 Cambio detectado en usuario:', payload)
                         fetchOverviewStats()
                     }
                 )
@@ -60,7 +59,6 @@ export default function DashboardOverview({
                 .on('postgres_changes',
                     { event: '*', schema: 'public', table: 'producto' },
                     (payload) => {
-                        console.log('🔄 Cambio detectado en producto:', payload)
                         fetchOverviewStats()
                     }
                 )
@@ -72,7 +70,6 @@ export default function DashboardOverview({
                 .on('postgres_changes',
                     { event: '*', schema: 'public', table: 'validacion_usuario' },
                     (payload) => {
-                        console.log('🔄 Cambio detectado en validación:', payload)
                         fetchOverviewStats()
                     }
                 )

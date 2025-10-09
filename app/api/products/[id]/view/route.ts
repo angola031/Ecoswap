@@ -28,17 +28,14 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const productoId = Number(params.id)
-    console.log('🔍 DEBUG API VIEW: Registrando visualización para producto:', productoId)
     
     if (!productoId) {
       return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
     }
     
     const userId = await getAuthUserId(req)
-    console.log('🔍 DEBUG API VIEW: Usuario ID obtenido:', userId)
     
     if (!userId) {
-      console.log('🔍 DEBUG API VIEW: Usuario no autenticado, no se registra visualización')
       return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 })
     }
 
@@ -50,10 +47,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .eq('producto_id', productoId)
       .maybeSingle()
     
-    console.log('🔍 DEBUG API VIEW: Visualización existente:', existingView)
 
     if (existingView) {
-      console.log('🔍 DEBUG API VIEW: Usuario ya vio el producto, no se incrementa contador')
       return NextResponse.json({ 
         message: 'Usuario ya había visto este producto',
         newView: false,
@@ -73,7 +68,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    console.log('✅ Visualización registrada exitosamente para producto', productoId, 'por usuario', userId)
 
     return NextResponse.json({ 
       message: 'Visualización registrada exitosamente',
@@ -90,7 +84,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const productoId = Number(params.id)
-    console.log('🔍 DEBUG API VIEW GET: Obteniendo estadísticas de visualización para producto:', productoId)
     
     if (!productoId) {
       return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })

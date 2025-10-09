@@ -11,7 +11,6 @@ async function authUser(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        console.log('🛒 API Products: Iniciando creación de producto')
         
         const user = await authUser(req)
         if (!user) {
@@ -19,10 +18,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
         
-        console.log('✅ API Products: Usuario autenticado:', user.email)
         
         const body = await req.json().catch(() => ({}))
-        console.log('📦 API Products: Datos recibidos:', body)
 
         const {
             categoria_id,
@@ -124,7 +121,6 @@ export async function POST(req: NextRequest) {
             longitud_snapshot
         }
 
-        console.log('💾 API Products: Insertando producto en BD:', payload)
         
         const { data: created, error } = await supabaseAdmin
             .from('producto')
@@ -137,7 +133,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
         
-        console.log('✅ API Products: Producto creado exitosamente:', created)
         
         // Guardar etiquetas normalizadas si vienen
         try {
@@ -185,7 +180,6 @@ export async function POST(req: NextRequest) {
         }
 
         const response = { ok: true, producto: created }
-        console.log('📤 API Products: Enviando respuesta:', response)
         
         return NextResponse.json(response)
     } catch (e: any) {

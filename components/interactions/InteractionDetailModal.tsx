@@ -229,9 +229,7 @@ export default function InteractionDetailModal({
             })
             
             if (result.isConfirmed) {
-                const { useRouter } = await import('next/router')
-                const router = useRouter()
-                router.push('/verificacion-identidad')
+                window.location.href = '/verificacion-identidad'
             }
             return
         }

@@ -24,7 +24,6 @@ export default function UsersSection() {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                console.log('👥 Cargando usuarios...')
                 
                 const { data, error } = await supabase
                     .from('usuario')
@@ -38,7 +37,6 @@ export default function UsersSection() {
                 }
 
                 setUsers(data || [])
-                console.log('✅ Usuarios cargados:', data?.length)
 
             } catch (error) {
                 console.error('💥 Error cargando usuarios:', error)
@@ -89,7 +87,6 @@ export default function UsersSection() {
                     : user
             ))
 
-            console.log('✅ Verificación actualizada')
         } catch (error) {
             console.error('💥 Error:', error)
         }
@@ -115,7 +112,6 @@ export default function UsersSection() {
                     : user
             ))
 
-            console.log('✅ Estado actualizado')
         } catch (error) {
             console.error('💥 Error:', error)
         }

@@ -85,14 +85,6 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
         
-        console.log('📨 [API] Mensajes obtenidos:', {
-            chatId,
-            count: msgs?.length || 0,
-            sinceId,
-            beforeId,
-            firstMessage: msgs?.[0],
-            lastMessage: msgs?.[msgs?.length - 1]
-        })
         
         // Transformar los mensajes al formato esperado por el frontend
         const transformedMessages = (msgs || []).reverse().map((msg: any) => ({
@@ -113,11 +105,6 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
           }
         }))
         
-        console.log('📨 [API] Mensajes transformados:', {
-            count: transformedMessages.length,
-            firstTransformed: transformedMessages[0],
-            lastTransformed: transformedMessages[transformedMessages.length - 1]
-        })
         
         return NextResponse.json({ items: transformedMessages })
     } catch (e: any) {

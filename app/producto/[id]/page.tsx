@@ -180,7 +180,6 @@ export default function ProductDetailPage() {
 
     if (isOwner) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🚫 Usuario dueño intentando mostrar interés en su propio producto')
       }
       await (window as any).Swal.fire({
         title: 'Acción no permitida',
@@ -205,13 +204,10 @@ export default function ProductDetailPage() {
     }
 
     // Verificar si el usuario está verificado
-    console.log('🔍 DEBUG: Verificando estado del usuario desde handleInterest...')
     const { isUserVerified } = await import('@/lib/auth')
     const isVerified = await isUserVerified()
-    console.log('🔍 DEBUG: Usuario verificado desde handleInterest:', isVerified)
     
     if (!isVerified) {
-      console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde handleInterest...')
       // Mostrar mensaje de verificación requerida
       const result = await (window as any).Swal.fire({
         title: 'Verificación Requerida',
@@ -251,7 +247,6 @@ export default function ProductDetailPage() {
 
     if (isOwner) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🚫 Usuario dueño intentando dar like a su propio producto')
       }
       await (window as any).Swal.fire({
         title: 'Acción no permitida',
@@ -264,13 +259,10 @@ export default function ProductDetailPage() {
     }
 
     // Verificar si el usuario está verificado
-    console.log('🔍 DEBUG: Verificando estado del usuario desde handleLike...')
     const { isUserVerified } = await import('@/lib/auth')
     const isVerified = await isUserVerified()
-    console.log('🔍 DEBUG: Usuario verificado desde handleLike:', isVerified)
     
     if (!isVerified) {
-      console.log('🔍 DEBUG: Usuario no verificado, mostrando mensaje desde handleLike...')
       // Mostrar mensaje de verificación requerida
       const result = await (window as any).Swal.fire({
         title: 'Verificación Requerida',
@@ -302,14 +294,12 @@ export default function ProductDetailPage() {
         return
       }
       const method = isLiked ? 'DELETE' : 'POST'
-      console.log('🔍 DEBUG: handleLike - Acción:', method, 'Estado actual isLiked:', isLiked)
       
       const res = await fetch(`/api/products/${product.id}/like`, {
         method,
         headers: { Authorization: `Bearer ${session.access_token}` }
       })
       
-      console.log('🔍 DEBUG: handleLike - Respuesta API:', res.status, res.ok)
       
       if (res.ok) {
         const newLikedState = !isLiked
@@ -325,11 +315,8 @@ export default function ProductDetailPage() {
         setIsLiked(newLikedState)
         setStats(prev => ({ ...prev, likes: Math.max(0, prev.likes + likesChange) }))
         
-        console.log('🔍 DEBUG: handleLike - Estado actualizado exitosamente')
       } else {
-        console.log('🔍 DEBUG: handleLike - Error en API:', res.status)
         const errorText = await res.text()
-        console.log('🔍 DEBUG: handleLike - Error details:', errorText)
       }
     } catch (error) {
       console.error('Error al dar like:', error)

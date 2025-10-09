@@ -5,17 +5,13 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
   const auth = req.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
   
-  console.log('🔐 [API Info] Authorization header:', auth ? 'Presente' : 'Ausente')
-  console.log('🔐 [API Info] Token:', token ? `${token.substring(0, 20)}...` : 'Vacío')
   
   if (!token) {
-    console.log('❌ [API Info] No hay token')
     return null
   }
   
   try {
     const { data, error } = await supabaseAdmin.auth.getUser(token)
-    console.log('🔐 [API Info] Auth response:', { data: !!data, error: !!error })
     
     if (error) {
       console.error('❌ [API Info] Error de autenticación:', error)
@@ -23,10 +19,8 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
     }
     
     const authUserId = data?.user?.id
-    console.log('🔐 [API Info] Auth user ID:', authUserId)
     
     if (!authUserId) {
-      console.log('❌ [API Info] No auth user ID')
       return null
     }
     
@@ -37,11 +31,9 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
       .eq('auth_user_id', authUserId)
       .single()
     
-    console.log('🔐 [API Info] Usuario query (auth_user_id):', { usuario, usuarioError })
     
     // Si no se encuentra con auth_user_id, intentar con el email
     if (usuarioError && data?.user?.email) {
-      console.log('🔄 [API Info] Intentando con email:', data.user.email)
       
       const { data: usuarioByEmail, error: emailError } = await supabaseAdmin
         .from('usuario')
@@ -49,7 +41,6 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
         .eq('email', data.user.email)
         .single()
       
-      console.log('🔐 [API Info] Usuario query (email):', { usuarioByEmail, emailError })
       
       if (!emailError && usuarioByEmail) {
         usuario = usuarioByEmail
@@ -59,12 +50,9 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
     
     if (usuarioError || !usuario) {
       console.error('❌ [API Info] Error obteniendo usuario:', usuarioError)
-      console.log('🔍 [API Info] Auth user ID buscado:', authUserId)
-      console.log('🔍 [API Info] Email del usuario:', data?.user?.email)
       return null
     }
     
-    console.log('✅ [API Info] User ID obtenido:', usuario?.user_id)
     return usuario?.user_id ?? null
   } catch (error) {
     console.error('❌ [API Info] Error obteniendo user_id:', error)
@@ -187,20 +175,12 @@ export async function GET(
     }
 
     if (chatError || !chat) {
-      console.log('❌ [API Info] Chat no encontrado:', { chatError, chat })
       return NextResponse.json({ error: 'Chat no encontrado' }, { status: 404 })
     }
 
     const intercambio = chat.intercambio as any
-    console.log('🔍 [API Info] Datos del intercambio:', {
-      intercambio,
-      usuario_propone_id: intercambio?.usuario_propone_id,
-      usuario_recibe_id: intercambio?.usuario_recibe_id,
-      currentUserId: userId
-    })
     
     if (!intercambio || (intercambio.usuario_propone_id !== userId && intercambio.usuario_recibe_id !== userId)) {
-      console.log('❌ [API Info] Usuario no tiene acceso al chat')
       return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
     }
 
@@ -289,11 +269,6 @@ export async function GET(
       }
     }
 
-    console.log('✅ [API Info] Respuesta enviada:', {
-      exchangeInfo: responseData.data.exchangeInfo,
-      hasOfferedProduct: !!responseData.data.offeredProduct,
-      hasRequestedProduct: !!responseData.data.requestedProduct
-    })
 
     return NextResponse.json(responseData)
 

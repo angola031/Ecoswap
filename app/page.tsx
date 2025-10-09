@@ -48,7 +48,6 @@ export default function HomePage() {
     useInactivity({
         timeout: 30 * 60 * 1000, // 30 minutos de inactividad
         onInactive: async () => {
-            console.log('🕐 [HomePage] Sesión expirada por inactividad')
             // El hook ya maneja el logout automáticamente
         }
     })
@@ -75,7 +74,6 @@ export default function HomePage() {
 
                     // Si es administrador activo, redirigir al dashboard
                     if (userData?.es_admin && userData?.activo) {
-                        console.log('🔑 Página principal: Administrador detectado, redirigiendo al dashboard')
                         window.location.replace('/admin/verificaciones')
                         return
                     }

@@ -194,8 +194,6 @@ export async function POST(req: NextRequest, { params }: { params: { adminId: st
             const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
             const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/auth/reset-password`
             
-            console.log('📧 Enviando correo de reactivación a:', user.email)
-            console.log('🔗 URL de redirección:', redirectUrl)
             
             const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
                 user.email,
@@ -208,7 +206,6 @@ export async function POST(req: NextRequest, { params }: { params: { adminId: st
                 console.error('❌ Error enviando correo de reactivación:', resetError.message)
                 // No fallar la operación si el correo falla
             } else {
-                console.log('✅ Correo de reactivación enviado exitosamente a', user.email)
             }
         } catch (emailError) {
             console.error('❌ Error enviando correo de reactivación:', emailError)

@@ -76,7 +76,6 @@ export default function PendingValidationModule({
   }
 
   const handleValidateMeeting = async (intercambioId: number) => {
-    console.log('🔍 DEBUG: Iniciando handleValidateMeeting para intercambio:', intercambioId)
     
     // Variables para el contador de tiempo (fuera del scope de didOpen)
     let countdownTimer: NodeJS.Timeout | null = null
@@ -325,20 +324,16 @@ export default function PendingValidationModule({
         }
       })
 
-      console.log('🔍 DEBUG: Resultado del modal:', validationResult)
 
       if (validationResult.isConfirmed) {
-        console.log('🔍 DEBUG: Usuario confirmó validación exitosa, enviando datos:', validationResult.value)
         
         // Verificar que los datos de validación son válidos antes de enviar
         if (validationResult.value && validationResult.value.isValid) {
           const submitResult = await submitValidation(intercambioId, validationResult.value)
           if (!submitResult) {
-            console.log('🔍 DEBUG: La validación falló, no continuar')
             return
           }
         } else {
-          console.log('🔍 DEBUG: Datos de validación inválidos:', validationResult.value)
           await (window as any).Swal.fire({
             title: 'Error de Validación',
             text: 'Los datos de validación no son válidos. Inténtalo de nuevo.',
@@ -348,7 +343,6 @@ export default function PendingValidationModule({
           return
         }
       } else if (validationResult.dismiss === Swal.DismissReason.cancel) {
-        console.log('🔍 DEBUG: Usuario reportó problemas')
         const problemResult = await (window as any).Swal.fire({
           title: '¿Qué problemas hubo?',
           html: `
@@ -452,7 +446,6 @@ export default function PendingValidationModule({
         })
 
         if (problemResult.isConfirmed) {
-          console.log('🔍 DEBUG: Usuario reportó problema, enviando datos:', problemResult.value)
           
           // Verificar que los datos del problema son válidos
           if (problemResult.value && problemResult.value.description) {
@@ -464,11 +457,9 @@ export default function PendingValidationModule({
             })
             
             if (!submitResult) {
-              console.log('🔍 DEBUG: El reporte de problema falló, no continuar')
               return
             }
           } else {
-            console.log('🔍 DEBUG: Datos del problema inválidos:', problemResult.value)
             await (window as any).Swal.fire({
               title: 'Error de Validación',
               text: 'Los datos del problema no son válidos. Inténtalo de nuevo.',
@@ -512,13 +503,11 @@ export default function PendingValidationModule({
   }
 
   const submitValidation = async (intercambioId: number, validationData: any) => {
-    console.log('🔍 DEBUG: Iniciando validación:', { intercambioId, validationData, userId })
     
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       
-      console.log('🔍 DEBUG: Sesión obtenida:', { hasToken: !!token, userId })
       
       if (!token) {
         throw new Error('No hay sesión activa')
@@ -552,10 +541,8 @@ export default function PendingValidationModule({
 
       if (response.ok) {
         const data = await response.json()
-        console.log('🔍 DEBUG: Datos de respuesta:', data)
         
         if (data.data.bothValidated) {
-          console.log('🔍 DEBUG: Ambos usuarios han validado, estado:', data.data.newEstado)
           if (data.data.newEstado === 'completado') {
             ;(window as any).Swal.fire({
               title: '¡Intercambio Completado!',
@@ -601,7 +588,6 @@ export default function PendingValidationModule({
             })
           }
         } else {
-          console.log('🔍 DEBUG: Solo un usuario ha validado, mostrando mensaje de espera')
           ;(window as any).Swal.fire({
             title: 'Validación Enviada',
             html: `
@@ -630,9 +616,7 @@ export default function PendingValidationModule({
         // Retornar true para indicar éxito
         return true
       } else {
-        console.log('🔍 DEBUG: Error en respuesta:', response.status)
         const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }))
-        console.log('🔍 DEBUG: Datos de error:', errorData)
         throw new Error(errorData.error || `Error del servidor: ${response.status}`)
       }
     } catch (error) {

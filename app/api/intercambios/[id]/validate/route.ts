@@ -20,7 +20,6 @@ export async function PATCH(
     })
 
     if (!userId || typeof isValid !== 'boolean') {
-      console.log('❌ ERROR API: Parámetros inválidos:', { userId, isValid })
       return NextResponse.json(
         { error: 'userId e isValid son requeridos' },
         { status: 400 }
@@ -29,7 +28,6 @@ export async function PATCH(
 
     // Validación adicional de campos requeridos
     if (isValid && (!rating || rating < 1 || rating > 5)) {
-      console.log('❌ ERROR API: Calificación inválida:', { rating, isValid })
       return NextResponse.json(
         { error: 'Si el intercambio fue exitoso, se requiere una calificación válida (1-5 estrellas)' },
         { status: 400 }
@@ -37,7 +35,6 @@ export async function PATCH(
     }
 
     if (!isValid && (!comment || comment.trim().length < 10)) {
-      console.log('❌ ERROR API: Comentario de problema inválido:', { comment, isValid })
       return NextResponse.json(
         { error: 'Si el intercambio falló, se requiere una descripción del problema de al menos 10 caracteres' },
         { status: 400 }
@@ -61,7 +58,6 @@ export async function PATCH(
       .single()
 
     if (intercambioError) {
-      console.log('❌ ERROR API: Error consultando intercambio:', intercambioError)
       console.log('❌ ERROR API: Detalles del error:', {
         code: intercambioError.code,
         message: intercambioError.message,
@@ -96,7 +92,6 @@ export async function PATCH(
     }
 
     if (!intercambio) {
-      console.log('❌ ERROR API: Intercambio no encontrado para ID:', intercambioId)
       return NextResponse.json(
         { 
           error: 'Intercambio no encontrado', 
@@ -208,7 +203,6 @@ export async function PATCH(
       .single()
 
     if (validationError) {
-      console.log('❌ ERROR API: Error en validación:', validationError)
       throw new Error(`Error procesando validación: ${validationError.message}`)
     }
 
@@ -449,7 +443,6 @@ export async function PATCH(
       }
     }
 
-    console.log('✅ API: Enviando respuesta exitosa:', response)
     
     return NextResponse.json(response)
 

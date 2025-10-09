@@ -20,10 +20,8 @@ export function useNotifications() {
 
             // Obtener el usuario actual
             const { data: { user } } = await supabase.auth.getUser()
-            console.log('🔔 [useNotifications] Usuario en hook:', user?.email)
             
             if (!user) {
-                console.log('🔔 [useNotifications] Usuario no autenticado en hook')
                 setNotificationCount({ unreadCount: 0, loading: false, error: null })
                 return
             }
@@ -36,12 +34,10 @@ export function useNotifications() {
                 .single()
 
             if (userError || !userData) {
-                console.log('🔔 [useNotifications] Error obteniendo usuario en hook:', userError)
                 setNotificationCount({ unreadCount: 0, loading: false, error: null })
                 return
             }
 
-            console.log('🔔 [useNotifications] Usuario encontrado en hook:', userData.user_id)
 
             // Contar notificaciones no leídas
             const { count, error } = await supabase
@@ -56,7 +52,6 @@ export function useNotifications() {
                 return
             }
 
-            console.log('🔔 [useNotifications] Notificaciones no leídas:', count || 0)
 
             setNotificationCount({ 
                 unreadCount: count || 0, 

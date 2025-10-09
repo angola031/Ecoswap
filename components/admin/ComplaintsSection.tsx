@@ -79,7 +79,6 @@ export default function ComplaintsSection() {
     useEffect(() => {
         const fetchComplaints = async () => {
             try {
-                console.log('⚠️ Cargando quejas...')
                 
                 // TODO: Reemplazar con consulta real a tu tabla de quejas
                 // const { data, error } = await supabase
@@ -105,7 +104,6 @@ export default function ComplaintsSection() {
                 setTimeout(() => {
                     setComplaints(mockComplaints)
                     setLoading(false)
-                    console.log('✅ Quejas cargadas (simuladas):', mockComplaints.length)
                 }, 1000)
 
             } catch (error) {
@@ -150,7 +148,6 @@ export default function ComplaintsSection() {
                     : complaint
             ))
 
-            console.log('✅ Estado de queja actualizado')
         } catch (error) {
             console.error('💥 Error:', error)
         }

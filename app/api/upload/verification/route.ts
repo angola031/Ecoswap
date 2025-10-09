@@ -41,7 +41,6 @@ export async function POST(req: NextRequest) {
             const buffer = Buffer.from(ab)
             const path = `validacion/${userId}/${filename}`
             
-            console.log(`📤 Subiendo archivo: ${path}`)
             
             // Usar upsert: true para sobrescribir archivos existentes
             const { error: upErr } = await supabaseAdmin.storage
@@ -57,7 +56,6 @@ export async function POST(req: NextRequest) {
                 throw new Error(`Error subiendo ${filename}: ${upErr.message}`)
             }
             
-            console.log(`✅ Archivo subido correctamente: ${path}`)
             return path
         }
 
@@ -78,7 +76,6 @@ export async function POST(req: NextRequest) {
 
         if (existingValidation) {
             // Si existe, actualizar la validación existente
-            console.log(`📝 Actualizando validación existente ${existingValidation.validacion_id} para usuario ${userId}`)
             
             const { error: updateError } = await supabaseAdmin
                 .from('validacion_usuario')
@@ -100,10 +97,8 @@ export async function POST(req: NextRequest) {
                 throw new Error('Error actualizando validación existente')
             }
 
-            console.log(`✅ Validación ${existingValidation.validacion_id} actualizada correctamente`)
         } else {
             // Si no existe, crear una nueva validación
-            console.log(`📝 Creando nueva validación para usuario ${userId}`)
             
             const { error: insertError } = await supabaseAdmin
                 .from('validacion_usuario')
@@ -124,7 +119,6 @@ export async function POST(req: NextRequest) {
                 throw new Error('Error creando nueva validación')
             }
 
-            console.log(`✅ Nueva validación creada correctamente`)
         }
 
         // Actualizar el usuario para marcar que tiene validación pendiente

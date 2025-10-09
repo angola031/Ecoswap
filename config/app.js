@@ -559,6 +559,5 @@ const envConfig = EcoSwapConfig.getForEnvironment(environment);
 
 // Log de configuración cargada
 if (EcoSwapConfig.development.debug) {
-    console.log(`EcoSwap Config cargado para entorno: ${environment}`, envConfig);
 }
 */

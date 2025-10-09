@@ -24,9 +24,7 @@ export default function VerificacionesPage() {
 
     useEffect(() => {
         const getUser = async () => {
-            console.log('🔍 Dashboard: Verificando usuario...')
             const { data: { user } } = await supabase.auth.getUser()
-            console.log('👤 Dashboard: Usuario de auth:', user?.email)
 
             if (user) {
                 setUser(user)
@@ -38,24 +36,18 @@ export default function VerificacionesPage() {
                     .eq('email', user.email)
                     .single()
 
-                console.log('📊 Dashboard: Datos del usuario:', userData)
-                console.log('❌ Dashboard: Error al obtener datos:', userError)
 
                 if (userError) {
-                    console.log('⚠️ Dashboard: Error obteniendo datos del usuario, redirigiendo al login')
                     router.push('/login')
                     return
                 }
 
                 if (!userData?.es_admin || !userData?.activo) {
-                    console.log('⚠️ Dashboard: Usuario no es administrador o no está activo, redirigiendo al login')
                     router.push('/login')
                     return
                 }
 
-                console.log('✅ Dashboard: Usuario administrador verificado, mostrando dashboard')
             } else {
-                console.log('⚠️ Dashboard: No hay usuario autenticado, redirigiendo al login')
                 router.push('/login')
             }
             setLoading(false)
@@ -66,36 +58,28 @@ export default function VerificacionesPage() {
     const handleLogout = async () => {
         setLogoutLoading(true)
         try {
-            console.log('🚪 Iniciando logout...')
             
             // PASO 1: Cerrar sesión en Supabase PRIMERO
-            console.log('🔐 Cerrando sesión en Supabase...')
             const { error } = await supabase.auth.signOut()
             
             if (error) {
                 console.error('❌ Error en logout:', error)
             } else {
-                console.log('✅ Logout exitoso en Supabase')
             }
             
             // PASO 2: Limpiar localStorage
             if (typeof window !== 'undefined') {
-                console.log('🧹 Limpiando localStorage...')
                 localStorage.clear()
-                console.log('✅ localStorage limpiado')
             }
             
             // PASO 3: Limpiar TODAS las cookies (no solo las de Supabase)
-            console.log('🍪 Limpiando TODAS las cookies...')
             
             // Obtener todas las cookies
             const allCookies = document.cookie.split(";")
-            console.log(`📋 Total de cookies encontradas: ${allCookies.length}`)
             
             allCookies.forEach(cookie => {
                 if (cookie.trim()) {
                     const cookieName = cookie.split('=')[0].trim()
-                    console.log(`🧹 Limpiando cookie: ${cookieName}`)
                     
                     // Limpiar cookie con múltiples configuraciones para asegurar eliminación
                     const domain = window.location.hostname
@@ -119,18 +103,14 @@ export default function VerificacionesPage() {
                 }
             })
             
-            console.log('✅ Todas las cookies limpiadas')
             
             // PASO 4: Verificar que las cookies se limpiaron
             const remainingCookies = document.cookie
             if (remainingCookies) {
-                console.log('⚠️ Cookies restantes después de limpieza:', remainingCookies)
             } else {
-                console.log('✅ Confirmado: No hay cookies restantes')
             }
             
             // PASO 5: Forzar redirección inmediata
-            console.log('🚀 Redirigiendo inmediatamente a /login...')
             window.location.href = '/login?logout=true'
             
         } catch (err) {
@@ -284,7 +264,6 @@ export default function VerificacionesPage() {
             case 'users':
                 return <UsersSection />
             case 'products':
-                console.log('🎯 Dashboard: Renderizando ProductsSection con usuario:', user?.email)
                 return <ProductsSection user={user} />
             case 'identity-verification':
                 return <IdentityVerificationSection currentUserId={user?.id} />

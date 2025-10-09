@@ -3,10 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 async function authAdmin(req: NextRequest) {
     const auth = req.headers.get('authorization') || ''
-    console.log('🔐 API: Header Authorization recibido:', auth ? 'Sí' : 'No')
     
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
-    console.log('🔑 API: Token extraído:', token ? 'Sí' : 'No')
     
     if (!token) {
         console.error('❌ API: No hay token en el header')
@@ -15,8 +13,6 @@ async function authAdmin(req: NextRequest) {
     
     try {
         const { data, error } = await supabaseAdmin.auth.getUser(token)
-        console.log('👤 API: Usuario de auth:', data?.user?.email)
-        console.log('❌ API: Error de auth:', error)
         
         if (!data?.user) {
             console.error('❌ API: No hay usuario en la respuesta de auth')
@@ -30,8 +26,6 @@ async function authAdmin(req: NextRequest) {
             .eq('auth_user_id', data.user.id)
             .single()
 
-        console.log('📋 API: Datos usuario BD:', userData)
-        console.log('❌ API: Error usuario BD:', userError)
 
         if (!userData) {
             console.error('❌ API: Usuario no encontrado en BD')
@@ -43,7 +37,6 @@ async function authAdmin(req: NextRequest) {
             return null
         }
 
-        console.log('✅ API: Usuario admin verificado:', userData.email)
         return userData
     } catch (error) {
         console.error('❌ API: Error verificando admin:', error)

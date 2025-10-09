@@ -104,12 +104,9 @@ export async function GET(req: NextRequest) {
                         mainImage: mainImage,
                         exchangeConditions: producto.condiciones_intercambio || producto.que_busco_cambio
                     }
-                    console.log('📦 [API] Producto encontrado:', productInfo)
                 } else {
-                    console.log('❌ [API] No se encontró producto para ID:', it.producto_ofrecido_id)
                 }
             } else {
-                console.log('❌ [API] No hay producto_ofrecido_id en intercambio:', it.intercambio_id)
             }
 
             // Último mensaje como texto
@@ -148,11 +145,6 @@ export async function GET(req: NextRequest) {
             })
         }
 
-        console.log('📦 [API] Enviando items con productos:', items.map(item => ({ 
-            id: item.id, 
-            hasProduct: !!item.product,
-            productTitle: item.product?.title 
-        })))
         return NextResponse.json({ items })
     } catch (e: any) {
         return NextResponse.json({ error: e?.message || 'Server error' }, { status: 500 })

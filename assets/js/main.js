@@ -18,7 +18,6 @@ const EcoSwapApp = {
 
     // Inicialización de la aplicación
     init() {
-        console.log('🌱 EcoSwap Colombia - Inicializando aplicación...');
 
         this.setupEventListeners();
         this.loadUserPreferences();
@@ -26,7 +25,6 @@ const EcoSwapApp = {
         this.setupTheme();
         this.setupLanguage();
 
-        console.log('✅ EcoSwap Colombia - Aplicación inicializada correctamente');
     },
 
     // Configurar event listeners globales
@@ -77,14 +75,12 @@ const EcoSwapApp = {
                 this.state.currentUser = JSON.parse(userData);
                 this.state.currentScreen = 'main';
 
-                console.log('👤 Usuario autenticado:', this.state.currentUser.name);
                 this.showScreen('main');
             } else {
                 this.state.isAuthenticated = false;
                 this.state.currentUser = null;
                 this.state.currentScreen = 'auth';
 
-                console.log('🔐 Usuario no autenticado');
                 this.showScreen('auth');
             }
         } catch (error) {
@@ -95,7 +91,6 @@ const EcoSwapApp = {
 
     // Mostrar pantalla específica
     showScreen(screenName) {
-        console.log(`🖥️ Cambiando a pantalla: ${screenName}`);
 
         // Ocultar todas las pantallas
         const screens = document.querySelectorAll('.mockup-screen');
@@ -121,7 +116,6 @@ const EcoSwapApp = {
             // Actualizar título de la página
             this.updatePageTitle(screenName);
 
-            console.log(`✅ Pantalla ${screenName} mostrada correctamente`);
         } else {
             console.error(`❌ Pantalla ${screenName} no encontrada`);
         }
@@ -149,13 +143,11 @@ const EcoSwapApp = {
                 this.loadProfileContent();
                 break;
             default:
-                console.log(`📄 Pantalla ${screenName} - contenido ya cargado`);
         }
     },
 
     // Cargar contenido de autenticación
     loadAuthContent() {
-        console.log('🔐 Cargando contenido de autenticación...');
 
         // Verificar si AuthModule está disponible
         if (typeof AuthModule !== 'undefined') {
@@ -167,7 +159,6 @@ const EcoSwapApp = {
 
     // Cargar contenido principal
     loadMainContent() {
-        console.log('🏠 Cargando contenido principal...');
 
         // Verificar si CoreModule está disponible
         if (typeof CoreModule !== 'undefined') {
@@ -179,7 +170,6 @@ const EcoSwapApp = {
 
     // Cargar contenido de productos
     loadProductsContent() {
-        console.log('🛍️ Cargando contenido de productos...');
 
         // Verificar si ProductsModule está disponible
         if (typeof ProductsModule !== 'undefined') {
@@ -191,7 +181,6 @@ const EcoSwapApp = {
 
     // Cargar contenido de interacciones
     loadInteractionsContent() {
-        console.log('💬 Cargando contenido de interacciones...');
 
         // Verificar si InteractionsModule está disponible
         if (typeof InteractionsModule !== 'undefined') {
@@ -203,7 +192,6 @@ const EcoSwapApp = {
 
     // Cargar contenido de chat
     loadChatContent() {
-        console.log('💭 Cargando contenido de chat...');
 
         // Verificar si ChatModule está disponible
         if (typeof ChatModule !== 'undefined') {
@@ -215,7 +203,6 @@ const EcoSwapApp = {
 
     // Cargar contenido de perfil
     loadProfileContent() {
-        console.log('👤 Cargando contenido de perfil...');
 
         // Verificar si ProfileModule está disponible
         if (typeof ProfileModule !== 'undefined') {
@@ -272,7 +259,6 @@ const EcoSwapApp = {
         // Guardar preferencia
         localStorage.setItem('ecoswap_theme', theme);
 
-        console.log(`🎨 Tema aplicado: ${theme}`);
     },
 
     // Configurar idioma
@@ -290,7 +276,6 @@ const EcoSwapApp = {
         // Guardar preferencia
         localStorage.setItem('ecoswap_language', language);
 
-        console.log(`🌍 Idioma aplicado: ${language}`);
     },
 
     // Detectar idioma del sistema
@@ -343,7 +328,6 @@ const EcoSwapApp = {
             const currency = localStorage.getItem('ecoswap_currency') || 'COP';
             this.state.currency = currency;
 
-            console.log('⚙️ Preferencias del usuario cargadas');
         } catch (error) {
             console.error('Error al cargar preferencias:', error);
         }
@@ -446,7 +430,6 @@ const EcoSwapApp = {
             // Mostrar notificación de bienvenida
             this.showNotification(`¡Bienvenido, ${userData.name}!`, 'success');
 
-            console.log('✅ Usuario autenticado correctamente');
         } catch (error) {
             console.error('Error en login:', error);
             this.showNotification('Error al iniciar sesión', 'error');
@@ -470,7 +453,6 @@ const EcoSwapApp = {
             // Mostrar notificación
             this.showNotification('Sesión cerrada correctamente', 'info');
 
-            console.log('🚪 Usuario desconectado');
         } catch (error) {
             console.error('Error en logout:', error);
         }
@@ -575,7 +557,6 @@ const EcoSwapApp = {
                 this.init();
 
                 this.showNotification('Datos de la aplicación limpiados', 'success');
-                console.log('🧹 Datos de la aplicación limpiados');
             } catch (error) {
                 console.error('Error al limpiar datos:', error);
                 this.showNotification('Error al limpiar datos', 'error');
@@ -586,7 +567,6 @@ const EcoSwapApp = {
 
 // Inicializar aplicación cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('🚀 DOM cargado, iniciando EcoSwap Colombia...');
     EcoSwapApp.init();
 });
 
@@ -629,4 +609,3 @@ function logout() {
     }
 }
 
-console.log('📦 EcoSwap Colombia - Archivo principal cargado');

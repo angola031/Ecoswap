@@ -41,7 +41,6 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
                     table: 'notificacion'
                 },
                 (payload) => {
-                    console.log('🔔 Nueva notificación recibida:', payload)
                     fetchNotifications() // Recargar notificaciones
                 }
             )

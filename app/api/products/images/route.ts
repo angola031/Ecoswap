@@ -3,7 +3,6 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('🖼️ API Images: Iniciando subida de imágenes')
     
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
@@ -20,10 +19,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 })
     }
 
-    console.log('✅ API Images: Usuario autenticado:', user.email)
 
     const { producto_id, imagenes } = await req.json()
-    console.log('📦 API Images: Datos recibidos:', { producto_id, imagenesCount: imagenes?.length })
 
     if (!producto_id || !imagenes || !Array.isArray(imagenes)) {
       return NextResponse.json({ 
@@ -71,7 +68,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Insertar imágenes en la base de datos
-    console.log('💾 API Images: Insertando imágenes en la base de datos:', imagenes)
     
     const { data: insertedImages, error: insertError } = await supabaseAdmin
       .from('imagen_producto')
@@ -86,7 +82,6 @@ export async function POST(req: NextRequest) {
       }, { status: 500 })
     }
 
-    console.log('✅ API Images: Imágenes insertadas correctamente:', insertedImages)
 
     return NextResponse.json({
       success: true,

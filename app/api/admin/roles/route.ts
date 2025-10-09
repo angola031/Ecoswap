@@ -137,7 +137,6 @@ export async function POST(req: NextRequest) {
         }
 
         // Validar email antes de crear el administrador
-        console.log('🔍 Validando email:', email.toLowerCase())
         
         // PASO 1: Verificar en tabla usuario
         const { data: existingUser, error: userCheckError } = await supabaseAdmin
@@ -177,7 +176,6 @@ export async function POST(req: NextRequest) {
         }
 
         // PASO 2: Verificar en Supabase Auth (por si existe pero no está en nuestra tabla usuario)
-        console.log('🔍 Verificando en Supabase Auth...')
         try {
             const { data: authUsers, error: authListError } = await supabaseAdmin.auth.admin.listUsers({
                 page: 1,
@@ -209,7 +207,6 @@ export async function POST(req: NextRequest) {
             // No fallar la creación por esto, solo loggear
         }
 
-        console.log('✅ Email validado correctamente, no existe en el sistema')
 
         // Obtener el super admin actual
         const { data: superAdmin } = await supabaseAdmin
@@ -311,7 +308,6 @@ export async function POST(req: NextRequest) {
         let emailEnviado = false
         if (enviarInvitacion) {
             try {
-                console.log('📧 Enviando correo de configuración de contraseña a:', email.toLowerCase())
                 
                 // Obtener nombres de roles para el email
                 const { data: roleNames } = await supabaseAdmin
@@ -320,12 +316,10 @@ export async function POST(req: NextRequest) {
                     .in('rol_id', roles)
 
                 const roleNamesList = roleNames?.map(r => r.nombre) || ['administrador']
-                console.log('🎯 Roles asignados:', roleNamesList)
 
                 // Construir URL de redirección
                 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
                 const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/admin/verificaciones`
-                console.log('🔗 URL de redirección:', redirectUrl)
 
                 // Enviar email de reset de contraseña para que pueda configurar su contraseña
                 const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
@@ -339,7 +333,6 @@ export async function POST(req: NextRequest) {
                     console.error('❌ Error enviando email de configuración de contraseña:', resetError)
                     emailEnviado = false
                 } else {
-                    console.log('✅ Email de configuración de contraseña enviado exitosamente a', email.toLowerCase())
                     emailEnviado = true
                 }
             } catch (error) {

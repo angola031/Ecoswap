@@ -18,7 +18,6 @@ export default function SessionManager() {
         timeoutMinutes: 5,
         enabled: isProtectedPage,
         onTimeout: () => {
-            console.log('⏰ Sesión expirada por inactividad desde SessionManager')
         }
     })
 
@@ -34,7 +33,6 @@ export default function SessionManager() {
             resetTimeout={resetTimeout}
             isInWarningPeriod={isInWarningPeriod}
             onExtendSession={() => {
-                console.log('✅ Sesión extendida por el usuario desde SessionManager')
                 resetTimeout() // Asegurar que se reinicie el timeout
             }}
         />

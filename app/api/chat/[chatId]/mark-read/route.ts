@@ -34,7 +34,6 @@ export async function POST(
       const body = await req.json()
       messageIds = body.messageIds
     } catch (jsonError) {
-      console.log('No se pudo parsear JSON, marcando todos los mensajes como leídos')
     }
     
     const chatId = Number(params.chatId)
