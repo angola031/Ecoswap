@@ -1683,7 +1683,7 @@ export default function InteraccionDetailPage() {
                                                         method: 'PATCH',
                                                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                                                         body: JSON.stringify({
-                                                            userId: session?.user?.id,
+                                                            userId: currentUserId,
                                                             isValid: true,
                                                             rating: result.value.rating,
                                                             comment: result.value.comment,
@@ -1704,7 +1704,11 @@ export default function InteraccionDetailPage() {
                                                         await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
                                                             method: 'PATCH',
                                                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                                                            body: JSON.stringify({ isValid: false, comment: problem.value || null })
+                                                            body: JSON.stringify({ 
+                                                            userId: currentUserId,
+                                                            isValid: false, 
+                                                            comment: problem.value || null 
+                                                        })
                                                         })
                                                     }
                                                 }
