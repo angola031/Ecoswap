@@ -12,11 +12,21 @@ export async function PATCH(
 
     console.log('🔍 DEBUG API: Validación recibida:', {
       intercambioId,
+      intercambioIdType: typeof intercambioId,
       userId,
+      userIdType: typeof userId,
       isValid,
       rating,
       comment: comment ? 'presente' : 'ausente',
       aspects: aspects ? 'presente' : 'ausente'
+    })
+
+    // Convertir intercambioId a número para la consulta
+    const numericIntercambioId = parseInt(intercambioId)
+    console.log('🔍 DEBUG API: Conversión de ID:', {
+      original: intercambioId,
+      numeric: numericIntercambioId,
+      isNaN: isNaN(numericIntercambioId)
     })
 
     if (!userId || typeof isValid !== 'boolean') {
@@ -54,7 +64,7 @@ export async function PATCH(
         fecha_propuesta,
         fecha_completado
       `)
-      .eq('intercambio_id', intercambioId)
+      .eq('intercambio_id', numericIntercambioId)
       .single()
 
     if (intercambioError) {

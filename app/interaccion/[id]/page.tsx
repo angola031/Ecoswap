@@ -1678,12 +1678,13 @@ export default function InteraccionDetailPage() {
                                                     }
                                                 })
                                                 if (result.isConfirmed) {
-                                                    // Enviar calificación usando el nuevo endpoint
-                                                    await fetch(`/api/intercambios/${Number(intercambioId)}/rate`, {
-                                                        method: 'POST',
+                                                    // Enviar validación usando el mismo endpoint que ChatModule
+                                                    await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
+                                                        method: 'PATCH',
                                                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                                                         body: JSON.stringify({
                                                             userId: session?.user?.id,
+                                                            isValid: true,
                                                             rating: result.value.rating,
                                                             comment: result.value.comment,
                                                             aspects: result.value.aspects

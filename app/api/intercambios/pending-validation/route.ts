@@ -87,7 +87,6 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       )
     }
-    console.log('🔍 DEBUG: Intercambios obtenidos:', intercambios)
 
     // Transformar los datos para el frontend
     const transformedIntercambios = intercambios.map(intercambio => {
