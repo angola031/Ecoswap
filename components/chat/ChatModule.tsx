@@ -3494,6 +3494,17 @@ const getCurrentUserId = () => {
             {/* Seguimiento de Intercambios Activos */}
             {(() => {
               const acceptedProposals = proposals.filter(p => p.status === 'aceptada')
+              
+              // Verificar si el usuario actual ya validó el encuentro
+              const currentUserId = parseInt(getCurrentUserId())
+              const userAlreadyValidated = userValidations.some(
+                validation => validation.usuario_id === currentUserId
+              )
+              
+              
+              // Si el usuario ya validó, no mostrar la sección de intercambios activos
+              if (userAlreadyValidated) return null
+              
               return acceptedProposals.length > 0 && (
                 <div className="border-t border-gray-200 bg-blue-50 flex-shrink-0 overflow-hidden flex flex-col" style={{ maxHeight: '220px' }}>
                   <div className="px-3 py-2 flex-shrink-0">
@@ -3599,6 +3610,7 @@ const getCurrentUserId = () => {
               const userAlreadyValidated = userValidations.some(
                 validation => validation.usuario_id === currentUserId
               )
+              
               
               // Si el usuario ya validó, no mostrar el banner
               if (userAlreadyValidated) return null
