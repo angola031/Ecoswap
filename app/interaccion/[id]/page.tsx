@@ -477,19 +477,28 @@ export default function InteraccionDetailPage() {
                                              content.includes('Negociable')
                         return !isProductInfo && content.trim().length > 0
                     })
-                    .map((m: any) => ({
-                        id: String(m.mensaje_id),
-                        text: m.contenido || '',
-                        timestamp: m.fecha_envio,
-                        sender: {
-                            id: String(m.usuario?.user_id || m.usuario_id),
-                            name: m.usuario?.nombre || 'Usuario',
-                            lastName: m.usuario?.apellido || '',
-                            avatar: m.usuario?.foto_perfil || undefined
-                        },
-                        type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
-                        metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
-                    }))
+                    .map((m: any) => {
+                        // Detectar mensajes del sistema de propuestas (igual que ChatModule)
+                        let contentRaw = m.contenido || ''
+                        const isSystemProposal = typeof contentRaw === 'string' && contentRaw.startsWith('[system_proposal]')
+                        if (isSystemProposal) {
+                            contentRaw = contentRaw.replace('[system_proposal]', '📝').trim()
+                        }
+
+                        return {
+                            id: String(m.mensaje_id),
+                            text: contentRaw,
+                            timestamp: m.fecha_envio,
+                            sender: {
+                                id: isSystemProposal ? 'system' : String(m.usuario?.user_id || m.usuario_id),
+                                name: isSystemProposal ? 'Sistema' : (m.usuario?.nombre || 'Usuario'),
+                                lastName: isSystemProposal ? '' : (m.usuario?.apellido || ''),
+                                avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : (m.usuario?.foto_perfil || undefined)
+                            },
+                            type: isSystemProposal ? 'system' : (m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text'),
+                            metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
+                        }
+                    })
                     .sort((a, b) => Number(a.id) - Number(b.id))
                 
                 console.log('💬 [InteractionDetail] Mensajes transformados:', {
@@ -620,12 +629,24 @@ export default function InteraccionDetailPage() {
 
                 // Crear mensaje con información del usuario
                 getSenderInfo().then(senderInfo => {
+                    // Detectar mensajes del sistema de propuestas (igual que ChatModule)
+                    let contentRaw = m.contenido || ''
+                    const isSystemProposal = typeof contentRaw === 'string' && contentRaw.startsWith('[system_proposal]')
+                    if (isSystemProposal) {
+                        contentRaw = contentRaw.replace('[system_proposal]', '📝').trim()
+                    }
+
                     const incomingMessage: Message = {
                         id: messageId,
-                        text: m.contenido || '',
+                        text: contentRaw,
                         timestamp: m.fecha_envio,
-                        sender: senderInfo,
-                        type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
+                        sender: isSystemProposal ? {
+                            id: 'system',
+                            name: 'Sistema',
+                            lastName: '',
+                            avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'
+                        } : senderInfo,
+                        type: isSystemProposal ? 'system' : (m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text'),
                         metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
                     }
 
