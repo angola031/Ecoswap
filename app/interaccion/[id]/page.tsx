@@ -64,13 +64,28 @@ interface Message {
 
 interface Proposal {
     id: string
-    type: 'exchange' | 'purchase' | 'donation'
-    status: 'pending' | 'accepted' | 'rejected' | 'counter'
+    type: 'precio' | 'intercambio' | 'encuentro' | 'condiciones' | 'otro'
     description: string
     proposedPrice?: number
-    proposedProduct?: string
+    conditions?: string
+    status: 'pendiente' | 'aceptada' | 'rechazada' | 'contrapropuesta' | 'cancelada' | 'pendiente_validacion'
     createdAt: string
-    expiresAt: string
+    respondedAt?: string
+    response?: string
+    meetingDate?: string
+    meetingPlace?: string
+    proposer?: {
+        id: number
+        name: string
+        lastName: string
+        avatar?: string
+    }
+    receiver?: {
+        id: number
+        name: string
+        lastName: string
+        avatar?: string
+    }
 }
 
 interface Delivery {
@@ -169,7 +184,7 @@ const mockInteraction: Interaction = {
             sender: {
                 id: 'system',
                 name: 'Sistema',
-                avatar: ''
+                avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'
             },
             type: 'system'
         },
@@ -180,7 +195,7 @@ const mockInteraction: Interaction = {
             sender: {
                 id: 'system',
                 name: 'Sistema',
-                avatar: ''
+                avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'
             },
             type: 'system'
         }
@@ -188,11 +203,22 @@ const mockInteraction: Interaction = {
     proposals: [
         {
             id: '1',
-            type: 'exchange',
-            status: 'accepted',
+            type: 'intercambio',
+            status: 'aceptada',
             description: 'Intercambio por amplificador de guitarra en buen estado',
             createdAt: '2024-01-20T11:00:00Z',
-            expiresAt: '2024-01-27T11:00:00Z'
+            proposer: {
+                id: 2,
+                name: 'Carlos',
+                lastName: 'Mendoza',
+                avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face'
+            },
+            receiver: {
+                id: 1,
+                name: 'Usuario',
+                lastName: 'Actual',
+                avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face'
+            }
         }
     ],
     deliveries: [
@@ -869,7 +895,19 @@ export default function InteraccionDetailPage() {
     // Función para verificar si ya hay un intercambio aceptado
     const hasAcceptedExchange = () => {
         if (!interaction?.proposals) return false
-        return interaction.proposals.some(proposal => proposal.status === 'accepted')
+        return interaction.proposals.some(proposal => proposal.status === 'aceptada')
+    }
+
+    // Función para obtener texto del tipo de propuesta (igual que ChatModule)
+    const getProposalTypeText = (type: string): string => {
+        const types = {
+            'precio': 'Propuesta de precio',
+            'intercambio': 'Propuesta de intercambio',
+            'encuentro': 'Propuesta de encuentro',
+            'condiciones': 'Propuesta de condiciones',
+            'otro': 'Propuesta general'
+        }
+        return types[type as keyof typeof types] || 'Propuesta'
     }
 
     const handleSendMessage = async () => {
@@ -1056,7 +1094,7 @@ export default function InteraccionDetailPage() {
                 sender: {
                     id: 'system',
                     name: 'Sistema',
-                    avatar: ''
+                    avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'
                 },
                 type: 'system'
             }
@@ -1116,7 +1154,7 @@ export default function InteraccionDetailPage() {
                 sender: {
                     id: 'system',
                     name: 'Sistema',
-                    avatar: ''
+                    avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'
                 },
                 type: 'system'
             }
@@ -1280,7 +1318,7 @@ export default function InteraccionDetailPage() {
                 sender: {
                     id: 'system',
                     name: 'Sistema',
-                    avatar: ''
+                    avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'
                 },
                 type: 'system'
             }
@@ -1740,11 +1778,19 @@ export default function InteraccionDetailPage() {
                                                         <div key={message.id} className="flex justify-center mb-4">
                                                             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 max-w-md">
                                                                 <div className="flex items-center space-x-2">
-                                                                    <div className="w-6 h-6 rounded-full border border-gray-200 bg-blue-100 flex items-center justify-center">
-                                                                        <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                                                                            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V9H21ZM3 9H9V6.5L3 7V9ZM12 7.5C13.66 7.5 15 8.84 15 10.5V12H9V10.5C9 8.84 10.34 7.5 12 7.5ZM7.5 13.5C7.5 12.67 8.17 12 9 12H15C15.83 12 16.5 12.67 16.5 13.5V16H7.5V13.5ZM18 10.5C18.83 10.5 19.5 11.17 19.5 12V15H21V17H19.5V20H17.5V17H6.5V20H4.5V17H3V15H4.5V12C4.5 11.17 5.17 10.5 6 10.5H18Z"/>
-                                                                        </svg>
-                                                                    </div>
+                                                                    <img
+                                                                        src={sender.avatar || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'}
+                                                                        alt="Avatar del Sistema"
+                                                                        className="w-6 h-6 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                                                                        onError={(e) => {
+                                                                            const target = e.target as HTMLImageElement;
+                                                                            target.style.display = 'none';
+                                                                            const fallback = document.createElement('div');
+                                                                            fallback.className = 'w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-600 border border-gray-200 flex-shrink-0';
+                                                                            fallback.textContent = 'S';
+                                                                            target.parentNode?.insertBefore(fallback, target.nextSibling);
+                                                                        }}
+                                                                    />
                                                                     <div>
                                                                         <p className="text-sm font-medium text-blue-800">Sistema</p>
                                                                         <p className="text-sm text-blue-700">{message.text}</p>
@@ -1951,15 +1997,28 @@ export default function InteraccionDetailPage() {
                                                                    </div>
                                                                )}
                                                                
-                                                               {/* Botones de acción para propuestas pendientes */}
-                                                               {proposal.status === 'pending' && currentUserId && (proposal as any).receiverId && currentUserId === (proposal as any).receiverId && (
+                                                               {/* Botones de acción para propuestas pendientes - Lógica igual que ChatModule */}
+                                                               {proposal.status === 'pendiente' && (() => {
+                                                                   const anyAccepted = interaction?.proposals?.some(p => p.status === 'aceptada')
+                                                                   if (anyAccepted) return false
+                                                                   
+                                                                   const currentUserIdNum = currentUserId ? parseInt(currentUserId) : null
+                                                                   const proposerId = proposal.proposer?.id
+                                                                   
+                                                                   // Si soy el receptor y la propuesta la envió otro usuario, puedo aceptar/rechazar
+                                                                   if (currentUserIdNum && proposerId && proposerId !== currentUserIdNum) {
+                                                                       return true
+                                                                   }
+                                                                   
+                                                                   return false
+                                                               })() && (
                                                                    <div className="flex space-x-2 mt-3">
                                                                        <button
                                                                            onClick={() => handleRespondProposal(proposal.id, 'aceptar')}
                                                                            disabled={hasAcceptedExchange()}
                                                                            className={`px-3 py-1 text-xs rounded ${
                                                                                hasAcceptedExchange() 
-                                                                                   ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                                                                                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                                                                                    : 'bg-green-600 text-white hover:bg-green-700'
                                                                            }`}
                                                                            title={hasAcceptedExchange() ? 'Ya hay un intercambio aceptado' : ''}
@@ -1971,7 +2030,7 @@ export default function InteraccionDetailPage() {
                                                                             disabled={hasAcceptedExchange()}
                                                                             className={`px-3 py-1 text-xs rounded ${
                                                                                 hasAcceptedExchange() 
-                                                                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                                                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                                                                                     : 'bg-red-600 text-white hover:bg-red-700'
                                                                             }`}
                                                                             title={hasAcceptedExchange() ? 'Ya hay un intercambio aceptado' : ''}
