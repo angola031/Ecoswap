@@ -159,6 +159,30 @@ export default function ClientNotifications() {
 
     const getNotificationIcon = (tipo: string) => {
         switch (tipo) {
+            case 'nuevo_mensaje':
+                return (
+                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                )
+            case 'intercambio_completado':
+                return (
+                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                )
+            case 'intercambio_fallido':
+                return (
+                    <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                )
+            case 'validacion_pendiente':
+                return (
+                    <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                )
             case 'verificacion_identidad':
                 return (
                     <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,10 +209,26 @@ export default function ClientNotifications() {
             markAsRead(notification.notificacion_id)
         }
 
-        // Si es una notificación de verificación rechazada, redirigir a verificación
-        if (notification.tipo === 'verificacion_identidad' && 
-            notification.datos_adicionales?.status === 'rejected') {
+        // Navegar según el tipo de notificación
+        if (notification.tipo === 'nuevo_mensaje' && notification.datos_adicionales?.chat_id) {
+            // Navegar al chat específico
+            window.location.href = `/chat/${notification.datos_adicionales.chat_id}`
+        } else if (notification.tipo === 'intercambio_completado' && notification.datos_adicionales?.intercambio_id) {
+            // Navegar a la página de interacciones
+            window.location.href = `/interaccion/${notification.datos_adicionales.intercambio_id}`
+        } else if (notification.tipo === 'intercambio_fallido' && notification.datos_adicionales?.intercambio_id) {
+            // Navegar a la página de interacciones
+            window.location.href = `/interaccion/${notification.datos_adicionales.intercambio_id}`
+        } else if (notification.tipo === 'validacion_pendiente' && notification.datos_adicionales?.intercambio_id) {
+            // Navegar a la página de interacciones para validar
+            window.location.href = `/interaccion/${notification.datos_adicionales.intercambio_id}`
+        } else if (notification.tipo === 'verificacion_identidad' && 
+                   notification.datos_adicionales?.status === 'rejected') {
+            // Redirigir a verificación
             window.location.href = '/verificacion-identidad'
+        } else if (notification.tipo === 'verificacion_aprobada') {
+            // Redirigir al perfil
+            window.location.href = '/editar-perfil'
         }
     }
 
@@ -355,6 +395,24 @@ export default function ClientNotifications() {
                                             >
                                                 Volver a enviar documentos
                                             </button>
+                                        )}
+
+                                        {/* Indicador de navegación para notificaciones clickeables */}
+                                        {(notification.tipo === 'nuevo_mensaje' || 
+                                          notification.tipo === 'intercambio_completado' || 
+                                          notification.tipo === 'intercambio_fallido' || 
+                                          notification.tipo === 'validacion_pendiente') && (
+                                            <div className="mt-2 flex items-center text-xs text-blue-600">
+                                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                </svg>
+                                                <span>
+                                                    {notification.tipo === 'nuevo_mensaje' && 'Haz clic para ir al chat'}
+                                                    {notification.tipo === 'intercambio_completado' && 'Haz clic para ver detalles'}
+                                                    {notification.tipo === 'intercambio_fallido' && 'Haz clic para ver detalles'}
+                                                    {notification.tipo === 'validacion_pendiente' && 'Haz clic para validar'}
+                                                </span>
+                                            </div>
                                         )}
 
                                         <p className="text-xs text-gray-400 mt-2">
