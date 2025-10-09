@@ -58,6 +58,11 @@ export interface InteractionDetail extends InteractionSummary {
     proposals: Proposal[]
     deliveries: Delivery[]
     ratings: Rating[]
+    userValidations?: {
+        usuario_id: number
+        es_exitoso: boolean
+        fecha_validacion: string
+    }[]
     chat: Chat
     isUrgent: boolean
     notes?: string

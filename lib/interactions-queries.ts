@@ -366,6 +366,12 @@ export async function getInteractionDetail(
       .select('*')
       .eq('intercambio_id', interactionId)
 
+    // Obtener validaciones de usuarios
+    const { data: userValidations, error: validationsError } = await supabase
+      .from('validacion_intercambio')
+      .select('usuario_id, es_exitoso, fecha_validacion')
+      .eq('intercambio_id', interactionId)
+
     // Transformar a InteractionDetail
     const interactionDetail: InteractionDetail = {
       id: intercambio.intercambio_id.toString(),
@@ -530,6 +536,7 @@ export async function getInteractionDetail(
       })(),
       deliveries: [], // TODO: Implementar entregas
       ratings: calificaciones || [],
+      userValidations: userValidations || [],
       chat: finalChat,
       isUrgent: false, // TODO: Implementar lógica de urgencia
       notes: intercambio.notas_encuentro

@@ -120,6 +120,11 @@ interface Interaction {
     messages: Message[]
     proposals: Proposal[]
     deliveries: Delivery[]
+    userValidations?: {
+        usuario_id: number
+        es_exitoso: boolean
+        fecha_validacion: string
+    }[]
     isUrgent: boolean
 }
 
@@ -1589,6 +1594,15 @@ export default function InteraccionDetailPage() {
                                 {(() => {
                                     const hasAccepted = (interaction?.proposals || []).some(p => p.status === 'aceptada')
                                     const hasPendingValidation = (interaction?.proposals || []).some(p => p.status === 'pendiente_validacion')
+                                    
+                                    // Verificar si el usuario actual ya validó el encuentro
+                                    const userAlreadyValidated = interaction?.userValidations?.some(
+                                        validation => validation.usuario_id === parseInt(currentUserId)
+                                    ) || false
+                                    
+                                    // Si el usuario ya validó, no mostrar el mensaje de validación pendiente
+                                    if (userAlreadyValidated) return null
+                                    
                                     if (!hasAccepted && !hasPendingValidation) return null
                                     const first = (interaction?.proposals || []).find(p => p.status === 'pendiente_validacion') || (interaction?.proposals || []).find(p => p.status === 'aceptada')
                                     const intercambioId = interactionId

@@ -999,6 +999,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
     }
   }, [imageModal.isOpen])
   const [proposals, setProposals] = useState<Proposal[]>([])
+  const [userValidations, setUserValidations] = useState<{usuario_id: number, es_exitoso: boolean, fecha_validacion: string}[]>([])
   const [showProposals, setShowProposals] = useState(false)
   const [isLoadingProposals, setIsLoadingProposals] = useState(false)
 const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
@@ -1352,6 +1353,7 @@ const getCurrentUserId = () => {
         if (response.ok && isMounted) {
           const data = await response.json()
           setProposals(data.data || [])
+          setUserValidations(data.userValidations || [])
         } else {
           const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }))
           console.error('❌ [ChatModule] Error cargando propuestas:', {
@@ -1905,6 +1907,21 @@ const getCurrentUserId = () => {
           prop.id === proposalId ? updatedProposal : prop
         ))
         
+        // Refrescar validaciones si hay cambio de estado a pendiente_validacion
+        if (updatedProposal.status === 'pendiente_validacion') {
+          try {
+            const validationResponse = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+            if (validationResponse.ok) {
+              const validationData = await validationResponse.json()
+              setUserValidations(validationData.userValidations || [])
+            }
+          } catch (error) {
+            console.error('Error refrescando validaciones:', error)
+          }
+        }
+        
         // Agregar notificación en el chat sobre la respuesta a la propuesta
         await addProposalResponseNotificationToChat(updatedProposal, response)
         
@@ -2065,6 +2082,21 @@ const getCurrentUserId = () => {
       setProposals(prev => prev.map(prop => 
         prop.id === proposalId ? { ...prop, ...data.data } : prop
       ))
+      
+      // Refrescar validaciones si hay cambio de estado a pendiente_validacion
+      if (data.data.status === 'pendiente_validacion') {
+        try {
+          const validationResponse = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (validationResponse.ok) {
+            const validationData = await validationResponse.json()
+            setUserValidations(validationData.userValidations || [])
+          }
+        } catch (error) {
+          console.error('Error refrescando validaciones:', error)
+        }
+      }
 
       // 6. Crear mensaje automático en el chat
       const systemMessage = {
@@ -3102,6 +3134,7 @@ const getCurrentUserId = () => {
                         if (response.ok) {
                           const data = await response.json()
                           setProposals(data.data || [])
+                          setUserValidations(data.userValidations || [])
                         }
                       } catch (error) {
                         console.error('❌ [ChatModule] Error refrescando propuestas:', error)
@@ -3560,6 +3593,16 @@ const getCurrentUserId = () => {
             {(() => {
               const hasAccepted = proposals.some(p => p.status === 'aceptada')
               const hasPendingValidation = proposals.some(p => p.status === 'pendiente_validacion')
+              
+              // Verificar si el usuario actual ya validó el encuentro
+              const currentUserId = parseInt(getCurrentUserId())
+              const userAlreadyValidated = userValidations.some(
+                validation => validation.usuario_id === currentUserId
+              )
+              
+              // Si el usuario ya validó, no mostrar el banner
+              if (userAlreadyValidated) return null
+              
               if (!hasAccepted && !hasPendingValidation) return null
               const first = proposals.find(p => p.status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
               const intercambioId = (first as any)?.intercambioId || first?.id

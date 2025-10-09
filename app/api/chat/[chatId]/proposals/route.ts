@@ -125,6 +125,12 @@ export async function GET(
       return NextResponse.json({ error: 'Error obteniendo propuestas' }, { status: 500 })
     }
 
+    // Obtener validaciones de usuarios para este intercambio
+    const { data: userValidations, error: validationsError } = await supabaseAdmin
+      .from('validacion_intercambio')
+      .select('usuario_id, es_exitoso, fecha_validacion')
+      .eq('intercambio_id', intercambio.intercambio_id)
+
     // Transformar datos
     const transformedProposals = (propuestas || []).map((prop: any) => ({
       id: prop.propuesta_id,
@@ -155,7 +161,10 @@ export async function GET(
     }))
 
 
-    return NextResponse.json({ data: transformedProposals })
+    return NextResponse.json({ 
+      data: transformedProposals,
+      userValidations: userValidations || []
+    })
   } catch (error) {
     console.error('Error en API de propuestas:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
