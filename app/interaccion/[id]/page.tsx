@@ -161,6 +161,28 @@ const mockInteraction: Interaction = {
                 avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face'
             },
             type: 'text'
+        },
+        {
+            id: '4',
+            text: '📝 Nueva propuesta enviada: Intercambio directo',
+            timestamp: '2024-01-20T12:30:00Z',
+            sender: {
+                id: 'system',
+                name: 'Sistema',
+                avatar: ''
+            },
+            type: 'system'
+        },
+        {
+            id: '5',
+            text: '✅ Propuesta aceptada. Intercambio iniciado.',
+            timestamp: '2024-01-20T13:00:00Z',
+            sender: {
+                id: 'system',
+                name: 'Sistema',
+                avatar: ''
+            },
+            type: 'system'
         }
     ],
     proposals: [
@@ -1019,6 +1041,25 @@ export default function InteraccionDetailPage() {
                     ...prev.proposals
                 ]
             } : prev)
+
+            // Crear mensaje del sistema sobre la nueva propuesta
+            const systemMessage: Message = {
+                id: `system-proposal-${created.id}-${Date.now()}`,
+                text: `📝 Nueva propuesta enviada: ${created.description}`,
+                timestamp: new Date().toISOString(),
+                sender: {
+                    id: 'system',
+                    name: 'Sistema',
+                    avatar: ''
+                },
+                type: 'system'
+            }
+
+            // Agregar mensaje del sistema al chat
+            setInteraction(prev => prev ? {
+                ...prev,
+                messages: [...prev.messages, systemMessage].sort((a, b) => Number(a.id) - Number(b.id))
+            } : prev)
         } catch (e) {
             alert('No se pudo crear la propuesta')
         } finally {
@@ -1059,6 +1100,25 @@ export default function InteraccionDetailPage() {
                     createdAt: p.createdAt,
                     proposedPrice: updated.proposedPrice ?? p.proposedPrice
                 } : p)
+            } : prev)
+
+            // Crear mensaje del sistema sobre el rechazo
+            const systemMessage: Message = {
+                id: `system-reject-${proposalId}-${Date.now()}`,
+                text: `❌ Propuesta rechazada${reason ? `: ${reason}` : ''}`,
+                timestamp: new Date().toISOString(),
+                sender: {
+                    id: 'system',
+                    name: 'Sistema',
+                    avatar: ''
+                },
+                type: 'system'
+            }
+
+            // Agregar mensaje del sistema al chat
+            setInteraction(prev => prev ? {
+                ...prev,
+                messages: [...prev.messages, systemMessage].sort((a, b) => Number(a.id) - Number(b.id))
             } : prev)
         } catch (e: any) {
             alert(e?.message || 'No se pudo responder la propuesta')
@@ -1204,6 +1264,25 @@ export default function InteraccionDetailPage() {
                     meetingDate: meetingDetails?.date || p.meetingDate,
                     meetingPlace: meetingDetails?.place || p.meetingPlace
                 } : p)
+            } : prev)
+
+            // 5.1. Crear mensaje del sistema sobre la aceptación
+            const systemMessage: Message = {
+                id: `system-accept-${proposalId}-${Date.now()}`,
+                text: `✅ Propuesta aceptada. Intercambio iniciado. ${meetingDetails ? `Encuentro programado para ${meetingDetails.date} a las ${meetingDetails.time} en ${meetingDetails.place}` : ''}`,
+                timestamp: new Date().toISOString(),
+                sender: {
+                    id: 'system',
+                    name: 'Sistema',
+                    avatar: ''
+                },
+                type: 'system'
+            }
+
+            // Agregar mensaje del sistema al chat
+            setInteraction(prev => prev ? {
+                ...prev,
+                messages: [...prev.messages, systemMessage].sort((a, b) => Number(a.id) - Number(b.id))
             } : prev)
 
             // 6. Mostrar confirmación final
@@ -1645,6 +1724,38 @@ export default function InteraccionDetailPage() {
                                                 
                                                 // Determinar si es el usuario actual comparando con el ID real
                                                 const isCurrentUser = currentUserId && sender.id === currentUserId
+                                                
+                                                // Detectar mensajes del sistema
+                                                const isSystemMessage = message.type === 'system' || sender.id === 'system'
+                                                
+                                                // Renderizar mensaje del sistema de manera especial
+                                                if (isSystemMessage) {
+                                                    return (
+                                                        <div key={message.id} className="flex justify-center mb-4">
+                                                            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 max-w-md">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <div className="w-6 h-6 rounded-full border border-gray-200 bg-blue-100 flex items-center justify-center">
+                                                                        <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                                                                            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V9H21ZM3 9H9V6.5L3 7V9ZM12 7.5C13.66 7.5 15 8.84 15 10.5V12H9V10.5C9 8.84 10.34 7.5 12 7.5ZM7.5 13.5C7.5 12.67 8.17 12 9 12H15C15.83 12 16.5 12.67 16.5 13.5V16H7.5V13.5ZM18 10.5C18.83 10.5 19.5 11.17 19.5 12V15H21V17H19.5V20H17.5V17H6.5V20H4.5V17H3V15H4.5V12C4.5 11.17 5.17 10.5 6 10.5H18Z"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm font-medium text-blue-800">Sistema</p>
+                                                                        <p className="text-sm text-blue-700">{message.text}</p>
+                                                                        <p className="text-xs text-blue-600 mt-1">
+                                                                            {message.timestamp ? new Date(message.timestamp).toLocaleString('es-CO', { 
+                                                                                hour: '2-digit', 
+                                                                                minute: '2-digit',
+                                                                                day: '2-digit',
+                                                                                month: '2-digit'
+                                                                            }) : 'Sin fecha'}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                }
                                                 
                                                 return (
                                                     <div
