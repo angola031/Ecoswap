@@ -1591,7 +1591,7 @@ export default function InteraccionDetailPage() {
                                     const hasPendingValidation = (interaction?.proposals || []).some(p => p.status === 'pendiente_validacion')
                                     if (!hasAccepted && !hasPendingValidation) return null
                                     const first = (interaction?.proposals || []).find(p => p.status === 'pendiente_validacion') || (interaction?.proposals || []).find(p => p.status === 'aceptada')
-                                    const intercambioId = (first as any)?.intercambioId || first?.id
+                                    const intercambioId = interactionId
                                     return (
                                         <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-md">
                                             <div className="px-4 py-3 flex items-center justify-between">
