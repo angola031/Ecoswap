@@ -67,6 +67,7 @@ export async function GET(
       .select(`
         chat_id,
         intercambio (
+          intercambio_id,
           usuario_propone_id,
           usuario_recibe_id
         )
@@ -127,6 +128,7 @@ export async function GET(
     // Transformar datos
     const transformedProposals = (propuestas || []).map((prop: any) => ({
       id: prop.propuesta_id,
+      intercambioId: intercambio.intercambio_id,
       type: prop.tipo_propuesta,
       description: prop.descripcion,
       proposedPrice: prop.precio_propuesto,
@@ -188,6 +190,7 @@ export async function POST(
       .select(`
         chat_id,
         intercambio (
+          intercambio_id,
           usuario_propone_id,
           usuario_recibe_id
         )
