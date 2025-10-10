@@ -6,6 +6,7 @@ import { clearProblematicCookies, clearAuthStorage, detectCookieDomainIssues } f
 import { supabaseInterceptor } from './supabase-interceptor'
 import { setupWarningSuppression } from './suppress-warnings'
 import { applyWarningFixes } from './nextjs-warning-fix'
+import { disableProblematicConnections } from './disable-websocket'
 
 /**
  * Inicializa la autenticación limpiando problemas comunes
@@ -16,6 +17,7 @@ export async function initializeAuth() {
         // Configurar supresión de warnings primero
         setupWarningSuppression()
         applyWarningFixes()
+        disableProblematicConnections()
         
         try {
         // 1. Detectar problemas de cookies

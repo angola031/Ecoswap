@@ -42,12 +42,23 @@
     console.error = function(...args) {
         const message = args.join(' ');
         
-        // También filtrar errores de boundary
+        // También filtrar errores de boundary y WebSocket
         const suppressedErrors = [
             'RedirectErrorBoundary',
             'NotFoundErrorBoundary',
             'DevRootNotFoundBoundary',
-            'webpack-internal'
+            'webpack-internal',
+            'wss://',
+            'websocket',
+            'Firefox no puede establecer una conexión',
+            'La conexión a wss://',
+            'fue interrumpida mientras la página se cargaba',
+            'La cookie',
+            'ha sido rechazada por un dominio no válido',
+            '__cf_bm',
+            '_cfuvid',
+            'cf_clearance',
+            '__cfduid'
         ];
         
         const shouldSuppress = suppressedErrors.some(error => 
@@ -107,6 +118,48 @@
     
     // Ejecutar limpieza periódicamente
     setInterval(cleanProblematicAttributes, 2000);
+    
+    // Deshabilitar WebSocket completamente
+    function disableWebSocket() {
+        const OriginalWebSocket = window.WebSocket;
+        
+        window.WebSocket = function(url, protocols) {
+            console.log('🚫 WebSocket bloqueado:', url);
+            // Retornar un objeto mock que no hace nada
+            return {
+                readyState: 3, // CLOSED
+                url: '',
+                protocol: '',
+                extensions: '',
+                bufferedAmount: 0,
+                close: function() {},
+                send: function() {},
+                addEventListener: function() {},
+                removeEventListener: function() {},
+                dispatchEvent: function() { return false; },
+                onopen: null,
+                onmessage: null,
+                onclose: null,
+                onerror: null,
+                CONNECTING: 0,
+                OPEN: 1,
+                CLOSING: 2,
+                CLOSED: 3
+            };
+        };
+        
+        // Copiar propiedades estáticas
+        Object.setPrototypeOf(window.WebSocket, OriginalWebSocket);
+        Object.assign(window.WebSocket, {
+            CONNECTING: 0,
+            OPEN: 1,
+            CLOSING: 2,
+            CLOSED: 3
+        });
+    }
+    
+    // Ejecutar deshabilitación de WebSocket
+    disableWebSocket();
     
     console.log('🛡️ Sistema de supresión de warnings inicializado');
 })();
