@@ -2,17 +2,31 @@
  * Utilidades para manejar cookies problemáticas
  */
 
+import { isCloudflareEnvironment, shouldApplyDevConfig } from './environment'
+
 // Función para limpiar cookies específicas que causan problemas
 export function clearProblematicCookies() {
     if (typeof window === 'undefined') return
 
+    const isCloudflare = isCloudflareEnvironment()
+    const isDev = shouldApplyDevConfig()
+
+    // En Cloudflare, las cookies de Cloudflare son válidas, no las eliminamos
+    if (isCloudflare) {
+        console.log('🌐 En entorno Cloudflare - manteniendo cookies de Cloudflare')
+        return true
+    }
+
     try {
-        // Lista de cookies problemáticas conocidas
+        // Lista de cookies problemáticas conocidas (solo en desarrollo)
         const problematicCookies = [
             '__cf_bm',
             '_cfuvid',
             'cf_clearance',
-            '__cfduid'
+            '__cfduid',
+            'cf_ob_info',
+            'cf_use_ob',
+            '__cfwaitingroom'
         ]
 
         // Obtener todas las cookies actuales
@@ -50,10 +64,14 @@ export function clearProblematicCookies() {
             })
         })
 
-        console.log('🧹 Cookies problemáticas limpiadas')
+        if (isDev) {
+            console.log('🧹 Cookies problemáticas limpiadas')
+        }
         return true
     } catch (error) {
-        console.warn('Error limpiando cookies:', error)
+        if (isDev) {
+            console.warn('Error limpiando cookies:', error)
+        }
         return false
     }
 }

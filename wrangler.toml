@@ -1,0 +1,46 @@
+# Cloudflare Pages Configuration
+# Configuración específica para deployment en Cloudflare Pages
+
+name = "ecoswap"
+compatibility_date = "2024-01-01"
+
+[env.production]
+name = "ecoswap-production"
+
+[env.staging]
+name = "ecoswap-staging"
+
+# Configuración de build
+[build]
+command = "npm run build"
+cwd = "."
+
+# Variables de entorno
+[vars]
+NODE_ENV = "production"
+NEXT_PUBLIC_APP_ENV = "production"
+
+# Configuración de Pages
+[pages]
+build_command = "npm run build"
+build_output_dir = "out"
+
+# Configuración de Workers (si se usan)
+[workers]
+main = "dist/worker.js"
+
+# Configuración de KV (si se necesita)
+# [[kv_namespaces]]
+# binding = "ECOSWAP_KV"
+# id = "your-kv-namespace-id"
+
+# Configuración de D1 (si se necesita)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "ecoswap-db"
+# database_id = "your-database-id"
+
+# Configuración de R2 (si se necesita)
+# [[r2_buckets]]
+# binding = "BUCKET"
+# bucket_name = "ecoswap-assets"

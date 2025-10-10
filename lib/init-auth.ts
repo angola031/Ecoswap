@@ -8,50 +8,63 @@ import { setupWarningSuppression } from './suppress-warnings'
 import { applyWarningFixes } from './nextjs-warning-fix'
 import { disableProblematicConnections } from './disable-websocket'
 import { activateCloudflareProtection } from './cloudflare-cookie-fix'
+import { isCloudflareEnvironment, shouldApplyDevConfig } from './environment'
 
 /**
  * Inicializa la autenticación limpiando problemas comunes
  */
 export async function initializeAuth() {
-        console.log('🔧 Inicializando autenticación...')
-        
-        // Configurar supresión de warnings primero
+    const isCloudflare = isCloudflareEnvironment()
+    const isDev = shouldApplyDevConfig()
+    
+    if (isDev) {
+        console.log('🔧 Inicializando autenticación (desarrollo)...')
+    } else {
+        console.log('🌐 Inicializando autenticación (producción)...')
+    }
+    
+    // Configurar supresión de warnings solo en desarrollo
+    if (isDev) {
         setupWarningSuppression()
         applyWarningFixes()
         disableProblematicConnections()
         activateCloudflareProtection()
-        
-        try {
-        // 1. Detectar problemas de cookies
-        const cookieIssues = detectCookieDomainIssues()
-        if (cookieIssues.length > 0) {
-            console.warn('🚨 Problemas de cookies detectados:', cookieIssues)
+    }
+    
+    try {
+        // En desarrollo, limpiar problemas
+        if (isDev) {
+            // 1. Detectar problemas de cookies
+            const cookieIssues = detectCookieDomainIssues()
+            if (cookieIssues.length > 0) {
+                console.warn('🚨 Problemas de cookies detectados:', cookieIssues)
+            }
+
+            // 2. Limpiar cookies problemáticas
+            const cookiesCleared = clearProblematicCookies()
+            if (cookiesCleared) {
+                console.log('✅ Cookies problemáticas limpiadas')
+            }
+
+            // 3. Limpiar storage de autenticación si hay problemas
+            const hasIssues = cookieIssues.length > 0
+            if (hasIssues) {
+                console.log('🧹 Limpiando storage de autenticación debido a problemas detectados')
+                clearAuthStorage()
+            }
         }
 
-        // 2. Limpiar cookies problemáticas
-        const cookiesCleared = clearProblematicCookies()
-        if (cookiesCleared) {
-            console.log('✅ Cookies problemáticas limpiadas')
+        // 4. Configurar interceptor de Supabase (solo en desarrollo)
+        if (isDev) {
+            // El interceptor se configura automáticamente
+            console.log('🔧 Interceptor de Supabase configurado para desarrollo')
         }
 
-        // 3. Limpiar storage de autenticación si hay problemas
-        const hasIssues = cookieIssues.length > 0
-        if (hasIssues) {
-            console.log('🧹 Limpiando storage de autenticación debido a problemas detectados')
-            clearAuthStorage()
+        if (isDev) {
+            console.log('✅ Autenticación inicializada correctamente (desarrollo)')
+        } else {
+            console.log('✅ Autenticación inicializada correctamente (producción)')
         }
-
-        // 4. Resetear el interceptor de rate limiting
-        supabaseInterceptor.reset()
-        
-        // 5. Configurar interceptor para ser más conservador
-        supabaseInterceptor.configure({
-            maxRetries: 2,
-            baseDelay: 2000, // 2 segundos
-            maxDelay: 30000  // 30 segundos máximo
-        })
-
-        console.log('✅ Autenticación inicializada correctamente')
         return true
 
     } catch (error) {
@@ -74,8 +87,7 @@ export function handleGlobalAuthError(error: any) {
         clearProblematicCookies()
         clearAuthStorage()
         
-        // Resetear interceptor
-        supabaseInterceptor.reset()
+        // El interceptor se maneja automáticamente
         
         // Mostrar mensaje al usuario
         return {

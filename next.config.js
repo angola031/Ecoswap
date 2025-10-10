@@ -6,6 +6,20 @@ const nextConfig = {
     errorOverlay: false, // Deshabilitar overlay de errores en producción
   },
   
+  // Configuración para Cloudflare Pages
+  output: process.env.NODE_ENV === 'production' ? 'export' : 'standalone',
+  
+  // Configuración de trailingSlash para Cloudflare
+  trailingSlash: true,
+  
+  // Configuración de imágenes para export estático
+  images: {
+    unoptimized: process.env.NODE_ENV === 'production',
+    domains: ['images.unsplash.com', 'vaqdzualcteljmivtoka.supabase.co'],
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+  
   // Configuración de webpack para suprimir warnings específicos
   webpack: (config, { dev, isServer }) => {
     // En desarrollo, suprimir warnings específicos
@@ -85,12 +99,6 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === 'production',
   },
   
-  // Configuración de imágenes
-  images: {
-    domains: ['images.unsplash.com', 'vaqdzualcteljmivtoka.supabase.co'],
-    dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-  },
   
   // Configuración de TypeScript
   typescript: {
@@ -107,11 +115,6 @@ const nextConfig = {
   // Configuración de poweredByHeader
   poweredByHeader: false,
   
-  // Configuración de trailingSlash
-  trailingSlash: false,
-  
-  // Configuración de output
-  output: 'standalone',
 }
 
 module.exports = nextConfig
