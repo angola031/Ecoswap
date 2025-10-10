@@ -96,11 +96,13 @@ export async function getAuthenticatedUserFromToken(authHeader: string) {
     }
 
     // Obtener usuario de la base de datos
-    let { data: usuario, error: usuarioError } = await supabase
+    const { data: initialUsuario, error: usuarioError } = await supabase
       .from('usuario')
       .select('user_id, nombre, apellido, email, verificado, activo')
       .eq('auth_user_id', user.id)
       .single()
+    
+    let usuario = initialUsuario
 
     if (usuarioError || !usuario) {
       console.error('Error obteniendo usuario de BD por auth_user_id:', usuarioError)
