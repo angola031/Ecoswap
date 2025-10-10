@@ -78,6 +78,7 @@ interface UserProduct {
     likes: number
     createdAt: string
     publicationState?: 'activo' | 'pausado' | 'intercambiado' | 'eliminado'
+    hasSuccessfulExchange?: boolean
 }
 
 interface UserReview {
@@ -88,6 +89,9 @@ interface UserReview {
     comment: string
     date: string
     productTitle: string
+    aspects?: string
+    recommend?: boolean
+    exchangeId?: string
 }
 
 interface UserActivity {
@@ -265,6 +269,20 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                             url_imagen,
                             es_principal,
                             orden
+                        ),
+                        intercambios_ofrecidos:intercambio!intercambio_producto_ofrecido_id_fkey(
+                            intercambio_id,
+                            estado,
+                            validacion_intercambio(
+                                es_exitoso
+                            )
+                        ),
+                        intercambios_solicitados:intercambio!intercambio_producto_solicitado_id_fkey(
+                            intercambio_id,
+                            estado,
+                            validacion_intercambio(
+                                es_exitoso
+                            )
                         )
                     `)
                     .eq('user_id', dbUser.user_id)
@@ -279,27 +297,103 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     const principal = Array.isArray(p.imagenes)
                         ? [...p.imagenes].sort((a, b) => (a.es_principal === b.es_principal ? (a.orden || 0) - (b.orden || 0) : a.es_principal ? -1 : 1))[0]
                         : undefined
+
+                    // Verificar si el producto tiene algún intercambio exitoso
+                    const intercambiosOfrecidos = Array.isArray(p.intercambios_ofrecidos) ? p.intercambios_ofrecidos : []
+                    const intercambiosSolicitados = Array.isArray(p.intercambios_solicitados) ? p.intercambios_solicitados : []
+                    
+                    const hasSuccessfulExchange = [
+                        ...intercambiosOfrecidos,
+                        ...intercambiosSolicitados
+                    ].some((intercambio: any) => 
+                        intercambio.estado === 'completado' || 
+                        (intercambio.validacion_intercambio && intercambio.validacion_intercambio.some((v: any) => v.es_exitoso === true))
+                    )
+
                     return {
                         id: String(p.producto_id),
                         title: p.titulo,
                         image: principal?.url_imagen || '/default-product.png',
                         price: p.precio || 0,
                         currency: 'COP',
-                        status: p.estado === 'usado' || p.estado === 'nuevo' ? 'available' : 'available',
+                        status: hasSuccessfulExchange ? 'exchanged' : (p.estado === 'usado' || p.estado === 'nuevo' ? 'available' : 'available'),
                         validationStatus: (p.estado_validacion || 'pending') as 'pending' | 'approved' | 'rejected',
                         transactionType: p.tipo_transaccion || 'mixto',
                         views: 0,
                         likes: 0,
                         createdAt: p.fecha_creacion || new Date().toISOString(),
-                        publicationState: (p.estado_publicacion || 'activo') as any
+                        publicationState: hasSuccessfulExchange ? 'intercambiado' : (p.estado_publicacion || 'activo') as any,
+                        hasSuccessfulExchange
                     }
                 })
 
-                const mockUserReviews: UserReview[] = []
+                // Cargar reseñas del usuario desde la tabla calificacion
+                const { data: reviewsData, error: reviewsError } = await supabase
+                    .from('calificacion')
+                    .select(`
+                        calificacion_id,
+                        puntuacion,
+                        comentario,
+                        aspectos_destacados,
+                        recomendaria,
+                        fecha_calificacion,
+                        intercambio_id,
+                        calificador:usuario!calificacion_calificador_id_fkey(
+                            user_id,
+                            nombre,
+                            apellido,
+                            foto_perfil
+                        ),
+                        intercambio:intercambio(
+                            intercambio_id,
+                            producto_ofrecido:producto!intercambio_producto_ofrecido_id_fkey(
+                                titulo
+                            ),
+                            producto_solicitado:producto!intercambio_producto_solicitado_id_fkey(
+                                titulo
+                            )
+                        )
+                    `)
+                    .eq('calificado_id', dbUser.user_id)
+                    .eq('es_publica', true)
+                    .order('fecha_calificacion', { ascending: false })
+
+                // Transformar reseñas a formato esperado
+                const transformedReviews: UserReview[] = reviewsData?.map((review: any) => ({
+                    id: review.calificacion_id.toString(),
+                    reviewerName: `${review.calificador?.nombre || ''} ${review.calificador?.apellido || ''}`.trim() || 'Usuario',
+                    reviewerAvatar: review.calificador?.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+                    rating: review.puntuacion,
+                    comment: review.comentario || '',
+                    date: new Date(review.fecha_calificacion).toLocaleDateString('es-CO'),
+                    productTitle: review.intercambio?.producto_ofrecido?.titulo || review.intercambio?.producto_solicitado?.titulo || 'Producto',
+                    aspects: review.aspectos_destacados || '',
+                    recommend: review.recomendaria || false,
+                    exchangeId: review.intercambio_id?.toString()
+                })) || []
+
+                // Calcular intercambios únicos correctamente
+                const { data: intercambiosData } = await supabase
+                    .from('intercambio')
+                    .select('intercambio_id')
+                    .or(`usuario_propone_id.eq.${dbUser.user_id},usuario_recibe_id.eq.${dbUser.user_id}`)
+                    .eq('estado', 'completado')
+
+                // Eliminar duplicados usando un Set
+                const intercambiosUnicos = new Set(intercambiosData?.map(i => i.intercambio_id) || [])
+                const totalIntercambiosUnicos = intercambiosUnicos.size
+
+                // Actualizar el perfil con el conteo correcto de intercambios
+                setProfileData(prev => prev ? {
+                    ...prev,
+                    totalExchanges: totalIntercambiosUnicos,
+                    totalReviews: transformedReviews.length
+                } : null)
+
                 const mockUserActivities: UserActivity[] = []
 
                 setUserProducts(transformed)
-                setUserReviews(mockUserReviews)
+                setUserReviews(transformedReviews)
                 setUserActivities(mockUserActivities)
                 setIsLoading(false)
             } catch (e) {
@@ -807,12 +901,20 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.validationStatus === 'approved' ? 'bg-green-100 text-green-800' : product.validationStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
                                                 {product.validationStatus === 'approved' ? 'Aprobado' : product.validationStatus === 'pending' ? 'Pendiente' : 'Rechazado'}
                                             </span>
-                                            {product.publicationState === 'pausado' && (
+                                            {product.hasSuccessfulExchange && (
+                                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center">
+                                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                    </svg>
+                                                    Concretado
+                                                </span>
+                                            )}
+                                            {product.publicationState === 'pausado' && !product.hasSuccessfulExchange && (
                                                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-800">
                                                     Pausado
                                                 </span>
                                             )}
-                                            {product.transactionType && (
+                                            {product.transactionType && !product.hasSuccessfulExchange && (
                                                 <span className={`px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800`}>
                                                     {product.transactionType === 'venta' ? 'Venta' : product.transactionType === 'intercambio' ? 'Intercambio' : product.transactionType === 'donacion' ? 'Donación' : 'Mixto'}
                                         </span>
@@ -833,8 +935,20 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
                                     {/* Acciones por estado */}
                                     <div className="mt-3 grid grid-cols-2 gap-2">
+                                        {/* Producto con intercambio exitoso: Solo mensaje de éxito */}
+                                        {product.hasSuccessfulExchange && (
+                                            <div className="col-span-2 text-center py-3 bg-green-50 border border-green-200 rounded-md">
+                                                <div className="flex items-center justify-center space-x-2 text-green-800">
+                                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                    </svg>
+                                                    <span className="font-medium">Concretado con éxito</span>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Pendiente: solo Eliminar */}
-                                        {product.validationStatus === 'pending' && (
+                                        {product.validationStatus === 'pending' && !product.hasSuccessfulExchange && (
                                             <>
                                                 <div></div>
                                                 <button
@@ -848,7 +962,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         )}
 
                                         {/* Rechazado: Editar + Reenviar + Eliminar */}
-                                        {product.validationStatus === 'rejected' && (
+                                        {product.validationStatus === 'rejected' && !product.hasSuccessfulExchange && (
                                             <>
                                                 <button
                                                     onClick={() => router.push(`/editar-producto/${product.id}`)}
@@ -867,7 +981,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         )}
 
                                         {/* Aprobado + Activo: Editar + Pausar + Eliminar */}
-                                        {product.validationStatus === 'approved' && product.publicationState !== 'pausado' && (
+                                        {product.validationStatus === 'approved' && product.publicationState !== 'pausado' && !product.hasSuccessfulExchange && (
                                             <>
                                                 <button
                                                     onClick={() => router.push(`/editar-producto/${product.id}`)}
@@ -893,7 +1007,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         )}
 
                                         {/* Aprobado + Pausado: Editar + Reanudar + Eliminar */}
-                                        {product.validationStatus === 'approved' && product.publicationState === 'pausado' && (
+                                        {product.validationStatus === 'approved' && product.publicationState === 'pausado' && !product.hasSuccessfulExchange && (
                                             <>
                                                 <button
                                                     onClick={() => router.push(`/editar-producto/${product.id}`)}
@@ -939,46 +1053,70 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         </div>
 
                         <div className="space-y-4">
-                            {userReviews.map((review) => (
-                                <motion.div
-                                    key={review.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="card"
-                                >
-                                    <div className="flex items-start space-x-4">
-                                        <img
-                                            src={review.reviewerAvatar}
-                                            alt={review.reviewerName}
-                                            className="w-12 h-12 rounded-full"
-                                        />
+                            {userReviews.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <StarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay reseñas aún</h3>
+                                    <p className="text-gray-500">Las reseñas aparecerán aquí cuando otros usuarios te califiquen.</p>
+                                </div>
+                            ) : (
+                                userReviews.map((review) => (
+                                    <motion.div
+                                        key={review.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="card"
+                                    >
+                                        <div className="flex items-start space-x-4">
+                                            <img
+                                                src={review.reviewerAvatar}
+                                                alt={review.reviewerName}
+                                                className="w-12 h-12 rounded-full"
+                                            />
 
-                                        <div className="flex-1">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <h4 className="font-semibold text-gray-900">{review.reviewerName}</h4>
-                                                <div className="flex items-center space-x-1">
-                                                    {[...Array(5)].map((_, i) => (
-                                                        <StarIcon
-                                                            key={i}
-                                                            className={`w-4 h-4 ${i < review.rating
-                                                                ? 'text-yellow-400 fill-current'
-                                                                : 'text-gray-300'
-                                                                }`}
-                                                        />
-                                                    ))}
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h4 className="font-semibold text-gray-900">{review.reviewerName}</h4>
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="flex items-center space-x-1">
+                                                            {[...Array(5)].map((_, i) => (
+                                                                <StarIcon
+                                                                    key={i}
+                                                                    className={`w-4 h-4 ${i < review.rating
+                                                                        ? 'text-yellow-400 fill-current'
+                                                                        : 'text-gray-300'
+                                                                        }`}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        {review.recommend && (
+                                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                                Recomendado
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {review.comment && (
+                                                    <p className="text-gray-700 mb-3">{review.comment}</p>
+                                                )}
+
+                                                {review.aspects && (
+                                                    <div className="mb-3">
+                                                        <h5 className="text-sm font-medium text-gray-900 mb-1">Aspectos destacados:</h5>
+                                                        <p className="text-sm text-gray-600">{review.aspects}</p>
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-center justify-between text-sm text-gray-500">
+                                                    <span>Intercambio: {review.productTitle}</span>
+                                                    <span>{review.date}</span>
                                                 </div>
                                             </div>
-
-                                            <p className="text-gray-700 mb-2">{review.comment}</p>
-
-                                            <div className="flex items-center justify-between text-sm text-gray-500">
-                                                <span>Producto: {review.productTitle}</span>
-                                                <span>{review.date}</span>
-                                            </div>
                                         </div>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                    </motion.div>
+                                ))
+                            )}
                         </div>
                     </div>
                 )}
