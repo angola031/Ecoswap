@@ -52,6 +52,29 @@ export default function HomePage() {
         }
     })
 
+    // Listener para cambios de sesión de Supabase
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+                setIsAuthenticated(false)
+                setCurrentUser(null)
+            } else if (event === 'SIGNED_IN' && session) {
+                try {
+                    const user = await getCurrentUser()
+                    if (user) {
+                        setCurrentUser(user)
+                        setIsAuthenticated(true)
+                        setCurrentScreen('main')
+                    }
+                } catch (error) {
+                    console.error('Error al procesar sesión:', error)
+                }
+            }
+        })
+
+        return () => subscription.unsubscribe()
+    }, [isAuthenticated, currentUser])
+
     // Verificación de autenticación real
     useEffect(() => {
         // Verificar si hay timeout
@@ -63,7 +86,35 @@ export default function HomePage() {
 
         const checkAuth = async () => {
             try {
-                const user = await getCurrentUser()
+                setIsLoading(true)
+                
+                // Primero intentar obtener usuario de getCurrentUser
+                let user = await getCurrentUser()
+                
+                // Si no hay usuario, intentar obtener del localStorage como respaldo
+                if (!user) {
+                    const cachedUser = localStorage.getItem('ecoswap_user')
+                    
+                    // Buscar todas las claves de Supabase en localStorage
+                    let supabaseSession = null
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i)
+                        if (key && key.startsWith('sb-') && key.includes('auth-token')) {
+                            supabaseSession = localStorage.getItem(key)
+                            break
+                        }
+                    }
+                    
+                    if (cachedUser && supabaseSession) {
+                        try {
+                            const parsedUser = JSON.parse(cachedUser)
+                            user = parsedUser
+                        } catch (error) {
+                            // Solo loggear errores críticos
+                        }
+                    }
+                }
+                
                 if (user) {
                     // Verificar si es administrador
                     const { data: userData } = await supabase
@@ -108,6 +159,8 @@ export default function HomePage() {
                 setIsAuthenticated(false)
                 setCurrentScreen('main')
                 setCurrentModule('products')
+            } finally {
+                setIsLoading(false)
             }
         }
 
@@ -287,6 +340,56 @@ export default function HomePage() {
 
                         {/* Usuario o botón de login */}
                         <div className="flex items-center space-x-4">
+                            {/* Botón para validar sesión */}
+                            <button
+                                onClick={() => {
+                                    console.log('🔍 === VALIDACIÓN DE SESIÓN ===')
+                                    
+                                    // Verificar localStorage
+                                    const ecoswapUser = localStorage.getItem('ecoswap_user')
+                                    console.log('📦 Usuario en localStorage:', ecoswapUser ? 'Presente' : 'Ausente')
+                                    
+                                    // Buscar clave de Supabase
+                                    let supabaseKey = null
+                                    let supabaseData = null
+                                    for (let i = 0; i < localStorage.length; i++) {
+                                        const key = localStorage.key(i)
+                                        if (key && key.startsWith('sb-') && key.includes('auth-token')) {
+                                            supabaseKey = key
+                                            supabaseData = localStorage.getItem(key)
+                                            break
+                                        }
+                                    }
+                                    
+                                    console.log('🔑 Clave Supabase encontrada:', supabaseKey ? 'Sí' : 'No')
+                                    console.log('📄 Datos Supabase:', supabaseData ? 'Presentes' : 'Ausentes')
+                                    
+                                    // Verificar sesión actual
+                                    supabase.auth.getSession().then(({ data: { session }, error }) => {
+                                        console.log('🔐 Sesión válida:', !!session)
+                                        console.log('👤 Usuario:', session?.user?.email || 'Ninguno')
+                                        console.log('⚠️ Error:', error || 'Ninguno')
+                                        
+                                        // Diagnóstico
+                                        if (!session && ecoswapUser) {
+                                            console.log('🚨 PROBLEMA: Hay usuario en localStorage pero no hay sesión de Supabase')
+                                        } else if (session && !ecoswapUser) {
+                                            console.log('🚨 PROBLEMA: Hay sesión de Supabase pero no hay usuario en localStorage')
+                                        } else if (!session && !ecoswapUser) {
+                                            console.log('✅ ESTADO: No hay sesión activa')
+                                        } else {
+                                            console.log('✅ ESTADO: Sesión válida y usuario presente')
+                                        }
+                                        
+                                        console.log('🔍 === FIN DE VALIDACIÓN ===')
+                                    })
+                                }}
+                                className="px-3 py-1 bg-blue-100 text-blue-600 rounded text-sm hover:bg-blue-200"
+                                title="Validar estado de sesión"
+                            >
+                                🔍 Validar
+                            </button>
+                            
                             {isAuthenticated && currentUser ? (
                                 <div className="flex items-center space-x-3">
                                     <img

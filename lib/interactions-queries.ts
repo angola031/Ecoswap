@@ -97,16 +97,27 @@ export async function getInteractions(
 
     const { data, error, count } = await query
 
+    // Eliminar duplicados basándose en intercambio_id
+    const uniqueInteractions = new Map()
+    if (data) {
+      data.forEach((intercambio: any) => {
+        if (!uniqueInteractions.has(intercambio.intercambio_id)) {
+          uniqueInteractions.set(intercambio.intercambio_id, intercambio)
+        }
+      })
+    }
+    const deduplicatedData = Array.from(uniqueInteractions.values())
+
     if (error) {
       console.error('Error obteniendo interacciones:', error)
       return { success: false, error: error.message }
     }
 
-    if (data && data.length > 0) {
+    if (deduplicatedData && deduplicatedData.length > 0) {
     }
 
     // Transformar datos a InteractionSummary
-    const interactions: InteractionSummary[] = (data || []).map((intercambio, index) => {
+    const interactions: InteractionSummary[] = (deduplicatedData || []).map((intercambio, index) => {
       // Validar datos requeridos
       if (!intercambio.producto_ofrecido) {
         console.warn('Intercambio sin producto ofrecido:', intercambio.intercambio_id)
@@ -240,10 +251,10 @@ export async function getInteractions(
 
     const response: InteractionsResponse = {
       interactions,
-      total: count || 0,
+      total: deduplicatedData.length,
       page,
       limit,
-      hasMore: (count || 0) > offset + limit,
+      hasMore: deduplicatedData.length >= limit,
       stats
     }
 
@@ -558,8 +569,19 @@ export async function getInteractionStats(userId: number): Promise<InteractionSt
     // Obtener conteos por estado
     const { data: stats, error } = await supabase
       .from('intercambio')
-      .select('estado, monto_adicional')
+      .select('intercambio_id, estado, monto_adicional')
       .or(`usuario_propone_id.eq.${userId},usuario_recibe_id.eq.${userId}`)
+
+    // Eliminar duplicados basándose en intercambio_id
+    const uniqueStats = new Map()
+    if (stats) {
+      stats.forEach((stat: any) => {
+        if (!uniqueStats.has(stat.intercambio_id)) {
+          uniqueStats.set(stat.intercambio_id, stat)
+        }
+      })
+    }
+    const deduplicatedStats = Array.from(uniqueStats.values())
 
     if (error) {
       console.error('Error obteniendo estadísticas:', error)
@@ -576,14 +598,14 @@ export async function getInteractionStats(userId: number): Promise<InteractionSt
     }
 
     const counts = {
-      total: stats.length,
-      pending: stats.filter(s => s.estado === 'pendiente').length,
-      inProgress: stats.filter(s => s.estado === 'aceptado').length,
-      completed: stats.filter(s => s.estado === 'completado').length,
-      cancelled: stats.filter(s => s.estado === 'cancelado' || s.estado === 'rechazado').length
+      total: deduplicatedStats.length,
+      pending: deduplicatedStats.filter(s => s.estado === 'pendiente').length,
+      inProgress: deduplicatedStats.filter(s => s.estado === 'aceptado').length,
+      completed: deduplicatedStats.filter(s => s.estado === 'completado').length,
+      cancelled: deduplicatedStats.filter(s => s.estado === 'cancelado' || s.estado === 'rechazado').length
     }
 
-    const totalValue = stats.reduce((sum, s) => sum + (s.monto_adicional || 0), 0)
+    const totalValue = deduplicatedStats.reduce((sum, s) => sum + (s.monto_adicional || 0), 0)
     const successRate = counts.total > 0 ? (counts.completed / counts.total) * 100 : 0
 
     // Obtener calificación promedio del usuario

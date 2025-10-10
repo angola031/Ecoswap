@@ -271,33 +271,27 @@ export async function PATCH(
 
         }
 
-        // Actualizar estadísticas de ambos usuarios (intercambios completados)
-        // Usuario que propone
-        const { data: usuarioPropone } = await supabaseAdmin
-          .from('usuario')
-          .select('total_intercambios')
-          .eq('user_id', intercambio.usuario_propone_id)
-          .single()
+        // Recalcular estadísticas de intercambios para ambos usuarios
+        // Esto evita duplicación ya que cuenta intercambios únicos, no participantes
+        const userIds = [intercambio.usuario_propone_id, intercambio.usuario_recibe_id]
+        
+        for (const userId of userIds) {
+          // Contar intercambios únicos donde el usuario participa
+          const { data: intercambiosUsuario } = await supabaseAdmin
+            .from('intercambio')
+            .select('intercambio_id')
+            .or(`usuario_propone_id.eq.${userId},usuario_recibe_id.eq.${userId}`)
+            .eq('estado', 'completado')
 
-        if (usuarioPropone) {
+          // Eliminar duplicados usando un Set
+          const intercambiosUnicos = new Set(intercambiosUsuario?.map(i => i.intercambio_id) || [])
+          const totalIntercambios = intercambiosUnicos.size
+
+          // Actualizar el contador del usuario
           await supabaseAdmin
             .from('usuario')
-            .update({ total_intercambios: (usuarioPropone.total_intercambios || 0) + 1 })
-            .eq('user_id', intercambio.usuario_propone_id)
-        }
-
-        // Usuario que recibe
-        const { data: usuarioRecibe } = await supabaseAdmin
-          .from('usuario')
-          .select('total_intercambios')
-          .eq('user_id', intercambio.usuario_recibe_id)
-          .single()
-
-        if (usuarioRecibe) {
-          await supabaseAdmin
-            .from('usuario')
-            .update({ total_intercambios: (usuarioRecibe.total_intercambios || 0) + 1 })
-            .eq('user_id', intercambio.usuario_recibe_id)
+            .update({ total_intercambios: totalIntercambios })
+            .eq('user_id', userId)
         }
 
         // Marcar productos como intercambiados
