@@ -78,6 +78,7 @@ interface UserProduct {
     likes: number
     createdAt: string
     publicationState?: 'activo' | 'pausado' | 'intercambiado' | 'eliminado'
+    hasSuccessfulExchange?: boolean
 }
 
 interface UserReview {
@@ -86,8 +87,11 @@ interface UserReview {
     reviewerAvatar: string
     rating: number
     comment: string
+    aspects: string
+    recommendaria: boolean
     date: string
     productTitle: string
+    intercambioId: number
 }
 
 interface UserActivity {
@@ -224,6 +228,17 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     // ignore badge fetch errors
                 }
 
+                // Calcular intercambios únicos correctamente
+                const { data: intercambiosData } = await supabase
+                    .from('intercambio')
+                    .select('intercambio_id')
+                    .or(`usuario_propone_id.eq.${dbUser.user_id},usuario_recibe_id.eq.${dbUser.user_id}`)
+                    .eq('estado', 'completado')
+
+                // Eliminar duplicados usando un Set
+                const intercambiosUnicos = new Set(intercambiosData?.map(i => i.intercambio_id) || [])
+                const totalIntercambiosUnicos = intercambiosUnicos.size
+
                 const fullName = `${dbUser.nombre || ''} ${dbUser.apellido || ''}`.trim() || (dbUser.email || 'Usuario')
                 const loc = location ? `${location.ciudad || ''}${location.departamento ? ', ' + location.departamento : ''}` : 'Colombia'
                 const joinDate = dbUser.fecha_registro ? new Date(dbUser.fecha_registro).toLocaleDateString('es-CO', { year: 'numeric', month: 'long' }) : '—'
@@ -240,7 +255,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     rating: typeof dbUser.calificacion_promedio === 'number' ? dbUser.calificacion_promedio : 0,
                     totalReviews: 0,
                     totalProducts: typeof dbUser.total_productos === 'number' ? dbUser.total_productos : 0,
-                    totalExchanges: typeof dbUser.total_intercambios === 'number' ? dbUser.total_intercambios : 0,
+                    totalExchanges: totalIntercambiosUnicos,
                     totalViews: 0,
                     badges: dbUser.verificado ? ['Verificado', ...badgeNames] : badgeNames,
                     socialLinks: {}
@@ -265,6 +280,20 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                             url_imagen,
                             es_principal,
                             orden
+                        ),
+                        intercambios_ofrecidos:intercambio!intercambio_producto_ofrecido_id_fkey(
+                            intercambio_id,
+                            estado,
+                            validaciones:validacion_intercambio(
+                                es_exitoso
+                            )
+                        ),
+                        intercambios_solicitados:intercambio!intercambio_producto_solicitado_id_fkey(
+                            intercambio_id,
+                            estado,
+                            validaciones:validacion_intercambio(
+                                es_exitoso
+                            )
                         )
                     `)
                     .eq('user_id', dbUser.user_id)
@@ -279,27 +308,107 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     const principal = Array.isArray(p.imagenes)
                         ? [...p.imagenes].sort((a, b) => (a.es_principal === b.es_principal ? (a.orden || 0) - (b.orden || 0) : a.es_principal ? -1 : 1))[0]
                         : undefined
+                    
+                    // Verificar si el producto fue intercambiado exitosamente
+                    const hasSuccessfulExchange = (() => {
+                        // Verificar intercambios donde el producto fue ofrecido
+                        const offeredExchanges = p.intercambios_ofrecidos || []
+                        const offeredSuccess = offeredExchanges.some((exchange: any) => 
+                            exchange.estado === 'completado' || 
+                            (exchange.validaciones && exchange.validaciones.some((v: any) => v.es_exitoso === true))
+                        )
+                        
+                        // Verificar intercambios donde el producto fue solicitado
+                        const requestedExchanges = p.intercambios_solicitados || []
+                        const requestedSuccess = requestedExchanges.some((exchange: any) => 
+                            exchange.estado === 'completado' || 
+                            (exchange.validaciones && exchange.validaciones.some((v: any) => v.es_exitoso === true))
+                        )
+                        
+                        return offeredSuccess || requestedSuccess
+                    })()
+                    
                     return {
                         id: String(p.producto_id),
                         title: p.titulo,
                         image: principal?.url_imagen || '/default-product.png',
                         price: p.precio || 0,
                         currency: 'COP',
-                        status: p.estado === 'usado' || p.estado === 'nuevo' ? 'available' : 'available',
+                        status: hasSuccessfulExchange ? 'exchanged' : (p.estado === 'usado' || p.estado === 'nuevo' ? 'available' : 'available'),
                         validationStatus: (p.estado_validacion || 'pending') as 'pending' | 'approved' | 'rejected',
                         transactionType: p.tipo_transaccion || 'mixto',
                         views: 0,
                         likes: 0,
                         createdAt: p.fecha_creacion || new Date().toISOString(),
-                        publicationState: (p.estado_publicacion || 'activo') as any
+                        publicationState: (p.estado_publicacion || 'activo') as any,
+                        hasSuccessfulExchange: hasSuccessfulExchange
                     }
                 })
 
-                const mockUserReviews: UserReview[] = []
+                // Cargar reseñas del usuario desde la tabla calificacion
+                const { data: reviewsData, error: reviewsError } = await supabase
+                    .from('calificacion')
+                    .select(`
+                        calificacion_id,
+                        puntuacion,
+                        comentario,
+                        aspectos_destacados,
+                        recomendaria,
+                        fecha_calificacion,
+                        intercambio_id,
+                        calificador:usuario!calificacion_calificador_id_fkey(
+                            user_id,
+                            nombre,
+                            apellido,
+                            foto_perfil
+                        ),
+                        intercambio:intercambio(
+                            intercambio_id,
+                            producto_ofrecido:producto!intercambio_producto_ofrecido_id_fkey(
+                                titulo
+                            ),
+                            producto_solicitado:producto!intercambio_producto_solicitado_id_fkey(
+                                titulo
+                            )
+                        )
+                    `)
+                    .eq('calificado_id', dbUser.user_id)
+                    .eq('es_publica', true)
+                    .order('fecha_calificacion', { ascending: false })
+
+                if (reviewsError) {
+                    console.warn('Perfil: error obteniendo reseñas del usuario', reviewsError)
+                }
+
+                const transformedReviews: UserReview[] = (reviewsData || []).map((r: any) => {
+                    const reviewerName = `${r.calificador?.nombre || ''} ${r.calificador?.apellido || ''}`.trim() || 'Usuario'
+                    
+                    // Determinar el título del producto basado en si el usuario fue el que ofreció o solicitó
+                    let productTitle = 'Producto'
+                    if (r.intercambio) {
+                        // Si el usuario actual fue calificado, probablemente fue el que recibió el producto
+                        // Por lo tanto, mostramos el producto que ofreció el calificador
+                        productTitle = r.intercambio.producto_ofrecido?.titulo || 'Producto'
+                    }
+
+                    return {
+                        id: String(r.calificacion_id),
+                        reviewerName,
+                        reviewerAvatar: r.calificador?.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face',
+                        rating: r.puntuacion || 0,
+                        comment: r.comentario || '',
+                        aspects: r.aspectos_destacados || '',
+                        recommendaria: r.recomendaria || false,
+                        date: r.fecha_calificacion ? new Date(r.fecha_calificacion).toLocaleDateString('es-CO') : '',
+                        productTitle,
+                        intercambioId: r.intercambio_id || 0
+                    }
+                })
+
                 const mockUserActivities: UserActivity[] = []
 
                 setUserProducts(transformed)
-                setUserReviews(mockUserReviews)
+                setUserReviews(transformedReviews)
                 setUserActivities(mockUserActivities)
                 setIsLoading(false)
             } catch (e) {
@@ -804,18 +913,29 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             {formatPrice(product.price, product.currency)}
                                         </span>
                                         <div className="flex items-center gap-2">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.validationStatus === 'approved' ? 'bg-green-100 text-green-800' : product.validationStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
-                                                {product.validationStatus === 'approved' ? 'Aprobado' : product.validationStatus === 'pending' ? 'Pendiente' : 'Rechazado'}
-                                            </span>
-                                            {product.publicationState === 'pausado' && (
-                                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-800">
-                                                    Pausado
+                                            {product.hasSuccessfulExchange ? (
+                                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center space-x-1">
+                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                    </svg>
+                                                    <span>Concretado</span>
                                                 </span>
-                                            )}
-                                            {product.transactionType && (
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800`}>
-                                                    {product.transactionType === 'venta' ? 'Venta' : product.transactionType === 'intercambio' ? 'Intercambio' : product.transactionType === 'donacion' ? 'Donación' : 'Mixto'}
-                                        </span>
+                                            ) : (
+                                                <>
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.validationStatus === 'approved' ? 'bg-green-100 text-green-800' : product.validationStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                                                        {product.validationStatus === 'approved' ? 'Aprobado' : product.validationStatus === 'pending' ? 'Pendiente' : 'Rechazado'}
+                                                    </span>
+                                                    {product.publicationState === 'pausado' && (
+                                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-800">
+                                                            Pausado
+                                                        </span>
+                                                    )}
+                                                    {product.transactionType && (
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800`}>
+                                                            {product.transactionType === 'venta' ? 'Venta' : product.transactionType === 'intercambio' ? 'Intercambio' : product.transactionType === 'donacion' ? 'Donación' : 'Mixto'}
+                                                    </span>
+                                                    )}
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -869,52 +989,84 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         {/* Aprobado + Activo: Editar + Pausar + Eliminar */}
                                         {product.validationStatus === 'approved' && product.publicationState !== 'pausado' && (
                                             <>
-                                                <button
-                                                    onClick={() => router.push(`/editar-producto/${product.id}`)}
-                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
-                                                >
-                                                    Editar
-                                                </button>
-                                                <button
-                                                    onClick={() => pauseOrResumeProduct(product.id, true)}
-                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
-                                                    disabled={pausingId === product.id}
-                                                >
-                                                    {pausingId === product.id ? 'Actualizando…' : 'Pausar'}
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteProduct(product.id)}
-                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 col-span-2"
-                                                    disabled={deletingId === product.id}
-                                                >
-                                                    {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
-                                                </button>
+                                                {product.hasSuccessfulExchange ? (
+                                                    // Producto intercambiado exitosamente - mostrar mensaje de éxito
+                                                    <div className="col-span-2 text-center py-3">
+                                                        <div className="flex items-center justify-center space-x-2 text-green-600 mb-1">
+                                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                            </svg>
+                                                            <span className="text-sm font-medium">Concretado con éxito</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500">Este producto fue intercambiado exitosamente</p>
+                                                    </div>
+                                                ) : (
+                                                    // Producto disponible - mostrar botones normales
+                                                    <>
+                                                        <button
+                                                            onClick={() => router.push(`/editar-producto/${product.id}`)}
+                                                            className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => pauseOrResumeProduct(product.id, true)}
+                                                            className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                            disabled={pausingId === product.id}
+                                                        >
+                                                            {pausingId === product.id ? 'Actualizando…' : 'Pausar'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteProduct(product.id)}
+                                                            className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 col-span-2"
+                                                            disabled={deletingId === product.id}
+                                                        >
+                                                            {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
+                                                        </button>
+                                                    </>
+                                                )}
                                             </>
                                         )}
 
                                         {/* Aprobado + Pausado: Editar + Reanudar + Eliminar */}
                                         {product.validationStatus === 'approved' && product.publicationState === 'pausado' && (
                                             <>
-                                                <button
-                                                    onClick={() => router.push(`/editar-producto/${product.id}`)}
-                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
-                                                >
-                                                    Editar
-                                                </button>
-                                                <button
-                                                    onClick={() => pauseOrResumeProduct(product.id, false)}
-                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
-                                                    disabled={pausingId === product.id}
-                                                >
-                                                    {pausingId === product.id ? 'Actualizando…' : 'Reanudar'}
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteProduct(product.id)}
-                                                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 col-span-2"
-                                                    disabled={deletingId === product.id}
-                                                >
-                                                    {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
-                                                </button>
+                                                {product.hasSuccessfulExchange ? (
+                                                    // Producto intercambiado exitosamente - mostrar mensaje de éxito
+                                                    <div className="col-span-2 text-center py-3">
+                                                        <div className="flex items-center justify-center space-x-2 text-green-600 mb-1">
+                                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                            </svg>
+                                                            <span className="text-sm font-medium">Concretado con éxito</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500">Este producto fue intercambiado exitosamente</p>
+                                                    </div>
+                                                ) : (
+                                                    // Producto pausado - mostrar botones normales
+                                                    <>
+                                                        <button
+                                                            onClick={() => router.push(`/editar-producto/${product.id}`)}
+                                                            className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => pauseOrResumeProduct(product.id, false)}
+                                                            className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                            disabled={pausingId === product.id}
+                                                        >
+                                                            {pausingId === product.id ? 'Actualizando…' : 'Reanudar'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteProduct(product.id)}
+                                                            className="px-3 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 col-span-2"
+                                                            disabled={deletingId === product.id}
+                                                        >
+                                                            {deletingId === product.id ? 'Eliminando…' : 'Eliminar'}
+                                                        </button>
+                                                    </>
+                                                )}
                                             </>
                                         )}
                                     </div>
@@ -939,7 +1091,14 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         </div>
 
                         <div className="space-y-4">
-                            {userReviews.map((review) => (
+                            {userReviews.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <StarIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                                    <h4 className="text-lg font-medium text-gray-900 mb-2">No hay reseñas aún</h4>
+                                    <p className="text-gray-600">Cuando otros usuarios intercambien contigo, aparecerán sus reseñas aquí.</p>
+                                </div>
+                            ) : (
+                                userReviews.map((review) => (
                                 <motion.div
                                     key={review.id}
                                     initial={{ opacity: 0, y: 20 }}
@@ -970,6 +1129,25 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             </div>
 
                                             <p className="text-gray-700 mb-2">{review.comment}</p>
+                                            
+                                            {review.aspects && (
+                                                <div className="mb-2">
+                                                    <p className="text-sm text-gray-600">
+                                                        <span className="font-medium">Aspectos destacados:</span> {review.aspects}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            
+                                            {review.recommendaria && (
+                                                <div className="mb-2">
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                        </svg>
+                                                        Lo recomendaría
+                                                    </span>
+                                                </div>
+                                            )}
 
                                             <div className="flex items-center justify-between text-sm text-gray-500">
                                                 <span>Producto: {review.productTitle}</span>
@@ -978,7 +1156,8 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         </div>
                                     </div>
                                 </motion.div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </div>
                 )}
