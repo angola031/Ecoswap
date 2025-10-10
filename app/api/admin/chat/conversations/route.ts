@@ -69,6 +69,7 @@ export async function GET(req: NextRequest) {
         for (const chat of chats || []) {
             if (!chat.intercambio) continue
 
+            // Handle intercambio data safely - can be array or object
             const intercambio = Array.isArray(chat.intercambio) ? chat.intercambio[0] : chat.intercambio
             if (!intercambio) continue
             
