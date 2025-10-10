@@ -69,7 +69,8 @@ export async function GET(req: NextRequest) {
         for (const chat of chats || []) {
             if (!chat.intercambio) continue
 
-            const { usuario_propone_id, usuario_recibe_id } = chat.intercambio
+            const intercambio = Array.isArray(chat.intercambio) ? chat.intercambio[0] : chat.intercambio
+            const { usuario_propone_id, usuario_recibe_id } = intercambio
 
             // Obtener información de ambos usuarios
             const [proponente, receptor] = await Promise.all([
