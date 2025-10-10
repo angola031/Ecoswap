@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { initializeAuth, handleGlobalAuthError } from '@/lib/init-auth'
 import RateLimitIndicator from './RateLimitIndicator'
 import AuthErrorHandler from './AuthErrorHandler'
+import ErrorBoundary from '../ErrorBoundary'
 
 interface AuthProviderProps {
     children: React.ReactNode
@@ -83,7 +84,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     }
 
     return (
-        <>
+        <ErrorBoundary>
             {children}
             <RateLimitIndicator />
             <AuthErrorHandler 
@@ -91,6 +92,6 @@ export default function AuthProvider({ children }: AuthProviderProps) {
                 onClearError={() => setInitError(null)}
                 onRetry={() => window.location.reload()}
             />
-        </>
+        </ErrorBoundary>
     )
 }

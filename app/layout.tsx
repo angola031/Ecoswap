@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
-import SessionManager from '@/components/SessionManager'
+import AuthProvider from '@/components/auth/AuthProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -75,8 +75,9 @@ export default function RootLayout({
                 <script src="/data/sweetalert2.all.min.js" async></script>
             </head>
             <body className={`${inter.className} h-full`}>
-                <SessionManager />
-                {children}
+                <AuthProvider>
+                    {children}
+                </AuthProvider>
 
                 {/* Footer Global */}
                 <footer className="bg-gray-900 text-white py-12">

@@ -4,14 +4,18 @@
 
 import { clearProblematicCookies, clearAuthStorage, detectCookieDomainIssues } from './cookie-utils'
 import { supabaseInterceptor } from './supabase-interceptor'
+import { setupWarningSuppression } from './suppress-warnings'
 
 /**
  * Inicializa la autenticación limpiando problemas comunes
  */
 export async function initializeAuth() {
-    console.log('🔧 Inicializando autenticación...')
-    
-    try {
+        console.log('🔧 Inicializando autenticación...')
+        
+        // Configurar supresión de warnings primero
+        setupWarningSuppression()
+        
+        try {
         // 1. Detectar problemas de cookies
         const cookieIssues = detectCookieDomainIssues()
         if (cookieIssues.length > 0) {
