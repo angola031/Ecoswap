@@ -102,3 +102,45 @@ export async function deleteFile(bucket: string = 'Ecoswap', path: string): Prom
         return false
     }
 }
+
+/**
+ * Sube una imagen de perfil de usuario
+ * @param userId - ID del usuario
+ * @param file - Archivo de imagen
+ * @param fileName - Nombre del archivo (opcional)
+ * @returns Promise con la URL de la imagen subida
+ */
+export async function uploadUserProfileImage(
+    userId: string | number, 
+    file: File, 
+    fileName?: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+    try {
+        const fileExt = fileName || file.name.split('.').pop()
+        const filePath = `perfiles/${userId}/foto_perfil.${fileExt}`
+        
+        // Subir el archivo
+        const { data, error } = await supabase.storage
+            .from('Ecoswap')
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: true // Sobrescribir si existe
+            })
+        
+        if (error) {
+            console.error('Error subiendo imagen de perfil:', error)
+            return { success: false, error: error.message }
+        }
+        
+        // Obtener URL pública
+        const { data: { publicUrl } } = supabase.storage
+            .from('Ecoswap')
+            .getPublicUrl(filePath)
+        
+        return { success: true, url: publicUrl }
+        
+    } catch (error) {
+        console.error('Error subiendo imagen de perfil:', error)
+        return { success: false, error: 'Error interno subiendo imagen' }
+    }
+}

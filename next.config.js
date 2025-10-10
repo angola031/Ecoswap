@@ -2,8 +2,8 @@
 const nextConfig = {
   // Configuración experimental para manejar mejor los warnings
   experimental: {
-    // Mejorar el manejo de errores
-    errorOverlay: false, // Deshabilitar overlay de errores en producción
+    // Configuración para static export
+    esmExternals: 'loose',
   },
   
   // Configuración para Cloudflare Pages
@@ -55,43 +55,30 @@ const nextConfig = {
     return config
   },
   
-  // Configuración de headers para mejorar la compatibilidad
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
-          // Suprimir warnings de hidratación
-          {
-            key: 'X-Hydration-Warning',
-            value: 'suppress',
-          },
-        ],
-      },
-    ]
-  },
-  
-  // Configuración de redirección para manejar errores
-  async redirects() {
-    return []
-  },
-  
-  // Configuración de rewrites
-  async rewrites() {
-    return []
-  },
+  // Configuración de headers para mejorar la compatibilidad (solo en desarrollo)
+  ...(process.env.NODE_ENV !== 'production' && {
+    async headers() {
+      return [
+        {
+          source: '/(.*)',
+          headers: [
+            {
+              key: 'X-Content-Type-Options',
+              value: 'nosniff',
+            },
+            {
+              key: 'X-Frame-Options',
+              value: 'DENY',
+            },
+            {
+              key: 'X-XSS-Protection',
+              value: '1; mode=block',
+            },
+          ],
+        },
+      ]
+    },
+  }),
   
   // Configuración de compilación
   compiler: {
