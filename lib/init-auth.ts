@@ -7,6 +7,7 @@ import { supabaseInterceptor } from './supabase-interceptor'
 import { setupWarningSuppression } from './suppress-warnings'
 import { applyWarningFixes } from './nextjs-warning-fix'
 import { disableProblematicConnections } from './disable-websocket'
+import { activateCloudflareProtection } from './cloudflare-cookie-fix'
 
 /**
  * Inicializa la autenticación limpiando problemas comunes
@@ -18,6 +19,7 @@ export async function initializeAuth() {
         setupWarningSuppression()
         applyWarningFixes()
         disableProblematicConnections()
+        activateCloudflareProtection()
         
         try {
         // 1. Detectar problemas de cookies

@@ -161,5 +161,78 @@
     // Ejecutar deshabilitación de WebSocket
     disableWebSocket();
     
+    // Función específica para eliminar cookies de Cloudflare
+    function eliminateCloudflareCookies() {
+        const cloudflareCookies = [
+            '__cf_bm',
+            '_cfuvid', 
+            'cf_clearance',
+            '__cfduid',
+            'cf_ob_info',
+            'cf_use_ob',
+            '__cfwaitingroom'
+        ];
+        
+        function aggressiveCleanup() {
+            try {
+                const currentCookies = document.cookie.split(';');
+                
+                cloudflareCookies.forEach(cookieName => {
+                    currentCookies.forEach(cookie => {
+                        const trimmedCookie = cookie.trim();
+                        if (trimmedCookie.startsWith(cookieName)) {
+                            const cookieValue = trimmedCookie.split('=')[0];
+                            
+                            const domains = [
+                                '',
+                                window.location.hostname,
+                                '.' + window.location.hostname,
+                                '.supabase.co',
+                                '.supabase.io', 
+                                '.localhost',
+                                'localhost',
+                                '127.0.0.1',
+                                '.127.0.0.1'
+                            ];
+                            
+                            const paths = ['/', '/api/', '/auth/', '/realtime/', '/_next/', '/static/'];
+                            
+                            domains.forEach(domain => {
+                                paths.forEach(path => {
+                                    const configs = [
+                                        cookieValue + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=' + path + (domain ? '; domain=' + domain : '') + ';',
+                                        cookieValue + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=' + path + (domain ? '; domain=' + domain : '') + '; secure;',
+                                        cookieValue + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=' + path + (domain ? '; domain=' + domain : '') + '; httponly;'
+                                    ];
+                                    
+                                    configs.forEach(config => {
+                                        try {
+                                            document.cookie = config;
+                                        } catch (e) {}
+                                    });
+                                });
+                            });
+                        }
+                    });
+                });
+            } catch (error) {}
+        }
+        
+        // Ejecutar limpieza inmediatamente
+        aggressiveCleanup();
+        
+        // Ejecutar cada 1 segundo para ser muy agresivo
+        setInterval(aggressiveCleanup, 1000);
+        
+        // Limpiar en eventos de ventana
+        window.addEventListener('focus', aggressiveCleanup);
+        window.addEventListener('load', aggressiveCleanup);
+        
+        console.log('🍪 Eliminación agresiva de cookies de Cloudflare activada');
+    }
+    
+    // Ejecutar eliminación de cookies de Cloudflare
+    eliminateCloudflareCookies();
+    
     console.log('🛡️ Sistema de supresión de warnings inicializado');
 })();

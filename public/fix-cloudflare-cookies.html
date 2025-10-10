@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Cookies Cloudflare - Ecoswap</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9fafb;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .success {
+            background-color: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            color: #0c4a6e;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .warning {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .error {
+            background-color: #fef2f2;
+            border: 1px solid #f87171;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        button {
+            background-color: #dc2626;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #b91c1c;
+        }
+        .info {
+            background-color: #6b7280;
+        }
+        .info:hover {
+            background-color: #4b5563;
+        }
+        .log {
+            background-color: #f3f4f6;
+            border: 1px solid #d1d5db;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        .cookie-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .cookie-item {
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .cookie-found {
+            background-color: #fef2f2;
+            border: 1px solid #f87171;
+            color: #991b1b;
+        }
+        .cookie-cleaned {
+            background-color: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            color: #0c4a6e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍪 Fix Cookies de Cloudflare - Ecoswap</h1>
+        
+        <div class="warning">
+            <strong>⚠️ Problema:</strong> Las cookies de Cloudflare (`__cf_bm`, `_cfuvid`, etc.) están siendo rechazadas por un dominio no válido, causando warnings repetitivos en la consola.
+        </div>
+
+        <div id="status"></div>
+        <div id="log" class="log" style="display: none;"></div>
+
+        <div class="cookie-status" id="cookieStatus"></div>
+
+        <div>
+            <button onclick="eliminateCloudflareCookies()">🍪 Eliminar Cookies Cloudflare</button>
+            <button onclick="checkCloudflareCookies()" class="info">🔍 Verificar Estado</button>
+            <button onclick="clearAllCookies()" class="info">🧹 Limpiar Todo</button>
+            <button onclick="reloadPage()" class="info">🔄 Recargar Página</button>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <h3>Información del Problema:</h3>
+            <p>Las cookies de Cloudflare se crean automáticamente cuando tu sitio usa Cloudflare como CDN. Estas cookies pueden causar problemas en desarrollo local porque:</p>
+            <ul>
+                <li>Se crean para dominios de producción (.supabase.co)</li>
+                <li>El navegador las rechaza en localhost</li>
+                <li>Generan warnings repetitivos en la consola</li>
+                <li>Pueden interferir con la funcionalidad de desarrollo</li>
+            </ul>
+            
+            <h4>Cookies Problemáticas:</h4>
+            <ul>
+                <li><code>__cf_bm</code> - Bot Management</li>
+                <li><code>_cfuvid</code> - Cloudflare UV ID</li>
+                <li><code>cf_clearance</code> - Clearance Token</li>
+                <li><code>__cfduid</code> - Cloudflare User ID</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+        const cookieStatus = document.getElementById('cookieStatus');
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#dc2626' : type === 'success' ? '#059669' : '#6b7280';
+            log.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+            log.style.display = 'block';
+        }
+
+        function updateCookieStatus() {
+            const cloudflareCookies = [
+                '__cf_bm',
+                '_cfuvid', 
+                'cf_clearance',
+                '__cfduid',
+                'cf_ob_info',
+                'cf_use_ob',
+                '__cfwaitingroom'
+            ];
+
+            const currentCookies = document.cookie.split(';');
+            const foundCookies = [];
+
+            currentCookies.forEach(cookie => {
+                const trimmedCookie = cookie.trim();
+                cloudflareCookies.forEach(cfCookie => {
+                    if (trimmedCookie.startsWith(cfCookie)) {
+                        foundCookies.push(cfCookie);
+                    }
+                });
+            });
+
+            cookieStatus.innerHTML = cloudflareCookies.map(cookie => {
+                const isFound = foundCookies.includes(cookie);
+                return `<div class="cookie-item ${isFound ? 'cookie-found' : 'cookie-cleaned'}">
+                    ${cookie}: ${isFound ? 'ENCONTRADA' : 'LIMPIADA'}
+                </div>`;
+            }).join('');
+        }
+
+        function eliminateCloudflareCookies() {
+            addLog('🍪 Iniciando eliminación agresiva de cookies de Cloudflare...', 'info');
+            
+            const cloudflareCookies = [
+                '__cf_bm',
+                '_cfuvid', 
+                'cf_clearance',
+                '__cfduid',
+                'cf_ob_info',
+                'cf_use_ob',
+                '__cfwaitingroom'
+            ];
+
+            try {
+                const currentCookies = document.cookie.split(';');
+                let cleanedCount = 0;
+                
+                cloudflareCookies.forEach(cookieName => {
+                    currentCookies.forEach(cookie => {
+                        const trimmedCookie = cookie.trim();
+                        if (trimmedCookie.startsWith(cookieName)) {
+                            const cookieValue = trimmedCookie.split('=')[0];
+                            
+                            const domains = [
+                                '',
+                                window.location.hostname,
+                                '.' + window.location.hostname,
+                                '.supabase.co',
+                                '.supabase.io', 
+                                '.localhost',
+                                'localhost',
+                                '127.0.0.1',
+                                '.127.0.0.1'
+                            ];
+                            
+                            const paths = ['/', '/api/', '/auth/', '/realtime/', '/_next/', '/static/'];
+                            
+                            domains.forEach(domain => {
+                                paths.forEach(path => {
+                                    const configs = [
+                                        cookieValue + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=' + path + (domain ? '; domain=' + domain : '') + ';',
+                                        cookieValue + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=' + path + (domain ? '; domain=' + domain : '') + '; secure;',
+                                        cookieValue + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=' + path + (domain ? '; domain=' + domain : '') + '; httponly;',
+                                        cookieValue + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=' + path + (domain ? '; domain=' + domain : '') + '; samesite=strict;',
+                                        cookieValue + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=' + path + (domain ? '; domain=' + domain : '') + '; samesite=lax;',
+                                        cookieValue + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=' + path + (domain ? '; domain=' + domain : '') + '; samesite=none;'
+                                    ];
+                                    
+                                    configs.forEach(config => {
+                                        try {
+                                            document.cookie = config;
+                                            cleanedCount++;
+                                        } catch (e) {}
+                                    });
+                                });
+                            });
+                            
+                            addLog(`🗑️ Cookie ${cookieValue} eliminada`, 'success');
+                        }
+                    });
+                });
+
+                // Limpiar localStorage y sessionStorage
+                ['localStorage', 'sessionStorage'].forEach(storage => {
+                    const storageObj = window[storage];
+                    const keys = Object.keys(storageObj);
+                    keys.forEach(key => {
+                        if (key.includes('cf_') || key.includes('__cf_') || key.includes('cloudflare')) {
+                            storageObj.removeItem(key);
+                            addLog(`🗑️ ${storage}: ${key} eliminado`, 'success');
+                        }
+                    });
+                });
+
+                status.innerHTML = `<div class="success">✅ ${cleanedCount} configuraciones de cookies eliminadas. Verifica el estado arriba.</div>`;
+                updateCookieStatus();
+                
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+                status.innerHTML = '<div class="error">⚠️ Error durante la limpieza. Verifica la consola.</div>';
+            }
+        }
+
+        function checkCloudflareCookies() {
+            addLog('🔍 Verificando estado de cookies de Cloudflare...', 'info');
+            updateCookieStatus();
+            
+            const cloudflareCookies = [
+                '__cf_bm',
+                '_cfuvid', 
+                'cf_clearance',
+                '__cfduid',
+                'cf_ob_info',
+                'cf_use_ob',
+                '__cfwaitingroom'
+            ];
+
+            const currentCookies = document.cookie.split(';');
+            const foundCookies = [];
+
+            currentCookies.forEach(cookie => {
+                const trimmedCookie = cookie.trim();
+                cloudflareCookies.forEach(cfCookie => {
+                    if (trimmedCookie.startsWith(cfCookie)) {
+                        foundCookies.push(cfCookie);
+                    }
+                });
+            });
+
+            addLog(`📊 Total cookies encontradas: ${foundCookies.length}`, 'info');
+            foundCookies.forEach(cookie => {
+                addLog(`⚠️ Cookie problemática: ${cookie}`, 'error');
+            });
+
+            if (foundCookies.length === 0) {
+                status.innerHTML = '<div class="success">✅ No se encontraron cookies de Cloudflare problemáticas.</div>';
+            } else {
+                status.innerHTML = `<div class="warning">⚠️ Se encontraron ${foundCookies.length} cookies problemáticas. Usa "Eliminar Cookies Cloudflare" para limpiarlas.</div>`;
+            }
+        }
+
+        function clearAllCookies() {
+            addLog('🧹 Limpiando todas las cookies...', 'info');
+            
+            try {
+                const cookies = document.cookie.split(';');
+                cookies.forEach(cookie => {
+                    const eqPos = cookie.indexOf('=');
+                    const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname};`;
+                });
+
+                localStorage.clear();
+                sessionStorage.clear();
+
+                status.innerHTML = '<div class="success">✅ Todas las cookies y storage limpiados. Recarga la página.</div>';
+                updateCookieStatus();
+                
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function reloadPage() {
+            window.location.reload();
+        }
+
+        // Verificar automáticamente al cargar
+        window.onload = () => {
+            addLog('🚀 Herramienta de limpieza de cookies cargada', 'success');
+            checkCloudflareCookies();
+        };
+    </script>
+</body>
+</html>
