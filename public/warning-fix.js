@@ -123,39 +123,46 @@
     function disableWebSocket() {
         const OriginalWebSocket = window.WebSocket;
         
-        window.WebSocket = function(url, protocols) {
+        // Crear una clase mock que extienda la funcionalidad básica
+        function MockWebSocket(url, protocols) {
             console.log('🚫 WebSocket bloqueado:', url);
-            // Retornar un objeto mock que no hace nada
-            return {
-                readyState: 3, // CLOSED
-                url: '',
-                protocol: '',
-                extensions: '',
-                bufferedAmount: 0,
-                close: function() {},
-                send: function() {},
-                addEventListener: function() {},
-                removeEventListener: function() {},
-                dispatchEvent: function() { return false; },
-                onopen: null,
-                onmessage: null,
-                onclose: null,
-                onerror: null,
-                CONNECTING: 0,
-                OPEN: 1,
-                CLOSING: 2,
-                CLOSED: 3
-            };
+            // No hacer nada - simplemente crear un objeto que no falla
+        }
+        
+        // Crear un objeto mock con todas las propiedades necesarias
+        const mockInstance = {
+            readyState: 3, // CLOSED
+            url: '',
+            protocol: '',
+            extensions: '',
+            bufferedAmount: 0,
+            close: function() {},
+            send: function() {},
+            addEventListener: function() {},
+            removeEventListener: function() {},
+            dispatchEvent: function() { return false; },
+            onopen: null,
+            onmessage: null,
+            onclose: null,
+            onerror: null
         };
         
-        // Copiar propiedades estáticas
-        Object.setPrototypeOf(window.WebSocket, OriginalWebSocket);
-        Object.assign(window.WebSocket, {
-            CONNECTING: 0,
-            OPEN: 1,
-            CLOSING: 2,
-            CLOSED: 3
-        });
+        // Configurar el prototipo del mock
+        MockWebSocket.prototype = Object.create(Object.prototype);
+        Object.assign(MockWebSocket.prototype, mockInstance);
+        
+        // Configurar propiedades estáticas sin intentar modificar las de solo lectura
+        try {
+            MockWebSocket.CONNECTING = 0;
+            MockWebSocket.OPEN = 1;
+            MockWebSocket.CLOSING = 2;
+            MockWebSocket.CLOSED = 3;
+        } catch (e) {
+            // Ignorar errores de propiedades de solo lectura
+        }
+        
+        // Reemplazar WebSocket con nuestro mock
+        window.WebSocket = MockWebSocket;
     }
     
     // Ejecutar deshabilitación de WebSocket

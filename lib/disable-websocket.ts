@@ -8,39 +8,43 @@ export function disableWebSocketConnections() {
 
     // Guardar la implementación original de WebSocket
     const OriginalWebSocket = window.WebSocket
-
-    // Reemplazar WebSocket con una implementación que no hace nada
-    window.WebSocket = class MockWebSocket {
-        constructor(url: string | URL, protocols?: string | string[]) {
-            console.log('🚫 WebSocket bloqueado:', url)
-            // No hacer nada - simplemente crear un objeto mock
-        }
-
-        // Implementar métodos requeridos para evitar errores
-        get readyState() { return 3 } // CLOSED
-        get url() { return '' }
-        get protocol() { return '' }
-        get extensions() { return '' }
-        get bufferedAmount() { return 0 }
-        
-        close() { /* No hacer nada */ }
-        send() { /* No hacer nada */ }
-        addEventListener() { /* No hacer nada */ }
-        removeEventListener() { /* No hacer nada */ }
-        dispatchEvent() { return false }
-        
-        // Eventos que no harán nada
-        onopen = null
-        onmessage = null
-        onclose = null
-        onerror = null
-        
-        // Constantes de estado
-        static CONNECTING = 0
-        static OPEN = 1
-        static CLOSING = 2
-        static CLOSED = 3
-    } as any
+    
+    function MockWebSocket(url: string | URL, protocols?: string | string[]) {
+        console.log('🚫 WebSocket bloqueado:', url)
+        // No hacer nada - simplemente crear un objeto que no falla
+    }
+    
+    // Configurar el prototipo del mock
+    MockWebSocket.prototype = Object.create(Object.prototype)
+    Object.assign(MockWebSocket.prototype, {
+        readyState: 3, // CLOSED
+        url: '',
+        protocol: '',
+        extensions: '',
+        bufferedAmount: 0,
+        close() { /* No hacer nada */ },
+        send() { /* No hacer nada */ },
+        addEventListener() { /* No hacer nada */ },
+        removeEventListener() { /* No hacer nada */ },
+        dispatchEvent() { return false },
+        onopen: null,
+        onmessage: null,
+        onclose: null,
+        onerror: null
+    })
+    
+    // Configurar propiedades estáticas de forma segura
+    try {
+        (MockWebSocket as any).CONNECTING = 0
+        ;(MockWebSocket as any).OPEN = 1
+        ;(MockWebSocket as any).CLOSING = 2
+        ;(MockWebSocket as any).CLOSED = 3
+    } catch (e) {
+        // Ignorar errores de propiedades de solo lectura
+    }
+    
+    // Reemplazar WebSocket con nuestro mock
+    window.WebSocket = MockWebSocket as any
 
     // También bloquear EventSource si se usa
     if (window.EventSource) {
