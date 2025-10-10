@@ -14,6 +14,7 @@
     "clean": "rm -rf .next out",
     "db:setup": "node scripts/setup-database.js",
     "db:reset": "node scripts/reset-database.js",
+    "check:supabase": "node scripts/check-supabase-config.js",
     "deploy:cloudflare": "npm run build:cloudflare && wrangler pages deploy out",
     "deploy:preview": "npm run build:cloudflare && wrangler pages deploy out --compatibility-date=2024-01-01"
   },
