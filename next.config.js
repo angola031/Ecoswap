@@ -14,24 +14,27 @@ const nextConfig = {
         level: 'error',
       }
       
-      // Filtrar warnings específicos
-      const originalWarn = config.infrastructureLogging?.warn
-      if (originalWarn) {
-        config.infrastructureLogging.warn = (message, ...args) => {
-          const suppressedMessages = [
-            'Extra attributes from the server:',
-            'cz-shortcut-listen',
-            'data-new-gr-c-s-check-loaded'
-          ]
-          
-          const shouldSuppress = suppressedMessages.some(msg => 
-            message.includes(msg)
-          )
-          
-          if (!shouldSuppress) {
-            originalWarn(message, ...args)
-          }
-        }
+      // Suprimir warnings de hidratación
+      config.ignoreWarnings = [
+        /Extra attributes from the server/,
+        /cz-shortcut-listen/,
+        /data-new-gr-c-s-check-loaded/,
+        /RedirectErrorBoundary/,
+        /NotFoundErrorBoundary/,
+        /DevRootNotFoundBoundary/
+      ]
+      
+      // Configurar stats para suprimir warnings específicos
+      config.stats = {
+        warnings: false,
+        warningsFilter: [
+          /Extra attributes from the server/,
+          /cz-shortcut-listen/,
+          /data-new-gr-c-s-check-loaded/,
+          /RedirectErrorBoundary/,
+          /NotFoundErrorBoundary/,
+          /DevRootNotFoundBoundary/
+        ]
       }
     }
     
