@@ -1,112 +1,146 @@
-'use client'
-
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { User } from '@supabase/supabase-js'
+import { withRetry, isRateLimited, getRetryAfter } from '@/lib/supabase-interceptor'
 
-interface User {
-    user_id: number
-    nombre: string
-    apellido: string
-    email: string
-    telefono?: string
-    foto_perfil?: string
-    verificado: boolean
-    activo: boolean
-    isAdmin: boolean
-    roles: string[]
+interface AuthState {
+    user: User | null
+    loading: boolean
+    error: string | null
 }
 
 export function useAuth() {
-    const [user, setUser] = useState<User | null>(null)
-    const [loading, setLoading] = useState(true)
+    const [state, setState] = useState<AuthState>({
+        user: null,
+        loading: true,
+        error: null
+    })
 
-    useEffect(() => {
-        const checkAuth = async () => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession()
-                
-                if (session?.user) {
-                    // Obtener datos del usuario desde la base de datos
-                    const { data: userData, error } = await supabase
-                        .from('usuario')
-                        .select(`
-                            user_id,
-                            nombre,
-                            apellido,
-                            email,
-                            telefono,
-                            foto_perfil,
-                            verificado,
-                            activo,
-                            usuario_rol!inner(
-                                rol:rol_id(
-                                    nombre,
-                                    activo
-                                )
-                            )
-                        `)
-                        .eq('email', session.user.email)
-                        .single()
+    // Función para limpiar el estado de autenticación
+    const clearAuth = useCallback(() => {
+        setState({
+            user: null,
+            loading: false,
+            error: null
+        })
+    }, [])
 
-                    if (userData && !error) {
-                        const roles = userData.usuario_rol?.map((ur: any) => ur.rol.nombre) || []
-                        const isAdmin = roles.some((role: string) => 
-                            ['Administrador', 'Super Administrador'].includes(role)
-                        )
-
-                        setUser({
-                            user_id: userData.user_id,
-                            nombre: userData.nombre,
-                            apellido: userData.apellido,
-                            email: userData.email,
-                            telefono: userData.telefono,
-                            foto_perfil: userData.foto_perfil,
-                            verificado: userData.verificado,
-                            activo: userData.activo,
-                            isAdmin,
-                            roles
-                        })
-                    }
-                }
-            } catch (error) {
-                console.error('Error checking auth:', error)
-            } finally {
-                setLoading(false)
-            }
+    // Función para manejar errores de autenticación
+    const handleAuthError = useCallback((error: any) => {
+        console.error('Auth error:', error)
+        
+        // Si es un error de rate limiting, esperar un poco antes de reintentar
+        if (error.message?.includes('rate limit')) {
+            setState(prev => ({
+                ...prev,
+                loading: false,
+                error: 'Demasiadas solicitudes. Espera un momento antes de intentar de nuevo.'
+            }))
+            
+            // Limpiar el error después de 30 segundos
+            setTimeout(() => {
+                setState(prev => ({ ...prev, error: null }))
+            }, 30000)
+        } else {
+            setState(prev => ({
+                ...prev,
+                loading: false,
+                error: error.message || 'Error de autenticación'
+            }))
         }
+    }, [])
 
-        checkAuth()
+    // Obtener sesión actual
+    const getSession = useCallback(async () => {
+        try {
+            setState(prev => ({ ...prev, loading: true, error: null }))
+            
+            const { data: { session }, error } = await withRetry(
+                () => supabase.auth.getSession(),
+                'getSession'
+            )
+            
+            if (error) {
+                handleAuthError(error)
+                return
+            }
 
-        // Escuchar cambios de autenticación
+            setState({
+                user: session?.user || null,
+                loading: false,
+                error: null
+            })
+        } catch (error) {
+            handleAuthError(error)
+        }
+    }, [handleAuthError])
+
+    // Escuchar cambios en el estado de autenticación
+    useEffect(() => {
+        getSession()
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-                if (event === 'SIGNED_IN' && session) {
-                    await checkAuth()
-                } else if (event === 'SIGNED_OUT') {
-                    setUser(null)
-                    setLoading(false)
+                console.log('Auth state changed:', event, session?.user?.email)
+                
+                setState({
+                    user: session?.user || null,
+                    loading: false,
+                    error: null
+                })
+
+                // Manejar diferentes eventos
+                switch (event) {
+                    case 'SIGNED_IN':
+                        console.log('Usuario inició sesión:', session?.user?.email)
+                        break
+                    case 'SIGNED_OUT':
+                        console.log('Usuario cerró sesión')
+                        clearAuth()
+                        break
+                    case 'TOKEN_REFRESHED':
+                        console.log('Token refrescado')
+                        break
+                    case 'USER_UPDATED':
+                        console.log('Usuario actualizado')
+                        break
                 }
             }
         )
 
-        return () => subscription.unsubscribe()
-    }, [])
-
-    const signOut = async () => {
-        try {
-            await supabase.auth.signOut()
-            setUser(null)
-        } catch (error) {
-            console.error('Error signing out:', error)
+        return () => {
+            subscription.unsubscribe()
         }
-    }
+    }, [getSession, clearAuth])
+
+    // Función para cerrar sesión
+    const signOut = useCallback(async () => {
+        try {
+            setState(prev => ({ ...prev, loading: true, error: null }))
+            
+            const { error } = await withRetry(
+                () => supabase.auth.signOut(),
+                'signOut'
+            )
+            
+            if (error) {
+                handleAuthError(error)
+                return
+            }
+
+            clearAuth()
+        } catch (error) {
+            handleAuthError(error)
+        }
+    }, [handleAuthError, clearAuth])
 
     return {
-        user,
-        loading,
+        user: state.user,
+        loading: state.loading,
+        error: state.error,
         signOut,
-        isAuthenticated: !!user,
-        isVerified: user?.verificado || false,
-        isAdmin: user?.isAdmin || false
+        clearError: () => setState(prev => ({ ...prev, error: null })),
+        isRateLimited: isRateLimited(),
+        retryAfter: getRetryAfter()
     }
 }
