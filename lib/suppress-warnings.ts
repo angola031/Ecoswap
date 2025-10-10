@@ -2,6 +2,8 @@
  * Utilidades para suprimir warnings no críticos del navegador
  */
 
+import { clearProblematicCookies } from './cookie-utils'
+
 // Suprimir warnings específicos de Next.js sobre atributos del servidor
 export function suppressServerAttributeWarnings() {
     if (typeof window === 'undefined') return
@@ -16,7 +18,13 @@ export function suppressServerAttributeWarnings() {
             'Extra attributes from the server:',
             'cz-shortcut-listen',
             'data-new-gr-c-s-check-loaded',
-            'data-gr-ext-installed'
+            'data-gr-ext-installed',
+            'La cookie',
+            'ha sido rechazada por un dominio no válido',
+            '__cf_bm',
+            '_cfuvid',
+            'cf_clearance',
+            '__cfduid'
         ]
 
         const shouldSuppress = suppressedWarnings.some(warning => 
@@ -117,6 +125,10 @@ export function setupWarningSuppression() {
 
     // Limpiar periódicamente (cada 5 segundos) por si se agregan nuevos atributos
     setInterval(cleanProblematicAttributes, 5000)
+    
+    // Limpiar cookies inmediatamente y luego periódicamente
+    clearProblematicCookies()
+    setInterval(clearProblematicCookies, 10000) // Cada 10 segundos
 
     console.log('🛡️ Sistema de supresión de warnings configurado')
 }

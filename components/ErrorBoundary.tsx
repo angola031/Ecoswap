@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { AlertTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 
 interface ErrorBoundaryState {
     hasError: boolean
@@ -62,7 +62,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                 <div className="min-h-screen flex items-center justify-center bg-gray-50">
                     <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6">
                         <div className="flex items-center mb-4">
-                            <AlertTriangleIcon className="h-8 w-8 text-red-500 mr-3" />
+                            <ExclamationTriangleIcon className="h-8 w-8 text-red-500 mr-3" />
                             <h2 className="text-xl font-semibold text-gray-900">
                                 Algo salió mal
                             </h2>

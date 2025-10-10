@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AlertTriangleIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { ExclamationTriangleIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 
 interface AuthErrorHandlerProps {
     error: string | null
@@ -48,7 +48,7 @@ export default function AuthErrorHandler({ error, onClearError, onRetry }: AuthE
             }`}>
                 <div className="flex items-start">
                     <div className="flex-shrink-0">
-                        <AlertTriangleIcon className="h-5 w-5" />
+                        <ExclamationTriangleIcon className="h-5 w-5" />
                     </div>
                     <div className="ml-3 flex-1">
                         <h3 className="text-sm font-medium">

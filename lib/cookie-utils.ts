@@ -15,20 +15,38 @@ export function clearProblematicCookies() {
             '__cfduid'
         ]
 
+        // Obtener todas las cookies actuales
+        const currentCookies = document.cookie.split(';')
+        
+        // Limpiar cookies problemáticas de manera más agresiva
         problematicCookies.forEach(cookieName => {
-            // Intentar eliminar la cookie para todos los dominios posibles
-            const domains = [
-                window.location.hostname,
-            '.supabase.co',
-            '.supabase.io',
-            window.location.hostname.split('.').slice(-2).join('.') // Dominio padre
-            ]
+            // Limpiar de todas las cookies actuales
+            currentCookies.forEach(cookie => {
+                const trimmedCookie = cookie.trim()
+                if (trimmedCookie.startsWith(cookieName)) {
+                    const cookieValue = trimmedCookie.split('=')[0]
+                    
+                    // Intentar eliminar la cookie para todos los dominios posibles
+                    const domains = [
+                        '', // Sin dominio (para el dominio actual)
+                        window.location.hostname,
+                        `.${window.location.hostname}`,
+                        '.supabase.co',
+                        '.supabase.io',
+                        '.localhost',
+                        'localhost'
+                    ]
 
-            domains.forEach(domain => {
-                // Eliminar cookie para el dominio específico
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain};`
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${domain};`
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+                    domains.forEach(domain => {
+                        // Múltiples intentos con diferentes configuraciones
+                        const paths = ['/', '/api/', '/auth/']
+                        paths.forEach(path => {
+                            document.cookie = `${cookieValue}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}${domain ? `; domain=${domain}` : ''};`
+                            document.cookie = `${cookieValue}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}${domain ? `; domain=${domain}` : ''}; secure;`
+                            document.cookie = `${cookieValue}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}${domain ? `; domain=${domain}` : ''}; httponly;`
+                        })
+                    })
+                }
             })
         })
 
