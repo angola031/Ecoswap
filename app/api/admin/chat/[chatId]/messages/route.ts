@@ -104,10 +104,12 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
             id: msg.mensaje_id,
             chatId: msg.chat_id,
             senderId: msg.usuario_id,
-            senderName: msg.usuario ?
-                (msg.es_admin ? 'Administrador' : `${msg.usuario.nombre} ${msg.usuario.apellido}`.trim()) :
+            senderName: msg.usuario && Array.isArray(msg.usuario) && msg.usuario.length > 0 ?
+                (msg.es_admin ? 'Administrador' : `${msg.usuario[0].nombre} ${msg.usuario[0].apellido}`.trim()) :
                 'Usuario',
-            senderAvatar: msg.usuario?.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face',
+            senderAvatar: (msg.usuario && Array.isArray(msg.usuario) && msg.usuario.length > 0) ? 
+                msg.usuario[0].foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face' :
+                'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face',
             content: msg.contenido,
             type: msg.tipo,
             fileUrl: msg.archivo_url,
