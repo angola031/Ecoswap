@@ -2,6 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AcceptExchangeForm from "@/components/interactions/AcceptExchangeForm";
 
+// Required for static export
+export async function generateStaticParams() {
+  return []
+}
+
 interface AceptarPageProps {
     params: { id?: string };
 }

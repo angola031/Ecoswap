@@ -2,6 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import RateUserForm from "@/components/interactions/RateUserForm";
 
+// Required for static export
+export async function generateStaticParams() {
+  return []
+}
+
 interface CalificarPageProps {
     params: { id?: string };
     searchParams?: { user?: string };

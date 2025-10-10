@@ -8,6 +8,7 @@ import { ChatInfo, ChatMessage, ChatProposal } from '@/lib/types/chat'
 import AuthGuard from '@/components/auth/AuthGuard'
 // import imageCompression from 'browser-image-compression' // Importación dinámica
 
+
 function ChatPageContent() {
   const params = useParams()
   const router = useRouter()

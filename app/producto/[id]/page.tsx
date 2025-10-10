@@ -8,6 +8,7 @@ import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
+
 interface User {
   id: string
   name: string
