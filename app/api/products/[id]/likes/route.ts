@@ -54,18 +54,21 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Formatear la respuesta
-    const formattedLikes = likes?.map(like => ({
-      id: like.favorito_id,
-      fecha_agregado: like.fecha_agregado,
-      usuario: {
-        id: like.usuario?.user_id,
-        nombre: like.usuario?.nombre,
-        apellido: like.usuario?.apellido,
-        foto_perfil: like.usuario?.foto_perfil,
-        calificacion_promedio: like.usuario?.calificacion_promedio,
-        total_intercambios: like.usuario?.total_intercambios
+    const formattedLikes = likes?.map(like => {
+      const usuarioData = Array.isArray(like.usuario) ? like.usuario[0] : like.usuario
+      return {
+        id: like.favorito_id,
+        fecha_agregado: like.fecha_agregado,
+        usuario: {
+          id: usuarioData?.user_id,
+          nombre: usuarioData?.nombre,
+          apellido: usuarioData?.apellido,
+          foto_perfil: usuarioData?.foto_perfil,
+          calificacion_promedio: usuarioData?.calificacion_promedio,
+          total_intercambios: usuarioData?.total_intercambios
+        }
       }
-    })) || []
+    }) || []
 
     return NextResponse.json({ 
       likes: formattedLikes,

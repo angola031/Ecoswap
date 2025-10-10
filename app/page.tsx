@@ -27,7 +27,8 @@ import InteractionsModule from '@/components/interactions/InteractionsModule'
 import NotificationToast from '@/components/NotificationToast'
 
 // Tipos
-import { type User, getCurrentUser, logoutUser } from '@/lib/auth'
+import { type User } from '@/lib/types'
+import { getCurrentUser, logoutUser } from '@/lib/auth'
 import { useInactivity } from '@/hooks/useInactivity'
 import { supabase } from '@/lib/supabase'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -37,7 +38,7 @@ export default function HomePage() {
     const [currentScreen, setCurrentScreen] = useState<'auth' | 'main'>('main')
     const [currentModule, setCurrentModule] = useState<string>('products')
     const [isAuthenticated, setIsAuthenticated] = useState(false)
-    const [currentUser, setCurrentUser] = useState<User | null>(null)
+    const [currentUser, setCurrentUser] = useState<any>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [timeoutMessage, setTimeoutMessage] = useState<string>('')
     
@@ -167,7 +168,7 @@ export default function HomePage() {
         checkAuth()
     }, [searchParams])
 
-    const handleLogin = (userData: User) => {
+    const handleLogin = (userData: any) => {
         setCurrentUser(userData)
         setIsAuthenticated(true)
         setCurrentScreen('main')

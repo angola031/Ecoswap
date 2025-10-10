@@ -55,13 +55,16 @@ export default function VerificationSummary({ onViewDetails }: VerificationSumma
             }
 
             // Transformar los datos para que coincidan con la interfaz
-            const transformedData = data?.map(item => ({
-                user_id: item.usuario?.user_id || item.usuario_id,
-                nombre: item.usuario?.nombre || '',
-                apellido: item.usuario?.apellido || '',
-                email: item.usuario?.email || '',
+            const transformedData = data?.map(item => {
+                const usuarioData = Array.isArray(item.usuario) ? item.usuario[0] : item.usuario
+                return {
+                    user_id: usuarioData?.user_id || item.usuario_id,
+                    nombre: usuarioData?.nombre || '',
+                    apellido: usuarioData?.apellido || '',
+                    email: usuarioData?.email || '',
                 fecha_subida_verificacion: item.fecha_solicitud
-            })) || []
+                }
+            }) || []
 
             setPendingVerifications(transformedData)
             setTotalPending(transformedData.length)

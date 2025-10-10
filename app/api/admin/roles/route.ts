@@ -102,14 +102,18 @@ export async function GET(req: NextRequest) {
             ...admin,
             roles: admin.usuario_rol
                 ?.filter(ur => ur.activo)
-                .map(ur => ({
-                    rol_id: ur.rol_id,
-                    nombre: ur.rol_usuario?.nombre,
-                    descripcion: ur.rol_usuario?.descripcion,
-                    permisos: ur.rol_usuario?.permisos,
-                    fecha_asignacion: ur.fecha_asignacion,
-                    asignado_por: ur.asignado_por?.nombre || 'Sistema'
-                }))
+                .map(ur => {
+                    const rolUsuario = Array.isArray(ur.rol_usuario) ? ur.rol_usuario[0] : ur.rol_usuario
+                    const asignadoPor = Array.isArray(ur.asignado_por) ? ur.asignado_por[0] : ur.asignado_por
+                    return {
+                        rol_id: ur.rol_id,
+                        nombre: rolUsuario?.nombre,
+                        descripcion: rolUsuario?.descripcion,
+                        permisos: rolUsuario?.permisos,
+                        fecha_asignacion: ur.fecha_asignacion,
+                        asignado_por: asignadoPor?.nombre || 'Sistema'
+                    }
+                })
                 .filter(ur => ur.nombre) || []
         }))
 
@@ -186,7 +190,7 @@ export async function POST(req: NextRequest) {
                 console.error('❌ Error listando usuarios de auth:', authListError)
                 // No fallar la creación por esto, solo loggear
             } else {
-                const existingAuthUser = authUsers?.users?.find(user => 
+                const existingAuthUser = authUsers?.users?.find((user: any) => 
                     user.email?.toLowerCase() === email.toLowerCase()
                 )
 

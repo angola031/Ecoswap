@@ -70,6 +70,8 @@ export async function GET(req: NextRequest) {
             if (!chat.intercambio) continue
 
             const intercambio = Array.isArray(chat.intercambio) ? chat.intercambio[0] : chat.intercambio
+            if (!intercambio) continue
+            
             const { usuario_propone_id, usuario_recibe_id } = intercambio
 
             // Obtener información de ambos usuarios
@@ -130,8 +132,8 @@ export async function GET(req: NextRequest) {
                     esAdmin: false // Los admins no envían mensajes regulares
                 } : null,
                 unreadCount: unreadCount || 0,
-                estado: chat.intercambio.estado,
-                fechaCreacion: chat.intercambio.fecha_propuesta
+                estado: intercambio.estado,
+                fechaCreacion: intercambio.fecha_propuesta
             })
         }
 

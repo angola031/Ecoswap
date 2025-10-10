@@ -204,9 +204,9 @@ export default function EditarPerfilPage() {
 
             // Subir avatar si hay archivo
             if (avatarFile) {
-                const upload = await uploadUserProfileImage({ userId: dbUser.user_id, file: avatarFile, type: 'perfil' })
+                const upload = await uploadUserProfileImage(dbUser.user_id, avatarFile)
                 if (upload.error) throw new Error(upload.error)
-                newAvatarUrl = upload.result?.publicUrl || undefined
+                newAvatarUrl = upload.url || undefined
             }
 
             // Actualizar datos básicos

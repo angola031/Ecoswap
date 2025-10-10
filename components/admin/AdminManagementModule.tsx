@@ -887,8 +887,8 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
                                                 )}
                                                 
                                                 <div className="text-xs text-gray-500 space-y-1">
-                                                    <p>Desactivado: {formatTime(admin.fecha_suspension || '')}</p>
-                                                    <p>Motivo: {admin.motivo_suspension || 'No especificado'}</p>
+                                                    <p>Desactivado: {formatTime((admin as any).fecha_suspension || '')}</p>
+                                                    <p>Motivo: {(admin as any).motivo_suspension || 'No especificado'}</p>
                                                 </div>
                                             </div>
                                             <div className="flex flex-col gap-2">

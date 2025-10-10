@@ -50,7 +50,11 @@ export default function MessagesSection() {
                     return
                 }
 
-                setMessages(data || [])
+                const transformedMessages = (data || []).map(message => ({
+                    ...message,
+                    usuario: Array.isArray(message.usuario) ? message.usuario[0] : message.usuario
+                }))
+                setMessages(transformedMessages)
 
             } catch (error) {
                 console.error('💥 Error cargando mensajes:', error)

@@ -148,13 +148,19 @@ export async function GET(
       .eq('activo', true)
       .single()
 
+    if (chatError || !chat) {
+      return NextResponse.json({ error: 'Chat no encontrado' }, { status: 404 })
+    }
+
+    const intercambioData = Array.isArray(chat.intercambio) ? chat.intercambio[0] : chat.intercambio
+
     // Obtener imagen principal del producto ofrecido
     let productImageUrl = null
-    if (chat?.intercambio?.producto_ofrecido_id) {
+    if (intercambioData?.producto_ofrecido_id) {
       const { data: productImage } = await supabaseAdmin
         .from('imagen_producto')
         .select('url_imagen')
-        .eq('producto_id', chat.intercambio.producto_ofrecido_id)
+        .eq('producto_id', intercambioData.producto_ofrecido_id)
         .eq('es_principal', true)
         .single()
       
@@ -163,39 +169,35 @@ export async function GET(
 
     // Obtener imagen principal del producto solicitado
     let requestedProductImageUrl = null
-    if (chat?.intercambio?.producto_solicitado_id) {
+    if (intercambioData?.producto_solicitado_id) {
       const { data: requestedProductImage } = await supabaseAdmin
         .from('imagen_producto')
         .select('url_imagen')
-        .eq('producto_id', chat.intercambio.producto_solicitado_id)
+        .eq('producto_id', intercambioData.producto_solicitado_id)
         .eq('es_principal', true)
         .single()
       
       requestedProductImageUrl = requestedProductImage?.url_imagen || null
     }
-
-    if (chatError || !chat) {
-      return NextResponse.json({ error: 'Chat no encontrado' }, { status: 404 })
-    }
-
-    const intercambio = chat.intercambio as any
     
-    if (!intercambio || (intercambio.usuario_propone_id !== userId && intercambio.usuario_recibe_id !== userId)) {
+    if (!intercambioData || (intercambioData.usuario_propone_id !== userId && intercambioData.usuario_recibe_id !== userId)) {
       return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
     }
 
     // Determinar quién es el otro usuario (no el actual)
-    const otherUser = intercambio.usuario_propone_id === userId 
-      ? intercambio.usuario_recibe 
-      : intercambio.usuario_propone
+    const otherUser = intercambioData.usuario_propone_id === userId 
+      ? intercambioData.usuario_recibe 
+      : intercambioData.usuario_propone
+
+    const otherUserData = otherUser ? (Array.isArray(otherUser) ? otherUser[0] : otherUser) : null
 
     // Obtener ubicación del otro usuario
     let otherUserLocation = null
-    if (otherUser) {
+    if (otherUserData) {
       const { data: location } = await supabaseAdmin
         .from('ubicacion')
         .select('ciudad, departamento')
-        .eq('user_id', otherUser.user_id)
+        .eq('user_id', otherUserData.user_id)
         .eq('es_principal', true)
         .single()
       
@@ -204,66 +206,70 @@ export async function GET(
       }
     }
 
+    // Extraer productos de manera segura
+    const productoOfrecido = Array.isArray(intercambioData.producto_ofrecido) ? intercambioData.producto_ofrecido[0] : intercambioData.producto_ofrecido
+    const productoSolicitado = Array.isArray(intercambioData.producto_solicitado) ? intercambioData.producto_solicitado[0] : intercambioData.producto_solicitado
+
     const responseData = {
       data: {
         chatId: chat.chat_id,
         seller: {
-          id: otherUser.user_id,
-          name: otherUser.nombre,
-          lastName: otherUser.apellido,
-          avatar: otherUser.foto_perfil,
+          id: otherUserData.user_id,
+          name: otherUserData.nombre,
+          lastName: otherUserData.apellido,
+          avatar: otherUserData.foto_perfil,
           location: otherUserLocation,
-          rating: otherUser.calificacion_promedio || 0,
-          totalExchanges: otherUser.total_intercambios || 0,
-          memberSince: otherUser.fecha_registro ? new Date(otherUser.fecha_registro).getFullYear().toString() : null
+          rating: otherUserData.calificacion_promedio || 0,
+          totalExchanges: otherUserData.total_intercambios || 0,
+          memberSince: otherUserData.fecha_registro ? new Date(otherUserData.fecha_registro).getFullYear().toString() : null
         },
         exchangeInfo: {
-          usuarioProponeId: intercambio.usuario_propone_id,
-          usuarioRecibeId: intercambio.usuario_recibe_id
+          usuarioProponeId: intercambioData.usuario_propone_id,
+          usuarioRecibeId: intercambioData.usuario_recibe_id
         },
         offeredProduct: {
-          id: intercambio.producto_ofrecido.producto_id,
-          producto_id: intercambio.producto_ofrecido.producto_id,
-          title: intercambio.producto_ofrecido.titulo,
-          titulo: intercambio.producto_ofrecido.titulo,
-          descripcion: intercambio.producto_ofrecido.descripcion,
-          price: intercambio.producto_ofrecido.precio,
-          precio: intercambio.producto_ofrecido.precio,
-          type: intercambio.producto_ofrecido.tipo_transaccion,
-          tipo_transaccion: intercambio.producto_ofrecido.tipo_transaccion,
-          category: intercambio.producto_ofrecido.categoria?.nombre,
+          id: productoOfrecido.producto_id,
+          producto_id: productoOfrecido.producto_id,
+          title: productoOfrecido.titulo,
+          titulo: productoOfrecido.titulo,
+          descripcion: productoOfrecido.descripcion,
+          price: productoOfrecido.precio,
+          precio: productoOfrecido.precio,
+          type: productoOfrecido.tipo_transaccion,
+          tipo_transaccion: productoOfrecido.tipo_transaccion,
+          category: (productoOfrecido?.categoria as any)?.nombre,
           mainImage: productImageUrl,
           imageUrl: productImageUrl,
-          condiciones_intercambio: intercambio.producto_ofrecido.condiciones_intercambio,
-          que_busco_cambio: intercambio.producto_ofrecido.que_busco_cambio,
-          precio_negociable: intercambio.producto_ofrecido.precio_negociable,
-          estado: intercambio.producto_ofrecido.estado,
-          estado_publicacion: intercambio.producto_ofrecido.estado_publicacion,
-          visualizaciones: intercambio.producto_ofrecido.visualizaciones,
-          ciudad_snapshot: intercambio.producto_ofrecido.ciudad_snapshot,
-          departamento_snapshot: intercambio.producto_ofrecido.departamento_snapshot
+          condiciones_intercambio: productoOfrecido.condiciones_intercambio,
+          que_busco_cambio: productoOfrecido.que_busco_cambio,
+          precio_negociable: productoOfrecido.precio_negociable,
+          estado: productoOfrecido.estado,
+          estado_publicacion: productoOfrecido.estado_publicacion,
+          visualizaciones: productoOfrecido.visualizaciones,
+          ciudad_snapshot: productoOfrecido.ciudad_snapshot,
+          departamento_snapshot: productoOfrecido.departamento_snapshot
         },
-        requestedProduct: intercambio.producto_solicitado ? {
-          id: intercambio.producto_solicitado.producto_id,
-          producto_id: intercambio.producto_solicitado.producto_id,
-          title: intercambio.producto_solicitado.titulo,
-          titulo: intercambio.producto_solicitado.titulo,
-          descripcion: intercambio.producto_solicitado.descripcion,
-          price: intercambio.producto_solicitado.precio,
-          precio: intercambio.producto_solicitado.precio,
-          type: intercambio.producto_solicitado.tipo_transaccion,
-          tipo_transaccion: intercambio.producto_solicitado.tipo_transaccion,
-          category: intercambio.producto_solicitado.categoria?.nombre,
+        requestedProduct: productoSolicitado ? {
+          id: productoSolicitado.producto_id,
+          producto_id: productoSolicitado.producto_id,
+          title: productoSolicitado.titulo,
+          titulo: productoSolicitado.titulo,
+          descripcion: productoSolicitado.descripcion,
+          price: productoSolicitado.precio,
+          precio: productoSolicitado.precio,
+          type: productoSolicitado.tipo_transaccion,
+          tipo_transaccion: productoSolicitado.tipo_transaccion,
+          category: (productoSolicitado?.categoria as any)?.nombre,
           mainImage: requestedProductImageUrl,
           imageUrl: requestedProductImageUrl,
-          condiciones_intercambio: intercambio.producto_solicitado.condiciones_intercambio,
-          que_busco_cambio: intercambio.producto_solicitado.que_busco_cambio,
-          precio_negociable: intercambio.producto_solicitado.precio_negociable,
-          estado: intercambio.producto_solicitado.estado,
-          estado_publicacion: intercambio.producto_solicitado.estado_publicacion,
-          visualizaciones: intercambio.producto_solicitado.visualizaciones,
-          ciudad_snapshot: intercambio.producto_solicitado.ciudad_snapshot,
-          departamento_snapshot: intercambio.producto_solicitado.departamento_snapshot
+          condiciones_intercambio: productoSolicitado.condiciones_intercambio,
+          que_busco_cambio: productoSolicitado.que_busco_cambio,
+          precio_negociable: productoSolicitado.precio_negociable,
+          estado: productoSolicitado.estado,
+          estado_publicacion: productoSolicitado.estado_publicacion,
+          visualizaciones: productoSolicitado.visualizaciones,
+          ciudad_snapshot: productoSolicitado.ciudad_snapshot,
+          departamento_snapshot: productoSolicitado.departamento_snapshot
         } : null,
         createdAt: chat.fecha_creacion
       }

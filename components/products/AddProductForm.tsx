@@ -241,7 +241,7 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
         }))
     }
 
-    const updatePublishForm = (field: string, value: string | File[]) => {
+    const updatePublishForm = (field: string, value: string | File[] | object) => {
         setPublishForm(prev => ({ ...prev, [field]: value }))
         // Limpiar error del campo cuando se actualiza
         if (formErrors[field]) {

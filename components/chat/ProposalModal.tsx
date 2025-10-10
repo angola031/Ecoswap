@@ -19,6 +19,15 @@ interface CreateProposalData {
   meetingPlace?: string
 }
 
+interface ValidationErrors {
+  type?: string
+  description?: string
+  proposedPrice?: string
+  conditions?: string
+  meetingDate?: string
+  meetingPlace?: string
+}
+
 export default function ProposalModal({ isOpen, onClose, onSubmit, isLoading = false }: ProposalModalProps) {
   const [formData, setFormData] = useState<CreateProposalData>({
     type: 'precio',
@@ -29,13 +38,13 @@ export default function ProposalModal({ isOpen, onClose, onSubmit, isLoading = f
     meetingPlace: ''
   })
 
-  const [errors, setErrors] = useState<Partial<CreateProposalData>>({})
+  const [errors, setErrors] = useState<ValidationErrors>({})
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     // Validación
-    const newErrors: Partial<CreateProposalData> = {}
+    const newErrors: ValidationErrors = {}
     
     if (!formData.description.trim()) {
       newErrors.description = 'La descripción es requerida'

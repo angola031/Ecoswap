@@ -117,13 +117,16 @@ export async function GET(req: NextRequest) {
 
         // Procesar datos para incluir información adicional
         const processedIntercambios = intercambios?.map(intercambio => {
-            const isProponente = intercambio.usuario_propone_id === u.user_id
-            const isReceptor = intercambio.usuario_recibe_id === u.user_id
+            const usuarioPropone = Array.isArray(intercambio.usuario_propone) ? intercambio.usuario_propone[0] : intercambio.usuario_propone
+            const usuarioRecibe = Array.isArray(intercambio.usuario_recibe) ? intercambio.usuario_recibe[0] : intercambio.usuario_recibe
+            
+            const isProponente = usuarioPropone?.user_id === u.user_id
+            const isReceptor = usuarioRecibe?.user_id === u.user_id
 
             return {
                 ...intercambio,
                 // Información del otro usuario
-                otro_usuario: isProponente ? intercambio.usuario_recibe : intercambio.usuario_propone,
+                otro_usuario: isProponente ? usuarioRecibe : usuarioPropone,
                 // Información del producto del otro usuario
                 producto_otro: isProponente ? intercambio.producto_solicitado : intercambio.producto_ofrecido,
                 // Información del producto propio
@@ -323,7 +326,7 @@ export async function POST(req: NextRequest) {
                     usuario_id: usuario_recibe_id,
                     tipo: 'nueva_propuesta_intercambio',
                     titulo: 'Nueva Propuesta de Intercambio',
-                    mensaje: `${u.nombre || 'Un usuario'} te ha propuesto un intercambio: ${productoOfrecido.titulo} por ${productoSolicitado.titulo}`,
+                    mensaje: `Un usuario te ha propuesto un intercambio: ${productoOfrecido.titulo} por ${productoSolicitado.titulo}`,
                     datos_adicionales: {
                         intercambio_id: nuevoIntercambio.intercambio_id,
                         usuario_propone_id: u.user_id,

@@ -412,7 +412,7 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                                 <EyeIcon className="w-4 h-4 mr-2" />
                                                 Ver Detalles
                                             </button>
-                                            {(interaction.status === 'completado' || interaction.status === 'completed') && (
+                                            {interaction.status === 'completado' && (
                                                 <button
                                                     onClick={() => router.push(`/interaccion/${interaction.id}/calificar?user=${interaction.otherUser.id}`)}
                                                     className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg hover:bg-yellow-200 transition-colors flex items-center"
@@ -421,7 +421,7 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                                     Calificar
                                                 </button>
                                             )}
-                                            {(interaction.status === 'pendiente' || interaction.status === 'pending') && (
+                                            {interaction.status === 'pendiente' && (
                                                 <button
                                                     onClick={() => router.push(`/interaccion/${interaction.id}/aceptar`)}
                                                     className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center"

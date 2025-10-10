@@ -165,24 +165,27 @@ export async function GET(req: NextRequest) {
         }
 
         // Transformar los datos
-        const transformedProducts = products?.map(product => ({
-            producto_id: product.producto_id,
-            titulo: product.titulo,
-            descripcion: product.descripcion,
-            precio: product.precio,
-            categoria_nombre: product.categoria?.nombre || 'Sin categoría',
-            estado: product.estado,
-            tipo_transaccion: product.tipo_transaccion,
-            estado_validacion: product.estado_validacion,
-            fecha_creacion: product.fecha_creacion,
-            fecha_validacion: product.fecha_validacion,
-            user_id: product.usuario?.user_id,
-            usuario_nombre: product.usuario?.nombre || 'Usuario',
-            usuario_apellido: product.usuario?.apellido || 'Sin apellido',
-            usuario_email: product.usuario?.email || '',
-            comentarios_validacion: product.comentarios_validacion,
-            validado_por: product.validado_por
-        })) || []
+        const transformedProducts = products?.map(product => {
+            const usuarioData = Array.isArray(product.usuario) ? product.usuario[0] : product.usuario
+            return {
+                producto_id: product.producto_id,
+                titulo: product.titulo,
+                descripcion: product.descripcion,
+                precio: product.precio,
+                categoria_nombre: (Array.isArray(product.categoria) ? product.categoria[0] : product.categoria)?.nombre || 'Sin categoría',
+                estado: product.estado,
+                tipo_transaccion: product.tipo_transaccion,
+                estado_validacion: product.estado_validacion,
+                fecha_creacion: product.fecha_creacion,
+                fecha_validacion: product.fecha_validacion,
+                user_id: usuarioData?.user_id,
+                usuario_nombre: usuarioData?.nombre || 'Usuario',
+                usuario_apellido: usuarioData?.apellido || 'Sin apellido',
+                usuario_email: usuarioData?.email || '',
+                comentarios_validacion: product.comentarios_validacion,
+                validado_por: product.validado_por
+            }
+        }) || []
 
         return NextResponse.json({ products: transformedProducts })
 

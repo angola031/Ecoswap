@@ -1,11 +1,11 @@
 // Tipos específicos para la página de interacciones
 import { 
-    User, 
-    Exchange, 
-    Product, 
+    Usuario, 
+    Intercambio, 
+    Producto, 
     Chat,
-    Message,
-    Rating
+    Mensaje,
+    Calificacion
 } from './database'
 
 // Interacción simplificada para la lista principal
@@ -52,12 +52,12 @@ export interface InteractionSummary {
 
 // Interacción completa para la página de detalle
 export interface InteractionDetail extends InteractionSummary {
-    proposer: User
-    receiver: User
-    messages: Message[]
+    proposer: Usuario
+    receiver: Usuario
+    messages: Mensaje[]
     proposals: Proposal[]
     deliveries: Delivery[]
-    ratings: Rating[]
+    ratings: Calificacion[]
     userValidations?: {
         usuario_id: number
         es_exitoso: boolean
@@ -76,9 +76,9 @@ export interface Proposal {
     status: 'pendiente' | 'aceptada' | 'rechazada' | 'contrapropuesta'
     description: string
     proposedPrice?: number
-    proposedProduct?: Product
+    proposedProduct?: Producto
     additionalConditions?: string
-    proposedBy: User
+    proposedBy: Usuario
     proposedAt: string
     respondedAt?: string
     response?: string
@@ -104,8 +104,8 @@ export interface UserActivity {
     id: string
     type: 'view' | 'save' | 'message' | 'exchange' | 'rating'
     description: string
-    product?: Product
-    user?: User
+    product?: Producto
+    user?: Usuario
     interaction?: InteractionSummary
     timestamp: string
     metadata?: any

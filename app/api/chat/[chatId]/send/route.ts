@@ -127,13 +127,13 @@ export async function POST(
         usuario_id: otherUserId,
         tipo: 'nuevo_mensaje',
         titulo: `Mensaje sobre "${productInfo?.titulo || 'producto'}"`,
-        mensaje: `${newMessage.usuario?.nombre || 'Usuario'} ${newMessage.usuario?.apellido || ''}: ${newMessage.contenido}`,
+        mensaje: `${(newMessage.usuario as any)?.nombre || 'Usuario'} ${(newMessage.usuario as any)?.apellido || ''}: ${newMessage.contenido}`,
         datos_adicionales: {
           chat_id: chatId,
           mensaje_id: newMessage.mensaje_id,
           sender_id: userId,
-          sender_name: newMessage.usuario?.nombre || 'Usuario',
-          sender_lastname: newMessage.usuario?.apellido || '',
+          sender_name: (newMessage.usuario as any)?.nombre || 'Usuario',
+          sender_lastname: (newMessage.usuario as any)?.apellido || '',
           product_id: intercambio.producto_ofrecido_id,
           product_title: productInfo?.titulo || 'Producto',
           product_image: productInfo?.imagenes?.[0]?.url_imagen || null,
@@ -154,9 +154,9 @@ export async function POST(
         isRead: newMessage.leido,
         sender: {
           id: newMessage.usuario_id,
-          name: newMessage.usuario?.nombre,
-          lastName: newMessage.usuario?.apellido,
-          avatar: newMessage.usuario?.foto_perfil
+          name: (newMessage.usuario as any)?.nombre,
+          lastName: (newMessage.usuario as any)?.apellido,
+          avatar: (newMessage.usuario as any)?.foto_perfil
         }
       }
     })

@@ -174,7 +174,7 @@ export default function ProductDetailModal({ product, isOpen, onClose, currentUs
             })
         } else {
             // Fallback para navegadores que no soportan Web Share API
-            navigator.clipboard.writeText(window.location.href)
+            navigator.clipboard.writeText(window.location.href);
             (window as any).Swal.fire({
                 title: 'Enlace Copiado',
                 text: 'El enlace se ha copiado al portapapeles',
@@ -186,7 +186,7 @@ export default function ProductDetailModal({ product, isOpen, onClose, currentUs
     }
 
     const handleReport = async () => {
-        const result = await Swal.fire({
+        const result = await (window as any).Swal.fire({
             title: 'Reportar Producto',
             text: '¿Estás seguro de que quieres reportar este producto?',
             icon: 'warning',

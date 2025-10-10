@@ -130,8 +130,8 @@ export function configureNextJSEnvironment() {
     // Configurar variables de entorno para suprimir warnings
     if (typeof window !== 'undefined') {
         // Suprimir warnings de hidratación
-        window.__NEXT_DATA__ = window.__NEXT_DATA__ || {}
-        window.__NEXT_DATA__.suppressHydrationWarning = true
+        window.__NEXT_DATA__ = window.__NEXT_DATA__ || {} as any
+        (window.__NEXT_DATA__ as any).suppressHydrationWarning = true
 
         // Configurar React para suprimir warnings específicos
         if (typeof window.React !== 'undefined') {

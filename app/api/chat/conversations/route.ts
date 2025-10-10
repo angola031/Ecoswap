@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
                             (producto.tipo_transaccion === 'cambio' ? 
                                 (producto.condiciones_intercambio || producto.que_busco_cambio || 'Intercambio') : 
                                 'Precio no especificado'),
-                        category: producto.categoria?.nombre || 'Sin categoría',
+                        category: (Array.isArray(producto.categoria) ? producto.categoria[0] : producto.categoria)?.nombre || 'Sin categoría',
                         mainImage: mainImage,
                         exchangeConditions: producto.condiciones_intercambio || producto.que_busco_cambio
                     }

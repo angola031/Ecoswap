@@ -318,7 +318,7 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">Verificación de Identidad</h2>
                     <button
-                        onClick={fetchVerificationRequests}
+                        onClick={() => fetchVerificationRequests()}
                         className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         title="Actualizar lista y refrescar imágenes"
                     >
@@ -443,7 +443,7 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                                 </h3>
                                 <div className="flex items-center space-x-2">
                                     <button
-                                        onClick={fetchVerificationRequests}
+                                        onClick={() => fetchVerificationRequests()}
                                         className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                                         title="Refrescar imágenes"
                                     >

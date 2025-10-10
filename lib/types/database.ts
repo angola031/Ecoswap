@@ -52,7 +52,7 @@ export interface Producto {
   comentarios_validacion?: string
   fecha_creacion: string
   etiquetas?: string
-  especificaciones?: string
+  especificaciones?: string | ProductoEspecificacion[]
   ciudad_snapshot?: string
   departamento_snapshot?: string
   latitud_snapshot?: number

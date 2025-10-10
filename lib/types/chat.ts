@@ -1,5 +1,5 @@
 // Tipos específicos para el chat
-import { Usuario, Producto, Categoria, ImagenProducto, Ubicacion, PropuestaIntercambio } from './database'
+import { Usuario, Producto, Categoria, ImagenProducto, Ubicacion, Intercambio } from './database'
 
 // Información del chat
 export interface ChatInfo {
