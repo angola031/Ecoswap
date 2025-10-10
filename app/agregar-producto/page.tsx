@@ -462,6 +462,7 @@ export default function AgregarProductoPage() {
       // Redirigir a productos
       router.push('/')
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error al enviar producto:', error)
       (window as any).Swal.fire({
         title: 'Error',
