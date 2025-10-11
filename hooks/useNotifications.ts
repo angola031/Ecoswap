@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '../lib/supabaseClient'
 
 interface NotificationCount {
     unreadCount: number
@@ -15,6 +15,11 @@ export function useNotifications() {
     })
 
     const fetchUnreadCount = async () => {
+        if (!supabase) {
+            setNotificationCount({ unreadCount: 0, loading: false, error: null })
+            return
+        }
+
         try {
             setNotificationCount(prev => ({ ...prev, loading: true, error: null }))
 
@@ -70,6 +75,11 @@ export function useNotifications() {
     }
 
     useEffect(() => {
+        if (!supabase) {
+            setNotificationCount({ unreadCount: 0, loading: false, error: null })
+            return
+        }
+
         fetchUnreadCount()
 
         // Suscripción en tiempo real a cambios en notificaciones (incremental)

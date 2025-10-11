@@ -20,7 +20,7 @@ import {
     ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import { 
     User
 } from '@/lib/types'
@@ -54,6 +54,12 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
             try {
                 // Obtener sesión de Supabase
+                const supabase = getSupabaseClient()
+                if (!supabase) {
+                    console.log('❌ Supabase no está configurado')
+                    return
+                }
+                
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession()
                 
                 

@@ -14,7 +14,6 @@ import {
   EllipsisVerticalIcon,
   CheckIcon
 } from '@heroicons/react/24/outline'
-import { supabase } from '@/lib/supabase'
 import { 
   Message, 
   User, 
@@ -23,6 +22,7 @@ import {
 } from '@/lib/types'
 import { useUserStatus } from '@/hooks/useUserStatus'
 import { useInactivity } from '@/hooks/useInactivity'
+import { getSupabaseClient } from '@/lib/supabase-client'
 // import imageCompression from 'browser-image-compression' // Importación dinámica
 
 
@@ -288,6 +288,14 @@ const renderProductInfo = (product: any, label: string) => {
 
 export default function ChatModule({ currentUser }: ChatModuleProps) {
   const router = useRouter()
+  
+  // Función auxiliar para obtener sesión de Supabase
+  const getSession = async () => {
+    const supabase = getSupabaseClient()
+    if (!supabase) return null
+    const { data: { session } } = await supabase.auth.getSession()
+    return session
+  }
   const [conversations, setConversations] = useState<ChatConversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<ChatConversation | null>(null)
   const [newMessage, setNewMessage] = useState('')
@@ -536,7 +544,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   // Función para enviar validación al servidor
   const submitValidation = async (intercambioId: number, validationData: any) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getSession()
       const token = session?.access_token
       
       
@@ -678,7 +686,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
     if (!selectedConversation || !currentUser) return
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getSession()
       const token = session?.access_token
       if (!token) return
 
@@ -829,7 +837,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   // Función para enviar notificación push sobre la respuesta a propuesta
   const sendProposalResponseNotification = async (proposal: any, response: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getSession()
       const token = session?.access_token
       if (!token) return
 
@@ -878,7 +886,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   // Función para enviar notificación push sobre la propuesta
   const sendProposalNotification = async (proposal: any) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getSession()
       const token = session?.access_token
       if (!token) return
 
@@ -1016,7 +1024,7 @@ const getCurrentUserId = () => {
       
       setIsLoading(true)
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const session = await getSession()
         
         const token = session?.access_token
         if (!token) {
@@ -1087,7 +1095,7 @@ const getCurrentUserId = () => {
       }
       
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const session = await getSession()
         const token = session?.access_token
         if (!token) {
           router.push('/login')
@@ -1289,7 +1297,7 @@ const getCurrentUserId = () => {
       }
 
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const session = await getSession()
         const token = session?.access_token
         if (!token) return
 
@@ -1340,7 +1348,7 @@ const getCurrentUserId = () => {
 
       try {
         setIsLoadingProposals(true)
-        const { data: { session } } = await supabase.auth.getSession()
+        const session = await getSession()
         const token = session?.access_token
         if (!token) return
 
@@ -1381,7 +1389,10 @@ const getCurrentUserId = () => {
   useEffect(() => {
     // Limpiar canal anterior
     if (realtimeChannel) {
-      supabase.removeChannel(realtimeChannel)
+      const supabase = getSupabaseClient()
+      if (supabase) {
+        supabase.removeChannel(realtimeChannel)
+      }
       setRealtimeChannel(null)
     }
 
@@ -1392,6 +1403,9 @@ const getCurrentUserId = () => {
 
 
     // Crear canal más simple y directo
+    const supabase = getSupabaseClient()
+    if (!supabase) return
+    
     const channel = supabase
       .channel(`chat_${chatId}`)
       .on('postgres_changes', {
@@ -1494,7 +1508,10 @@ const getCurrentUserId = () => {
 
     return () => {
       if (channel) {
-        supabase.removeChannel(channel)
+        const supabase = getSupabaseClient()
+        if (supabase) {
+          supabase.removeChannel(channel)
+        }
       }
       setRealtimeChannel(null)
     }
@@ -1511,7 +1528,7 @@ const getCurrentUserId = () => {
 
     const pollForNewMessages = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const session = await getSession()
         if (!session?.access_token) return
 
         const response = await fetch(`/api/chat/${chatId}/messages?since=${lastMessageId}`, {
@@ -1696,7 +1713,7 @@ const getCurrentUserId = () => {
     // Enviar al servidor en background
     try {
       const chatId = Number(selectedConversation.id)
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getSession()
       const token = session?.access_token
       if (!token) {
         console.error('❌ [ChatModule] No hay token de sesión')
@@ -1821,7 +1838,7 @@ const getCurrentUserId = () => {
 
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getSession()
       const token = session?.access_token
       if (!token) {
         return
@@ -1887,7 +1904,7 @@ const getCurrentUserId = () => {
 
     // Para rechazar, usar el flujo normal
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getSession()
       const token = session?.access_token
       if (!token) return
 
@@ -2056,7 +2073,7 @@ const getCurrentUserId = () => {
       })
 
       // 4. Enviar aceptación al servidor
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getSession()
       const token = session?.access_token
       if (!token) throw new Error('No hay token de sesión')
 
@@ -2428,7 +2445,7 @@ const getCurrentUserId = () => {
               formData.append('chatId', selectedConversation.id)
               formData.append('userId', currentUser?.id || '')
               
-              const { data: { session } } = await supabase.auth.getSession()
+              const session = await getSession()
               const token = session?.access_token
               if (!token) {
                 console.error('❌ No hay token de sesión')
@@ -2805,7 +2822,7 @@ const getCurrentUserId = () => {
       formData.append('chatId', selectedConversation.id)
       formData.append('userId', currentUserId)
 
-      const { data: { session } } = await supabase.auth.getSession()
+      const session = await getSession()
       const token = session?.access_token
       if (!token) {
         throw new Error('No hay token de sesión')
@@ -3122,7 +3139,7 @@ const getCurrentUserId = () => {
                     if (!showProposals) {
                       try {
                         setIsLoadingProposals(true)
-                        const { data: { session } } = await supabase.auth.getSession()
+                        const session = await getSession()
                         const token = session?.access_token
                         if (!token) return
 
@@ -3300,7 +3317,7 @@ const getCurrentUserId = () => {
                                   formData.append('chatId', selectedConversation.id)
                                   formData.append('userId', currentUser?.id || '')
                                   
-                                  const { data: { session } } = await supabase.auth.getSession()
+                                  const session = await getSession()
               const token = session?.access_token
               if (!token) {
                 console.error('❌ No hay token de sesión')
@@ -3637,7 +3654,7 @@ const getCurrentUserId = () => {
                       <button
                         onClick={async () => {
                           try {
-                            const { data: { session } } = await supabase.auth.getSession()
+                            const session = await getSession()
                             const token = session?.access_token
                             
                             if (!token) {

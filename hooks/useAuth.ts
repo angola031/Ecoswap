@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
-import { User } from '@supabase/supabase-js'
-import { withRetry, isRateLimited, getRetryAfter } from '@/lib/supabase-interceptor'
+import { getSupabaseClient } from '../lib/supabase-client'
+import { withRetry, isRateLimited, getRetryAfter } from '../lib/supabase-interceptor'
+
+interface User {
+    id: string
+    email?: string
+    [key: string]: any
+}
 
 interface AuthState {
     user: User | null
@@ -52,6 +57,17 @@ export function useAuth() {
 
     // Obtener sesión actual
     const getSession = useCallback(async () => {
+        const supabase = getSupabaseClient()
+        
+        if (!supabase) {
+            setState({
+                user: null,
+                loading: false,
+                error: 'Supabase no está configurado'
+            })
+            return
+        }
+
         try {
             setState(prev => ({ ...prev, loading: true, error: null }))
             
@@ -77,6 +93,17 @@ export function useAuth() {
 
     // Escuchar cambios en el estado de autenticación
     useEffect(() => {
+        const supabase = getSupabaseClient()
+        
+        if (!supabase) {
+            setState({
+                user: null,
+                loading: false,
+                error: 'Supabase no está configurado'
+            })
+            return
+        }
+
         getSession()
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -115,6 +142,13 @@ export function useAuth() {
 
     // Función para cerrar sesión
     const signOut = useCallback(async () => {
+        const supabase = getSupabaseClient()
+        
+        if (!supabase) {
+            clearAuth()
+            return
+        }
+
         try {
             setState(prev => ({ ...prev, loading: true, error: null }))
             

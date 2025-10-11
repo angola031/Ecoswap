@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '../lib/supabase-client'
 
 interface NotificationToastProps {
     userId: number
@@ -65,6 +65,9 @@ export default function NotificationToast({ userId }: NotificationToastProps) {
         }
 
         // Suscripción en tiempo real a nuevas notificaciones
+        const supabase = getSupabaseClient()
+        if (!supabase) return
+        
         const channel = supabase
             .channel('notification_toast')
             .on(

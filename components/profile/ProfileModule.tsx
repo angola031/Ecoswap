@@ -21,8 +21,8 @@ import {
     BookmarkIcon
 } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { uploadUserProfileImage } from '@/lib/storage'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface BadgeDetail {
     nombre: string
@@ -164,6 +164,13 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
             try {
                 setIsLoading(true)
 
+                const supabase = getSupabaseClient()
+                if (!supabase) {
+                    setProfileData(null)
+                    setIsLoading(false)
+                    return
+                }
+                
                 const { data: { session } } = await supabase.auth.getSession()
                 const email = session?.user?.email || currentUser?.email
 

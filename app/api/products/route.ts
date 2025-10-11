@@ -1,16 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function authUser(req: NextRequest) {
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return null
-    const { data } = await supabaseAdmin.auth.getUser(token)
+    
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+        console.error('❌ API Products: Supabase no está configurado')
+        return null
+    }
+    
+    const { data } = await supabase.auth.getUser(token)
     return data?.user || null
 }
 
 export async function POST(req: NextRequest) {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ API Products: Supabase no está configurado')
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
         
         const user = await authUser(req)
         if (!user) {
@@ -43,7 +55,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Resolver usuario y verificar verificación
-        const { data: u } = await supabaseAdmin
+        const { data: u } = await supabase
             .from('usuario')
             .select('user_id, verificado, activo')
             .eq('email', user.email)
@@ -58,7 +70,7 @@ export async function POST(req: NextRequest) {
         let longitud_snapshot: number | null = null
 
         if (ubicacion_id) {
-            const { data: ub } = await supabaseAdmin
+            const { data: ub } = await supabase
                 .from('ubicacion')
                 .select('ciudad, departamento, latitud, longitud')
                 .eq('ubicacion_id', ubicacion_id)
@@ -78,7 +90,7 @@ export async function POST(req: NextRequest) {
                 const nombreCat = categoria_nombre.trim()
                 if (nombreCat.length > 0) {
                     // Intentar insertar; si ya existe por UNIQUE(nombre), ignorar error duplicado
-                    const insertRes = await supabaseAdmin
+                    const insertRes = await supabase
                         .from('categoria')
                         .insert({ nombre: nombreCat })
                         .select('categoria_id, nombre')
@@ -87,7 +99,7 @@ export async function POST(req: NextRequest) {
                         resolvedCategoriaId = insertRes.data.categoria_id
                     } else {
                         // Buscar existente
-                        const { data: existing } = await supabaseAdmin
+                        const { data: existing } = await supabase
                             .from('categoria')
                             .select('categoria_id')
                             .eq('nombre', nombreCat)
@@ -122,7 +134,7 @@ export async function POST(req: NextRequest) {
         }
 
         
-        const { data: created, error } = await supabaseAdmin
+        const { data: created, error } = await supabase
             .from('producto')
             .insert(payload)
             .select()
@@ -145,17 +157,17 @@ export async function POST(req: NextRequest) {
             if (cleanTags.length > 0) {
                 // Insertar catálogo
                 const unique = Array.from(new Set(cleanTags))
-                await supabaseAdmin.from('tag').insert(unique.map(n => ({ nombre: n }))).select()
+                await supabase.from('tag').insert(unique.map(n => ({ nombre: n }))).select()
                     .then(async (res) => {
                         if (res.error && !String(res.error.message).includes('duplicate')) throw res.error
                         // Obtener ids
-                        const { data: existing } = await supabaseAdmin
+                        const { data: existing } = await supabase
                             .from('tag')
                             .select('tag_id, nombre')
                             .in('nombre', unique)
                         const tagIds = (existing || []).map((r: any) => r.tag_id)
                         if (tagIds.length > 0) {
-                            await supabaseAdmin.from('producto_tag').insert(
+                            await supabase.from('producto_tag').insert(
                                 tagIds.map((id: number) => ({ producto_id: created.producto_id, tag_id: id }))
                             )
                         }
@@ -172,7 +184,7 @@ export async function POST(req: NextRequest) {
                     .filter(([k, v]) => String(k).trim().length > 0 && String(v).trim().length > 0)
                     .map(([k, v]) => ({ producto_id: created.producto_id, clave: String(k).trim(), valor: String(v).trim() }))
                 if (entries.length > 0) {
-                    await supabaseAdmin.from('producto_especificacion').insert(entries)
+                    await supabase.from('producto_especificacion').insert(entries)
                 }
             }
         } catch (specErr) {

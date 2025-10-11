@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 
 // Middleware mínimo: requiere bearer token y rol admin por email/domino simple
 async function requireAdmin(req: NextRequest) {

@@ -38,12 +38,12 @@ export function validateConfig() {
     }
 }
 
-// Validar configuración al importar el módulo
-if (typeof window === 'undefined') {
-    // Solo validar en el servidor
+// Validar configuración al importar el módulo (solo si no estamos en modo estático)
+if (typeof window === 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    // Solo validar en el servidor si hay configuración de Supabase
     try {
         validateConfig()
     } catch (error) {
-        console.error('Error de configuración:', error)
+        console.warn('⚠️ Configuración de Supabase incompleta. Ejecutando en modo estático.')
     }
 }

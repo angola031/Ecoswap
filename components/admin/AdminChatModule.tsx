@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface ChatMessage {
     id: number
@@ -56,6 +56,9 @@ export default function AdminChatModule({ onClose }: AdminChatModuleProps) {
 
     const loadConversations = async () => {
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) return
+            
             const { data: { session } } = await supabase.auth.getSession()
             const token = session?.access_token
             if (!token) return
@@ -77,6 +80,9 @@ export default function AdminChatModule({ onClose }: AdminChatModuleProps) {
 
     const loadMessages = async (chatId: number) => {
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) return
+            
             const { data: { session } } = await supabase.auth.getSession()
             const token = session?.access_token
             if (!token) return
@@ -99,6 +105,9 @@ export default function AdminChatModule({ onClose }: AdminChatModuleProps) {
 
         setSending(true)
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) return
+            
             const { data: { session } } = await supabase.auth.getSession()
             const token = session?.access_token
             if (!token) return

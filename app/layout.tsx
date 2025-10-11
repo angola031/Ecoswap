@@ -3,6 +3,9 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
 import AuthProvider from '@/components/auth/AuthProvider'
+import NoSSR from '@/components/NoSSR'
+import ErrorBoundary from '@/components/ErrorBoundary'
+import DevMode from '@/components/DevMode'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -72,13 +75,24 @@ export default function RootLayout({
     return (
         <html lang="es" className="h-full">
             <head>
-                <script src="/warning-fix.js" async></script>
+                <script src="/hydration-fix.js" async></script>
                 <script src="/data/sweetalert2.all.min.js" async></script>
             </head>
-            <body className={`${inter.className} h-full`}>
-                <AuthProvider>
-                    {children}
-                </AuthProvider>
+                <body className={`${inter.className} h-full`}>
+                    <DevMode>
+                        <ErrorBoundary fallback={
+                            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                                <div className="text-center">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+                                    <p className="text-gray-600">Cargando EcoSwap...</p>
+                                </div>
+                            </div>
+                        }>
+                            <AuthProvider>
+                                {children}
+                            </AuthProvider>
+                        </ErrorBoundary>
+                    </DevMode>
 
                 {/* Footer Global */}
                 <footer className="bg-gray-900 text-white py-12">

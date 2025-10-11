@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import AuthGuard from '@/components/auth/AuthGuard'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import AdminManagementModule from '@/components/admin/AdminManagementModule'
 import DashboardNavigation from '@/components/admin/DashboardNavigation'
 import UsersSection from '@/components/admin/UsersSection'
@@ -24,17 +25,36 @@ export default function VerificacionesPage() {
 
     useEffect(() => {
         const getUser = async () => {
+            const supabase = getSupabaseClient()
             const { data: { user } } = await supabase.auth.getUser()
 
             if (user) {
                 setUser(user)
 
                 // Verificar si es administrador
-                const { data: userData, error: userError } = await supabase
+                console.log('🔍 Verificando permisos de admin para:', user.email, 'ID:', user.id)
+                
+                // Primero intentar buscar por auth_user_id
+                let { data: userData, error: userError } = await supabase
                     .from('usuario')
-                    .select('es_admin, activo, nombre, apellido')
-                    .eq('email', user.email)
+                    .select('es_admin, activo, nombre, apellido, auth_user_id')
+                    .eq('auth_user_id', user.id)
                     .single()
+
+                // Si no se encuentra por auth_user_id, buscar por email como fallback
+                if (userError || !userData) {
+                    console.log('🔍 No encontrado por auth_user_id, buscando por email...')
+                    const emailResult = await supabase
+                        .from('usuario')
+                        .select('es_admin, activo, nombre, apellido, auth_user_id')
+                        .eq('email', user.email)
+                        .single()
+                    
+                    userData = emailResult.data
+                    userError = emailResult.error
+                }
+
+                console.log('🔍 Resultado verificación admin:', { userData, userError })
 
 
                 if (userError) {
@@ -60,6 +80,7 @@ export default function VerificacionesPage() {
         try {
             
             // PASO 1: Cerrar sesión en Supabase PRIMERO
+            const supabase = getSupabaseClient()
             const { error } = await supabase.auth.signOut()
             
             if (error) {
@@ -291,7 +312,8 @@ export default function VerificacionesPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <AuthGuard>
+            <div className="min-h-screen bg-gray-50">
             {/* Header */}
             <header className="bg-white shadow">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -359,6 +381,7 @@ export default function VerificacionesPage() {
                     </div>
                 </div>
             )}
-        </div>
+            </div>
+        </AuthGuard>
     )
 }

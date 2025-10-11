@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -18,6 +18,17 @@ export default function AuthGuard({ children, fallback }: AuthGuardProps) {
 
     const checkAuth = async () => {
       try {
+        const supabase = getSupabaseClient()
+        
+        if (!supabase) {
+          console.error('Supabase no está configurado')
+          if (isMounted) {
+            setIsAuthenticated(false)
+            router.push('/login')
+          }
+          return
+        }
+
         const { data: { user } } = await supabase.auth.getUser()
         
         if (isMounted) {

@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export async function GET(
     req: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ API Products [id]: Supabase no está configurado')
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+
         const productId = params.id
 
         if (!productId) {
@@ -13,10 +19,39 @@ export async function GET(
         }
 
         // Obtener el producto con información del usuario y categoría
-        const { data: product, error } = await supabaseAdmin
-            .from('productos_publicos')
-            .select('*')
+        const { data: product, error } = await supabase
+            .from('producto')
+            .select(`
+                producto_id,
+                titulo,
+                descripcion,
+                precio,
+                estado,
+                tipo_transaccion,
+                precio_negociable,
+                condiciones_intercambio,
+                que_busco_cambio,
+                fecha_creacion,
+                fecha_publicacion,
+                visualizaciones,
+                user_id,
+                ciudad_snapshot,
+                departamento_snapshot,
+                categoria_id,
+                categoria:categoria(categoria_id, nombre),
+                usuario:usuario!producto_user_id_fkey(
+                    user_id,
+                    nombre,
+                    apellido,
+                    email,
+                    foto_perfil,
+                    calificacion_promedio,
+                    total_intercambios
+                )
+            `)
             .eq('producto_id', productId)
+            .eq('estado_validacion', 'approved')
+            .eq('estado_publicacion', 'activo')
             .single()
 
         if (error) {
@@ -29,7 +64,7 @@ export async function GET(
         }
 
         // Obtener imágenes del producto desde la tabla IMAGEN_PRODUCTO
-        const { data: images, error: imagesError } = await supabaseAdmin
+        const { data: images, error: imagesError } = await supabase
             .from('imagen_producto')
             .select('url_imagen, descripcion_alt, es_principal, orden')
             .eq('producto_id', productId)
@@ -43,7 +78,7 @@ export async function GET(
         // Obtener especificaciones técnicas normalizadas
         const specifications: Record<string, string> = {}
         try {
-            const { data: specRows } = await supabaseAdmin
+            const { data: specRows } = await supabase
                 .from('producto_especificacion')
                 .select('clave, valor')
                 .eq('producto_id', productId)
@@ -57,7 +92,7 @@ export async function GET(
         } catch {}
 
     // Obtener estadísticas del usuario (conteo de productos publicados)
-    const { data: userStats } = await supabaseAdmin
+    const { data: userStats } = await supabase
             .from('producto')
             .select('producto_id')
             .eq('user_id', product.user_id)
@@ -70,14 +105,14 @@ export async function GET(
     let currentUsuarioId: number | null = null
     if (token) {
       try {
-        const { data } = await supabaseAdmin.auth.getUser(token)
+        const { data } = await supabase.auth.getUser(token)
         const email = data?.user?.email
         if (email) {
-          isOwner = email === product.usuario_email
+          isOwner = email === product.usuario?.email
         }
         // Obtener user_id para verificar like
         if (data?.user?.id || email) {
-          const { data: usuarioRow } = await supabaseAdmin
+          const { data: usuarioRow } = await supabase
             .from('usuario')
             .select('user_id')
             .or(`auth_user_id.eq.${data?.user?.id || '00000000-0000-0000-0000-000000000000'},email.eq.${email || 'none@example.com'}`)
@@ -91,7 +126,7 @@ export async function GET(
     let liked = false
     if (currentUsuarioId) {
       try {
-        const { data: favRow } = await supabaseAdmin
+        const { data: favRow } = await supabase
           .from('favorito')
           .select('favorito_id')
           .eq('usuario_id', currentUsuarioId)
@@ -104,7 +139,7 @@ export async function GET(
     // Verificar si el producto está en un intercambio activo
     let isInActiveExchange = false
     try {
-      const { data: exchangeData } = await supabaseAdmin
+      const { data: exchangeData } = await supabase
         .from('intercambio')
         .select('intercambio_id, estado')
         .or(`producto_ofrecido_id.eq.${productId},producto_solicitado_id.eq.${productId}`)
@@ -120,7 +155,7 @@ export async function GET(
     ;(async () => {
       try {
         if (!isOwner) {
-          await supabaseAdmin
+          await supabase
             .from('producto')
             .update({ visualizaciones: (product.visualizaciones || 0) + 1 })
             .eq('producto_id', Number(productId))
@@ -140,22 +175,22 @@ export async function GET(
             condiciones_intercambio: product.condiciones_intercambio,
             que_busco_cambio: product.que_busco_cambio,
             fecha_creacion: product.fecha_creacion,
-            categoria_nombre: product.categoria_nombre,
+            categoria_nombre: product.categoria?.nombre || 'Sin categoría',
             especificaciones: specifications,
             visualizaciones: product.visualizaciones ?? 0,
             total_likes: product.total_likes ?? 0,
             usuario: {
                 user_id: product.user_id,
-                nombre: product.usuario_nombre,
-                apellido: product.usuario_apellido,
-                email: product.usuario_email,
-                foto_perfil: product.usuario_foto,
-                calificacion_promedio: product.usuario_calificacion,
-                total_intercambios: product.usuario_total_intercambios
+                nombre: product.usuario?.nombre || '',
+                apellido: product.usuario?.apellido || '',
+                email: product.usuario?.email || '',
+                foto_perfil: product.usuario?.foto_perfil || '',
+                calificacion_promedio: product.usuario?.calificacion_promedio || 0,
+                total_intercambios: product.usuario?.total_intercambios || 0
             },
             ubicacion: {
-                ciudad: product.ciudad,
-                departamento: product.departamento
+                ciudad: product.ciudad_snapshot || '',
+                departamento: product.departamento_snapshot || ''
             },
             imagenes: imageUrls,
             total_productos_usuario: userStats?.length || 0

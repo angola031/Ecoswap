@@ -4,7 +4,6 @@
  * Script para probar autenticación y cookies
  */
 
-const { createClient } = require('@supabase/supabase-js')
 require('dotenv').config({ path: '.env.local' })
 
 console.log('🔐 Probando autenticación y cookies...')

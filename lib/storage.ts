@@ -1,4 +1,3 @@
-import { supabase } from './supabase'
 
 /**
  * Genera una URL pública para un archivo en Supabase Storage

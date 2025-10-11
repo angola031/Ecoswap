@@ -1,7 +1,7 @@
 // Helper para manejar autenticación en rutas API
-import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
 export async function getAuthenticatedUser(req?: NextRequest) {
   try {

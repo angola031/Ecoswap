@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { supabase } from '@/lib/supabase'
 import { ChatInfo, ChatMessage, ChatProposal } from '@/lib/types/chat'
 import AuthGuard from '@/components/auth/AuthGuard'
 // import imageCompression from 'browser-image-compression' // Importación dinámica

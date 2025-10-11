@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,6 +36,11 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1]
+    
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+    }
     
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
     

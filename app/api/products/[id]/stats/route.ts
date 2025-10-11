@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(
     req: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ API Products Stats: Supabase no está configurado')
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+
         const productId = params.id
 
         if (!productId) {
@@ -13,7 +18,7 @@ export async function GET(
         }
 
         // Sumar visualizaciones según el esquema actual (estadistica_producto por día) + columna producto.visualizaciones
-        const { data: prodRow } = await supabaseAdmin
+        const { data: prodRow } = await supabase
             .from('producto')
             .select('visualizaciones')
             .eq('producto_id', Number(productId))
@@ -21,7 +26,7 @@ export async function GET(
 
         const baseViews = Number((prodRow as any)?.visualizaciones ?? 0)
 
-        const { data: dailyRows } = await supabaseAdmin
+        const { data: dailyRows } = await supabase
             .from('estadistica_producto')
             .select('visualizaciones_dia')
             .eq('producto_id', Number(productId))
@@ -31,7 +36,7 @@ export async function GET(
             : 0
 
         // Likes desde la tabla favorito
-        const { count: likesCount } = await supabaseAdmin
+        const { count: likesCount } = await supabase
             .from('favorito')
             .select('favorito_id', { count: 'exact', head: true })
             .eq('producto_id', Number(productId))

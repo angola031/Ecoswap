@@ -6,7 +6,6 @@ import { motion } from 'framer-motion'
 import { ArrowLeftIcon, PhoneIcon, EnvelopeIcon, CalendarIcon, EyeIcon, ShareIcon, FlagIcon, StarIcon, MapPinIcon, TagIcon, CurrencyDollarIcon, HeartIcon, ChatBubbleLeftRightIcon, UserIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import { useRouter, useParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 
 interface User {
   id: string
@@ -98,6 +97,11 @@ export default function ProductDetailPage() {
 
       try {
         // Obtener token si hay sesión para que la API identifique al viewer (y no cuente vistas si es dueño)
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+          console.log('❌ Supabase no está configurado')
+          return
+        }
         const { data: { session } } = await supabase.auth.getSession()
         const headers: Record<string, string> = {}
         if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
@@ -235,6 +239,11 @@ export default function ProductDetailPage() {
     
     // Si no hay sesión, redirigir a la interfaz de login del AuthModule
     try {
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        console.error('❌ Supabase no está configurado')
+        return
+      }
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
@@ -282,6 +291,11 @@ export default function ProductDetailPage() {
     }
     
     try {
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        console.error('❌ Supabase no está configurado')
+        return
+      }
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         await (window as any).Swal.fire({
@@ -356,6 +370,11 @@ export default function ProductDetailPage() {
 
   const handleChat = async () => {
     try {
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        console.error('❌ Supabase no está configurado')
+        return
+      }
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)

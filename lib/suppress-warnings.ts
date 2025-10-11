@@ -74,7 +74,7 @@ export function cleanProblematicAttributes() {
             })
         })
 
-        console.log('🧹 Atributos problemáticos limpiados del DOM')
+        // Atributos problemáticos limpiados silenciosamente
     } catch (error) {
         console.warn('Error limpiando atributos:', error)
     }

@@ -1,5 +1,5 @@
 // Funciones de base de datos para el módulo de interacciones
-import { supabase } from './supabase'
+import { getSupabaseClient } from './supabase-client'
 import { 
   IntercambioWithDetails, 
   ChatWithDetails, 
@@ -23,6 +23,15 @@ import {
 
 // ===== CONSULTAS DE INTERACCIONES =====
 
+// Función auxiliar para obtener cliente de Supabase
+function getSupabase() {
+  const supabase = getSupabaseClient()
+  if (!supabase) {
+    throw new Error('Supabase no está configurado')
+  }
+  return supabase
+}
+
 /**
  * Obtiene todas las interacciones de un usuario con filtros opcionales
  */
@@ -33,6 +42,7 @@ export async function getInteractions(
   limit: number = 20
 ): Promise<ApiResponse<InteractionsResponse>> {
   try {
+    const supabase = getSupabase()
     const offset = (page - 1) * limit
 
     // Construir consulta base
@@ -274,6 +284,8 @@ export async function getInteractionDetail(
   userId: number
 ): Promise<ApiResponse<InteractionDetail>> {
   try {
+    const supabase = getSupabase()
+    
     // Obtener intercambio con todos los detalles
     const { data: intercambio, error: intercambioError } = await supabase
       .from('intercambio')
@@ -566,6 +578,8 @@ export async function getInteractionDetail(
  */
 export async function getInteractionStats(userId: number): Promise<InteractionStats> {
   try {
+    const supabase = getSupabase()
+    
     // Obtener conteos por estado
     const { data: stats, error } = await supabase
       .from('intercambio')

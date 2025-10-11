@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useCallback } from 'react'
-import { createClient } from '@/lib/supabase-client'
 
 interface UseSessionTimeoutOptions {
     timeoutMinutes?: number

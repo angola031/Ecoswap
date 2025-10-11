@@ -1,59 +1,48 @@
-// Script simple para verificar variables de entorno
-const fs = require('fs');
-const path = require('path');
+#!/usr/bin/env node
 
-console.log('🔍 Verificando configuración de variables de entorno...\n');
+/**
+ * Script para verificar variables de entorno
+ */
 
-// Leer archivo .env.local
-const envPath = path.join(__dirname, '.env.local');
-let envContent = '';
+console.log('🔍 Verificando variables de entorno...\n');
 
-try {
-    envContent = fs.readFileSync(envPath, 'utf8');
-} catch (error) {
-    console.log('❌ No se encontró el archivo .env.local');
-    process.exit(1);
-}
-
-// Verificar variables
 const requiredVars = [
     'NEXT_PUBLIC_SUPABASE_URL',
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    'SUPABASE_SERVICE_ROLE_KEY',
-    'NEXT_PUBLIC_APP_URL'
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY'
 ];
 
 let allConfigured = true;
 
 requiredVars.forEach(varName => {
-    const regex = new RegExp(`^${varName}=(.+)$`, 'm');
-    const match = envContent.match(regex);
-
-    if (match && match[1] &&
-        !match[1].includes('tu_') &&
-        !match[1].includes('tu-proyecto') &&
-        match[1].trim() !== '') {
-        console.log(`✅ ${varName}: Configurado`);
-    } else {
-        console.log(`❌ ${varName}: NO CONFIGURADO o valor por defecto`);
+    const value = process.env[varName];
+    if (!value) {
+        console.log(`❌ ${varName}: NO DEFINIDA`);
         allConfigured = false;
+    } else if (value.includes('tu-') || value.includes('aqui')) {
+        console.log(`⚠️  ${varName}: VALOR DE EJEMPLO (${value})`);
+        allConfigured = false;
+    } else {
+        console.log(`✅ ${varName}: CONFIGURADA`);
     }
 });
 
 console.log('\n' + '='.repeat(50));
 
 if (allConfigured) {
-    console.log('🎉 ¡Todas las variables están configuradas correctamente!');
-    console.log('💡 Reinicia tu servidor de desarrollo: npm run dev');
+    console.log('🎉 Todas las variables están configuradas correctamente');
+    console.log('\n📋 Si aún tienes problemas:');
+    console.log('1. Verifica que tu proyecto Supabase esté activo');
+    console.log('2. Asegúrate de que las tablas necesarias existan');
+    console.log('3. Revisa la consola del navegador para errores específicos');
 } else {
-    console.log('⚠️  Necesitas configurar las variables de entorno.');
-    console.log('📝 Edita el archivo .env.local con las claves reales de Supabase.');
-    console.log('🔗 Obtén las claves en: https://supabase.com/dashboard → Settings → API');
+    console.log('❌ Configuración incompleta');
+    console.log('\n📝 Para solucionarlo:');
+    console.log('1. Crea un archivo .env.local en la raíz del proyecto');
+    console.log('2. Copia las variables desde env.example');
+    console.log('3. Configura con tus credenciales reales de Supabase');
+    console.log('\n💡 Ejemplo de .env.local:');
+    console.log('NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co');
+    console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-clave-anonima-real');
 }
 
-console.log('\n📋 Variables necesarias:');
-console.log('- NEXT_PUBLIC_SUPABASE_URL: URL de tu proyecto Supabase');
-console.log('- NEXT_PUBLIC_SUPABASE_ANON_KEY: Clave pública anónima');
-console.log('- SUPABASE_SERVICE_ROLE_KEY: Clave de servicio (mantener secreta)');
-console.log('- NEXT_PUBLIC_APP_URL: URL de tu aplicación (http://localhost:3000)');
-
+console.log('\n🔧 Para ejecutar este script: node scripts/check-env.js');

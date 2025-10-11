@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase-client'
 import { useAdminManagement } from '@/hooks/useAdminQueries'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface Rol {
     rol_id: number
@@ -44,7 +44,14 @@ interface AdminManagementModuleProps {
 export default function AdminManagementModule({ onClose }: AdminManagementModuleProps) {
     // Usar el hook personalizado para obtener datos
     const { admins: administradores, roles, loading, error, refetch } = useAdminManagement()
-    const supabase = createClient()
+    
+    // Función auxiliar para obtener sesión
+    const getSession = async () => {
+        const supabase = getSupabaseClient()
+        if (!supabase) return null
+        const { data: { session } } = await supabase.auth.getSession()
+        return session
+    }
 
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
@@ -241,7 +248,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
 
         try {
             // Hacer una consulta rápida a la API para verificar si el email existe
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) return
 
@@ -298,7 +305,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
     useEffect(() => {
         const checkPermissions = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession()
+                const session = await getSession()
                 
                 if (!session?.user?.email) {
                     setIsSuperAdmin(false)
@@ -370,7 +377,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
 
     const loadInactiveAdmins = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) return
 
@@ -395,7 +402,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
 
         setProcessing(true)
         try {
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) return
 
@@ -458,7 +465,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
         
         try {
             
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) {
                 setErrorMessage('No hay sesión activa. Por favor, inicia sesión nuevamente.')
@@ -514,7 +521,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
 
         setProcessing(true)
         try {
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) return
 
@@ -550,7 +557,8 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
         setSuccessMessage('')
         
         try {
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+            const session = await getSession()
+            const sessionError = session ? null : new Error('No hay sesión')
             
             if (sessionError) {
                 console.error('❌ Error obteniendo sesión:', sessionError)

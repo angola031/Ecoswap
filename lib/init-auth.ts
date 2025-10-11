@@ -3,7 +3,6 @@
  */
 
 import { clearProblematicCookies, clearAuthStorage, detectCookieDomainIssues } from './cookie-utils'
-import { supabaseInterceptor } from './supabase-interceptor'
 import { setupWarningSuppression } from './suppress-warnings'
 import { applyWarningFixes } from './nextjs-warning-fix'
 import { disableProblematicConnections } from './disable-websocket'

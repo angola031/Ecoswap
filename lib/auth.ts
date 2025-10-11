@@ -1,5 +1,5 @@
-import { supabase } from './supabase'
 import { config } from './config'
+import { getSupabaseClient } from './supabase-client'
 
 export interface User {
     id: string
@@ -51,6 +51,10 @@ export interface AdminUser extends User {
 export async function registerUser(data: RegisterData): Promise<{ user: User | null; error: string | null; needsVerification?: boolean }> {
     try {
         // 1. Verificar si el usuario ya existe en la tabla USUARIO
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return { user: null, error: 'Supabase no está configurado' }
+        }
         
         const { data: existingUser, error: checkError } = await supabase
             .from('usuario')
@@ -123,6 +127,10 @@ export async function registerUser(data: RegisterData): Promise<{ user: User | n
 // NUEVO: Solicitar código de verificación por email (puede usarse independiente del formulario completo)
 export async function requestRegistrationCode(data: RequestCodeData): Promise<{ error: string | null }> {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return { error: 'Supabase no está configurado' }
+        }
         
         const { data: otpData, error } = await supabase.auth.signInWithOtp({
             email: data.email,
@@ -148,6 +156,11 @@ export async function requestRegistrationCode(data: RequestCodeData): Promise<{ 
 // NUEVO: Completar registro verificando código y creando el perfil + estableciendo contraseña
 export async function completeRegistrationWithCode(data: CompleteRegistrationData): Promise<{ user: User | null; error: string | null }> {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return { user: null, error: 'Supabase no está configurado' }
+        }
+        
         // 1) Verificar el código (OTP) recibido por email
         const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
             email: data.email,
@@ -317,6 +330,10 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
     const nombre = registerData.firstName.trim()
     const apellido = registerData.lastName.trim()
     
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+        throw new Error('Supabase no está configurado')
+    }
 
     // Crear el usuario en la tabla USUARIO (usando la estructura existente)
     // Campos mínimos requeridos según el esquema
@@ -485,6 +502,13 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
 // Función para autenticar un usuario con Supabase Auth
 export async function loginUser(data: LoginData): Promise<{ user: User | null; error: string | null }> {
     try {
+        const supabase = getSupabaseClient()
+        
+        // Verificar si Supabase está configurado
+        if (!supabase) {
+            return { user: null, error: 'Sistema de autenticación no disponible en modo estático' }
+        }
+
         // Autenticar con Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: data.email,
@@ -625,6 +649,10 @@ async function createUserProfileWithData(authUser: any, formData: CompleteRegist
     const nombre = formData.firstName.trim()
     const apellido = formData.lastName.trim()
     
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+        throw new Error('Supabase no está configurado')
+    }
 
     // Crear el usuario en la tabla USUARIO (usando la estructura existente)
     const userDataToInsert = {
@@ -732,7 +760,19 @@ async function createUserProfileWithData(authUser: any, formData: CompleteRegist
 // Función para verificar si el usuario actual está verificado
 export async function isUserVerified(): Promise<boolean> {
     try {
+        console.log('🔍 isUserVerified: Iniciando verificación...')
+        
+        const supabase = getSupabaseClient()
+        
+        // Verificar si Supabase está configurado
+        if (!supabase) {
+            console.error('❌ ERROR: isUserVerified - Supabase no está configurado')
+            return false
+        }
+        
+        console.log('🔍 isUserVerified: Supabase configurado, obteniendo usuario...')
         const { data: { user } } = await supabase.auth.getUser()
+        console.log('🔍 isUserVerified: Usuario obtenido:', !!user)
         
         if (!user?.id) {
             return false
@@ -763,6 +803,10 @@ async function createUserProfileFromAuth(authUser: any): Promise<User> {
     const name = authUser.user_metadata?.name || 'Usuario'
     const { nombre, apellido } = splitFullName(name)
     
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+        throw new Error('Supabase no está configurado')
+    }
 
     // Crear el usuario en la tabla USUARIO (usando la estructura existente)
     const userDataToInsert = {
@@ -863,6 +907,14 @@ async function createUserProfileFromAuth(authUser: any): Promise<User> {
 // Función para verificar si un usuario está autenticado
 export async function getCurrentUser(): Promise<User | null> {
     try {
+        const supabase = getSupabaseClient()
+        
+        // Verificar si Supabase está configurado
+        if (!supabase) {
+            console.warn('⚠️ Supabase no está configurado. Ejecutando en modo estático.')
+            return null
+        }
+
         // Obtener la sesión actual de Supabase Auth
         const { data: { session }, error } = await supabase.auth.getSession()
 
@@ -936,6 +988,15 @@ export async function getCurrentUser(): Promise<User | null> {
 // Función para cerrar sesión
 export async function logoutUser(): Promise<void> {
     try {
+        const supabase = getSupabaseClient()
+        
+        // Verificar si Supabase está configurado
+        if (!supabase) {
+            // En modo estático, solo limpiar localStorage
+            localStorage.removeItem(config.auth.sessionKey)
+            return
+        }
+
         // Obtener el usuario actual antes de cerrar sesión
         const { data: { session } } = await supabase.auth.getSession()
         const userEmail = session?.user?.email
@@ -975,6 +1036,11 @@ export async function logoutUser(): Promise<void> {
 // Función para verificar si un email ya está registrado
 export async function checkEmailExists(email: string): Promise<{ exists: boolean; verified: boolean; active: boolean; error: string | null }> {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return { exists: false, verified: false, active: false, error: 'Supabase no está configurado' }
+        }
+        
         // Verificar en la tabla USUARIO
         const { data: user, error } = await supabase
             .from('usuario')
@@ -1007,6 +1073,11 @@ export async function checkEmailExists(email: string): Promise<{ exists: boolean
 // Función para verificar email y crear perfil automáticamente
 export async function verifyEmailAndCreateProfile(token: string): Promise<{ user: User | null; error: string | null }> {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return { user: null, error: 'Supabase no está configurado' }
+        }
+        
         // Verificar el email con Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.verifyOtp({
             token_hash: token,
@@ -1162,6 +1233,11 @@ export async function resendConfirmationEmail(email: string): Promise<{ error: s
             return { error: 'Esta cuenta está desactivada. Contacta al soporte.' }
         }
 
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return { error: 'Supabase no está configurado' }
+        }
+
         const { error } = await supabase.auth.resend({
             type: 'signup',
             email: email
@@ -1185,6 +1261,12 @@ export async function resendConfirmationEmail(email: string): Promise<{ error: s
 // Función para verificar si un usuario es administrador
 export async function isUserAdmin(email: string): Promise<{ isAdmin: boolean; roles: string[]; adminSince?: string }> {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ isUserAdmin: Supabase no está configurado')
+            return { isAdmin: false, roles: [] }
+        }
+        
         // Verificar si es admin por la columna es_admin
         const { data: dbUser } = await supabase
             .from('usuario')
@@ -1236,6 +1318,11 @@ export async function isUserAdmin(email: string): Promise<{ isAdmin: boolean; ro
 // Función para verificar si un usuario es super admin
 export async function isUserSuperAdmin(email: string): Promise<boolean> {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return false
+        }
+        
         const { data: dbUser } = await supabase
             .from('usuario')
             .select('user_id, es_admin')
@@ -1272,6 +1359,11 @@ export async function isUserSuperAdmin(email: string): Promise<boolean> {
 // Función para obtener información completa de administrador
 export async function getAdminUser(email: string): Promise<AdminUser | null> {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return null
+        }
+        
         const { data: dbUser } = await supabase
             .from('usuario')
             .select('*')

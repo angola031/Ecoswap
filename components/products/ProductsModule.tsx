@@ -11,7 +11,6 @@ import {
     FunnelIcon
 } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 
 interface User {
     id: string
@@ -48,6 +47,10 @@ interface Product {
     status: string
     tags: string[]
     specifications?: Record<string, string>
+    tipoTransaccion?: string
+    precioNegociable?: boolean
+    condicionesIntercambio?: string
+    queBuscoCambio?: string
 }
 
 interface ProductsModuleProps {
@@ -114,261 +117,54 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                     throw new Error('Error al cargar productos')
                 }
                 
-                const { products } = await response.json()
+                const data = await response.json()
+                const productos = data.productos || []
                 
                 // Transformar los datos de la API al formato esperado
-                let transformedProducts: Product[] = products.map((p: any) => ({
+                const transformedProducts: Product[] = productos.map((p: any) => ({
                     id: p.producto_id.toString(),
                     title: p.titulo,
                     description: p.descripcion,
-                    category: p.categoria_nombre || 'Sin categoría',
+                    category: p.categoria?.nombre || 'Sin categoría',
                     condition: p.estado || 'usado',
                     price: p.precio || 0,
                     currency: 'COP',
-                    location: `${p.ciudad || ''}, ${p.departamento || ''}`.trim(),
-                    images: [],
+                    location: `${p.ciudad_snapshot || ''}, ${p.departamento_snapshot || ''}`.trim(),
+                    images: p.imagenes || [],
                     owner: {
                         id: p.user_id.toString(),
-                        name: p.usuario_nombre || 'Usuario',
-                        avatar: p.usuario_foto || '/default-avatar.png',
-                        rating: p.usuario_calificacion || 0,
-                        email: '',
+                        name: `${p.usuario?.nombre || ''} ${p.usuario?.apellido || ''}`.trim() || 'Usuario',
+                        avatar: p.usuario?.foto_perfil || '/default-avatar.png',
+                        rating: p.usuario?.calificacion_promedio || 0,
+                        email: p.usuario?.email || '',
                         memberSince: '2024-01-01',
                         totalProducts: 1,
-                        totalSales: 0
+                        totalSales: p.usuario?.total_intercambios || 0
                     },
                     createdAt: p.fecha_creacion,
-                    views: 0,
-                    likes: 0,
+                    views: p.visualizaciones || 0,
+                    likes: 0, // TODO: Implementar likes
                     status: 'available',
                     tags: [],
-                    specifications: {}
+                    specifications: {},
+                    tipoTransaccion: p.tipo_transaccion,
+                    precioNegociable: p.precio_negociable,
+                    condicionesIntercambio: p.condiciones_intercambio,
+                    queBuscoCambio: p.que_busco_cambio
                 }))
 
-                // Cargar imagen principal por producto desde Supabase
-                try {
-                    const ids = transformedProducts.map(p => Number(p.id))
-                    if (ids.length > 0) {
-                        const { data: imgs } = await supabase
-                            .from('imagen_producto')
-                            .select('producto_id, url_imagen, es_principal, orden')
-                            .in('producto_id', ids)
-                            .order('es_principal', { ascending: false })
-                            .order('orden', { ascending: true })
-
-                        const firstByProduct = new Map<number, string>()
-                        ;(imgs || []).forEach((row: any) => {
-                            const pid = Number(row.producto_id)
-                            if (!firstByProduct.has(pid)) {
-                                firstByProduct.set(pid, row.url_imagen)
-                            }
-                        })
-
-                        transformedProducts = transformedProducts.map(p => ({
-                            ...p,
-                            images: firstByProduct.has(Number(p.id)) ? [firstByProduct.get(Number(p.id)) as string] : []
-                        }))
-                    }
-                } catch (_) {
-                    // Si falla, seguimos con imágenes vacías y se mostrará placeholder
-                }
+                // Las imágenes ya vienen incluidas en la respuesta de la API
+                // No necesitamos cargarlas por separado
                 
-                // Cargar estadísticas (vistas/likes) para cada producto en paralelo
-                try {
-                    const statsResults = await Promise.all(
-                        transformedProducts.map(async (p) => {
-                            try {
-                                const res = await fetch(`/api/products/${p.id}/stats`)
-                                if (!res.ok) return { id: p.id, views: 0, likes: 0 }
-                                const { stats } = await res.json()
-                                return { id: p.id, views: Number(stats?.views || 0), likes: Number(stats?.likes || 0) }
-                            } catch {
-                                return { id: p.id, views: 0, likes: 0 }
-                            }
-                        })
-                    )
-                    const idToStats = new Map(statsResults.map(s => [s.id, s]))
-                    transformedProducts = transformedProducts.map(p => ({
-                        ...p,
-                        views: idToStats.get(p.id)?.views ?? p.views,
-                        likes: idToStats.get(p.id)?.likes ?? p.likes,
-                    }))
-                } catch {}
+                // Las estadísticas ya vienen incluidas en la respuesta de la API
+                // No necesitamos cargarlas por separado
 
                 setProducts(transformedProducts)
             } catch (error) {
                 console.error('Error cargando productos:', error)
-                // Fallback a datos mock si hay error
-                const mockProducts: Product[] = [
-                    {
-                    id: '1',
-                    title: 'iPhone 12 Pro - Excelente Estado',
-                    description: 'iPhone 12 Pro de 128GB en excelente estado. Incluye cargador original y funda de silicona. Perfecto para intercambio.',
-                    category: 'electronics',
-                    condition: 'excellent',
-                    price: 2500000,
-                    currency: 'COP',
-                    location: 'Pereira, Risaralda',
-                    images: ['https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400&h=300&fit=crop'],
-                    owner: {
-                        id: '1',
-                        name: 'Carlos Rodríguez',
-                        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face',
-                        rating: 4.8,
-                        phone: '+57 300 123 4567',
-                        email: 'carlos.rodriguez@email.com',
-                        memberSince: '2024',
-                        totalProducts: 12,
-                        totalSales: 8
-                    },
-                    createdAt: '2024-01-15',
-                    views: 156,
-                    likes: 23,
-                    status: 'available',
-                    tags: ['iPhone', 'Apple', 'Smartphone', 'Tecnología'],
-                    specifications: {
-                        'Capacidad': '128GB',
-                        'Color': 'Azul',
-                        'Estado de la batería': '95%',
-                        'Incluye': 'Cargador original, funda'
-                    }
-                },
-                {
-                    id: '2',
-                    title: 'Bicicleta de Montaña Trek',
-                    description: 'Bicicleta de montaña Trek en muy buen estado. Ideal para deportes y recreación. Incluye casco y luces.',
-                    category: 'sports',
-                    condition: 'good',
-                    price: 800000,
-                    currency: 'COP',
-                    location: 'Medellín, Antioquia',
-                    images: ['https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=400&h=300&fit=crop'],
-                    owner: {
-                        id: '2',
-                        name: 'Ana María López',
-                        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face',
-                        rating: 4.9,
-                        phone: '+57 300 987 6543',
-                        email: 'ana.maria@email.com',
-                        memberSince: '2023',
-                        totalProducts: 8,
-                        totalSales: 5
-                    },
-                    createdAt: '2024-01-18',
-                    views: 89,
-                    likes: 15,
-                    status: 'available',
-                    tags: ['Bicicleta', 'Deportes', 'Trek', 'Montaña'],
-                    specifications: {
-                        'Marca': 'Trek',
-                        'Tamaño': 'M (18")',
-                        'Material': 'Aluminio',
-                        'Incluye': 'Casco, luces'
-                    }
-                },
-                {
-                    id: '3',
-                    title: 'Guitarra Acústica Yamaha',
-                    description: 'Guitarra acústica Yamaha en excelente estado. Perfecta para principiantes y músicos intermedios.',
-                    category: 'music',
-                    condition: 'excellent',
-                    price: 450000,
-                    currency: 'COP',
-                    location: 'Cali, Valle del Cauca',
-                    images: ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop'],
-                    owner: {
-                        id: '3',
-                        name: 'Roberto Silva',
-                        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face',
-                        rating: 4.7,
-                        phone: '+57 310 456 7890',
-                        email: 'roberto.silva@email.com',
-                        memberSince: '2023',
-                        totalProducts: 15,
-                        totalSales: 12
-                    },
-                    createdAt: '2024-01-20',
-                    views: 67,
-                    likes: 12,
-                    status: 'available',
-                    tags: ['Guitarra', 'Música', 'Yamaha', 'Acústica'],
-                    specifications: {
-                        'Marca': 'Yamaha',
-                        'Modelo': 'F310',
-                        'Cuerdas': '6',
-                        'Incluye': 'Estuche, púas'
-                    }
-                },
-                {
-                    id: '4',
-                    title: 'Libros de Literatura Colombiana',
-                    description: 'Colección de libros de literatura colombiana clásica. Incluye obras de García Márquez, Álvaro Mutis y otros.',
-                    category: 'books',
-                    condition: 'good',
-                    price: 150000,
-                    currency: 'COP',
-                    location: 'Bogotá D.C.',
-                    images: ['https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=300&fit=crop'],
-                    owner: {
-                        id: '4',
-                        name: 'María Fernanda',
-                        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=50&h=50&fit=crop&crop=face',
-                        rating: 4.6,
-                        phone: '+57 315 123 4567',
-                        email: 'maria.fernanda@email.com',
-                        memberSince: '2022',
-                        totalProducts: 25,
-                        totalSales: 18
-                    },
-                    createdAt: '2024-01-22',
-                    views: 45,
-                    likes: 8,
-                    status: 'available',
-                    tags: ['Libros', 'Literatura', 'Colombia', 'García Márquez'],
-                    specifications: {
-                        'Género': 'Literatura',
-                        'Idioma': 'Español',
-                        'Estado': 'Bueno',
-                        'Incluye': '5 libros'
-                    }
-                },
-                {
-                    id: '5',
-                    title: 'Mesa de Centro Artesanal',
-                    description: 'Mesa de centro hecha a mano con madera de pino. Diseño rústico y elegante, perfecta para sala.',
-                    category: 'furniture',
-                    condition: 'good',
-                    price: 350000,
-                    currency: 'COP',
-                    location: 'Barranquilla, Atlántico',
-                    images: ['https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop'],
-                    owner: {
-                        id: '5',
-                        name: 'Carlos Andrés',
-                        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=50&h=50&fit=crop&crop=face',
-                        rating: 4.5,
-                        phone: '+57 300 555 1234',
-                        email: 'carlos.andres@email.com',
-                        memberSince: '2024',
-                        totalProducts: 6,
-                        totalSales: 3
-                    },
-                    createdAt: '2024-01-25',
-                    views: 34,
-                    likes: 6,
-                    status: 'available',
-                    tags: ['Mesa', 'Muebles', 'Artesanal', 'Madera'],
-                    specifications: {
-                        'Material': 'Pino',
-                        'Dimensiones': '120x60x45 cm',
-                        'Color': 'Natural',
-                        'Incluye': 'Mesa sola'
-                    }
-                }
-            ]
-
-                setProducts(mockProducts)
-                setFilteredProducts(mockProducts)
+                // Mostrar estado vacío si hay error
+                setProducts([])
+                setFilteredProducts([])
             }
             
             setIsLoading(false)
@@ -575,9 +371,34 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                                 {product.description}
                             </p>
 
-                            {/* Precio */}
-                            <div className="text-lg font-bold text-primary-600 mb-3">
-                                {formatPrice(product.price, product.currency)}
+                            {/* Precio y tipo de transacción */}
+                            <div className="text-lg font-bold text-primary-600 mb-2">
+                                {product.tipoTransaccion === 'donacion' ? (
+                                    <span className="text-green-600">Gratis</span>
+                                ) : product.tipoTransaccion === 'intercambio' ? (
+                                    <span className="text-blue-600">Intercambio</span>
+                                ) : (
+                                    formatPrice(product.price, product.currency)
+                                )}
+                            </div>
+                            
+                            {/* Indicadores adicionales */}
+                            <div className="flex items-center space-x-2 mb-3">
+                                {product.precioNegociable && (
+                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                        Negociable
+                                    </span>
+                                )}
+                                {product.tipoTransaccion === 'intercambio' && (
+                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                        Intercambio
+                                    </span>
+                                )}
+                                {product.tipoTransaccion === 'donacion' && (
+                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                        Donación
+                                    </span>
+                                )}
                             </div>
 
                             {/* Ubicación */}

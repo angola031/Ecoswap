@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
 
 // POST - Crear notificación para administradores sobre verificación de identidad
 export async function POST(request: NextRequest) {
@@ -22,6 +21,11 @@ export async function POST(request: NextRequest) {
 
 
         // Obtener todos los administradores activos
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+        
         const { data: admins, error: adminsError } = await supabase
             .from('usuario')
             .select(`

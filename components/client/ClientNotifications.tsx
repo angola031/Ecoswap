@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface Notification {
     notificacion_id: number
@@ -27,6 +27,13 @@ export default function ClientNotifications() {
         try {
             setLoading(true)
             setError(null)
+
+            // Verificar si supabase está disponible
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                setError('Sistema de notificaciones no disponible')
+                return
+            }
 
             // Obtener el usuario actual
             const { data: { user } } = await supabase.auth.getUser()

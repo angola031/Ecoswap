@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function authUser(req: NextRequest) {
+    const supabase = getSupabaseClient()
+    if (!supabase) return null
+    
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return null
-    const { data } = await supabaseAdmin.auth.getUser(token)
+    const { data } = await supabase.auth.getUser(token)
     return data?.user || null
 }
 
@@ -15,7 +18,12 @@ export async function GET(req: NextRequest) {
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
         // Resolve usuario_id
-        const { data: u } = await supabaseAdmin
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+        
+        const { data: u } = await supabase
             .from('usuario')
             .select('user_id, nombre, apellido, email')
             .eq('email', user.email)
@@ -23,7 +31,7 @@ export async function GET(req: NextRequest) {
         if (!u) return NextResponse.json({ items: [] })
 
         // Obtener intercambios del usuario actual
-        const { data: intercambios } = await supabaseAdmin
+        const { data: intercambios } = await supabase
             .from('intercambio')
             .select(`
                 intercambio_id,
@@ -42,7 +50,7 @@ export async function GET(req: NextRequest) {
             const otherId = it.usuario_propone_id === me ? it.usuario_recibe_id : it.usuario_propone_id
 
             // Obtener el chat asociado al intercambio
-            const { data: chat } = await supabaseAdmin
+            const { data: chat } = await supabase
                 .from('chat')
                 .select('chat_id, ultimo_mensaje, activo')
                 .eq('intercambio_id', it.intercambio_id)
@@ -51,7 +59,7 @@ export async function GET(req: NextRequest) {
             if (!chat) continue
 
             // Info del otro usuario
-            const { data: other } = await supabaseAdmin
+            const { data: other } = await supabase
                 .from('usuario')
                 .select('user_id, nombre, apellido, foto_perfil')
                 .eq('user_id', otherId)
@@ -60,7 +68,7 @@ export async function GET(req: NextRequest) {
             // Obtener información del producto ofrecido
             let productInfo = null
             if (it.producto_ofrecido_id) {
-                const { data: producto } = await supabaseAdmin
+                const { data: producto } = await supabase
                     .from('producto')
                     .select(`
                         producto_id,
@@ -79,7 +87,7 @@ export async function GET(req: NextRequest) {
                 if (producto) {
                     // Obtener imagen principal del producto
                     let mainImage = null
-                    const { data: imagen } = await supabaseAdmin
+                    const { data: imagen } = await supabase
                         .from('imagen_producto')
                         .select('url_imagen')
                         .eq('producto_id', producto.producto_id)
@@ -110,7 +118,7 @@ export async function GET(req: NextRequest) {
             }
 
             // Último mensaje como texto
-            const { data: lastMsg } = await supabaseAdmin
+            const { data: lastMsg } = await supabase
                 .from('mensaje')
                 .select('contenido, tipo, fecha_envio')
                 .eq('chat_id', chat.chat_id)
@@ -119,7 +127,7 @@ export async function GET(req: NextRequest) {
                 .single()
 
             // Unread count
-            const { count: unread } = await supabaseAdmin
+            const { count: unread } = await supabase
                 .from('mensaje')
                 .select('mensaje_id', { count: 'exact', head: true })
                 .eq('chat_id', chat.chat_id)

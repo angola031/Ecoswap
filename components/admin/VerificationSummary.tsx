@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { getVerificationDocumentUrls } from '@/lib/storage'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface VerificationSummaryProps {
     onViewDetails: () => void
@@ -27,6 +27,12 @@ export default function VerificationSummary({ onViewDetails }: VerificationSumma
 
     const fetchPendingVerifications = async () => {
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                console.error('❌ Supabase no está configurado')
+                return
+            }
+            
             setLoading(true)
 
             // Obtener verificaciones pendientes desde tabla VALIDACION_USUARIO

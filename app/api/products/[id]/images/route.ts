@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(
     req: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ API Products Images: Supabase no está configurado')
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+
         const productId = params.id
 
         if (!productId) {
@@ -13,7 +18,7 @@ export async function GET(
         }
 
         // Obtener imágenes del producto desde la tabla IMAGEN_PRODUCTO
-        const { data: images, error } = await supabaseAdmin
+        const { data: images, error } = await supabase
             .from('imagen_producto')
             .select('imagen_id, url_imagen, descripcion_alt, es_principal, orden, fecha_subida')
             .eq('producto_id', productId)
@@ -77,7 +82,7 @@ export async function POST(
         const fileName = `${timestamp}.${fileExtension}`
 
         // Subir archivo a Supabase Storage
-        const { data, error } = await supabaseAdmin.storage
+        const { data, error } = await supabase.storage
             .from('Ecoswap')
             .upload(`productos/${productId}/${fileName}`, file, {
                 cacheControl: '3600',
@@ -90,12 +95,12 @@ export async function POST(
         }
 
         // Obtener URL pública
-        const { data: urlData } = supabaseAdmin.storage
+        const { data: urlData } = supabase.storage
             .from('Ecoswap')
             .getPublicUrl(data.path)
 
         // Guardar referencia en la tabla IMAGEN_PRODUCTO
-        const { data: imagenData, error: imagenError } = await supabaseAdmin
+        const { data: imagenData, error: imagenError } = await supabase
             .from('imagen_producto')
             .insert({
                 producto_id: parseInt(productId),

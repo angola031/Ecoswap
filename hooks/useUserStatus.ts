@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '../lib/supabase-client'
 
 interface UserStatus {
   id: string
@@ -30,6 +30,11 @@ export function useUserStatus(): UseUserStatusReturn {
       setIsLoading(true)
       setError(null)
 
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        throw new Error('Supabase no está configurado')
+      }
+      
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         throw new Error('No hay sesión activa')
@@ -58,6 +63,11 @@ export function useUserStatus(): UseUserStatusReturn {
   // Función para actualizar el estado del usuario actual
   const updateUserStatus = useCallback(async (isActive: boolean) => {
     try {
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        throw new Error('Supabase no está configurado')
+      }
+      
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         throw new Error('No hay sesión activa')
@@ -103,9 +113,12 @@ export function useUserStatus(): UseUserStatusReturn {
     return () => clearInterval(interval)
   }, [fetchOnlineUsers])
 
-  // Configurar listener para cambios de autenticación
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+// Configurar listener para cambios de autenticación
+useEffect(() => {
+  const supabase = getSupabaseClient()
+  if (!supabase) return
+  
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
         // Usuario inició sesión, actualizar estado
         updateUserStatus(true)

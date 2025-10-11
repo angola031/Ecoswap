@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
+  const supabase = getSupabaseClient()
+  if (!supabase) return null
+  
   const auth = req.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
   if (!token) return null
   
   try {
-    const { data } = await supabaseAdmin.auth.getUser(token)
+    const { data } = await supabase.auth.getUser(token)
     const authUserId = data?.user?.id
     if (!authUserId) return null
     
     // Buscar el usuario por auth_user_id
-    const { data: usuario } = await supabaseAdmin
+    const { data: usuario } = await supabase
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', authUserId)
@@ -31,7 +33,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!productoId) return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
 
     // Obtener la lista de usuarios que le dieron like al producto
-    const { data: likes, error } = await supabaseAdmin
+    const { data: likes, error } = await supabase
       .from('favorito')
       .select(`
         favorito_id,
@@ -90,7 +92,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     // Verificar si ya existe el like
-    const { data: exists } = await supabaseAdmin
+    const { data: exists } = await supabase
       .from('favorito')
       .select('favorito_id')
       .eq('usuario_id', userId)
@@ -102,7 +104,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
 
     // Agregar el like
-    const { error: insertErr } = await supabaseAdmin
+    const { error: insertErr } = await supabase
       .from('favorito')
       .insert({ usuario_id: userId, producto_id: productoId })
 
@@ -131,7 +133,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     // Remover el like
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from('favorito')
       .delete()
       .eq('usuario_id', userId)

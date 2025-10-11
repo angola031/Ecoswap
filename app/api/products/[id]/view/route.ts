@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
+  const supabase = getSupabaseClient()
+  if (!supabase) return null
+  
   const auth = req.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
   if (!token) return null
   
   try {
-    const { data } = await supabaseAdmin.auth.getUser(token)
+    const { data } = await supabase.auth.getUser(token)
     const authUserId = data?.user?.id
     if (!authUserId) return null
     
     // Buscar el usuario por auth_user_id
-    const { data: usuario } = await supabaseAdmin
+    const { data: usuario } = await supabase
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', authUserId)
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
 
     // Verificar si el usuario ya vio el producto
-    const { data: existingView } = await supabaseAdmin
+    const { data: existingView } = await supabase
       .from('visualizacion_producto')
       .select('visualizacion_id')
       .eq('usuario_id', userId)
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
 
     // Usar la función de la base de datos para registrar la visualización
-    const { data: result, error } = await supabaseAdmin
+    const { data: result, error } = await supabase
       .rpc('register_product_view', {
         p_usuario_id: userId,
         p_producto_id: productoId
@@ -92,7 +94,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const userId = await getAuthUserId(req)
     
     // Obtener contador de visualizaciones únicas
-    const { data: uniqueViews, error: viewsError } = await supabaseAdmin
+    const { data: uniqueViews, error: viewsError } = await supabase
       .rpc('get_unique_views_count', {
         p_producto_id: productoId
       })
@@ -105,7 +107,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     // Verificar si el usuario actual ya vio el producto
     let hasUserViewed = false
     if (userId) {
-      const { data: userViewed, error: userError } = await supabaseAdmin
+      const { data: userViewed, error: userError } = await supabase
         .rpc('has_user_viewed_product', {
           p_usuario_id: userId,
           p_producto_id: productoId

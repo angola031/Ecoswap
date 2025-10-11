@@ -2,7 +2,6 @@
 // 🚀 UTILIDADES DE CONSULTAS PARA ADMINISTRADORES - ECOSWAP
 // =============================================
 
-import { supabase } from './supabase'
 
 // Interfaces para tipado
 export interface AdminUser {

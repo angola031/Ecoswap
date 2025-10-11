@@ -1,11 +1,10 @@
+import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 
-export async function middleware(req: NextRequest) {
+export async function middleware(request: NextRequest) {
     let response = NextResponse.next({
         request: {
-            headers: req.headers,
+            headers: request.headers,
         },
     })
 
@@ -14,107 +13,88 @@ export async function middleware(req: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
-                getAll() {
-                    return req.cookies.getAll()
+                get(name: string) {
+                    return request.cookies.get(name)?.value
                 },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => {
-                        req.cookies.set(name, value)
-                        response.cookies.set(name, value, options)
+                set(name: string, value: string, options: any) {
+                    request.cookies.set({
+                        name,
+                        value,
+                        ...options,
                     })
                     response = NextResponse.next({
                         request: {
-                            headers: req.headers,
+                            headers: request.headers,
                         },
+                    })
+                    response.cookies.set({
+                        name,
+                        value,
+                        ...options,
+                    })
+                },
+                remove(name: string, options: any) {
+                    request.cookies.set({
+                        name,
+                        value: '',
+                        ...options,
+                    })
+                    response = NextResponse.next({
+                        request: {
+                            headers: request.headers,
+                        },
+                    })
+                    response.cookies.set({
+                        name,
+                        value: '',
+                        ...options,
                     })
                 },
             },
         }
     )
 
-    // Debug de cookies para todas las rutas
-    const allCookies = req.cookies.getAll()
-    
-    // Buscar cookies de Supabase específicamente
-    const supabaseCookies = allCookies.filter(c => c.name.includes('supabase') || c.name.includes('sb-'))
-    supabaseCookies.forEach(c => {
-    })
+    // Obtener la sesión actual
+    const { data: { session } } = await supabase.auth.getSession()
 
-    // Manejar timeout en página principal
-    if (req.nextUrl.pathname === '/' && req.nextUrl.searchParams.get('timeout') === 'true') {
-        try {
-            await supabase.auth.signOut()
-        } catch (error) {
+    // Solo proteger rutas de admin si no hay sesión
+    if (!session && request.nextUrl.pathname.startsWith('/admin')) {
+        console.log('🔍 Middleware: Sin sesión, redirigiendo a login desde:', request.nextUrl.pathname)
+        
+        // Si viene de login, dar tiempo para que se establezca la sesión
+        const referer = request.headers.get('referer')
+        if (referer && referer.includes('/login')) {
+            console.log('🔍 Middleware: Viene de login, permitiendo acceso temporal')
+            return response
         }
-        return NextResponse.redirect(new URL('/login', req.url))
+        
+        return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    // Solo proteger rutas /admin
-    if (req.nextUrl.pathname.startsWith('/admin')) {
-        const { data: { session } } = await supabase.auth.getSession()
+    // Si no hay sesión y está intentando acceder a APIs de admin
+    if (!session && request.nextUrl.pathname.startsWith('/api/admin')) {
+        return NextResponse.redirect(new URL('/login', request.url))
+    }
 
-        if (!session) {
-            return NextResponse.redirect(new URL('/login', req.url))
-        }
-
-        // Verificar que sea admin
+    // Si hay sesión y está en la página de login, verificar tipo de usuario
+    if (session && request.nextUrl.pathname === '/login') {
         try {
+            // Obtener datos del usuario
             const { data: userData } = await supabase
                 .from('usuario')
                 .select('es_admin, activo')
                 .eq('email', session.user.email)
                 .single()
 
-            if (!userData?.es_admin || !userData?.activo) {
-                return NextResponse.redirect(new URL('/admin-access-denied', req.url))
+            // Si es administrador activo, redirigir al dashboard
+            if (userData?.es_admin && userData?.activo) {
+                return NextResponse.redirect(new URL('/admin/verificaciones', request.url))
+            } else if (userData && !userData.es_admin) {
+                // Si no es administrador, redirigir a la página principal
+                return NextResponse.redirect(new URL('/', request.url))
             }
-
         } catch (error) {
-            console.error('❌ Error verificando admin:', error)
-            return NextResponse.redirect(new URL('/admin-access-denied', req.url))
-        }
-    }
-
-    // Si el usuario está en /login y ya tiene sesión, redirigir según su rol
-    if (req.nextUrl.pathname === '/login') {
-        // Si hay parámetro logout=true, limpiar sesión y redirigir a login limpio
-        if (req.nextUrl.searchParams.get('logout') === 'true') {
-            try {
-                // Intentar cerrar sesión del lado del servidor
-                await supabase.auth.signOut()
-            } catch (error) {
-            }
-            return NextResponse.redirect(new URL('/login', req.url))
-        }
-
-        // Si hay parámetro timeout=true, limpiar sesión y redirigir a login limpio
-        if (req.nextUrl.searchParams.get('timeout') === 'true') {
-            try {
-                // Intentar cerrar sesión del lado del servidor
-                await supabase.auth.signOut()
-            } catch (error) {
-            }
-            return NextResponse.redirect(new URL('/login', req.url))
-        }
-
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (session) {
-            try {
-                const { data: userData } = await supabase
-                    .from('usuario')
-                    .select('es_admin, activo')
-                    .eq('email', session.user.email)
-                    .single()
-
-                if (userData?.es_admin && userData?.activo) {
-                    return NextResponse.redirect(new URL('/admin/verificaciones', req.url))
-                } else if (userData && !userData.es_admin) {
-                    return NextResponse.redirect(new URL('/', req.url))
-                }
-            } catch (error) {
-                console.error('❌ Error verificando usuario en login:', error)
-            }
+            console.error('Error verificando usuario en middleware:', error)
         }
     }
 
@@ -122,5 +102,14 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/admin/:path*', '/login', '/'],
+    matcher: [
+        /*
+         * Match all request paths except for the ones starting with:
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico (favicon file)
+         * - public folder
+         */
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    ],
 }

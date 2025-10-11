@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 
 function parseAdminEmails(): Set<string> {
     const raw = process.env.ADMIN_EMAILS || ''

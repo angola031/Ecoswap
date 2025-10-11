@@ -168,7 +168,6 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
 
         // Enviar a API normalizada (producto + etiquetas + especificaciones)
         try {
-            const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession()
             const token = session?.access_token
             if (token) {
                 const payload: any = {

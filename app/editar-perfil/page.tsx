@@ -4,31 +4,39 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeftIcon, PhotoIcon, TrashIcon, ExclamationTriangleIcon, CheckCircleIcon, UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, GlobeAltIcon, ShieldCheckIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { uploadUserProfileImage } from '@/lib/storage'
 
 interface User {
-    id: string
-    name: string
+    user_id: number
+    nombre: string
+    apellido: string
     email: string
-    phone?: string
-    avatar: string
-    bio?: string
-    location?: string
-    website?: string
-    instagram?: string
-    facebook?: string
-    twitter?: string
-    rating: number
-    memberSince: string
-    totalProducts: number
-    totalSales: number
-    preferences: {
-        publicProfile: boolean
-        showLocation: boolean
-        showPhone: boolean
-        showEmail: boolean
-        notifications: boolean
+    telefono?: string
+    fecha_nacimiento?: string
+    biografia?: string
+    foto_perfil?: string
+    calificacion_promedio: number
+    total_intercambios: number
+    eco_puntos: number
+    fecha_registro: string
+    verificado: boolean
+    activo: boolean
+    es_admin: boolean
+    ubicacion?: {
+        ciudad?: string
+        departamento?: string
+        pais: string
+    }
+    configuracion?: {
+        notif_nuevas_propuestas: boolean
+        notif_mensajes: boolean
+        notif_actualizaciones: boolean
+        notif_newsletter: boolean
+        perfil_publico: boolean
+        mostrar_ubicacion_exacta: boolean
+        mostrar_telefono: boolean
+        recibir_mensajes_desconocidos: boolean
+        distancia_maxima_km: number
     }
 }
 
@@ -53,10 +61,16 @@ export default function EditarPerfilPage() {
     useEffect(() => {
         const load = async () => {
             try {
+                const supabase = getSupabaseClient()
+                if (!supabase) {
+                    console.log('❌ Supabase no está configurado')
+                    return
+                }
                 const { data: { session } } = await supabase.auth.getSession()
                 const email = session?.user?.email
                 if (!email) return
 
+                // Obtener datos del usuario
                 const { data: dbUser } = await supabase
                     .from('usuario')
                     .select('*')
@@ -65,45 +79,71 @@ export default function EditarPerfilPage() {
 
                 if (!dbUser) return
 
-                const { data: loc } = await supabase
+                // Obtener ubicación principal
+                const { data: ubicacion } = await supabase
                     .from('ubicacion')
-                    .select('ciudad, departamento, es_principal')
+                    .select('ciudad, departamento, pais, es_principal')
                     .eq('user_id', dbUser.user_id)
                     .eq('es_principal', true)
                     .single()
 
-                const name = [dbUser.nombre, dbUser.apellido].filter(Boolean).join(' ').trim()
-                const composedLocation = loc ? `${loc.ciudad || ''}${loc.departamento ? ', ' + loc.departamento : ''}` : ''
+                // Obtener configuración del usuario
+                const { data: configuracion } = await supabase
+                    .from('configuracion_usuario')
+                    .select('*')
+                    .eq('usuario_id', dbUser.user_id)
+                    .single()
 
                 const user: User = {
-                    id: String(dbUser.user_id),
-                    name,
+                    user_id: dbUser.user_id,
+                    nombre: dbUser.nombre || '',
+                    apellido: dbUser.apellido || '',
                     email: dbUser.email,
-                    phone: dbUser.telefono || '',
-                    avatar: dbUser.foto_perfil || '/api/placeholder/150/150',
-                    bio: dbUser.biografia || '',
-                    location: composedLocation,
-                    website: '',
-                    instagram: '',
-                    facebook: '',
-                    twitter: '',
-                    rating: typeof dbUser.calificacion_promedio === 'number' ? dbUser.calificacion_promedio : 0,
-                    memberSince: dbUser.fecha_registro || '',
-                    totalProducts: typeof dbUser.total_productos === 'number' ? dbUser.total_productos : 0,
-                    totalSales: 0,
-                    preferences: {
-                        publicProfile: true,
-                        showLocation: true,
-                        showPhone: false,
-                        showEmail: false,
-                        notifications: true
+                    telefono: dbUser.telefono || '',
+                    fecha_nacimiento: dbUser.fecha_nacimiento || '',
+                    biografia: dbUser.biografia || '',
+                    foto_perfil: dbUser.foto_perfil || '/api/placeholder/150/150',
+                    calificacion_promedio: dbUser.calificacion_promedio || 0,
+                    total_intercambios: dbUser.total_intercambios || 0,
+                    eco_puntos: dbUser.eco_puntos || 0,
+                    fecha_registro: dbUser.fecha_registro || '',
+                    verificado: dbUser.verificado || false,
+                    activo: dbUser.activo || true,
+                    es_admin: dbUser.es_admin || false,
+                    ubicacion: ubicacion ? {
+                        ciudad: ubicacion.ciudad || '',
+                        departamento: ubicacion.departamento || '',
+                        pais: ubicacion.pais || 'Colombia'
+                    } : {
+                        pais: 'Colombia'
+                    },
+                    configuracion: configuracion ? {
+                        notif_nuevas_propuestas: configuracion.notif_nuevas_propuestas ?? true,
+                        notif_mensajes: configuracion.notif_mensajes ?? true,
+                        notif_actualizaciones: configuracion.notif_actualizaciones ?? false,
+                        notif_newsletter: configuracion.notif_newsletter ?? true,
+                        perfil_publico: configuracion.perfil_publico ?? true,
+                        mostrar_ubicacion_exacta: configuracion.mostrar_ubicacion_exacta ?? false,
+                        mostrar_telefono: configuracion.mostrar_telefono ?? false,
+                        recibir_mensajes_desconocidos: configuracion.recibir_mensajes_desconocidos ?? true,
+                        distancia_maxima_km: configuracion.distancia_maxima_km || 50
+                    } : {
+                        notif_nuevas_propuestas: true,
+                        notif_mensajes: true,
+                        notif_actualizaciones: false,
+                        notif_newsletter: true,
+                        perfil_publico: true,
+                        mostrar_ubicacion_exacta: false,
+                        mostrar_telefono: false,
+                        recibir_mensajes_desconocidos: true,
+                        distancia_maxima_km: 50
                     }
                 }
 
                 setFormData(user)
-                setAvatarPreview(user.avatar)
+                setAvatarPreview(user.foto_perfil)
             } catch (e) {
-                // noop
+                console.error('Error cargando datos del usuario:', e)
             }
         }
         load()
@@ -150,13 +190,17 @@ export default function EditarPerfilPage() {
 
         const errors: Record<string, string> = {}
 
-        if (!formData.name.trim()) errors.name = 'El nombre es requerido'
+        if (!formData.nombre.trim()) errors.nombre = 'El nombre es requerido'
+        if (!formData.apellido.trim()) errors.apellido = 'El apellido es requerido'
         if (!formData.email.trim()) errors.email = 'El email es requerido'
         if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
             errors.email = 'El email no es válido'
         }
-        if (formData.phone && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone)) {
-            errors.phone = 'El teléfono no es válido'
+        if (formData.telefono && !/^\+?[\d\s\-\(\)]+$/.test(formData.telefono)) {
+            errors.telefono = 'El teléfono no es válido'
+        }
+        if (formData.fecha_nacimiento && formData.fecha_nacimiento > new Date().toISOString().split('T')[0]) {
+            errors.fecha_nacimiento = 'La fecha de nacimiento no puede ser futura'
         }
 
         setFormErrors(errors)
@@ -188,6 +232,11 @@ export default function EditarPerfilPage() {
 
         try {
             // Obtener usuario autenticado
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                console.error('❌ Supabase no está configurado')
+                return
+            }
             const { data: { session } } = await supabase.auth.getSession()
             const email = session?.user?.email
             if (!email) throw new Error('No hay sesión activa')
@@ -209,12 +258,13 @@ export default function EditarPerfilPage() {
                 newAvatarUrl = upload.url || undefined
             }
 
-            // Actualizar datos básicos
+            // Actualizar datos básicos del usuario
             const updatePayload: any = {
-                nombre: formData.name?.split(' ')[0] || null,
-                apellido: formData.name?.split(' ').slice(1).join(' ') || null,
-                telefono: formData.phone || null,
-                biografia: formData.bio || null
+                nombre: formData.nombre || null,
+                apellido: formData.apellido || null,
+                telefono: formData.telefono || null,
+                fecha_nacimiento: formData.fecha_nacimiento || null,
+                biografia: formData.biografia || null
             }
             if (newAvatarUrl) updatePayload.foto_perfil = newAvatarUrl
 
@@ -225,12 +275,8 @@ export default function EditarPerfilPage() {
 
             if (updateErr) throw new Error(updateErr.message)
 
-            // Actualizar ubicación principal si cambió
-            if (typeof formData.location === 'string') {
-                const [ciudadRaw, departamentoRaw] = formData.location.split(',').map(s => s?.trim()).filter(Boolean)
-                const ciudad = ciudadRaw || null
-                const departamento = departamentoRaw || null
-
+            // Actualizar ubicación principal
+            if (formData.ubicacion) {
                 const { data: principal } = await supabase
                     .from('ubicacion')
                     .select('ubicacion_id')
@@ -241,12 +287,64 @@ export default function EditarPerfilPage() {
                 if (principal) {
                     await supabase
                         .from('ubicacion')
-                        .update({ ciudad, departamento })
+                        .update({ 
+                            ciudad: formData.ubicacion.ciudad || null,
+                            departamento: formData.ubicacion.departamento || null,
+                            pais: formData.ubicacion.pais || 'Colombia'
+                        })
                         .eq('ubicacion_id', principal.ubicacion_id)
-                } else if (ciudad || departamento) {
+                } else if (formData.ubicacion.ciudad || formData.ubicacion.departamento) {
                     await supabase
                         .from('ubicacion')
-                        .insert({ user_id: dbUser.user_id, pais: 'Colombia', ciudad, departamento, es_principal: true })
+                        .insert({ 
+                            user_id: dbUser.user_id, 
+                            pais: formData.ubicacion.pais || 'Colombia',
+                            ciudad: formData.ubicacion.ciudad || null,
+                            departamento: formData.ubicacion.departamento || null,
+                            es_principal: true 
+                        })
+                }
+            }
+
+            // Actualizar configuración del usuario
+            if (formData.configuracion) {
+                const { data: existingConfig } = await supabase
+                    .from('configuracion_usuario')
+                    .select('usuario_id')
+                    .eq('usuario_id', dbUser.user_id)
+                    .single()
+
+                if (existingConfig) {
+                    await supabase
+                        .from('configuracion_usuario')
+                        .update({
+                            notif_nuevas_propuestas: formData.configuracion.notif_nuevas_propuestas,
+                            notif_mensajes: formData.configuracion.notif_mensajes,
+                            notif_actualizaciones: formData.configuracion.notif_actualizaciones,
+                            notif_newsletter: formData.configuracion.notif_newsletter,
+                            perfil_publico: formData.configuracion.perfil_publico,
+                            mostrar_ubicacion_exacta: formData.configuracion.mostrar_ubicacion_exacta,
+                            mostrar_telefono: formData.configuracion.mostrar_telefono,
+                            recibir_mensajes_desconocidos: formData.configuracion.recibir_mensajes_desconocidos,
+                            distancia_maxima_km: formData.configuracion.distancia_maxima_km,
+                            fecha_actualizacion: new Date().toISOString()
+                        })
+                        .eq('usuario_id', dbUser.user_id)
+                } else {
+                    await supabase
+                        .from('configuracion_usuario')
+                        .insert({
+                            usuario_id: dbUser.user_id,
+                            notif_nuevas_propuestas: formData.configuracion.notif_nuevas_propuestas,
+                            notif_mensajes: formData.configuracion.notif_mensajes,
+                            notif_actualizaciones: formData.configuracion.notif_actualizaciones,
+                            notif_newsletter: formData.configuracion.notif_newsletter,
+                            perfil_publico: formData.configuracion.perfil_publico,
+                            mostrar_ubicacion_exacta: formData.configuracion.mostrar_ubicacion_exacta,
+                            mostrar_telefono: formData.configuracion.mostrar_telefono,
+                            recibir_mensajes_desconocidos: formData.configuracion.recibir_mensajes_desconocidos,
+                            distancia_maxima_km: formData.configuracion.distancia_maxima_km
+                        })
                 }
             }
 
@@ -379,21 +477,41 @@ export default function EditarPerfilPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Nombre Completo *
+                                        Nombre *
                                     </label>
                                     <div className="relative">
                                         <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                                         <input
                                             type="text"
-                                            value={formData.name}
-                                            onChange={(e) => handleInputChange('name', e.target.value)}
-                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.name ? 'border-red-300' : 'border-gray-300'
+                                            value={formData.nombre}
+                                            onChange={(e) => handleInputChange('nombre', e.target.value)}
+                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.nombre ? 'border-red-300' : 'border-gray-300'
                                                 }`}
-                                            placeholder="Tu nombre completo"
+                                            placeholder="Tu nombre"
                                         />
                                     </div>
-                                    {formErrors.name && (
-                                        <p className="text-red-600 text-sm mt-1">{formErrors.name}</p>
+                                    {formErrors.nombre && (
+                                        <p className="text-red-600 text-sm mt-1">{formErrors.nombre}</p>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Apellido *
+                                    </label>
+                                    <div className="relative">
+                                        <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={formData.apellido}
+                                            onChange={(e) => handleInputChange('apellido', e.target.value)}
+                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.apellido ? 'border-red-300' : 'border-gray-300'
+                                                }`}
+                                            placeholder="Tu apellido"
+                                        />
+                                    </div>
+                                    {formErrors.apellido && (
+                                        <p className="text-red-600 text-sm mt-1">{formErrors.apellido}</p>
                                     )}
                                 </div>
 
@@ -425,30 +543,64 @@ export default function EditarPerfilPage() {
                                         <PhoneIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                                         <input
                                             type="tel"
-                                            value={formData.phone || ''}
-                                            onChange={(e) => handleInputChange('phone', e.target.value)}
-                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.phone ? 'border-red-300' : 'border-gray-300'
+                                            value={formData.telefono || ''}
+                                            onChange={(e) => handleInputChange('telefono', e.target.value)}
+                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.telefono ? 'border-red-300' : 'border-gray-300'
                                                 }`}
                                             placeholder="+57 300 123 4567"
                                         />
                                     </div>
-                                    {formErrors.phone && (
-                                        <p className="text-red-600 text-sm mt-1">{formErrors.phone}</p>
+                                    {formErrors.telefono && (
+                                        <p className="text-red-600 text-sm mt-1">{formErrors.telefono}</p>
                                     )}
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Ubicación
+                                        Fecha de Nacimiento
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="date"
+                                            value={formData.fecha_nacimiento || ''}
+                                            onChange={(e) => handleInputChange('fecha_nacimiento', e.target.value)}
+                                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.fecha_nacimiento ? 'border-red-300' : 'border-gray-300'
+                                                }`}
+                                        />
+                                    </div>
+                                    {formErrors.fecha_nacimiento && (
+                                        <p className="text-red-600 text-sm mt-1">{formErrors.fecha_nacimiento}</p>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Ciudad
                                     </label>
                                     <div className="relative">
                                         <MapPinIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                                         <input
                                             type="text"
-                                            value={formData.location || ''}
-                                            onChange={(e) => handleInputChange('location', e.target.value)}
+                                            value={formData.ubicacion?.ciudad || ''}
+                                            onChange={(e) => handleInputChange('ubicacion.ciudad', e.target.value)}
                                             className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Ciudad, País"
+                                            placeholder="Tu ciudad"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Departamento
+                                    </label>
+                                    <div className="relative">
+                                        <MapPinIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={formData.ubicacion?.departamento || ''}
+                                            onChange={(e) => handleInputChange('ubicacion.departamento', e.target.value)}
+                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Tu departamento"
                                         />
                                     </div>
                                 </div>
@@ -459,8 +611,8 @@ export default function EditarPerfilPage() {
                                     Biografía
                                 </label>
                                 <textarea
-                                    value={formData.bio || ''}
-                                    onChange={(e) => handleInputChange('bio', e.target.value)}
+                                    value={formData.biografia || ''}
+                                    onChange={(e) => handleInputChange('biografia', e.target.value)}
                                     rows={4}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder="Cuéntanos un poco sobre ti..."
@@ -468,66 +620,41 @@ export default function EditarPerfilPage() {
                             </div>
                         </div>
 
-                        {/* Enlaces y Redes Sociales */}
+                        {/* Estadísticas del Usuario */}
                         <div className="space-y-6">
                             <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
-                                Enlaces y Redes Sociales
+                                Estadísticas de tu Cuenta
                             </h3>
 
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <div className="text-2xl font-bold text-blue-600">{formData.calificacion_promedio.toFixed(1)}</div>
+                                    <div className="text-sm text-gray-600">Calificación Promedio</div>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <div className="text-2xl font-bold text-green-600">{formData.total_intercambios}</div>
+                                    <div className="text-sm text-gray-600">Intercambios Completados</div>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <div className="text-2xl font-bold text-purple-600">{formData.eco_puntos}</div>
+                                    <div className="text-sm text-gray-600">Eco Puntos</div>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Sitio Web
-                                    </label>
-                                    <div className="relative">
-                                        <GlobeAltIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                        <input
-                                            type="url"
-                                            value={formData.website || ''}
-                                            onChange={(e) => handleInputChange('website', e.target.value)}
-                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="https://mi-sitio.com"
-                                        />
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <div className="text-sm text-gray-600">Miembro desde</div>
+                                    <div className="font-medium">{new Date(formData.fecha_registro).toLocaleDateString('es-CO')}</div>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <div className="text-sm text-gray-600">Estado de Verificación</div>
+                                    <div className="font-medium flex items-center">
+                                        {formData.verificado ? (
+                                            <><CheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />Verificado</>
+                                        ) : (
+                                            <><ExclamationTriangleIcon className="h-4 w-4 text-yellow-500 mr-1" />Pendiente</>
+                                        )}
                                     </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Instagram
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.instagram || ''}
-                                        onChange={(e) => handleInputChange('instagram', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="@usuario"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Facebook
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.facebook || ''}
-                                        onChange={(e) => handleInputChange('facebook', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="usuario.facebook"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Twitter
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.twitter || ''}
-                                        onChange={(e) => handleInputChange('twitter', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="@usuario"
-                                    />
                                 </div>
                             </div>
                         </div>
@@ -546,12 +673,12 @@ export default function EditarPerfilPage() {
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => handleInputChange('preferences.publicProfile', !formData.preferences.publicProfile)}
-                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.preferences.publicProfile ? 'bg-blue-600' : 'bg-gray-200'
+                                        onClick={() => handleInputChange('configuracion.perfil_publico', !formData.configuracion?.perfil_publico)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.configuracion?.perfil_publico ? 'bg-blue-600' : 'bg-gray-200'
                                             }`}
                                     >
                                         <span
-                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.preferences.publicProfile ? 'translate-x-6' : 'translate-x-1'
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.configuracion?.perfil_publico ? 'translate-x-6' : 'translate-x-1'
                                                 }`}
                                         />
                                     </button>
@@ -559,17 +686,17 @@ export default function EditarPerfilPage() {
 
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="text-sm font-medium text-gray-900">Mostrar Ubicación</h4>
-                                        <p className="text-sm text-gray-600">Mostrar tu ciudad en tu perfil público</p>
+                                        <h4 className="text-sm font-medium text-gray-900">Mostrar Ubicación Exacta</h4>
+                                        <p className="text-sm text-gray-600">Mostrar tu ubicación exacta en tu perfil</p>
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => handleInputChange('preferences.showLocation', !formData.preferences.showLocation)}
-                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.preferences.showLocation ? 'bg-blue-600' : 'bg-gray-200'
+                                        onClick={() => handleInputChange('configuracion.mostrar_ubicacion_exacta', !formData.configuracion?.mostrar_ubicacion_exacta)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.configuracion?.mostrar_ubicacion_exacta ? 'bg-blue-600' : 'bg-gray-200'
                                             }`}
                                     >
                                         <span
-                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.preferences.showLocation ? 'translate-x-6' : 'translate-x-1'
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.configuracion?.mostrar_ubicacion_exacta ? 'translate-x-6' : 'translate-x-1'
                                                 }`}
                                         />
                                     </button>
@@ -582,12 +709,12 @@ export default function EditarPerfilPage() {
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => handleInputChange('preferences.showPhone', !formData.preferences.showPhone)}
-                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.preferences.showPhone ? 'bg-blue-600' : 'bg-gray-200'
+                                        onClick={() => handleInputChange('configuracion.mostrar_telefono', !formData.configuracion?.mostrar_telefono)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.configuracion?.mostrar_telefono ? 'bg-blue-600' : 'bg-gray-200'
                                             }`}
                                     >
                                         <span
-                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.preferences.showPhone ? 'translate-x-6' : 'translate-x-1'
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.configuracion?.mostrar_telefono ? 'translate-x-6' : 'translate-x-1'
                                                 }`}
                                         />
                                     </button>
@@ -595,17 +722,17 @@ export default function EditarPerfilPage() {
 
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="text-sm font-medium text-gray-900">Mostrar Email</h4>
-                                        <p className="text-sm text-gray-600">Mostrar tu email en tu perfil público</p>
+                                        <h4 className="text-sm font-medium text-gray-900">Recibir Mensajes Desconocidos</h4>
+                                        <p className="text-sm text-gray-600">Permitir que usuarios no conocidos te envíen mensajes</p>
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => handleInputChange('preferences.showEmail', !formData.preferences.showEmail)}
-                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.preferences.showEmail ? 'bg-blue-600' : 'bg-gray-200'
+                                        onClick={() => handleInputChange('configuracion.recibir_mensajes_desconocidos', !formData.configuracion?.recibir_mensajes_desconocidos)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.configuracion?.recibir_mensajes_desconocidos ? 'bg-blue-600' : 'bg-gray-200'
                                             }`}
                                     >
                                         <span
-                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.preferences.showEmail ? 'translate-x-6' : 'translate-x-1'
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.configuracion?.recibir_mensajes_desconocidos ? 'translate-x-6' : 'translate-x-1'
                                                 }`}
                                         />
                                     </button>
@@ -613,20 +740,72 @@ export default function EditarPerfilPage() {
 
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="text-sm font-medium text-gray-900">Notificaciones</h4>
-                                        <p className="text-sm text-gray-600">Recibir notificaciones por email</p>
+                                        <h4 className="text-sm font-medium text-gray-900">Notificaciones de Nuevas Propuestas</h4>
+                                        <p className="text-sm text-gray-600">Recibir notificaciones cuando recibas nuevas propuestas</p>
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => handleInputChange('preferences.notifications', !formData.preferences.notifications)}
-                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.preferences.notifications ? 'bg-blue-600' : 'bg-gray-200'
+                                        onClick={() => handleInputChange('configuracion.notif_nuevas_propuestas', !formData.configuracion?.notif_nuevas_propuestas)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.configuracion?.notif_nuevas_propuestas ? 'bg-blue-600' : 'bg-gray-200'
                                             }`}
                                     >
                                         <span
-                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.preferences.notifications ? 'translate-x-6' : 'translate-x-1'
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.configuracion?.notif_nuevas_propuestas ? 'translate-x-6' : 'translate-x-1'
                                                 }`}
                                         />
                                     </button>
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-900">Notificaciones de Mensajes</h4>
+                                        <p className="text-sm text-gray-600">Recibir notificaciones de nuevos mensajes</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleInputChange('configuracion.notif_mensajes', !formData.configuracion?.notif_mensajes)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.configuracion?.notif_mensajes ? 'bg-blue-600' : 'bg-gray-200'
+                                            }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.configuracion?.notif_mensajes ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-900">Newsletter</h4>
+                                        <p className="text-sm text-gray-600">Recibir newsletter con actualizaciones de EcoSwap</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleInputChange('configuracion.notif_newsletter', !formData.configuracion?.notif_newsletter)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.configuracion?.notif_newsletter ? 'bg-blue-600' : 'bg-gray-200'
+                                            }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.configuracion?.notif_newsletter ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Distancia Máxima (km)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="500"
+                                        value={formData.configuracion?.distancia_maxima_km || 50}
+                                        onChange={(e) => handleInputChange('configuracion.distancia_maxima_km', parseInt(e.target.value))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="50"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Distancia máxima para mostrar productos cercanos</p>
                                 </div>
                             </div>
                         </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface VerificationRequest {
     validacion_id: number
@@ -102,6 +102,9 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
                 // Función para generar URL pública de Supabase Storage con cache-busting
                 const getStorageUrl = (path: string) => {
                     if (!path) return null
+                    const supabase = getSupabaseClient()
+                    if (!supabase) return null
+                    
                     const { data } = supabase.storage.from(bucketName).getPublicUrl(path)
                     // Agregar timestamp para evitar cache del navegador
                     const timestamp = Date.now()

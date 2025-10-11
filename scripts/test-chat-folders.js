@@ -6,7 +6,6 @@
  * 3. Las URLs públicas funcionen correctamente
  */
 
-const { createClient } = require('@supabase/supabase-js')
 
 // Configuración de Supabase (usar variables de entorno)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

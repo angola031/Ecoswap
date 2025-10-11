@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline'
-import { isRateLimited, getRetryAfter } from '@/lib/supabase-interceptor'
+import { isRateLimited, getRetryAfter } from '../../lib/supabase-interceptor'
 
 export default function RateLimitIndicator() {
     const [isLimited, setIsLimited] = useState(false)
