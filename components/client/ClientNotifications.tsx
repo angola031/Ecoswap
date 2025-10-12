@@ -96,6 +96,7 @@ export default function ClientNotifications() {
     }
 
     const markAsRead = async (notificationId: number) => {
+        const supabase = getSupabaseClient()
         try {
             const { error } = await supabase
                 .from('notificacion')
@@ -126,6 +127,7 @@ export default function ClientNotifications() {
     }
 
     const markAllAsRead = async () => {
+        const supabase = getSupabaseClient()
         try {
             const unreadNotifications = notifications.filter(n => !n.leida)
             if (unreadNotifications.length === 0) return
@@ -244,6 +246,7 @@ export default function ClientNotifications() {
 
         // Suscripción en tiempo real a nuevas notificaciones
         const setupRealtimeSubscription = async () => {
+            const supabase = getSupabaseClient()
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
                 const { data: userData } = await supabase

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useCallback } from 'react'
+import { getSupabaseClient } from '../lib/supabase-client'
 
 interface UseSessionTimeoutOptions {
     timeoutMinutes?: number
@@ -16,7 +17,7 @@ export function useSessionTimeout({
     const timeoutRef = useRef<NodeJS.Timeout | null>(null)
     const lastActivityRef = useRef<number>(Date.now())
     const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-    const supabase = createClient()
+    const supabase = getSupabaseClient()
 
     const clearSession = useCallback(async () => {
         

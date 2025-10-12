@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Middleware para verificar admin
 async function requireAdmin(req: NextRequest) {
@@ -6,27 +7,28 @@ async function requireAdmin(req: NextRequest) {
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return { ok: false, error: 'Unauthorized' as const }
 
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
 
     // Verificar admin por DB
     let isAdmin = false
     if (data.user.email) {
-        const { data: dbUser } = await supabaseAdmin
+        const { data: dbUser } = await supabase
             .from('usuario')
             .select('user_id, es_admin')
             .eq('email', data.user.email)
             .single()
         if (dbUser?.es_admin) isAdmin = true
         else if (dbUser?.user_id) {
-            const { data: roles } = await supabaseAdmin
+            const { data: roles } = await supabase
                 .from('usuario_rol')
                 .select('rol_id, activo')
                 .eq('usuario_id', dbUser.user_id)
                 .eq('activo', true)
             if (roles && roles.length > 0) {
                 const ids = roles.map(r => r.rol_id)
-                const { data: roleNames } = await supabaseAdmin
+                const { data: roleNames } = await supabase
                     .from('rol_usuario')
                     .select('rol_id, nombre, activo')
                     .in('rol_id', ids)
@@ -47,8 +49,10 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
         const chatId = Number(params.chatId)
         if (!chatId) return NextResponse.json({ error: 'Invalid chatId' }, { status: 400 })
 
+        const supabase = getSupabaseClient()
+        
         // Verificar que el chat existe
-        const { data: chat } = await supabaseAdmin
+        const { data: chat } = await supabase
             .from('chat')
             .select('chat_id, activo')
             .eq('chat_id', chatId)
@@ -63,7 +67,7 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
         const beforeId = url.searchParams.get('beforeId')
 
         // Obtener mensajes con información del usuario
-        let query = supabaseAdmin
+        let query = supabase
             .from('mensaje')
             .select(`
                 mensaje_id,

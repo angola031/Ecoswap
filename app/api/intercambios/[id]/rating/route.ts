@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function authUser(req: NextRequest) {
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return null
-    const { data } = await supabaseAdmin.auth.getUser(token)
+    
+    const supabase = getSupabaseClient()
+    const { data } = await supabase.auth.getUser(token)
     return data?.user || null
 }
 
@@ -13,6 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         const user = await authUser(req)
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+        const supabase = getSupabaseClient()
         const intercambioId = Number(params.id)
         if (!intercambioId) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
@@ -24,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }
 
         // Resolver usuario actual en tabla USUARIO
-        const { data: u, error: eu } = await supabaseAdmin
+        const { data: u, error: eu } = await supabase
             .from('usuario')
             .select('user_id, activo')
             .eq('email', user.email)
@@ -33,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         if (!u || !u.activo) return NextResponse.json({ error: 'Cuenta inactiva' }, { status: 403 })
 
         // Traer intercambio y validar participación
-        const { data: it, error: eit } = await supabaseAdmin
+        const { data: it, error: eit } = await supabase
             .from('intercambio')
             .select('*')
             .eq('intercambio_id', intercambioId)
@@ -53,7 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         const calificadoId = isProponente ? it.usuario_recibe_id : it.usuario_propone_id
 
         // Upsert de calificación (permite actualizar si ya existe)
-        const { error: ec } = await supabaseAdmin
+        const { error: ec } = await supabase
             .from('calificacion')
             .upsert({
                 intercambio_id: intercambioId,
@@ -68,7 +72,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         if (ec) return NextResponse.json({ error: ec.message }, { status: 400 })
 
         // Recalcular calificacion_promedio del usuario calificado
-        const { data: stats, error: es } = await supabaseAdmin
+        const { data: stats, error: es } = await supabase
             .from('calificacion')
             .select('puntuacion', { count: 'exact', head: false })
             .eq('calificado_id', calificadoId)
@@ -76,7 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             const total = stats.length
             const sum = stats.reduce((acc: number, r: any) => acc + (r.puntuacion || 0), 0)
             const promedio = total > 0 ? Math.round((sum / total) * 100) / 100 : 0
-            await supabaseAdmin
+            await supabase
                 .from('usuario')
                 .update({ calificacion_promedio: promedio })
                 .eq('user_id', calificadoId)
@@ -84,13 +88,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             // Otorgar insignias basadas en calificación
             // 5 Stars: calificación perfecta con mínimo 10 reseñas
             if (promedio === 5 && total >= 10) {
-                const { data: ins } = await supabaseAdmin
+                const { data: ins } = await supabase
                     .from('insignia')
                     .select('insignia_id')
                     .eq('nombre', '5 Stars')
                     .single()
                 if (ins?.insignia_id) {
-                    await supabaseAdmin
+                    await supabase
                         .from('usuario_insignia')
                         .upsert({ usuario_id: calificadoId, insignia_id: ins.insignia_id })
                 }
@@ -98,20 +102,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
             // Confiable: verificado + 0 reportes + 5+ intercambios
             const [{ data: usr }, { data: reportes }, { data: intercambiosCount }] = await Promise.all([
-                supabaseAdmin.from('usuario').select('verificado').eq('user_id', calificadoId).single(),
-                supabaseAdmin.from('reporte').select('reporte_id', { head: false, count: 'exact' }).eq('reportado_usuario_id', calificadoId).eq('estado', 'resuelto'),
-                supabaseAdmin.from('intercambio').select('intercambio_id', { head: false, count: 'exact' }).or(`usuario_propone_id.eq.${calificadoId},usuario_recibe_id.eq.${calificadoId}`).eq('estado', 'completado')
+                supabase.from('usuario').select('verificado').eq('user_id', calificadoId).single(),
+                supabase.from('reporte').select('reporte_id', { head: false, count: 'exact' }).eq('reportado_usuario_id', calificadoId).eq('estado', 'resuelto'),
+                supabase.from('intercambio').select('intercambio_id', { head: false, count: 'exact' }).or(`usuario_propone_id.eq.${calificadoId},usuario_recibe_id.eq.${calificadoId}`).eq('estado', 'completado')
             ])
             const numReportes = (reportes as any)?.length ?? 0
             const numIntercambios = (intercambiosCount as any)?.length ?? 0
             if (usr?.verificado && numReportes === 0 && numIntercambios >= 5) {
-                const { data: ins2 } = await supabaseAdmin
+                const { data: ins2 } = await supabase
                     .from('insignia')
                     .select('insignia_id')
                     .eq('nombre', 'Confiable')
                     .single()
                 if (ins2?.insignia_id) {
-                    await supabaseAdmin
+                    await supabase
                         .from('usuario_insignia')
                         .upsert({ usuario_id: calificadoId, insignia_id: ins2.insignia_id })
                 }
@@ -119,7 +123,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }
 
         // Notificar al calificado
-        await supabaseAdmin.from('notificacion').insert({
+        await supabase.from('notificacion').insert({
             usuario_id: calificadoId,
             tipo: 'calificacion',
             titulo: 'Has recibido una calificación',

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export default function VerificacionIdentidadPage() {
     const router = useRouter()

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // POST - Crear notificación para administradores sobre verificación de identidad
 export async function POST(request: NextRequest) {

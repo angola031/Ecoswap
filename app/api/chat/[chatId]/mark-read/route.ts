@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+const supabase = getSupabaseClient()
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
   const auth = req.headers.get('authorization') || ''
@@ -12,11 +11,11 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
   if (!token) return null
   
   try {
-    const { data } = await supabaseAdmin.auth.getUser(token)
+    const { data } = await supabase.auth.getUser(token)
     const authUserId = data?.user?.id
     if (!authUserId) return null
     
-    const { data: usuario } = await supabaseAdmin
+    const { data: usuario } = await supabase
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', authUserId)
@@ -53,7 +52,7 @@ export async function POST(
     }
 
     // Verificar que el chat existe y el usuario tiene acceso
-    const { data: chat, error: chatError } = await supabaseAdmin
+    const { data: chat, error: chatError } = await supabase
       .from('chat')
       .select(`
         chat_id,
@@ -78,7 +77,7 @@ export async function POST(
 
     // Si se especifican mensajes específicos, marcar solo esos
     if (messageIds && Array.isArray(messageIds) && messageIds.length > 0) {
-      const { error: updateError } = await supabaseAdmin
+      const { error: updateError } = await supabase
         .from('mensaje')
         .update({ 
           leido: true,
@@ -94,7 +93,7 @@ export async function POST(
       }
     } else {
       // Marcar todos los mensajes no leídos del chat como leídos
-      const { error: updateError } = await supabaseAdmin
+      const { error: updateError } = await supabase
         .from('mensaje')
         .update({ 
           leido: true,

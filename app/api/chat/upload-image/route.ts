@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export async function POST(request: NextRequest) {
+        const supabase = getSupabaseClient()
   try {
     
     const formData = await request.formData()
@@ -65,14 +67,14 @@ export async function POST(request: NextRequest) {
     const buffer = new Uint8Array(arrayBuffer)
 
     // Verificar que el cliente admin esté disponible
-    if (!supabaseAdmin) {
+    if (!supabase) {
       console.error('❌ [API] Cliente admin de Supabase no disponible')
       return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 })
     }
 
     // Subir a Supabase Storage en carpeta específica del chat
     
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('Ecoswap')
       .upload(folderPath, buffer, {
         contentType: file.type,
@@ -110,7 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener URL pública
-    const { data: { publicUrl } } = supabaseAdmin.storage
+    const { data: { publicUrl } } = supabase.storage
       .from('Ecoswap')
       .getPublicUrl(folderPath)
 

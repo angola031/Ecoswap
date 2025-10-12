@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import {
     XMarkIcon,
     PhotoIcon,
@@ -91,6 +92,9 @@ export default function AddProductForm({ currentUser, isOpen, onClose, onProduct
 
     const handlePublishProduct = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        const supabase = getSupabaseClient()
+        const { data: { session } } = await supabase.auth.getSession()
 
         // Verificar si el usuario está verificado
         const { isUserVerified } = await import('@/lib/auth')

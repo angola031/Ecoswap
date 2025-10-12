@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = getSupabaseClient()
     const intercambioId = params.id
     const body = await request.json()
     const { userId, isValid, rating, comment, aspects } = body
@@ -51,7 +53,7 @@ export async function PATCH(
     }
 
     // Verificar que el intercambio existe y el usuario puede validarlo
-    const { data: intercambio, error: intercambioError } = await supabaseAdmin
+    const { data: intercambio, error: intercambioError } = await supabase
       .from('intercambio')
       .select(`
         intercambio_id,
@@ -166,7 +168,7 @@ export async function PATCH(
 
     // Verificar si hay validaciones pendientes por más de 7 días (auto-completar)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    const { data: oldValidations } = await supabaseAdmin
+    const { data: oldValidations } = await supabase
       .from('validacion_intercambio')
       .select('*')
       .eq('intercambio_id', intercambioId)
@@ -179,7 +181,7 @@ export async function PATCH(
         : intercambio.usuario_propone_id
 
         // Crear validación automática para el usuario que no ha validado
-        await supabaseAdmin
+        await supabase
           .from('validacion_intercambio')
           .insert({
             intercambio_id: parseInt(intercambioId),
@@ -193,7 +195,7 @@ export async function PATCH(
     }
 
     // Crear o actualizar la validación del usuario usando UPSERT
-    const { data: validationData, error: validationError } = await supabaseAdmin
+    const { data: validationData, error: validationError } = await supabase
       .from('validacion_intercambio')
       .upsert({
         intercambio_id: parseInt(intercambioId),
@@ -214,7 +216,7 @@ export async function PATCH(
     }
 
     // Verificar si ambos usuarios han validado
-    const { data: allValidations, error: allValidationsError } = await supabaseAdmin
+    const { data: allValidations, error: allValidationsError } = await supabase
       .from('validacion_intercambio')
       .select('*')
       .eq('intercambio_id', intercambioId)
@@ -238,7 +240,7 @@ export async function PATCH(
             : intercambio.usuario_propone_id
 
           // Crear calificación
-          await supabaseAdmin
+          await supabase
             .from('calificacion')
             .insert({
               intercambio_id: parseInt(intercambioId),
@@ -253,7 +255,7 @@ export async function PATCH(
 
           // Actualizar estadísticas del usuario calificado
           // Calcular nueva calificación promedio
-          const { data: calificaciones } = await supabaseAdmin
+          const { data: calificaciones } = await supabase
             .from('calificacion')
             .select('puntuacion')
             .eq('calificado_id', otherUserId)
@@ -262,7 +264,7 @@ export async function PATCH(
             const promedio = calificaciones.reduce((sum, cal) => sum + cal.puntuacion, 0) / calificaciones.length
             
             // Actualizar calificación promedio del usuario
-            await supabaseAdmin
+            await supabase
               .from('usuario')
               .update({ calificacion_promedio: promedio })
               .eq('user_id', otherUserId)
@@ -276,7 +278,7 @@ export async function PATCH(
         
         for (const userId of userIds) {
           // Contar intercambios únicos donde el usuario participa
-          const { data: intercambiosUsuario } = await supabaseAdmin
+          const { data: intercambiosUsuario } = await supabase
             .from('intercambio')
             .select('intercambio_id')
             .or(`usuario_propone_id.eq.${userId},usuario_recibe_id.eq.${userId}`)
@@ -287,7 +289,7 @@ export async function PATCH(
           const totalIntercambios = intercambiosUnicos.size
 
           // Actualizar el contador del usuario
-          await supabaseAdmin
+          await supabase
             .from('usuario')
             .update({ total_intercambios: totalIntercambios })
             .eq('user_id', userId)
@@ -295,14 +297,14 @@ export async function PATCH(
 
         // Marcar productos como intercambiados
         if (intercambio.producto_ofrecido_id) {
-          await supabaseAdmin
+          await supabase
             .from('producto')
             .update({ estado_publicacion: 'intercambiado' })
             .eq('producto_id', intercambio.producto_ofrecido_id)
         }
         
         if (intercambio.producto_solicitado_id) {
-          await supabaseAdmin
+          await supabase
             .from('producto')
             .update({ estado_publicacion: 'intercambiado' })
             .eq('producto_id', intercambio.producto_solicitado_id)
@@ -313,14 +315,14 @@ export async function PATCH(
         
         // Actualizar eco-puntos para ambos usuarios
         for (const userId of [intercambio.usuario_propone_id, intercambio.usuario_recibe_id]) {
-          const { data: userData } = await supabaseAdmin
+          const { data: userData } = await supabase
             .from('usuario')
             .select('eco_puntos')
             .eq('user_id', userId)
             .single()
           
           if (userData) {
-            await supabaseAdmin
+            await supabase
               .from('usuario')
               .update({ eco_puntos: (userData.eco_puntos || 0) + ecoPointsEarned })
               .eq('user_id', userId)
@@ -328,7 +330,7 @@ export async function PATCH(
         }
 
         // Crear notificaciones para ambos usuarios
-        await supabaseAdmin
+        await supabase
           .from('notificacion')
           .insert([
             {
@@ -363,21 +365,21 @@ export async function PATCH(
         
         // Marcar productos como disponibles nuevamente
         if (intercambio.producto_ofrecido_id) {
-          await supabaseAdmin
+          await supabase
             .from('producto')
             .update({ estado_publicacion: 'activo' })
             .eq('producto_id', intercambio.producto_ofrecido_id)
         }
         
         if (intercambio.producto_solicitado_id) {
-          await supabaseAdmin
+          await supabase
             .from('producto')
             .update({ estado_publicacion: 'activo' })
             .eq('producto_id', intercambio.producto_solicitado_id)
         }
 
         // Crear notificaciones para ambos usuarios sobre el fallo
-        await supabaseAdmin
+        await supabase
           .from('notificacion')
           .insert([
             {
@@ -414,7 +416,7 @@ export async function PATCH(
         ? intercambio.usuario_recibe_id 
         : intercambio.usuario_propone_id
 
-      await supabaseAdmin
+      await supabase
         .from('notificacion')
         .insert({
           usuario_id: otherUserId,
@@ -431,7 +433,7 @@ export async function PATCH(
     }
 
     // Actualizar estado del intercambio
-    const { data: updatedIntercambio, error: updateError } = await supabaseAdmin
+    const { data: updatedIntercambio, error: updateError } = await supabase
       .from('intercambio')
       .update({ 
         estado: newEstado,

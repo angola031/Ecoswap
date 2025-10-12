@@ -1,4 +1,6 @@
 
+import { getSupabaseClient } from './supabase-client'
+
 /**
  * Genera una URL pública para un archivo en Supabase Storage
  * @param bucket - Nombre del bucket (por defecto 'Ecoswap')
@@ -6,6 +8,7 @@
  * @returns URL pública del archivo
  */
 export function getPublicUrl(bucket: string = 'Ecoswap', path: string): string {
+    const supabase = getSupabaseClient();
     const { data } = supabase.storage
         .from(bucket)
         .getPublicUrl(path)
@@ -35,6 +38,7 @@ export function getVerificationDocumentUrls(userId: number | string) {
  * @returns Promise<boolean> - true si el archivo existe
  */
 export async function fileExists(bucket: string = 'Ecoswap', path: string): Promise<boolean> {
+    const supabase = getSupabaseClient();
     try {
         const { data, error } = await supabase.storage
             .from(bucket)
@@ -61,6 +65,7 @@ export async function fileExists(bucket: string = 'Ecoswap', path: string): Prom
  * @returns Promise con la lista de archivos
  */
 export async function listFiles(bucket: string = 'Ecoswap', folder: string = '') {
+    const supabase = getSupabaseClient();
     try {
         const { data, error } = await supabase.storage
             .from(bucket)
@@ -85,6 +90,7 @@ export async function listFiles(bucket: string = 'Ecoswap', folder: string = '')
  * @returns Promise<boolean> - true si se eliminó correctamente
  */
 export async function deleteFile(bucket: string = 'Ecoswap', path: string): Promise<boolean> {
+    const supabase = getSupabaseClient();
     try {
         const { error } = await supabase.storage
             .from(bucket)
@@ -114,6 +120,7 @@ export async function uploadUserProfileImage(
     file: File, 
     fileName?: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
+    const supabase = getSupabaseClient();
     try {
         const fileExt = fileName || file.name.split('.').pop()
         const filePath = `perfiles/${userId}/foto_perfil.${fileExt}`

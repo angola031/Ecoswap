@@ -52,6 +52,12 @@ async function authAdmin(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ API: Supabase no está configurado')
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+
         const admin = await authAdmin(req)
         if (!admin) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -133,6 +139,12 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ API: Supabase no está configurado')
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+
         const admin = await authAdmin(req)
         if (!admin) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 })

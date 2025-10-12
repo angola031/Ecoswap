@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { PhotoIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface FormState {
     titulo: string

@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeftIcon, PhoneIcon, EnvelopeIcon, CalendarIcon, EyeIcon, ShareIcon, FlagIcon, StarIcon, MapPinIcon, TagIcon, CurrencyDollarIcon, HeartIcon, ChatBubbleLeftRightIcon, UserIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import { useRouter, useParams } from 'next/navigation'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface User {
   id: string
@@ -52,6 +53,7 @@ interface Product {
 // Función auxiliar para verificar si el usuario es el propietario
 async function checkIfUserIsOwner(authUserId: string, productOwnerId: number): Promise<boolean> {
   try {
+    const supabase = getSupabaseClient()
     const { data: usuario } = await supabase
       .from('usuario')
       .select('user_id')
@@ -172,6 +174,7 @@ export default function ProductDetailPage() {
   const handleInterest = async () => {
     // Si no hay sesión, redirigir a la interfaz de login del AuthModule
     try {
+      const supabase = getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)

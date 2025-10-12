@@ -71,10 +71,11 @@ export function useAuth() {
         try {
             setState(prev => ({ ...prev, loading: true, error: null }))
             
-            const { data: { session }, error } = await withRetry(
+            const result = await withRetry(
                 () => supabase.auth.getSession(),
                 'getSession'
-            )
+            ) as { data: { session: any }, error: any }
+            const { data: { session }, error } = result
             
             if (error) {
                 handleAuthError(error)
@@ -152,10 +153,11 @@ export function useAuth() {
         try {
             setState(prev => ({ ...prev, loading: true, error: null }))
             
-            const { error } = await withRetry(
+            const result = await withRetry(
                 () => supabase.auth.signOut(),
                 'signOut'
-            )
+            ) as { error: any }
+            const { error } = result
             
             if (error) {
                 handleAuthError(error)

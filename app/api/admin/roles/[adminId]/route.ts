@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Middleware para verificar super admin
 async function requireSuperAdmin(req: NextRequest) {
@@ -10,11 +11,12 @@ async function requireSuperAdmin(req: NextRequest) {
         return { ok: false, error: 'Unauthorized' as const }
     }
 
-    if (!supabaseAdmin) {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
         return { ok: false, error: 'Database not configured' as const }
     }
 
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    const { data, error } = await supabase.auth.getUser(token)
     
     if (error) {
         return { ok: false, error: 'Unauthorized' as const }
@@ -28,7 +30,7 @@ async function requireSuperAdmin(req: NextRequest) {
     // Verificar super admin por DB
     let isSuperAdmin = false
     if (data.user.email) {
-        const { data: dbUser, error: dbError } = await supabaseAdmin
+        const { data: dbUser, error: dbError } = await supabase
             .from('usuario')
             .select('user_id, es_admin')
             .eq('email', data.user.email)
@@ -41,7 +43,7 @@ async function requireSuperAdmin(req: NextRequest) {
 
         if (dbUser?.es_admin) {
             // Verificar si tiene rol de super admin
-            const { data: roles, error: rolesError } = await supabaseAdmin
+            const { data: roles, error: rolesError } = await supabase
                 .from('usuario_rol')
                 .select('rol_id, activo')
                 .eq('usuario_id', dbUser.user_id)
@@ -54,7 +56,7 @@ async function requireSuperAdmin(req: NextRequest) {
 
             if (roles && roles.length > 0) {
                 const ids = roles.map(r => r.rol_id)
-                const { data: roleNames, error: roleNamesError } = await supabaseAdmin
+                const { data: roleNames, error: roleNamesError } = await supabase
                     .from('rol_usuario')
                     .select('rol_id, nombre, activo')
                     .in('rol_id', ids)
@@ -81,7 +83,8 @@ export async function GET(req: NextRequest, { params }: { params: { adminId: str
     const guard = await requireSuperAdmin(req)
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden - Se requiere rol de Super Admin' ? 403 : 401 })
 
-    if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    const supabase = getSupabaseClient()
+    if (!supabase) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
 
     try {
         const adminId = Number(params.adminId)
@@ -90,7 +93,7 @@ export async function GET(req: NextRequest, { params }: { params: { adminId: str
         }
 
         // Obtener administrador con sus roles
-        const { data: admin, error: adminError } = await supabaseAdmin
+        const { data: admin, error: adminError } = await supabase
             .from('usuario')
             .select(`
                 user_id,
@@ -153,7 +156,8 @@ export async function PUT(req: NextRequest, { params }: { params: { adminId: str
     const guard = await requireSuperAdmin(req)
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden - Se requiere rol de Super Admin' ? 403 : 401 })
 
-    if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    const supabase = getSupabaseClient()
+    if (!supabase) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
 
     try {
         const adminId = Number(params.adminId)
@@ -169,7 +173,7 @@ export async function PUT(req: NextRequest, { params }: { params: { adminId: str
         }
 
         // Obtener el super admin actual
-        const { data: superAdmin } = await supabaseAdmin
+        const { data: superAdmin } = await supabase
             .from('usuario')
             .select('user_id')
             .eq('email', guard.user?.email)
@@ -180,7 +184,7 @@ export async function PUT(req: NextRequest, { params }: { params: { adminId: str
         }
 
         // Actualizar estado del administrador
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await supabase
             .from('usuario')
             .update({
                 activo: activo,
@@ -196,7 +200,7 @@ export async function PUT(req: NextRequest, { params }: { params: { adminId: str
         }
 
         // Desactivar todos los roles actuales
-        await supabaseAdmin
+        await supabase
             .from('usuario_rol')
             .update({ activo: false })
             .eq('usuario_id', adminId)
@@ -211,7 +215,7 @@ export async function PUT(req: NextRequest, { params }: { params: { adminId: str
                 fecha_asignacion: new Date().toISOString()
             }))
 
-            const { error: rolesError } = await supabaseAdmin
+            const { error: rolesError } = await supabase
                 .from('usuario_rol')
                 .insert(roleAssignments)
 
@@ -222,7 +226,7 @@ export async function PUT(req: NextRequest, { params }: { params: { adminId: str
         }
 
         // Crear notificación
-        await supabaseAdmin
+        await supabase
             .from('notificacion')
             .insert({
                 usuario_id: adminId,
@@ -247,7 +251,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { adminId: 
     const guard = await requireSuperAdmin(req)
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden - Se requiere rol de Super Admin' ? 403 : 401 })
 
-    if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    const supabase = getSupabaseClient()
+    if (!supabase) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
 
     try {
         const adminId = Number(params.adminId)
@@ -256,7 +261,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { adminId: 
         }
 
         // Obtener información del administrador antes de desactivar
-        const { data: admin } = await supabaseAdmin
+        const { data: admin } = await supabase
             .from('usuario')
             .select('nombre, email, es_admin')
             .eq('user_id', adminId)
@@ -272,7 +277,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { adminId: 
         }
 
         // Desactivar administrador (soft delete - no eliminar físicamente)
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await supabase
             .from('usuario')
             .update({
                 activo: false,
@@ -280,7 +285,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { adminId: 
                 motivo_suspension: 'Desactivado por super administrador',
                 fecha_suspension: new Date().toISOString(),
                 // suspendido_por: guard.user?.id ?
-                //     (await supabaseAdmin
+                //     (await supabase
                 //         .from('usuario')
                 //         .select('user_id')
                 //         .eq('email', guard.user.email)
@@ -294,13 +299,13 @@ export async function DELETE(req: NextRequest, { params }: { params: { adminId: 
         }
 
         // Desactivar todos los roles
-        await supabaseAdmin
+        await supabase
             .from('usuario_rol')
             .update({ activo: false })
             .eq('usuario_id', adminId)
 
         // Crear notificación
-        await supabaseAdmin
+        await supabase
             .from('notificacion')
             .insert({
                 usuario_id: adminId,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Middleware para verificar admin
 async function requireAdmin(req: NextRequest) {

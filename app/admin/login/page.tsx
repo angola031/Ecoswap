@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 function isEmailAdmin(email: string | null | undefined): boolean {
     if (!email) return false

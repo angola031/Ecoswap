@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Swal from 'sweetalert2'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface PendingValidation {
   id: number
@@ -45,6 +46,7 @@ export default function PendingValidationModule({
   }, [userId])
 
   const fetchPendingValidations = async () => {
+    const supabase = getSupabaseClient()
     try {
       setLoading(true)
       const { data: { session } } = await supabase.auth.getSession()
@@ -501,6 +503,7 @@ export default function PendingValidationModule({
   }
 
   const submitValidation = async (intercambioId: number, validationData: any) => {
+    const supabase = getSupabaseClient()
     
     try {
       const { data: { session } } = await supabase.auth.getSession()

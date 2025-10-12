@@ -1,28 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+const supabase = getSupabaseClient()
 
 async function authUser(req: NextRequest) {
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return null
-    const { data } = await supabaseAdmin.auth.getUser(token)
+    const { data } = await supabase.auth.getUser(token)
     return data?.user || null
 }
 
 async function userInChat(userId: number, chatId: number) {
     // CHAT -> INTERCAMBIO -> usuarios
-    const { data: chat } = await supabaseAdmin
+    const { data: chat } = await supabase
         .from('chat')
         .select('intercambio_id, activo')
         .eq('chat_id', chatId)
         .single()
     if (!chat || chat.activo === false) return false
-    const { data: it } = await supabaseAdmin
+    const { data: it } = await supabase
         .from('intercambio')
         .select('usuario_propone_id, usuario_recibe_id')
         .eq('intercambio_id', chat.intercambio_id)
@@ -39,7 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
         if (!chatId) return NextResponse.json({ error: 'Invalid chatId' }, { status: 400 })
 
         // Resolve usuario_id from USUARIO by email
-        const { data: u } = await supabaseAdmin
+        const { data: u } = await supabase
             .from('usuario')
             .select('user_id')
             .eq('email', user.email)
@@ -53,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
         const beforeId = url.searchParams.get('beforeId')
         const sinceId = url.searchParams.get('since')
 
-        let query = supabaseAdmin
+        let query = supabase
             .from('mensaje')
             .select(`
                 mensaje_id, 
@@ -124,7 +123,7 @@ export async function POST(req: NextRequest, { params }: { params: { chatId: str
         const chatId = Number(params.chatId)
         if (!chatId) return NextResponse.json({ error: 'Invalid chatId' }, { status: 400 })
 
-        const { data: u } = await supabaseAdmin
+        const { data: u } = await supabase
             .from('usuario')
             .select('user_id, activo')
             .eq('email', user.email)
@@ -148,14 +147,14 @@ export async function POST(req: NextRequest, { params }: { params: { chatId: str
             leido: false
         }
 
-        const { data: inserted, error } = await supabaseAdmin
+        const { data: inserted, error } = await supabase
             .from('mensaje')
             .insert(payload)
             .select()
             .single()
         if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-        await supabaseAdmin.from('chat').update({ ultimo_mensaje: new Date().toISOString() }).eq('chat_id', chatId)
+        await supabase.from('chat').update({ ultimo_mensaje: new Date().toISOString() }).eq('chat_id', chatId)
 
         return NextResponse.json({ ok: true, message: inserted })
     } catch (e: any) {

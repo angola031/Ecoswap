@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
   const supabase = getSupabaseClient()
@@ -29,6 +30,9 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const supabase = getSupabaseClient()
+    if (!supabase) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+
     const productoId = Number(params.id)
     if (!productoId) return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
     const userId = await getAuthUserId(req)
@@ -59,6 +63,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const supabase = getSupabaseClient()
+    if (!supabase) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+
     const productoId = Number(params.id)
     if (!productoId) return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
     
@@ -87,6 +94,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const supabase = getSupabaseClient()
+    if (!supabase) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+
     const productoId = Number(params.id)
     
     if (!productoId) return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })

@@ -96,6 +96,7 @@ export default function NotificationToast({ userId }: NotificationToastProps) {
     }
 
     const handleViewNotification = () => {
+        const supabase = getSupabaseClient()
         if (currentNotification) {
             // Marcar como leída
             supabase

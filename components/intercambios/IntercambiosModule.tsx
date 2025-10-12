@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface Intercambio {
     intercambio_id: number
@@ -67,6 +68,7 @@ export default function IntercambiosModule({ onClose }: IntercambiosModuleProps)
     ]
 
     const cargarIntercambios = async () => {
+        const supabase = getSupabaseClient()
         if (!user) return
 
         try {
@@ -102,6 +104,7 @@ export default function IntercambiosModule({ onClose }: IntercambiosModuleProps)
     }
 
     const ejecutarAccion = async (intercambioId: number, accion: string, motivo?: string) => {
+        const supabase = getSupabaseClient()
         if (!user) return
 
         try {
@@ -137,6 +140,7 @@ export default function IntercambiosModule({ onClose }: IntercambiosModuleProps)
     }
 
     const enviarCalificacion = async (intercambioId: number) => {
+        const supabase = getSupabaseClient()
         if (!user) return
         try {
             setAccionando(intercambioId)

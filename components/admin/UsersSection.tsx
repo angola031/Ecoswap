@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface User {
     user_id: number
@@ -22,6 +23,7 @@ export default function UsersSection() {
 
     useEffect(() => {
         const fetchUsers = async () => {
+            const supabase = getSupabaseClient()
             try {
                 
                 const { data, error } = await supabase
@@ -67,6 +69,7 @@ export default function UsersSection() {
     })
 
     const toggleUserVerification = async (userId: number, currentStatus: boolean) => {
+        const supabase = getSupabaseClient()
         try {
             const { error } = await supabase
                 .from('usuario')
@@ -92,6 +95,7 @@ export default function UsersSection() {
     }
 
     const toggleUserStatus = async (userId: number, currentStatus: boolean) => {
+        const supabase = getSupabaseClient()
         try {
             const { error } = await supabase
                 .from('usuario')

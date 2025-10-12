@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 function parseAdminEmails(): Set<string> {
     const raw = process.env.ADMIN_EMAILS || ''
@@ -9,7 +10,9 @@ async function requirePrivileged(req: NextRequest) {
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return { ok: false, error: 'Unauthorized' as const }
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
     const email = (data.user.email || '').toLowerCase()
     const allowList = parseAdminEmails()
@@ -19,6 +22,7 @@ async function requirePrivileged(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+    const supabase = getSupabaseClient()
     const guard = await requirePrivileged(req)
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden' ? 403 : 401 })
 
@@ -28,20 +32,29 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Email requerido' }, { status: 400 })
     }
 
-    // Buscar usuario por email
-    const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers()
-    if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 })
-    const target = list.users.find((u: any) => (u.email || '').toLowerCase() === email.toLowerCase())
-    if (!target) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    // Verificar que el usuario existe en la base de datos
+    const { data: existingUser, error: userErr } = await supabase
+        .from('usuario')
+        .select('user_id, email, es_admin')
+        .eq('email', email)
+        .single()
+
+    if (userErr || !existingUser) {
+        return NextResponse.json({ error: 'Usuario no encontrado en la base de datos' }, { status: 404 })
+    }
 
     // Marcar en DB: USUARIO.es_admin = true
-    const { error: dbErr } = await supabaseAdmin
+    const { error: dbErr } = await supabase
         .from('usuario')
         .update({ es_admin: true, admin_desde: new Date().toISOString() })
         .eq('email', email)
-    if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 400 })
+    
+    if (dbErr) {
+        console.error('Error actualizando usuario a admin:', dbErr)
+        return NextResponse.json({ error: 'Error al asignar rol de administrador' }, { status: 400 })
+    }
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, message: 'Usuario promovido a administrador exitosamente' })
 }
 
 

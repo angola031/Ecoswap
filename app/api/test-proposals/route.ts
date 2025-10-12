@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      console.error('❌ [Test Proposals] Supabase no está configurado')
+      return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+    }
 
     // Probar conexión básica a la tabla propuesta
-    const { data: propuestas, error } = await supabaseAdmin
+    const { data: propuestas, error } = await supabase
       .from('propuesta')
       .select('propuesta_id, chat_id, tipo_propuesta, estado, fecha_creacion')
       .limit(5)
@@ -20,7 +26,7 @@ export async function GET(request: NextRequest) {
 
 
     // Probar consulta con joins
-    const { data: propuestasConJoins, error: joinError } = await supabaseAdmin
+    const { data: propuestasConJoins, error: joinError } = await supabase
       .from('propuesta')
       .select(`
         propuesta_id,
@@ -54,7 +60,7 @@ export async function GET(request: NextRequest) {
 
 
     // Probar consulta de chats
-    const { data: chats, error: chatError } = await supabaseAdmin
+    const { data: chats, error: chatError } = await supabase
       .from('chat')
       .select(`
         chat_id,

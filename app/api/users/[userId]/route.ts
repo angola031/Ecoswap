@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
   const supabase = getSupabaseClient()
@@ -32,6 +33,12 @@ export async function GET(
   { params }: { params: { userId: string } }
 ) {
   try {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      console.error('❌ API Users: Supabase no está configurado')
+      return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+    }
+
     const userId = Number(params.userId)
     if (!userId) {
       return NextResponse.json({ error: 'ID de usuario inválido' }, { status: 400 })

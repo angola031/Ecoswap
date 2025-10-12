@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import {
     UserIcon,
     MapPinIcon,
@@ -22,7 +23,6 @@ import {
 } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { uploadUserProfileImage } from '@/lib/storage'
-import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface BadgeDetail {
     nombre: string
@@ -448,6 +448,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     const [deletingId, setDeletingId] = useState<string | null>(null)
 
     const pauseOrResumeProduct = async (productId: string, pause: boolean) => {
+        const supabase = getSupabaseClient()
         try {
             setPausingId(productId)
             const { error } = await supabase
@@ -469,6 +470,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     }
 
     const deleteProduct = async (productId: string) => {
+        const supabase = getSupabaseClient()
         const yes = confirm('¿Seguro que deseas eliminar este producto y su publicación? Esta acción no se puede deshacer.')
         if (!yes) return
         try {
@@ -648,6 +650,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         <button
                                             onClick={async () => {
                                                 if (!selectedFile) return
+                                                const supabase = getSupabaseClient()
                                                 try {
                                                     setIsUploading(true)
                                                     setUploadError(null)

@@ -8,17 +8,17 @@ const nextConfig = {
     serverComponentsExternalPackages: [],
   },
   
-  // Solo usar export estático en producción
-  ...(process.env.NODE_ENV === 'production' && {
-    output: 'export',
-    trailingSlash: true,
-  }),
+  // Exportación estática deshabilitada temporalmente
+  // ...(process.env.NODE_ENV === 'production' && {
+  //   output: 'export',
+  //   trailingSlash: true,
+  // }),
   
   // Configuración de imágenes
   images: {
-    ...(process.env.NODE_ENV === 'production' && {
-      unoptimized: true,
-    }),
+    // ...(process.env.NODE_ENV === 'production' && {
+    //   unoptimized: true,
+    // }),
     domains: ['images.unsplash.com', 'vaqdzualcteljmivtoka.supabase.co'],
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",

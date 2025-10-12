@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
   const supabase = getSupabaseClient()

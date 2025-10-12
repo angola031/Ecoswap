@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeftIcon, PhotoIcon, TrashIcon, ExclamationTriangleIcon, CheckCircleIcon, UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, GlobeAltIcon, ShieldCheckIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { uploadUserProfileImage } from '@/lib/storage'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface User {
     user_id: number
@@ -149,7 +150,7 @@ export default function EditarPerfilPage() {
         load()
     }, [])
 
-    const handleInputChange = (field: string, value: string | boolean) => {
+    const handleInputChange = (field: string, value: string | boolean | number) => {
         if (field.includes('.')) {
             const [parent, child] = field.split('.')
             setFormData(prev => prev ? {

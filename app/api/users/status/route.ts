@@ -70,6 +70,12 @@ export async function GET(request: NextRequest) {
 // Endpoint para actualizar el estado de un usuario específico
 export async function PATCH(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      console.error('❌ API Users Status PATCH: Supabase no está configurado')
+      return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+    }
+
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Token de autorización requerido' }, { status: 401 })

@@ -76,7 +76,8 @@ export function useSessionManager() {
           setState({
             session: null,
             loading: false,
-            error: 'Supabase no está configurado'
+            error: 'Supabase no está configurado',
+            isValid: false
           })
           return false
         }

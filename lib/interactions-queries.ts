@@ -666,6 +666,7 @@ export async function acceptExchange(
     notes?: string
   }
 ): Promise<ApiResponse<boolean>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede aceptar este intercambio
     const { data: intercambio, error: fetchError } = await supabase
@@ -728,6 +729,7 @@ export async function rejectExchange(
   userId: number,
   reason: string
 ): Promise<ApiResponse<boolean>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede rechazar este intercambio
     const { data: intercambio, error: fetchError } = await supabase
@@ -787,6 +789,7 @@ export async function cancelExchange(
   userId: number,
   reason?: string
 ): Promise<ApiResponse<boolean>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede cancelar este intercambio
     const { data: intercambio, error: fetchError } = await supabase
@@ -849,6 +852,7 @@ export async function completeExchange(
   exchangeId: string,
   userId: number
 ): Promise<ApiResponse<boolean>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede completar este intercambio
     const { data: intercambio, error: fetchError } = await supabase
@@ -926,6 +930,7 @@ export async function createProposal(
     lugar_encuentro?: string
   }
 ): Promise<ApiResponse<Propuesta>> {
+  const supabase = getSupabaseClient();
   try {
     // Obtener información del chat para validar
     const { data: chat, error: chatError } = await supabase
@@ -1006,6 +1011,7 @@ export async function respondToProposal(
     respuesta: string
   }
 ): Promise<ApiResponse<boolean>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede responder a esta propuesta
     const { data: propuesta, error: fetchError } = await supabase
@@ -1071,6 +1077,7 @@ export async function createRating(
     es_publica?: boolean
   }
 ): Promise<ApiResponse<Calificacion>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede calificar este intercambio
     const { data: intercambio, error: fetchError } = await supabase
@@ -1150,6 +1157,7 @@ export async function getUserActivities(
   userId: number,
   limit: number = 50
 ): Promise<ApiResponse<UserActivity[]>> {
+  const supabase = getSupabaseClient();
   try {
     // Obtener actividades de diferentes fuentes
     const activities: UserActivity[] = []
@@ -1269,6 +1277,7 @@ export async function getSystemEvents(
   userId: number,
   limit: number = 20
 ): Promise<ApiResponse<SystemEvent[]>> {
+  const supabase = getSupabaseClient();
   try {
     // Obtener notificaciones del sistema
     const { data: notificaciones, error } = await supabase

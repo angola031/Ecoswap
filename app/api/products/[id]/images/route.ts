@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export async function GET(
     req: NextRequest,
@@ -52,6 +53,12 @@ export async function POST(
     { params }: { params: { id: string } }
 ) {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ API Products Images POST: Supabase no está configurado')
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+
         const productId = params.id
         const formData = await req.formData()
         const file = formData.get('image') as File

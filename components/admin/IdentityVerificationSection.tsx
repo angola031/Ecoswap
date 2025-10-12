@@ -50,6 +50,7 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
 
     const fetchVerificationRequests = async (isMounted: boolean = true) => {
         try {
+            const supabase = getSupabaseClient()
             if (isMounted) {
                 setLoading(true)
                 setError(null)
@@ -168,6 +169,7 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
 
     const handleVerificationDecision = async (verificationId: number, userId: number, decision: 'aprobado' | 'rechazado') => {
         try {
+            const supabase = getSupabaseClient()
             setProcessingRequest(true)
 
             // Actualizar la validación en la tabla VALIDACION_USUARIO

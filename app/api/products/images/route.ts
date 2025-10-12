@@ -104,6 +104,12 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      console.error('❌ API Images: Supabase no está configurado')
+      return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+    }
+
     const { searchParams } = new URL(req.url)
     const productoId = searchParams.get('producto_id')
 

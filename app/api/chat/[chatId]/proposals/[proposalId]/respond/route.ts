@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+const supabase = getSupabaseClient()
 
 async function getAuthUserId(request: NextRequest): Promise<number | null> {
   try {
@@ -11,12 +9,12 @@ async function getAuthUserId(request: NextRequest): Promise<number | null> {
     if (!authHeader) return null
 
     const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+    const { data: { user }, error } = await supabase.auth.getUser(token)
     
     if (error || !user) return null
 
     // Intentar por auth_user_id
-    const { data: usuarioByAuth } = await supabaseAdmin
+    const { data: usuarioByAuth } = await supabase
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', user.id)
@@ -26,7 +24,7 @@ async function getAuthUserId(request: NextRequest): Promise<number | null> {
 
     // Fallback por email
     if (user.email) {
-      const { data: usuarioByEmail } = await supabaseAdmin
+      const { data: usuarioByEmail } = await supabase
         .from('usuario')
         .select('user_id')
         .eq('email', user.email)
@@ -66,7 +64,7 @@ export async function PATCH(
     }
 
     // Verificar que la propuesta existe y el usuario puede responderla
-    const { data: propuesta, error: propuestaError } = await supabaseAdmin
+    const { data: propuesta, error: propuestaError } = await supabase
       .from('propuesta')
       .select(`
         propuesta_id,
@@ -125,7 +123,7 @@ export async function PATCH(
       updateData.respuesta = 'Propuesta aceptada'
     }
 
-    const { data: propuestaActualizada, error: updateError } = await supabaseAdmin
+    const { data: propuestaActualizada, error: updateError } = await supabase
       .from('propuesta')
       .update(updateData)
       .eq('propuesta_id', proposalId)
@@ -185,7 +183,7 @@ export async function PATCH(
           intercambioUpdateData.monto_adicional = propuesta.precio_propuesto
         }
 
-        const { data: intercambioActualizado, error: intercambioUpdateError } = await supabaseAdmin
+        const { data: intercambioActualizado, error: intercambioUpdateError } = await supabase
           .from('intercambio')
           .update(intercambioUpdateData)
           .eq('intercambio_id', intercambioExistente.intercambio_id)
@@ -237,7 +235,7 @@ export async function PATCH(
           nuevoIntercambioData.condiciones_adicionales = propuesta.condiciones
         }
 
-        const { data: nuevoIntercambio, error: intercambioCreateError } = await supabaseAdmin
+        const { data: nuevoIntercambio, error: intercambioCreateError } = await supabase
           .from('intercambio')
           .insert(nuevoIntercambioData)
           .select('intercambio_id')
@@ -251,7 +249,7 @@ export async function PATCH(
         intercambioId = nuevoIntercambio.intercambio_id
 
         // Actualizar el chat para que apunte al nuevo intercambio
-        const { error: chatUpdateError } = await supabaseAdmin
+        const { error: chatUpdateError } = await supabase
           .from('chat')
           .update({ intercambio_id: intercambioId })
           .eq('chat_id', chatId)

@@ -253,6 +253,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
             if (!token) return
 
             // Usar una consulta simple para verificar existencia
+            const supabase = getSupabaseClient()
             const { data: existingUser, error } = await supabase
                 .from('usuario')
                 .select('email, es_admin, activo, nombre, apellido')
@@ -305,6 +306,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
     useEffect(() => {
         const checkPermissions = async () => {
             try {
+                const supabase = getSupabaseClient()
                 const session = await getSession()
                 
                 if (!session?.user?.email) {
@@ -373,7 +375,7 @@ export default function AdminManagementModule({ onClose }: AdminManagementModule
         }
 
         checkPermissions()
-    }, [supabase])
+    }, [])
 
     const loadInactiveAdmins = async () => {
         try {

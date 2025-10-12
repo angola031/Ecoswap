@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface Message {
     mensaje_id: number
@@ -26,6 +27,7 @@ export default function MessagesSection() {
     useEffect(() => {
         const fetchMessages = async () => {
             try {
+                const supabase = getSupabaseClient()
                 
                 const { data, error } = await supabase
                     .from('mensaje')
@@ -82,6 +84,7 @@ export default function MessagesSection() {
 
     const markAsRead = async (messageId: number) => {
         try {
+            const supabase = getSupabaseClient()
             const { error } = await supabase
                 .from('mensaje')
                 .update({ leido: true })
@@ -105,6 +108,7 @@ export default function MessagesSection() {
     }
 
     const markAsUnread = async (messageId: number) => {
+        const supabase = getSupabaseClient()
         try {
             const { error } = await supabase
                 .from('mensaje')

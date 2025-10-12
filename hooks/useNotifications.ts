@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { getSupabaseClient } from '../lib/supabase-client'
 
 interface NotificationCount {
     unreadCount: number
@@ -15,6 +15,7 @@ export function useNotifications() {
     })
 
     const fetchUnreadCount = async () => {
+        const supabase = getSupabaseClient()
         if (!supabase) {
             setNotificationCount({ unreadCount: 0, loading: false, error: null })
             return
@@ -24,7 +25,7 @@ export function useNotifications() {
             setNotificationCount(prev => ({ ...prev, loading: true, error: null }))
 
             // Obtener el usuario actual
-            const { data: { user } } = await supabase.auth.getUser()
+            const { data: { user } } = await getSupabaseClient().auth.getUser()
             
             if (!user) {
                 setNotificationCount({ unreadCount: 0, loading: false, error: null })
@@ -75,6 +76,7 @@ export function useNotifications() {
     }
 
     useEffect(() => {
+        const supabase = getSupabaseClient()
         if (!supabase) {
             setNotificationCount({ unreadCount: 0, loading: false, error: null })
             return
@@ -84,7 +86,7 @@ export function useNotifications() {
 
         // Suscripción en tiempo real a cambios en notificaciones (incremental)
         const setupRealtimeSubscription = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
+            const { data: { user } } = await getSupabaseClient().auth.getUser()
             if (!user) return
 
             const { data: userData } = await supabase
@@ -158,7 +160,7 @@ export function useNotifications() {
 
             return () => {
                 clearInterval(intervalId)
-                supabase.removeChannel(channel)
+                getSupabaseClient().removeChannel(channel)
             }
         }
 

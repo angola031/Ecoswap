@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export async function GET(request: NextRequest) {
+        const supabase = getSupabaseClient()
   try {
     
     // Verificar que el cliente admin esté disponible
-    if (!supabaseAdmin) {
+    if (!supabase) {
       return NextResponse.json({ 
         error: 'Cliente admin de Supabase no disponible',
         details: 'SUPABASE_SERVICE_ROLE_KEY no configurado'
@@ -12,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Probar listado de buckets
-    const { data: buckets, error: bucketsError } = await supabaseAdmin.storage.listBuckets()
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets()
     
     if (bucketsError) {
       console.error('❌ [API] Error listando buckets:', bucketsError)
@@ -34,7 +36,7 @@ export async function GET(request: NextRequest) {
     
     
     // Probar listado de archivos en mensajes
-    const { data: files, error: filesError } = await supabaseAdmin.storage
+    const { data: files, error: filesError } = await supabase.storage
       .from('Ecoswap')
       .list('mensajes', { limit: 10 })
     
@@ -60,6 +62,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
     
     // Crear un archivo de prueba simple
     const testContent = Buffer.from('Archivo de prueba para verificar conectividad')
@@ -67,7 +70,7 @@ export async function POST(request: NextRequest) {
     const testPath = `mensajes/test/${testFileName}`
     
     
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('Ecoswap')
       .upload(testPath, testContent, {
         contentType: 'text/plain',
@@ -84,13 +87,13 @@ export async function POST(request: NextRequest) {
     
     
     // Obtener URL pública
-    const { data: { publicUrl } } = supabaseAdmin.storage
+    const { data: { publicUrl } } = supabase.storage
       .from('Ecoswap')
       .getPublicUrl(testPath)
     
     
     // Limpiar archivo de prueba
-    const { error: deleteError } = await supabaseAdmin.storage
+    const { error: deleteError } = await supabase.storage
       .from('Ecoswap')
       .remove([testPath])
     

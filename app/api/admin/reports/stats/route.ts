@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Middleware para verificar admin
 async function requireAdmin(req: NextRequest) {
@@ -6,27 +7,28 @@ async function requireAdmin(req: NextRequest) {
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return { ok: false, error: 'Unauthorized' as const }
 
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
 
     // Verificar admin por DB
     let isAdmin = false
     if (data.user.email) {
-        const { data: dbUser } = await supabaseAdmin
+        const { data: dbUser } = await supabase
             .from('usuario')
             .select('user_id, es_admin')
             .eq('email', data.user.email)
             .single()
         if (dbUser?.es_admin) isAdmin = true
         else if (dbUser?.user_id) {
-            const { data: roles } = await supabaseAdmin
+            const { data: roles } = await supabase
                 .from('usuario_rol')
                 .select('rol_id, activo')
                 .eq('usuario_id', dbUser.user_id)
                 .eq('activo', true)
             if (roles && roles.length > 0) {
                 const ids = roles.map(r => r.rol_id)
-                const { data: roleNames } = await supabaseAdmin
+                const { data: roleNames } = await supabase
                     .from('rol_usuario')
                     .select('rol_id, nombre, activo')
                     .in('rol_id', ids)
@@ -44,6 +46,8 @@ export async function GET(req: NextRequest) {
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden' ? 403 : 401 })
 
     try {
+        const supabase = getSupabaseClient()
+        
         // Estadísticas generales de reportes
         const [
             { count: totalReportes },
@@ -53,27 +57,27 @@ export async function GET(req: NextRequest) {
             { count: usuariosSuspendidos },
             { count: usuariosBaneados }
         ] = await Promise.all([
-            supabaseAdmin
+            supabase
                 .from('reporte')
                 .select('*', { count: 'exact', head: true }),
-            supabaseAdmin
+            supabase
                 .from('reporte')
                 .select('*', { count: 'exact', head: true })
                 .eq('estado', 'pendiente'),
-            supabaseAdmin
+            supabase
                 .from('reporte')
                 .select('*', { count: 'exact', head: true })
                 .eq('estado', 'resuelto'),
-            supabaseAdmin
+            supabase
                 .from('reporte')
                 .select('*', { count: 'exact', head: true })
                 .eq('estado', 'desestimado'),
-            supabaseAdmin
+            supabase
                 .from('usuario')
                 .select('*', { count: 'exact', head: true })
                 .eq('activo', false)
                 .not('motivo_suspension', 'is', null),
-            supabaseAdmin
+            supabase
                 .from('usuario')
                 .select('*', { count: 'exact', head: true })
                 .eq('activo', false)
@@ -81,7 +85,7 @@ export async function GET(req: NextRequest) {
         ])
 
         // Usuarios con más reportes
-        const { data: usuariosProblematicos } = await supabaseAdmin
+        const { data: usuariosProblematicos } = await supabase
             .from('reporte')
             .select(`
                 reportado_usuario_id,
@@ -115,7 +119,7 @@ export async function GET(req: NextRequest) {
             .slice(0, 10)
 
         // Reportes por tipo
-        const { data: reportesPorTipo } = await supabaseAdmin
+        const { data: reportesPorTipo } = await supabase
             .from('reporte')
             .select('tipo, estado')
             .eq('estado', 'pendiente')
@@ -129,7 +133,7 @@ export async function GET(req: NextRequest) {
         const sieteDiasAtras = new Date()
         sieteDiasAtras.setDate(sieteDiasAtras.getDate() - 7)
 
-        const { data: reportesRecientes } = await supabaseAdmin
+        const { data: reportesRecientes } = await supabase
             .from('reporte')
             .select(`
                 reporte_id,

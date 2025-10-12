@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export default function ResetPasswordPage() {
     const router = useRouter()

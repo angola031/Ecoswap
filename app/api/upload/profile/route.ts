@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export async function POST(req: NextRequest) {
+        const supabase = getSupabaseClient()
     try {
         const MAX_BYTES = 2 * 1024 * 1024 // 2MB
         const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png']
@@ -12,7 +14,7 @@ export async function POST(req: NextRequest) {
 
         const accessToken = authHeader.split(' ')[1]
         // Validar usuario a partir del token
-        const { data: userInfo, error: userErr } = await supabaseAdmin.auth.getUser(accessToken)
+        const { data: userInfo, error: userErr } = await supabase.auth.getUser(accessToken)
         if (userErr || !userInfo?.user) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
         }
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Verificar que el userId pertenezca al email del token
-        const { data: dbUser, error: dbErr } = await supabaseAdmin
+        const { data: dbUser, error: dbErr } = await supabase
             .from('usuario')
             .select('user_id, email')
             .eq('user_id', userId)
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
         const arrayBuffer = await file.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
 
-        const { error: uploadError } = await supabaseAdmin.storage
+        const { error: uploadError } = await supabase.storage
             .from('Ecoswap')
             .upload(path, buffer, { upsert: true, contentType: file.type || 'image/jpeg' })
 
@@ -56,11 +58,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: uploadError.message }, { status: 400 })
         }
 
-        const { data: urlData } = supabaseAdmin.storage.from('Ecoswap').getPublicUrl(path)
+        const { data: urlData } = supabase.storage.from('Ecoswap').getPublicUrl(path)
         const publicUrl = urlData?.publicUrl || null
 
         // Actualizar foto_perfil
-        await supabaseAdmin
+        await supabase
             .from('usuario')
             .update({ foto_perfil: publicUrl })
             .eq('user_id', userId)

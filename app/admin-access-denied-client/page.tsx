@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export default function AdminAccessDeniedClientPage() {
     const router = useRouter()
