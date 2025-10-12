@@ -1,0 +1,9 @@
+# Archivos y directorios a ignorar en el deployment de Wrangler
+cache/
+.next/
+node_modules/
+.git/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
