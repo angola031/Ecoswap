@@ -12,8 +12,12 @@ name = "ecoswap-staging"
 
 # Configuración de build
 [build]
-command = "npm run build"
+command = "npm run build:cloudflare"
 cwd = "."
+
+# Configuración de assets para Cloudflare Pages
+[assets]
+directory = "./out"
 
 # Variables de entorno
 [vars]
@@ -22,12 +26,8 @@ NEXT_PUBLIC_APP_ENV = "production"
 
 # Configuración de Pages
 [pages]
-build_command = "npm run build"
+build_command = "npm run build:cloudflare"
 build_output_dir = "out"
-
-# Configuración de Workers (si se usan)
-[workers]
-main = "dist/worker.js"
 
 # Configuración de KV (si se necesita)
 # [[kv_namespaces]]
