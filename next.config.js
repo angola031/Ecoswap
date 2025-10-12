@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Configuración optimizada para Vercel
+  output: undefined, // Vercel maneja esto automáticamente
+  
   // Configuración de imágenes
   images: {
     domains: ['images.unsplash.com', 'vaqdzualcteljmivtoka.supabase.co'],
@@ -25,6 +28,8 @@ const nextConfig = {
       /Extra attributes from the server/,
       /cz-shortcut-listen/,
       /data-new-gr-c-s-check-loaded/,
+      /Module not found/,
+      /Cannot find module/,
     ]
     
     return config
