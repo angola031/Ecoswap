@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
     
-    const debugInfo = {
+    const debugInfo: any = {
       productoId,
       isProductIdValid: !isNaN(productoId) && productoId > 0,
       hasAuthHeader: !!auth,
