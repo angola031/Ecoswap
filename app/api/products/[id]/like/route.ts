@@ -67,11 +67,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!supabase) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
 
     const productoId = Number(params.id)
-    if (!productoId) return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
+    if (!productoId || isNaN(productoId)) {
+      console.error('❌ Producto ID inválido:', params.id)
+      return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
+    }
     
+    // Para GET, no requerimos autenticación - solo devolvemos si está liked
     const userId = await getAuthUserId(req)
     
     if (!userId) {
+      // Usuario no autenticado - no puede tener likes
       return NextResponse.json({ liked: false })
     }
 
@@ -82,6 +87,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       .eq('producto_id', productoId)
       .maybeSingle()
 
+    if (error) {
+      console.error('❌ Error consultando favorito:', error)
+      return NextResponse.json({ liked: false })
+    }
     
     const liked = !!data
     
