@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:setup": "node scripts/dev-setup.js",
+    "db:create-favorito-policies": "node scripts/apply-favorito-policies.js",
     "build": "next build",
     "build:static": "node scripts/build-static.js",
     "build:cloudflare": "next build",
