@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import { supabaseAdmin } from '@/lib/supabase'
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
   try {
@@ -52,10 +51,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   try {
     console.log('🔍 POST /api/products/like - Iniciando...')
     
-    // Usar supabaseAdmin para bypass RLS
-    const supabase = supabaseAdmin
+    // Usar cliente normal de Supabase
+    const supabase = getSupabaseClient()
     if (!supabase) {
-      console.error('❌ Supabase admin client no disponible')
+      console.error('❌ Supabase client no disponible')
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
@@ -112,8 +111,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Usar supabaseAdmin para bypass RLS
-    const supabase = supabaseAdmin
+    // Usar cliente normal de Supabase
+    const supabase = getSupabaseClient()
     if (!supabase) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
 
     const productoId = Number(params.id)
@@ -153,8 +152,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Usar supabaseAdmin para bypass RLS
-    const supabase = supabaseAdmin
+    // Usar cliente normal de Supabase
+    const supabase = getSupabaseClient()
     if (!supabase) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
 
     const productoId = Number(params.id)
