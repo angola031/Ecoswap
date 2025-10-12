@@ -7,3 +7,11 @@ node_modules/
 *.tmp
 .DS_Store
 Thumbs.db
+
+# Archivos específicos de Next.js standalone
+out/cache
+out/standalone
+out/server
+out/*.nft.json
+out/trace
+out/export-marker.json

@@ -29,9 +29,6 @@ const nextConfig = {
   
   // Configuración de imágenes
   images: {
-    // ...(process.env.NODE_ENV === 'production' && {
-    //   unoptimized: true,
-    // }),
     domains: ['images.unsplash.com', 'vaqdzualcteljmivtoka.supabase.co'],
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
