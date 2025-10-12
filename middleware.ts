@@ -1,130 +1,24 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-    // Verificar que las variables de entorno estén disponibles
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-        console.error('❌ Variables de entorno de Supabase no disponibles en middleware')
-        return NextResponse.next()
+    // Middleware simplificado para Vercel
+    // Solo maneja redirecciones básicas sin dependencias externas
+    
+    const { pathname } = request.nextUrl
+    
+    // Redireccionar /admin a /admin/login si no está ya en login
+    if (pathname === '/admin') {
+        return NextResponse.redirect(new URL('/admin/login', request.url))
     }
-
-    let response = NextResponse.next({
-        request: {
-            headers: request.headers,
-        },
-    })
-
-    try {
-        const supabase = createServerClient(
-            supabaseUrl,
-            supabaseAnonKey,
-            {
-                cookies: {
-                    get(name: string) {
-                        return request.cookies.get(name)?.value
-                    },
-                    set(name: string, value: string, options: any) {
-                        request.cookies.set({
-                            name,
-                            value,
-                            ...options,
-                        })
-                        response = NextResponse.next({
-                            request: {
-                                headers: request.headers,
-                            },
-                        })
-                        response.cookies.set({
-                            name,
-                            value,
-                            ...options,
-                        })
-                    },
-                    remove(name: string, options: any) {
-                        request.cookies.set({
-                            name,
-                            value: '',
-                            ...options,
-                        })
-                        response = NextResponse.next({
-                            request: {
-                                headers: request.headers,
-                            },
-                        })
-                        response.cookies.set({
-                            name,
-                            value: '',
-                            ...options,
-                        })
-                    },
-                },
-            }
-        )
-
-        // Obtener la sesión actual
-        const { data: { session } } = await supabase.auth.getSession()
-
-        // Solo proteger rutas de admin si no hay sesión
-        if (!session && request.nextUrl.pathname.startsWith('/admin')) {
-            console.log('🔍 Middleware: Sin sesión, redirigiendo a login desde:', request.nextUrl.pathname)
-            
-            // Si viene de login, dar tiempo para que se establezca la sesión
-            const referer = request.headers.get('referer')
-            if (referer && referer.includes('/login')) {
-                console.log('🔍 Middleware: Viene de login, permitiendo acceso temporal')
-                return response
-            }
-            
-            return NextResponse.redirect(new URL('/login', request.url))
-        }
-
-        // Si no hay sesión y está intentando acceder a APIs de admin
-        if (!session && request.nextUrl.pathname.startsWith('/api/admin')) {
-            return NextResponse.redirect(new URL('/login', request.url))
-        }
-
-        // Si hay sesión y está en la página de login, verificar tipo de usuario
-        if (session && request.nextUrl.pathname === '/login') {
-            try {
-                // Obtener datos del usuario
-                const { data: userData } = await supabase
-                    .from('usuario')
-                    .select('es_admin, activo')
-                    .eq('email', session.user.email)
-                    .single()
-
-                // Si es administrador activo, redirigir al dashboard
-                if (userData?.es_admin && userData?.activo) {
-                    return NextResponse.redirect(new URL('/admin/verificaciones', request.url))
-                } else if (userData && !userData.es_admin) {
-                    // Si no es administrador, redirigir a la página principal
-                    return NextResponse.redirect(new URL('/', request.url))
-                }
-            } catch (error) {
-                console.error('Error verificando usuario en middleware:', error)
-            }
-        }
-
-        return response
-    } catch (error) {
-        console.error('❌ Error en middleware:', error)
-        // En caso de error, permitir que la request continúe
-        return NextResponse.next()
-    }
+    
+    // Permitir que todas las demás requests continúen
+    return NextResponse.next()
 }
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         * - public folder
-         */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        // Solo aplicar a rutas específicas que necesiten redirección
+        '/admin',
+        '/admin/login'
     ],
 }
