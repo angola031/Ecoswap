@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+
+console.log('🔧 Solución para Build Token de Cloudflare Pages');
+console.log('');
+console.log('❌ Error: "The build token selected for this build has been deleted or rolled"');
+console.log('');
+console.log('📋 Soluciones disponibles:');
+console.log('');
+console.log('🎯 OPCIÓN 1: Configurar Build Token en Dashboard');
+console.log('1. Ve a: https://dash.cloudflare.com/pages/view/ecoswap');
+console.log('2. Settings > Build & deployments');
+console.log('3. En "Build tokens" haz clic en "Manage tokens"');
+console.log('4. Crea un nuevo token o actualiza el existente');
+console.log('5. Asegúrate de que tenga permisos para Cloudflare Pages');
+console.log('');
+console.log('🎯 OPCIÓN 2: Deshabilitar Build Automático');
+console.log('1. En el mismo dashboard, ve a Settings > Build & deployments');
+console.log('2. Desactiva "Auto-deploy" si está habilitado');
+console.log('3. Usa solo deployment manual con: npm run deploy');
+console.log('');
+console.log('🎯 OPCIÓN 3: Usar GitHub Actions (Recomendado)');
+console.log('1. Configura el secret CLOUDFLARE_API_TOKEN en GitHub');
+console.log('2. GitHub Actions manejará el build y deployment');
+console.log('3. Ejecuta: node scripts/setup-github-secrets.js');
+console.log('');
+console.log('💡 Estado actual:');
+console.log('- API Token funcionando: ✅');
+console.log('- Deployment manual funcionando: ✅');
+console.log('- Build token del dashboard: ❌ (necesita actualización)');
+console.log('');

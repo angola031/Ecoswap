@@ -33,14 +33,23 @@ if (outFiles.length === 0) {
 console.log('✅ Build completado. Iniciando deployment...');
 
 try {
-    // Usar wrangler pages deploy con API token configurado
+    // Usar wrangler pages deploy (OAuth o API token)
+    const env = {
+        ...process.env,
+        NODE_ENV: 'production'
+    };
+    
+    // Solo agregar API token si está disponible
+    if (process.env.CLOUDFLARE_API_TOKEN) {
+        env.CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+        console.log('🔑 Usando API token para autenticación');
+    } else {
+        console.log('🔐 Usando autenticación OAuth');
+    }
+    
     execSync('npx wrangler pages deploy out --project-name ecoswap', { 
         stdio: 'inherit',
-        env: {
-            ...process.env,
-            NODE_ENV: 'production',
-            CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || 'iAMG6f4Asi3PEJaHfaUhn04FYd3MYau3qeqK_6FV'
-        }
+        env
     });
     console.log('✅ Deployment completado exitosamente!');
 } catch (error) {
