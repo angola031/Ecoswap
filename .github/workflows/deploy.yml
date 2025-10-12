@@ -33,7 +33,7 @@ jobs:
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          accountId: 71fc063294f82b8f8140bee5c94074e8
           projectName: ecoswap
           directory: out
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}

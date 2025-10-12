@@ -33,12 +33,13 @@ if (outFiles.length === 0) {
 console.log('✅ Build completado. Iniciando deployment...');
 
 try {
-    // Usar wrangler pages deploy sin archivo de configuración personalizado
+    // Usar wrangler pages deploy con API token configurado
     execSync('npx wrangler pages deploy out --project-name ecoswap', { 
         stdio: 'inherit',
         env: {
             ...process.env,
-            NODE_ENV: 'production'
+            NODE_ENV: 'production',
+            CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || 'ofFE1auhQiIpHwIAOZ6lsjVE2xFLioB5ooBBLnfM'
         }
     });
     console.log('✅ Deployment completado exitosamente!');
