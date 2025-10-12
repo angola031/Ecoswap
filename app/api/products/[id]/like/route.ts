@@ -110,6 +110,34 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }, { status: 400 })
       }
       console.log('✅ Favorito creado exitosamente:', insertData)
+      
+      // Actualizar contador de likes en la tabla producto
+      console.log('📊 Actualizando contador de likes...')
+      
+      // Primero contar los favoritos actuales
+      const { count: likesCount, error: countError } = await supabase
+        .from('favorito')
+        .select('*', { count: 'exact', head: true })
+        .eq('producto_id', productoId)
+      
+      if (!countError && likesCount !== null) {
+        // Actualizar el contador con el valor real
+        const { error: updateError } = await supabase
+          .from('producto')
+          .update({ 
+            total_likes: likesCount,
+            fecha_actualizacion: new Date().toISOString()
+          })
+          .eq('producto_id', productoId)
+        
+        if (updateError) {
+          console.error('⚠️ Error actualizando contador de likes:', updateError.message)
+        } else {
+          console.log(`✅ Contador de likes actualizado a: ${likesCount}`)
+        }
+      } else {
+        console.error('⚠️ Error contando likes:', countError?.message)
+      }
     } else {
       console.log('ℹ️ Favorito ya existe:', exists)
     }
@@ -196,7 +224,29 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
-    // El trigger automáticamente actualizará el contador de likes
+    // Actualizar contador de likes después de eliminar
+    console.log('📊 Actualizando contador de likes después de eliminar...')
+    
+    const { count: likesCount, error: countError } = await supabase
+      .from('favorito')
+      .select('*', { count: 'exact', head: true })
+      .eq('producto_id', productoId)
+    
+    if (!countError && likesCount !== null) {
+      const { error: updateError } = await supabase
+        .from('producto')
+        .update({ 
+          total_likes: likesCount,
+          fecha_actualizacion: new Date().toISOString()
+        })
+        .eq('producto_id', productoId)
+      
+      if (updateError) {
+        console.error('⚠️ Error actualizando contador de likes:', updateError.message)
+      } else {
+        console.log(`✅ Contador de likes actualizado a: ${likesCount}`)
+      }
+    }
 
     return NextResponse.json({ ok: true })
   } catch (e: any) {
