@@ -162,11 +162,12 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                     status: 'available',
                     tags: [],
                     specifications: {},
-                    tipoTransaccion: p.tipo_transaccion,
-                    precioNegociable: p.precio_negociable,
-                    condicionesIntercambio: p.condiciones_intercambio,
-                    queBuscoCambio: p.que_busco_cambio
-                }))
+                        tipoTransaccion: p.tipo_transaccion,
+                        precioNegociable: p.precio_negociable,
+                        condicionesIntercambio: p.condiciones_intercambio,
+                        queBuscoCambio: p.que_busco_cambio
+                    }
+                })
 
                 // Las imágenes ya vienen incluidas en la respuesta de la API
                 // No necesitamos cargarlas por separado
