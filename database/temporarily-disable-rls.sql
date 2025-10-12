@@ -39,3 +39,4 @@ WHERE schemaname = 'public' AND tablename = 'usuario';
 
 
 
+

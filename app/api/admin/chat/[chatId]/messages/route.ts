@@ -8,6 +8,8 @@ async function requireAdmin(req: NextRequest) {
     if (!token) return { ok: false, error: 'Unauthorized' as const }
 
     const supabase = getSupabaseClient()
+    if (!supabase) return { ok: false, error: 'Supabase client not available' as const }
+    
     const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
 
@@ -43,13 +45,20 @@ async function requireAdmin(req: NextRequest) {
 
 export async function GET(req: NextRequest, { params }: { params: { chatId: string } }) {
     const guard = await requireAdmin(req)
-    if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden' ? 403 : 401 })
+    if (!guard.ok) {
+        const status = guard.error === 'Forbidden' ? 403 : 
+                      guard.error === 'Supabase client not available' ? 500 : 401
+        return NextResponse.json({ error: guard.error }, { status })
+    }
 
     try {
         const chatId = Number(params.chatId)
         if (!chatId) return NextResponse.json({ error: 'Invalid chatId' }, { status: 400 })
 
         const supabase = getSupabaseClient()
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase client not available' }, { status: 500 })
+        }
         
         // Verificar que el chat existe
         const { data: chat } = await supabase
