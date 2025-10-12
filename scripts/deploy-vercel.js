@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+
+console.log('🚀 Deployment a Vercel (Recomendado para Next.js)');
+console.log('');
+console.log('📋 Vercel es la plataforma oficial de Next.js y funciona perfectamente:');
+console.log('');
+console.log('1. Ve a: https://vercel.com');
+console.log('');
+console.log('2. Conecta tu cuenta de GitHub');
+console.log('');
+console.log('3. Importa tu repositorio: https://github.com/angola031/Ecoswap');
+console.log('');
+console.log('4. Vercel detectará automáticamente que es Next.js');
+console.log('');
+console.log('5. Configura las variables de entorno:');
+console.log('   - NEXT_PUBLIC_SUPABASE_URL');
+console.log('   - NEXT_PUBLIC_SUPABASE_ANON_KEY');
+console.log('   - SUPABASE_SERVICE_ROLE_KEY');
+console.log('');
+console.log('6. Deploy automático en cada push a main');
+console.log('');
+console.log('✅ Ventajas de Vercel:');
+console.log('- Soporte nativo para Next.js');
+console.log('- API routes funcionan perfectamente');
+console.log('- Deploy automático desde GitHub');
+console.log('- Dominio personalizado gratuito');
+console.log('- SSL automático');
+console.log('- Edge functions');
+console.log('');
+console.log('🌐 Tu página estará disponible en:');
+console.log('- https://ecoswap.vercel.app (dominio gratuito)');
+console.log('- O tu dominio personalizado');
+console.log('');
+console.log('💡 Alternativa: Netlify también funciona bien con Next.js');
+console.log('');

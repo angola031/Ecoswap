@@ -9,6 +9,9 @@
     "build": "next build",
     "build:static": "node scripts/build-static.js",
     "build:cloudflare": "next build",
+    "build:pages": "cp next.config.pages.js next.config.js && next build && cp next.config.original.js next.config.js",
+    "build:vercel": "next build",
+    "deploy:vercel": "vercel --prod",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
@@ -19,8 +22,9 @@
     "check:supabase": "node scripts/check-supabase-config.js",
     "deploy:cloudflare": "npm run build:cloudflare && wrangler pages deploy out",
     "deploy:preview": "npm run build:cloudflare && wrangler pages deploy out --compatibility-date=2024-01-01",
-    "deploy": "node deploy.js",
+    "deploy": "node scripts/deploy-to-vercel.js",
     "deploy-simple": "node scripts/deploy-simple.js",
+    "deploy-cloudflare": "node deploy.js",
     "pages-deploy": "node pages-deploy.js"
   },
   "dependencies": {

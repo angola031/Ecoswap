@@ -1,0 +1,9 @@
+# Redirects para Next.js App Router
+/api/* /api/:splat 200
+/chat/* /chat/:splat 200
+/producto/* /producto/:splat 200
+/interaccion/* /interaccion/:splat 200
+/editar-producto/* /editar-producto/:splat 200
+
+# Fallback para SPA
+/* /index.html 200

@@ -8,8 +8,8 @@ const nextConfig = {
     serverComponentsExternalPackages: [],
   },
   
-  // Configuración para Cloudflare Pages - usar standalone para API routes
-  output: 'standalone',
+           // Configuración optimizada para Vercel
+           output: undefined, // Vercel maneja esto automáticamente
   
   // Configuración para suprimir warnings de hidratación de extensiones del navegador
   compiler: {
