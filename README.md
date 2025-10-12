@@ -143,3 +143,4 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más det
 ---
 
 **EcoSwap Colombia** - Promoviendo la economía circular y el consumo sostenible 🌱
+# Build configurado en Cloudflare Pages Dashboard
