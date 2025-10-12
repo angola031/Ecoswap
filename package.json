@@ -20,6 +20,7 @@
     "deploy:cloudflare": "npm run build:cloudflare && wrangler pages deploy out",
     "deploy:preview": "npm run build:cloudflare && wrangler pages deploy out --compatibility-date=2024-01-01",
     "deploy": "node deploy.js",
+    "deploy-simple": "node scripts/deploy-simple.js",
     "pages-deploy": "node pages-deploy.js"
   },
   "dependencies": {
