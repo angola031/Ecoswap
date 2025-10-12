@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
-console.log('🛠️ Configuración del Entorno de Desarrollo');
+console.log('🛠️ Configuración Completa del Entorno de Desarrollo');
 console.log('');
 
 // Crear archivo .env.local si no existe
@@ -28,6 +29,20 @@ NEXT_PUBLIC_APP_ENV=development
     console.log('ℹ️ El archivo .env.local ya existe');
 }
 
+// Verificar si node_modules existe
+const nodeModulesPath = path.join(__dirname, '..', 'node_modules');
+if (!fs.existsSync(nodeModulesPath)) {
+    console.log('📦 Instalando dependencias...');
+    try {
+        execSync('npm install', { stdio: 'inherit' });
+        console.log('✅ Dependencias instaladas');
+    } catch (error) {
+        console.error('❌ Error instalando dependencias:', error.message);
+    }
+} else {
+    console.log('ℹ️ Dependencias ya instaladas');
+}
+
 console.log('');
 console.log('📋 Próximos pasos:');
 console.log('');
@@ -47,3 +62,9 @@ console.log('   1. Ve a https://app.supabase.com/');
 console.log('   2. Selecciona tu proyecto');
 console.log('   3. Ve a Settings > API');
 console.log('   4. Copia la URL y las claves');
+console.log('');
+console.log('🔧 Scripts disponibles:');
+console.log('   npm run dev          - Iniciar servidor de desarrollo');
+console.log('   npm run build        - Construir para producción');
+console.log('   npm run lint         - Verificar código');
+console.log('   npm run type-check   - Verificar tipos TypeScript');

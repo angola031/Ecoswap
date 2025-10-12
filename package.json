@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:setup": "node scripts/setup-dev.js",
+    "dev:setup": "node scripts/dev-setup.js",
     "build": "next build",
     "build:static": "node scripts/build-static.js",
     "build:cloudflare": "next build",
