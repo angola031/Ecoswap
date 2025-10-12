@@ -6,3 +6,7 @@ compatibility_date = "2024-01-01"
 
 # Configuración específica para Pages
 pages_build_output_dir = "out"
+
+# Configuración de assets para compatibilidad con wrangler deploy
+[assets]
+directory = "./out"

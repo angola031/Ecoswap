@@ -19,7 +19,8 @@
     "check:supabase": "node scripts/check-supabase-config.js",
     "deploy:cloudflare": "npm run build:cloudflare && wrangler pages deploy out",
     "deploy:preview": "npm run build:cloudflare && wrangler pages deploy out --compatibility-date=2024-01-01",
-    "deploy": "node deploy.js"
+    "deploy": "node deploy.js",
+    "pages-deploy": "node pages-deploy.js"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
