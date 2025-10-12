@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
+
+
+
+const supabase = getSupabaseClient()
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
   const auth = req.headers.get('authorization') || ''
@@ -7,11 +11,11 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
   if (!token) return null
   
   try {
-    const { data } = await supabaseAdmin.auth.getUser(token)
+    const { data } = await supabase.auth.getUser(token)
     const authUserId = data?.user?.id
     if (!authUserId) return null
     
-    const { data: usuario } = await supabaseAdmin
+    const { data: usuario } = await supabase
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', authUserId)
@@ -46,7 +50,7 @@ export async function POST(
     }
 
     // Verificar que el chat existe y el usuario tiene acceso
-    const { data: chat, error: chatError } = await supabaseAdmin
+    const { data: chat, error: chatError } = await supabase
       .from('chat')
       .select(`
         chat_id,
@@ -70,7 +74,7 @@ export async function POST(
     }
 
     // Crear el mensaje
-    const { data: newMessage, error: messageError } = await supabaseAdmin
+    const { data: newMessage, error: messageError } = await supabase
       .from('mensaje')
       .insert({
         chat_id: chatId,
@@ -104,7 +108,7 @@ export async function POST(
     }
 
     // Actualizar último mensaje del chat
-    await supabaseAdmin
+    await supabase
       .from('chat')
       .update({ ultimo_mensaje: new Date().toISOString() })
       .eq('chat_id', chatId)
@@ -115,13 +119,13 @@ export async function POST(
       : intercambio.usuario_propone_id
 
     // Obtener información del producto para la notificación
-    const { data: productInfo } = await supabaseAdmin
+    const { data: productInfo } = await supabase
       .from('producto')
       .select('titulo, imagenes (url_imagen)')
       .eq('producto_id', intercambio.producto_ofrecido_id)
       .single()
 
-    await supabaseAdmin
+    await supabase
       .from('notificacion')
       .insert({
         usuario_id: otherUserId,

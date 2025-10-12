@@ -1,33 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Middleware para verificar admin
 async function requireAdmin(req: NextRequest) {
+    const supabase = getSupabaseClient()
+    if (!supabase) return { ok: false, error: 'Supabase no está configurado' as const }
+    
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return { ok: false, error: 'Unauthorized' as const }
 
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
 
     // Verificar admin por DB
     let isAdmin = false
     if (data.user.email) {
-        const { data: dbUser } = await supabaseAdmin
+        const { data: dbUser } = await supabase
             .from('usuario')
             .select('user_id, es_admin')
             .eq('email', data.user.email)
             .single()
         if (dbUser?.es_admin) isAdmin = true
         else if (dbUser?.user_id) {
-            const { data: roles } = await supabaseAdmin
+            const { data: roles } = await supabase
                 .from('usuario_rol')
                 .select('rol_id, activo')
                 .eq('usuario_id', dbUser.user_id)
                 .eq('activo', true)
             if (roles && roles.length > 0) {
                 const ids = roles.map(r => r.rol_id)
-                const { data: roleNames } = await supabaseAdmin
+                const { data: roleNames } = await supabase
                     .from('rol_usuario')
                     .select('rol_id, nombre, activo')
                     .in('rol_id', ids)
@@ -48,9 +51,14 @@ export async function GET(req: NextRequest) {
     const type = url.searchParams.get('type')
 
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+        
         if (type === 'productos') {
             // Estadísticas de productos
-            const { count: totalProductos } = await supabaseAdmin
+            const { count: totalProductos } = await supabase
                 .from('producto')
                 .select('*', { count: 'exact', head: true })
 
@@ -59,7 +67,7 @@ export async function GET(req: NextRequest) {
 
         if (type === 'intercambios') {
             // Estadísticas de intercambios
-            const { count: totalIntercambios } = await supabaseAdmin
+            const { count: totalIntercambios } = await supabase
                 .from('intercambio')
                 .select('*', { count: 'exact', head: true })
 
@@ -73,18 +81,18 @@ export async function GET(req: NextRequest) {
             { count: usuariosVerificados },
             { count: verificacionesPendientes }
         ] = await Promise.all([
-            supabaseAdmin
+            supabase
                 .from('usuario')
                 .select('*', { count: 'exact', head: true }),
-            supabaseAdmin
+            supabase
                 .from('usuario')
                 .select('*', { count: 'exact', head: true })
                 .eq('activo', true),
-            supabaseAdmin
+            supabase
                 .from('usuario')
                 .select('*', { count: 'exact', head: true })
                 .eq('verificado', true),
-            supabaseAdmin
+            supabase
                 .from('validacion_usuario')
                 .select('*', { count: 'exact', head: true })
                 .in('estado', ['pendiente', 'en_revision'])

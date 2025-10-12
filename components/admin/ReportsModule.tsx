@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface Reporte {
   reporte_id: number
@@ -82,9 +82,17 @@ export default function ReportsModule({ onClose }: ReportsModuleProps) {
     const [duracionBloqueo, setDuracionBloqueo] = useState(7)
     const [processing, setProcessing] = useState(false)
 
+    // Función auxiliar para obtener sesión
+    const getSession = async () => {
+        const supabase = getSupabaseClient()
+        if (!supabase) return null
+        const { data: { session } } = await supabase.auth.getSession()
+        return session
+    }
+
     const loadReportes = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) return
 
@@ -103,7 +111,7 @@ export default function ReportsModule({ onClose }: ReportsModuleProps) {
 
     const loadStats = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) return
 
@@ -125,7 +133,7 @@ export default function ReportsModule({ onClose }: ReportsModuleProps) {
 
         setProcessing(true)
         try {
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) return
 

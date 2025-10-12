@@ -1,30 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function requireAdmin(req: NextRequest) {
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return { ok: false, error: 'Unauthorized' as const }
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
 
     let isAdmin = false
     if (data.user.email) {
-        const { data: dbUser } = await supabaseAdmin
+        const { data: dbUser } = await supabase
             .from('usuario')
             .select('user_id, es_admin')
             .eq('email', data.user.email)
             .single()
         if (dbUser?.es_admin) isAdmin = true
         else if (dbUser?.user_id) {
-            const { data: roles } = await supabaseAdmin
+            const { data: roles } = await supabase
                 .from('usuario_rol')
                 .select('rol_id, activo')
                 .eq('usuario_id', dbUser.user_id)
                 .eq('activo', true)
             if (roles && roles.length > 0) {
                 const ids = roles.map(r => r.rol_id)
-                const { data: roleNames } = await supabaseAdmin
+                const { data: roleNames } = await supabase
                     .from('rol_usuario')
                     .select('rol_id, nombre, activo')
                     .in('rol_id', ids)
@@ -37,6 +39,7 @@ async function requireAdmin(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+        const supabase = getSupabaseClient()
     const guard = await requireAdmin(req)
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden' ? 403 : 401 })
 
@@ -47,10 +50,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'suspender') {
-        const { error: e1 } = await supabaseAdmin.from('usuario').update({ activo: false }).eq('user_id', userId)
+        const { error: e1 } = await supabase.from('usuario').update({ activo: false }).eq('user_id', userId)
         if (e1) return NextResponse.json({ error: e1.message }, { status: 400 })
         // Notificar al usuario
-        await supabaseAdmin.from('notificacion').insert({
+        await supabase.from('notificacion').insert({
             usuario_id: userId,
             tipo: 'suspension',
             titulo: 'Cuenta suspendida',
@@ -59,9 +62,9 @@ export async function POST(req: NextRequest) {
             es_email: false
         })
     } else {
-        const { error: e1 } = await supabaseAdmin.from('usuario').update({ activo: true }).eq('user_id', userId)
+        const { error: e1 } = await supabase.from('usuario').update({ activo: true }).eq('user_id', userId)
         if (e1) return NextResponse.json({ error: e1.message }, { status: 400 })
-        await supabaseAdmin.from('notificacion').insert({
+        await supabase.from('notificacion').insert({
             usuario_id: userId,
             tipo: 'suspension',
             titulo: 'Cuenta reactivada',

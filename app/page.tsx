@@ -28,9 +28,9 @@ import NotificationToast from '@/components/NotificationToast'
 
 // Tipos
 import { type User } from '@/lib/types'
-import { getCurrentUser, logoutUser } from '@/lib/auth'
+import { getCurrentUser, logoutUser, isUserAdmin } from '@/lib/auth'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import { useInactivity } from '@/hooks/useInactivity'
-import { supabase } from '@/lib/supabase'
 import { useNotifications } from '@/hooks/useNotifications'
 
 export default function HomePage() {
@@ -55,26 +55,72 @@ export default function HomePage() {
 
     // Listener para cambios de sesión de Supabase
     useEffect(() => {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.warn('⚠️ Supabase no está configurado. Ejecutando en modo estático.')
+            return
+        }
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+            console.log('Auth state changed:', event, session?.user?.email)
+            
+            if (event === 'SIGNED_OUT') {
                 setIsAuthenticated(false)
                 setCurrentUser(null)
+                localStorage.removeItem('ecoswap_user')
             } else if (event === 'SIGNED_IN' && session) {
+                try {
+                    console.log('🔄 Procesando SIGNED_IN para:', session.user.email)
+                    const user = await getCurrentUser()
+                    console.log('👤 Usuario obtenido:', user ? `${user.name} (${user.email})` : 'null')
+                    
+                    if (user) {
+                        setCurrentUser(user)
+                        setIsAuthenticated(true)
+                        setCurrentScreen('main')
+                        console.log('✅ Estado actualizado: isAuthenticated=true, currentUser=', user.name)
+                        
+                        // Verificar si es administrador y redirigir
+                        try {
+                            const { isAdmin } = await isUserAdmin(user.email)
+                            console.log('🔐 Es admin:', isAdmin)
+                            if (isAdmin) {
+                                console.log('🚀 Redirigiendo admin a dashboard')
+                                window.location.replace('/admin/verificaciones')
+                                return
+                            }
+                        } catch (error) {
+                            console.warn('⚠️ Error verificando rol de usuario:', error)
+                        }
+                    } else {
+                        console.log('❌ No se pudo obtener usuario, limpiando estado')
+                        setIsAuthenticated(false)
+                        setCurrentUser(null)
+                    }
+                } catch (error) {
+                    console.error('❌ Error al procesar sesión:', error)
+                    setIsAuthenticated(false)
+                    setCurrentUser(null)
+                }
+            } else if (event === 'TOKEN_REFRESHED') {
+                // Token refrescado, verificar sesión actual
                 try {
                     const user = await getCurrentUser()
                     if (user) {
                         setCurrentUser(user)
                         setIsAuthenticated(true)
-                        setCurrentScreen('main')
+                    } else {
+                        setIsAuthenticated(false)
+                        setCurrentUser(null)
                     }
                 } catch (error) {
-                    console.error('Error al procesar sesión:', error)
+                    console.error('Error al verificar sesión después del refresh:', error)
                 }
             }
         })
 
         return () => subscription.unsubscribe()
-    }, [isAuthenticated, currentUser])
+    }, [])
 
     // Verificación de autenticación real
     useEffect(() => {
@@ -88,13 +134,16 @@ export default function HomePage() {
         const checkAuth = async () => {
             try {
                 setIsLoading(true)
+                console.log('🔍 Iniciando verificación de autenticación...')
                 
                 // Primero intentar obtener usuario de getCurrentUser
                 let user = await getCurrentUser()
+                console.log('👤 Usuario de getCurrentUser:', user ? `${user.name} (${user.email})` : 'null')
                 
                 // Si no hay usuario, intentar obtener del localStorage como respaldo
                 if (!user) {
                     const cachedUser = localStorage.getItem('ecoswap_user')
+                    console.log('💾 Usuario en localStorage:', cachedUser ? 'presente' : 'ausente')
                     
                     // Buscar todas las claves de Supabase en localStorage
                     let supabaseSession = null
@@ -105,40 +154,49 @@ export default function HomePage() {
                             break
                         }
                     }
+                    console.log('🔑 Sesión Supabase en localStorage:', supabaseSession ? 'presente' : 'ausente')
                     
                     if (cachedUser && supabaseSession) {
                         try {
                             const parsedUser = JSON.parse(cachedUser)
                             user = parsedUser
+                            console.log('✅ Usuario restaurado desde localStorage:', user.name)
                         } catch (error) {
-                            // Solo loggear errores críticos
+                            console.error('❌ Error parseando usuario del localStorage:', error)
                         }
                     }
                 }
                 
                 if (user) {
-                    // Verificar si es administrador
-                    const { data: userData } = await supabase
-                        .from('usuario')
-                        .select('es_admin, activo')
-                        .eq('email', user.email)
-                        .single()
-
-                    // Si es administrador activo, redirigir al dashboard
-                    if (userData?.es_admin && userData?.activo) {
-                        window.location.replace('/admin/verificaciones')
-                        return
+                    console.log('✅ Usuario encontrado, configurando estado...')
+                    
+                    // Verificar si es administrador usando la función isUserAdmin
+                    try {
+                        const { isAdmin } = await isUserAdmin(user.email)
+                        console.log('🔐 Verificación de admin:', isAdmin)
+                        
+                        // Si es administrador activo, redirigir al dashboard
+                        if (isAdmin) {
+                            console.log('🚀 Redirigiendo admin a dashboard')
+                            window.location.replace('/admin/verificaciones')
+                            return
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Error verificando rol de usuario:', error)
                     }
-                    // Si es cliente, continuar con el flujo normal
 
                     setCurrentUser(user)
                     setIsAuthenticated(true)
                     setCurrentScreen('main')
+                    console.log('✅ Estado configurado: isAuthenticated=true, currentUser=', user.name)
+                    
                     // Leer query ?m= para abrir módulo específico
                     const params = new URLSearchParams(window.location.search)
                     const m = params.get('m')
                     setCurrentModule(m || 'products')
                 } else {
+                    console.log('❌ No se encontró usuario, configurando estado no autenticado')
+                    
                     // Si no hay usuario, verificar si debe mostrar auth
                     const params = new URLSearchParams(window.location.search)
                     const auth = params.get('auth')
@@ -147,12 +205,14 @@ export default function HomePage() {
                         // Mostrar interfaz de login
                         setCurrentScreen('auth')
                         setIsAuthenticated(false)
+                        console.log('🔐 Mostrando pantalla de autenticación')
                     } else {
                         // Mostrar productos por defecto
                         setCurrentScreen('main')
                         const m = params.get('m')
                         setCurrentModule(m || 'products')
                         setIsAuthenticated(false)
+                        console.log('🏠 Mostrando pantalla principal sin autenticación')
                     }
                 }
             } catch (error) {
@@ -365,31 +425,42 @@ export default function HomePage() {
                                     console.log('🔑 Clave Supabase encontrada:', supabaseKey ? 'Sí' : 'No')
                                     console.log('📄 Datos Supabase:', supabaseData ? 'Presentes' : 'Ausentes')
                                     
-                                    // Verificar sesión actual
-                                    supabase.auth.getSession().then(({ data: { session }, error }) => {
-                                        console.log('🔐 Sesión válida:', !!session)
-                                        console.log('👤 Usuario:', session?.user?.email || 'Ninguno')
-                                        console.log('⚠️ Error:', error || 'Ninguno')
-                                        
-                                        // Diagnóstico
-                                        if (!session && ecoswapUser) {
-                                            console.log('🚨 PROBLEMA: Hay usuario en localStorage pero no hay sesión de Supabase')
-                                        } else if (session && !ecoswapUser) {
-                                            console.log('🚨 PROBLEMA: Hay sesión de Supabase pero no hay usuario en localStorage')
-                                        } else if (!session && !ecoswapUser) {
-                                            console.log('✅ ESTADO: No hay sesión activa')
-                                        } else {
-                                            console.log('✅ ESTADO: Sesión válida y usuario presente')
-                                        }
-                                        
+                                    // Verificar sesión actual (solo si Supabase está configurado)
+                                    const supabase = getSupabaseClient()
+                                    if (supabase) {
+                                        supabase.auth.getSession().then(({ data: { session }, error }) => {
+                                            console.log('🔐 Sesión válida:', !!session)
+                                            console.log('👤 Usuario:', session?.user?.email || 'Ninguno')
+                                            console.log('⚠️ Error:', error || 'Ninguno')
+                                            
+                                            // Diagnóstico
+                                            if (!session && ecoswapUser) {
+                                                console.log('🚨 PROBLEMA: Hay usuario en localStorage pero no hay sesión de Supabase')
+                                            } else if (session && !ecoswapUser) {
+                                                console.log('🚨 PROBLEMA: Hay sesión de Supabase pero no hay usuario en localStorage')
+                                            } else if (!session && !ecoswapUser) {
+                                                console.log('✅ ESTADO: No hay sesión activa')
+                                            } else {
+                                                console.log('✅ ESTADO: Sesión válida y usuario presente')
+                                            }
+                                            
+                                            console.log('🔍 === FIN DE VALIDACIÓN ===')
+                                        })
+                                    } else {
+                                        console.log('⚠️ Supabase no está configurado. Modo estático activo.')
                                         console.log('🔍 === FIN DE VALIDACIÓN ===')
-                                    })
+                                    }
                                 }}
                                 className="px-3 py-1 bg-blue-100 text-blue-600 rounded text-sm hover:bg-blue-200"
                                 title="Validar estado de sesión"
                             >
                                 🔍 Validar
                             </button>
+                            
+                            {(() => {
+                                console.log('🎯 Header render - isAuthenticated:', isAuthenticated, 'currentUser:', currentUser ? currentUser.name : 'null')
+                                return null
+                            })()}
                             
                             {isAuthenticated && currentUser ? (
                                 <div className="flex items-center space-x-3">

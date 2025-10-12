@@ -64,9 +64,7 @@ export function clearProblematicCookies() {
             })
         })
 
-        if (isDev) {
-            console.log('🧹 Cookies problemáticas limpiadas')
-        }
+        // Cookies problemáticas limpiadas silenciosamente
         return true
     } catch (error) {
         if (isDev) {

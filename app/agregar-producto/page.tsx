@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeftIcon, PhotoIcon, TrashIcon, ExclamationTriangleIcon, CheckCircleIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import AuthGuard from '@/components/auth/AuthGuard'
+import { useAuth } from '@/hooks/useAuth'
+import { useSessionManager } from '@/hooks/useSessionManager'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface User {
   id: string
@@ -33,6 +36,8 @@ interface Product {
 
 export default function AgregarProductoPage() {
   const router = useRouter()
+  const { user, loading: authLoading, error: authError } = useAuth()
+  const { session, loading: sessionLoading, isValid: sessionValid, getAccessToken, refreshSession } = useSessionManager()
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -67,6 +72,34 @@ export default function AgregarProductoPage() {
   const [showSpecifications, setShowSpecifications] = useState(false)
   const [specKey, setSpecKey] = useState('')
   const [specValue, setSpecValue] = useState('')
+
+  // Manejar errores de autenticación y sesión
+  useEffect(() => {
+    if (authError) {
+      console.error('Error de autenticación:', authError)
+      router.push('/login')
+    }
+  }, [authError, router])
+
+  // Verificar si Supabase está configurado
+  useEffect(() => {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      (window as any).Swal.fire({
+        title: 'Error de Configuración',
+        text: 'La aplicación no está configurada correctamente. Contacta al administrador.',
+        icon: 'error',
+        confirmButtonText: 'Aceptar'
+      })
+    }
+  }, [])
+
+  // Redirigir si no hay sesión válida
+  useEffect(() => {
+    if (!sessionLoading && !sessionValid && !authLoading) {
+      router.push('/login')
+    }
+  }, [sessionLoading, sessionValid, authLoading, router])
 
   const categories = [
     'Electrónicos',
@@ -108,10 +141,20 @@ export default function AgregarProductoPage() {
   useEffect(() => {
     const loadLocations = async () => {
       try {
-        const { supabase } = await import('@/lib/supabase')
+        console.log('🔍 loadLocations: Verificando sesión...')
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.log('❌ loadLocations: Supabase no está configurado')
+            return
+        }
         const { data: { session } } = await supabase.auth.getSession()
+        console.log('🔍 loadLocations: Sesión obtenida:', !!session)
+        
         const email = session?.user?.email
-        if (!email) return
+        if (!email) {
+          console.log('⚠️ loadLocations: No hay email en la sesión')
+          return
+        }
 
         const { data: usuario } = await supabase
           .from('usuario')
@@ -205,9 +248,11 @@ export default function AgregarProductoPage() {
 
         // 2) Fallback: cargar desde tablas Supabase si existen
         try {
-          const { supabase } = await import('@/lib/supabase')
-          const { data } = await supabase.from('departamento').select('departamento_id, nombre').order('nombre')
-          setDeps((data || []).map((d:any)=>({ id:d.departamento_id, nombre:d.nombre })))
+          const supabase = getSupabaseClient()
+          if (supabase) {
+            const { data } = await supabase.from('departamento').select('departamento_id, nombre').order('nombre')
+            setDeps((data || []).map((d:any)=>({ id:d.departamento_id, nombre:d.nombre })))
+          }
         } catch {}
       } catch {}
     }
@@ -227,7 +272,6 @@ export default function AgregarProductoPage() {
         }
         // 2) Fallback a Supabase
         try {
-          const { supabase } = await import('@/lib/supabase')
           const { data } = await supabase
             .from('municipio')
             .select('municipio_id, nombre')
@@ -286,9 +330,32 @@ export default function AgregarProductoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    console.log('🚀 handleSubmit: Iniciando envío de producto...')
+    console.log('🔍 handleSubmit: sessionValid:', sessionValid)
+    console.log('🔍 handleSubmit: user:', !!user)
+    
+    const supabase = getSupabaseClient()
+    console.log('🔍 handleSubmit: supabase:', !!supabase)
+
+    // Verificar sesión antes de proceder
+    if (!sessionValid || !user) {
+      (window as any).Swal.fire({
+        title: 'Sesión Requerida',
+        text: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+        icon: 'warning',
+        confirmButtonText: 'Ir a Login',
+        confirmButtonColor: '#3B82F6'
+      }).then(() => {
+        router.push('/login')
+      })
+      return
+    }
+
     // Verificar si el usuario está verificado
+    console.log('🔍 handleSubmit: Verificando usuario...')
     const { isUserVerified } = await import('@/lib/auth')
     const isVerified = await isUserVerified()
+    console.log('🔍 handleSubmit: Usuario verificado:', isVerified)
     
     if (!isVerified) {
       // Mostrar mensaje de verificación requerida
@@ -314,16 +381,54 @@ export default function AgregarProductoPage() {
     setIsSubmitting(true)
 
     try {
-      // Obtener token de autenticación
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
+      // Verificar si Supabase está configurado
+      console.log('🔍 handleSubmit: Verificando configuración de Supabase...')
+      if (!supabase) {
         (window as any).Swal.fire({
-          title: 'Sesión Requerida',
-          text: 'No hay sesión activa. Por favor, inicia sesión.',
-          icon: 'warning',
+          title: 'Error de Configuración',
+          text: 'La aplicación no está configurada correctamente. Contacta al administrador.',
+          icon: 'error',
           confirmButtonText: 'Aceptar'
         })
         return
+      }
+      console.log('✅ handleSubmit: Supabase está configurado')
+
+      // Obtener token de autenticación con renovación automática
+      console.log('🔍 handleSubmit: Obteniendo token de acceso...')
+      const accessToken = await getAccessToken()
+      console.log('🔍 handleSubmit: Token obtenido:', !!accessToken)
+      
+      if (!accessToken) {
+        // Intentar renovar la sesión una vez más
+        const refreshed = await refreshSession()
+        if (!refreshed) {
+          (window as any).Swal.fire({
+            title: 'Sesión Expirada',
+            text: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+            icon: 'warning',
+            confirmButtonText: 'Ir a Login',
+            confirmButtonColor: '#3B82F6'
+          }).then(() => {
+            router.push('/login')
+          })
+          return
+        }
+        
+        // Intentar obtener el token nuevamente después de la renovación
+        const newToken = await getAccessToken()
+        if (!newToken) {
+          (window as any).Swal.fire({
+            title: 'Error de Sesión',
+            text: 'No se pudo renovar la sesión. Por favor, inicia sesión nuevamente.',
+            icon: 'error',
+            confirmButtonText: 'Ir a Login',
+            confirmButtonColor: '#3B82F6'
+          }).then(() => {
+            router.push('/login')
+          })
+          return
+        }
       }
 
       // Preparar datos para enviar (mapeando a valores válidos en BD)
@@ -353,14 +458,20 @@ export default function AgregarProductoPage() {
       }
 
       // Enviar producto a la API
+      console.log('🔍 handleSubmit: Obteniendo token final para API...')
+      const finalToken = await getAccessToken()
+      console.log('🔍 handleSubmit: Token final:', !!finalToken)
+      
+      console.log('📡 handleSubmit: Enviando producto a API...')
       const response = await fetch('/api/products', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${finalToken}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(productData)
       })
+      console.log('📡 handleSubmit: Respuesta de API:', response.status, response.ok)
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -389,6 +500,12 @@ export default function AgregarProductoPage() {
 
 
           try {
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+              console.log('❌ Subida de imagen: Supabase no está configurado')
+              continue
+            }
+            
             // Subir imagen al bucket
             const { data: uploadData, error: uploadError } = await supabase.storage
               .from('Ecoswap')
@@ -427,7 +544,7 @@ export default function AgregarProductoPage() {
           const imagesResponse = await fetch('/api/products/images', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${session.access_token}`,
+              'Authorization': `Bearer ${finalToken}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -483,8 +600,59 @@ export default function AgregarProductoPage() {
     return numPrice.toLocaleString('es-CO')
   }
 
+  // Mostrar loading mientras se verifica la autenticación
+  if (authLoading || sessionLoading || !sessionValid) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando sesión...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Mostrar error si Supabase no está configurado
+  const supabase = getSupabaseClient()
+  if (!supabase) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-red-800 mb-2">
+              Error de Configuración
+            </h2>
+            <p className="text-red-600 mb-4">
+              La aplicación no está configurada correctamente. 
+              Las variables de entorno de Supabase no están configuradas.
+            </p>
+            <div className="text-sm text-gray-600 mb-4">
+              <p>Necesitas configurar:</p>
+              <ul className="list-disc list-inside mt-2">
+                <li>NEXT_PUBLIC_SUPABASE_URL</li>
+                <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
+              </ul>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              Recargar Página
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Si no hay usuario autenticado, no mostrar nada (se redirige)
+  if (!user) {
+    return null
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -938,9 +1106,22 @@ export default function AgregarProductoPage() {
               <button
                 onClick={async ()=>{
                   try{
-                    const { supabase } = await import('@/lib/supabase')
+                    console.log('🔍 Guardar ubicación: Verificando sesión...')
+                    const supabase = getSupabaseClient()
+                    if (!supabase) {
+                      console.log('❌ Guardar ubicación: Supabase no está configurado')
+                      setShowLocationModal(false)
+                      return
+                    }
+                    
                     const { data: { session } } = await supabase.auth.getSession()
-                    if(!session?.user?.email){ setShowLocationModal(false); return }
+                    console.log('🔍 Guardar ubicación: Sesión obtenida:', !!session)
+                    
+                    if(!session?.user?.email){ 
+                      console.log('⚠️ Guardar ubicación: No hay email en la sesión')
+                      setShowLocationModal(false)
+                      return 
+                    }
                     const { data: usuario } = await supabase.from('usuario').select('user_id').eq('email', session.user.email).single()
                     if(!usuario){ setShowLocationModal(false); return }
                     const payload:any = {
@@ -983,6 +1164,7 @@ export default function AgregarProductoPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </AuthGuard>
   )
 }

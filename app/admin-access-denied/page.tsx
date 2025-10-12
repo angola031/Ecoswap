@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export default function AdminAccessDeniedPage() {
     const router = useRouter()
@@ -10,6 +10,7 @@ export default function AdminAccessDeniedPage() {
     useEffect(() => {
         // Verificar si el usuario es administrador
         const checkAdmin = async () => {
+            const supabase = getSupabaseClient()
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
                 const { data: userData } = await supabase

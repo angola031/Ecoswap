@@ -3,10 +3,24 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { ArrowLeftIcon, PhoneIcon, EnvelopeIcon, CalendarIcon, EyeIcon, ShareIcon, FlagIcon, StarIcon, MapPinIcon, TagIcon, CurrencyDollarIcon, HeartIcon, ChatBubbleLeftRightIcon, UserIcon } from '@heroicons/react/24/outline'
+// Importaciones individuales de Heroicons para evitar problemas de vendor chunks
+import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { PhoneIcon } from '@heroicons/react/24/outline'
+import { EnvelopeIcon } from '@heroicons/react/24/outline'
+import { CalendarIcon } from '@heroicons/react/24/outline'
+import { EyeIcon } from '@heroicons/react/24/outline'
+import { ShareIcon } from '@heroicons/react/24/outline'
+import { FlagIcon } from '@heroicons/react/24/outline'
+import { StarIcon } from '@heroicons/react/24/outline'
+import { MapPinIcon } from '@heroicons/react/24/outline'
+import { TagIcon } from '@heroicons/react/24/outline'
+import { CurrencyDollarIcon } from '@heroicons/react/24/outline'
+import { HeartIcon } from '@heroicons/react/24/outline'
+import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
+import { UserIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import { useRouter, useParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 
 interface User {
@@ -54,6 +68,7 @@ interface Product {
 // Función auxiliar para verificar si el usuario es el propietario
 async function checkIfUserIsOwner(authUserId: string, productOwnerId: number): Promise<boolean> {
   try {
+    const supabase = getSupabaseClient()
     const { data: usuario } = await supabase
       .from('usuario')
       .select('user_id')
@@ -99,6 +114,11 @@ export default function ProductDetailPage() {
 
       try {
         // Obtener token si hay sesión para que la API identifique al viewer (y no cuente vistas si es dueño)
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+          console.log('❌ Supabase no está configurado')
+          return
+        }
         const { data: { session } } = await supabase.auth.getSession()
         const headers: Record<string, string> = {}
         if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
@@ -117,7 +137,24 @@ export default function ProductDetailPage() {
         
         if (!isMounted) return
         
-        setProduct(product)
+        // Procesar las imágenes correctamente como en el perfil
+        const processedProduct = {
+          ...product,
+          imagenes: Array.isArray(product.imagenes) 
+            ? product.imagenes
+                .map((img) => {
+                  // Si es un objeto, extraer la URL como en el perfil
+                  if (typeof img === 'object' && img !== null) {
+                    return img.url_imagen || img.url || img.src
+                  }
+                  // Si ya es un string, usarlo directamente
+                  return String(img || '')
+                })
+                .filter(img => img && typeof img === 'string' && img.trim() !== '' && img !== 'undefined' && img !== 'null')
+            : []
+        }
+        
+        setProduct(processedProduct)
         // Prefijar vistas y likes con los valores de BD si vienen
         if (typeof product.visualizaciones === 'number') {
           setStats(prev => ({ ...prev, views: product.visualizaciones }))
@@ -169,6 +206,7 @@ export default function ProductDetailPage() {
   const handleInterest = async () => {
     // Si no hay sesión, redirigir a la interfaz de login del AuthModule
     try {
+      const supabase = getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
@@ -236,6 +274,11 @@ export default function ProductDetailPage() {
     
     // Si no hay sesión, redirigir a la interfaz de login del AuthModule
     try {
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        console.error('❌ Supabase no está configurado')
+        return
+      }
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
@@ -283,6 +326,11 @@ export default function ProductDetailPage() {
     }
     
     try {
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        console.error('❌ Supabase no está configurado')
+        return
+      }
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         await (window as any).Swal.fire({
@@ -357,6 +405,11 @@ export default function ProductDetailPage() {
 
   const handleChat = async () => {
     try {
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        console.error('❌ Supabase no está configurado')
+        return
+      }
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
@@ -526,17 +579,25 @@ export default function ProductDetailPage() {
             {/* Imagen Principal */}
               <div className="relative bg-white rounded-lg overflow-hidden shadow-sm">
               {product.imagenes.length > 0 ? (
-                <Image
+                <img
                   src={product.imagenes[currentImageIndex]}
                   alt={product.titulo}
-                  width={1200}
-                  height={600}
-                  className="w-full h-96 object-cover"
-                  priority
+                  className="w-full h-96 object-cover rounded-lg"
+                  onError={(e) => {
+                    console.error('❌ Error cargando imagen:', product.imagenes[currentImageIndex])
+                    e.currentTarget.src = '/default-product.png'
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Imagen cargada exitosamente:', product.imagenes[currentImageIndex])
+                  }}
                 />
               ) : (
-                <div className="w-full h-96 bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-500 text-lg">Sin imágenes</span>
+                <div className="w-full h-96 bg-gray-200 flex items-center justify-center rounded-lg">
+                  <img
+                    src="/default-product.png"
+                    alt="Sin imagen"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
               )}
 
@@ -588,13 +649,10 @@ export default function ProductDetailPage() {
                     className={`relative overflow-hidden rounded-lg border-2 ${index === currentImageIndex ? 'border-blue-500' : 'border-gray-200'
                       }`}
                   >
-                    <Image
+                    <img
                       src={image}
                       alt={`${product.titulo} ${index + 1}`}
-                      width={200}
-                      height={120}
-                      className="w-full h-20 object-cover"
-                      loading="lazy"
+                      className="w-full h-20 object-cover rounded-lg"
                     />
                   </button>
                 ))}

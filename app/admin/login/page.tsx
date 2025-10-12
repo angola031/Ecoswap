@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 function isEmailAdmin(email: string | null | undefined): boolean {
     if (!email) return false
@@ -22,6 +22,13 @@ export default function AdminLoginPage() {
         setError(null)
         setLoading(true)
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                console.log('❌ Supabase no está configurado')
+                setError('Error de configuración')
+                return
+            }
+            
             const { data, error } = await supabase.auth.signInWithPassword({ email, password })
             if (error) throw error
             const user = data.user
@@ -62,7 +69,10 @@ export default function AdminLoginPage() {
             }
 
             if (!isAdmin) {
-                await supabase.auth.signOut()
+                const supabase = getSupabaseClient()
+                if (supabase) {
+                    await supabase.auth.signOut()
+                }
                 throw new Error('Tu cuenta no tiene permisos de administrador')
             }
 

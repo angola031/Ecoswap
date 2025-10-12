@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface Product {
     producto_id: number
@@ -52,6 +52,11 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
 
         const fetchProducts = async () => {
             try {
+                const supabase = getSupabaseClient()
+                if (!supabase) {
+                    console.error('❌ Supabase no está configurado')
+                    return
+                }
                 
                 // Consultar directamente la base de datos como hace UsersSection
                 const { data: products, error } = await supabase
@@ -194,6 +199,12 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
 
     const validateProduct = async (productId: number, estadoValidacion: 'approved' | 'rejected', comentarios?: string) => {
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                console.error('❌ Supabase no está configurado')
+                return
+            }
+            
             console.log('🔍 ProductsSection: Validando producto directamente en BD:', {
                 productId,
                 estadoValidacion,

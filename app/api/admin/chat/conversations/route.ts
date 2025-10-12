@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Middleware para verificar admin
 async function requireAdmin(req: NextRequest) {
@@ -7,27 +7,28 @@ async function requireAdmin(req: NextRequest) {
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return { ok: false, error: 'Unauthorized' as const }
 
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
 
     // Verificar admin por DB
     let isAdmin = false
     if (data.user.email) {
-        const { data: dbUser } = await supabaseAdmin
+        const { data: dbUser } = await supabase
             .from('usuario')
             .select('user_id, es_admin')
             .eq('email', data.user.email)
             .single()
         if (dbUser?.es_admin) isAdmin = true
         else if (dbUser?.user_id) {
-            const { data: roles } = await supabaseAdmin
+            const { data: roles } = await supabase
                 .from('usuario_rol')
                 .select('rol_id, activo')
                 .eq('usuario_id', dbUser.user_id)
                 .eq('activo', true)
             if (roles && roles.length > 0) {
                 const ids = roles.map(r => r.rol_id)
-                const { data: roleNames } = await supabaseAdmin
+                const { data: roleNames } = await supabase
                     .from('rol_usuario')
                     .select('rol_id, nombre, activo')
                     .in('rol_id', ids)
@@ -45,8 +46,10 @@ export async function GET(req: NextRequest) {
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden' ? 403 : 401 })
 
     try {
+        const supabase = getSupabaseClient()
+        
         // Obtener todas las conversaciones activas
-        const { data: chats } = await supabaseAdmin
+        const { data: chats } = await supabase
             .from('chat')
             .select(`
                 chat_id,
@@ -77,12 +80,12 @@ export async function GET(req: NextRequest) {
 
             // Obtener información de ambos usuarios
             const [proponente, receptor] = await Promise.all([
-                supabaseAdmin
+                supabase
                     .from('usuario')
                     .select('user_id, nombre, apellido, email, foto_perfil, activo, verificado')
                     .eq('user_id', usuario_propone_id)
                     .single(),
-                supabaseAdmin
+                supabase
                     .from('usuario')
                     .select('user_id, nombre, apellido, email, foto_perfil, activo, verificado')
                     .eq('user_id', usuario_recibe_id)
@@ -90,7 +93,7 @@ export async function GET(req: NextRequest) {
             ])
 
             // Obtener último mensaje
-            const { data: lastMessage } = await supabaseAdmin
+            const { data: lastMessage } = await supabase
                 .from('mensaje')
                 .select('contenido, tipo, fecha_envio, usuario_id')
                 .eq('chat_id', chat.chat_id)
@@ -99,7 +102,7 @@ export async function GET(req: NextRequest) {
                 .single()
 
             // Contar mensajes no leídos
-            const { count: unreadCount } = await supabaseAdmin
+            const { count: unreadCount } = await supabase
                 .from('mensaje')
                 .select('mensaje_id', { count: 'exact', head: true })
                 .eq('chat_id', chat.chat_id)

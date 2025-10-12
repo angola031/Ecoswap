@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface DashboardStats {
     totalUsers: number
@@ -93,6 +93,7 @@ export default function DashboardStats() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
+                const supabase = getSupabaseClient()
 
                 // Obtener estadísticas de usuarios
                 const { data: users, error: usersError } = await supabase
@@ -184,6 +185,7 @@ export default function DashboardStats() {
         
         // Configurar actualización en tiempo real
         const setupRealtime = async () => {
+            const supabase = getSupabaseClient()
             // Suscribirse a cambios en la tabla usuario
             const userSubscription = supabase
                 .channel('dashboard-stats-users')

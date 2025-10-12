@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export default function SupabaseRedirectPage() {
     const router = useRouter()
@@ -33,6 +33,13 @@ export default function SupabaseRedirectPage() {
 
                 // Si hay tokens, establecer la sesión
                 if (accessToken && refreshToken) {
+                    const supabase = getSupabaseClient()
+                    if (!supabase) {
+                        console.log('❌ Supabase no está configurado')
+                        setError('Error de configuración')
+                        return
+                    }
+                    
                     const { data, error: sessionError } = await supabase.auth.setSession({
                         access_token: accessToken,
                         refresh_token: refreshToken

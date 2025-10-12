@@ -3,7 +3,6 @@
  * Ejecuta este script para verificar que todo esté configurado correctamente
  */
 
-const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 // Configuración

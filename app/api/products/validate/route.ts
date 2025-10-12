@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function authAdmin(req: NextRequest) {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+        console.error('❌ API: Supabase no está configurado')
+        return null
+    }
+    
     const auth = req.headers.get('authorization') || ''
     
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
@@ -12,7 +18,7 @@ async function authAdmin(req: NextRequest) {
     }
     
     try {
-        const { data, error } = await supabaseAdmin.auth.getUser(token)
+        const { data, error } = await supabase.auth.getUser(token)
         
         if (!data?.user) {
             console.error('❌ API: No hay usuario en la respuesta de auth')
@@ -20,7 +26,7 @@ async function authAdmin(req: NextRequest) {
         }
 
         // Verificar si el usuario es administrador
-        const { data: userData, error: userError } = await supabaseAdmin
+        const { data: userData, error: userError } = await supabase
             .from('usuario')
             .select('user_id, email, es_admin')
             .eq('auth_user_id', data.user.id)
@@ -46,6 +52,12 @@ async function authAdmin(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ API: Supabase no está configurado')
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+
         const admin = await authAdmin(req)
         if (!admin) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -67,7 +79,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Actualizar el producto directamente
-        const { data: productData, error: productError } = await supabaseAdmin
+        const { data: productData, error: productError } = await supabase
             .from('producto')
             .select('user_id, titulo')
             .eq('producto_id', producto_id)
@@ -79,7 +91,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Actualizar el estado de validación
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await supabase
             .from('producto')
             .update({
                 estado_validacion: estado_validacion,
@@ -96,7 +108,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Crear notificación para el usuario propietario del producto
-        const { error: notificationError } = await supabaseAdmin
+        const { error: notificationError } = await supabase
             .from('notificacion')
             .insert({
                 usuario_id: productData.user_id,
@@ -127,13 +139,19 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ API: Supabase no está configurado')
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+
         const admin = await authAdmin(req)
         if (!admin) {
             return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
         }
 
         // Obtener productos
-        const { data: products, error } = await supabaseAdmin
+        const { data: products, error } = await supabase
             .from('producto')
             .select(`
                 producto_id,

@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
+  const supabase = getSupabaseClient()
+  if (!supabase) return null
+  
   const auth = req.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
   
   if (!token) return null
   
   try {
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return null
     
     // Obtener user_id del usuario autenticado
-    const { data: usuario } = await supabaseAdmin
+    const { data: usuario } = await supabase
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', data.user.id)
@@ -30,6 +33,12 @@ export async function GET(
   { params }: { params: { userId: string } }
 ) {
   try {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      console.error('❌ API Users: Supabase no está configurado')
+      return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+    }
+
     const userId = Number(params.userId)
     if (!userId) {
       return NextResponse.json({ error: 'ID de usuario inválido' }, { status: 400 })
@@ -42,7 +51,7 @@ export async function GET(
     }
 
     // Obtener información del usuario
-    const { data: usuario, error } = await supabaseAdmin
+    const { data: usuario, error } = await supabase
       .from('usuario')
       .select(`
         user_id,

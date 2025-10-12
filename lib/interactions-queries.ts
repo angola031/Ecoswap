@@ -1,5 +1,5 @@
 // Funciones de base de datos para el módulo de interacciones
-import { supabase } from './supabase'
+import { getSupabaseClient } from './supabase-client'
 import { 
   IntercambioWithDetails, 
   ChatWithDetails, 
@@ -23,6 +23,15 @@ import {
 
 // ===== CONSULTAS DE INTERACCIONES =====
 
+// Función auxiliar para obtener cliente de Supabase
+function getSupabase() {
+  const supabase = getSupabaseClient()
+  if (!supabase) {
+    throw new Error('Supabase no está configurado')
+  }
+  return supabase
+}
+
 /**
  * Obtiene todas las interacciones de un usuario con filtros opcionales
  */
@@ -33,6 +42,7 @@ export async function getInteractions(
   limit: number = 20
 ): Promise<ApiResponse<InteractionsResponse>> {
   try {
+    const supabase = getSupabase()
     const offset = (page - 1) * limit
 
     // Construir consulta base
@@ -274,6 +284,8 @@ export async function getInteractionDetail(
   userId: number
 ): Promise<ApiResponse<InteractionDetail>> {
   try {
+    const supabase = getSupabase()
+    
     // Obtener intercambio con todos los detalles
     const { data: intercambio, error: intercambioError } = await supabase
       .from('intercambio')
@@ -566,6 +578,8 @@ export async function getInteractionDetail(
  */
 export async function getInteractionStats(userId: number): Promise<InteractionStats> {
   try {
+    const supabase = getSupabase()
+    
     // Obtener conteos por estado
     const { data: stats, error } = await supabase
       .from('intercambio')
@@ -652,6 +666,7 @@ export async function acceptExchange(
     notes?: string
   }
 ): Promise<ApiResponse<boolean>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede aceptar este intercambio
     const { data: intercambio, error: fetchError } = await supabase
@@ -714,6 +729,7 @@ export async function rejectExchange(
   userId: number,
   reason: string
 ): Promise<ApiResponse<boolean>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede rechazar este intercambio
     const { data: intercambio, error: fetchError } = await supabase
@@ -773,6 +789,7 @@ export async function cancelExchange(
   userId: number,
   reason?: string
 ): Promise<ApiResponse<boolean>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede cancelar este intercambio
     const { data: intercambio, error: fetchError } = await supabase
@@ -835,6 +852,7 @@ export async function completeExchange(
   exchangeId: string,
   userId: number
 ): Promise<ApiResponse<boolean>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede completar este intercambio
     const { data: intercambio, error: fetchError } = await supabase
@@ -912,6 +930,7 @@ export async function createProposal(
     lugar_encuentro?: string
   }
 ): Promise<ApiResponse<Propuesta>> {
+  const supabase = getSupabaseClient();
   try {
     // Obtener información del chat para validar
     const { data: chat, error: chatError } = await supabase
@@ -992,6 +1011,7 @@ export async function respondToProposal(
     respuesta: string
   }
 ): Promise<ApiResponse<boolean>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede responder a esta propuesta
     const { data: propuesta, error: fetchError } = await supabase
@@ -1057,6 +1077,7 @@ export async function createRating(
     es_publica?: boolean
   }
 ): Promise<ApiResponse<Calificacion>> {
+  const supabase = getSupabaseClient();
   try {
     // Verificar que el usuario puede calificar este intercambio
     const { data: intercambio, error: fetchError } = await supabase
@@ -1136,6 +1157,7 @@ export async function getUserActivities(
   userId: number,
   limit: number = 50
 ): Promise<ApiResponse<UserActivity[]>> {
+  const supabase = getSupabaseClient();
   try {
     // Obtener actividades de diferentes fuentes
     const activities: UserActivity[] = []
@@ -1255,6 +1277,7 @@ export async function getSystemEvents(
   userId: number,
   limit: number = 20
 ): Promise<ApiResponse<SystemEvent[]>> {
+  const supabase = getSupabaseClient();
   try {
     // Obtener notificaciones del sistema
     const { data: notificaciones, error } = await supabase

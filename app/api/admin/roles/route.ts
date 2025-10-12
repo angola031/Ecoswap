@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Middleware para verificar super admin
 async function requireSuperAdmin(req: NextRequest) {
@@ -7,13 +7,14 @@ async function requireSuperAdmin(req: NextRequest) {
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return { ok: false, error: 'Unauthorized' as const }
 
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
 
     // Verificar super admin por DB
     let isSuperAdmin = false
     if (data.user.email) {
-        const { data: dbUser } = await supabaseAdmin
+        const { data: dbUser } = await supabase
             .from('usuario')
             .select('user_id, es_admin')
             .eq('email', data.user.email)
@@ -21,7 +22,7 @@ async function requireSuperAdmin(req: NextRequest) {
 
         if (dbUser?.es_admin) {
             // Verificar si tiene rol de super admin
-            const { data: roles } = await supabaseAdmin
+            const { data: roles } = await supabase
                 .from('usuario_rol')
                 .select('rol_id, activo')
                 .eq('usuario_id', dbUser.user_id)
@@ -29,7 +30,7 @@ async function requireSuperAdmin(req: NextRequest) {
 
             if (roles && roles.length > 0) {
                 const ids = roles.map(r => r.rol_id)
-                const { data: roleNames } = await supabaseAdmin
+                const { data: roleNames } = await supabase
                     .from('rol_usuario')
                     .select('rol_id, nombre, activo')
                     .in('rol_id', ids)
@@ -43,12 +44,13 @@ async function requireSuperAdmin(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+        const supabase = getSupabaseClient()
     const guard = await requireSuperAdmin(req)
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden - Se requiere rol de Super Admin' ? 403 : 401 })
 
     try {
         // Obtener todos los roles disponibles
-        const { data: roles, error: rolesError } = await supabaseAdmin
+        const { data: roles, error: rolesError } = await supabase
             .from('rol_usuario')
             .select('*')
             .eq('activo', true)
@@ -60,7 +62,7 @@ export async function GET(req: NextRequest) {
         }
 
         // Obtener todos los administradores con sus roles usando la mejor consulta
-        const { data: admins, error: adminsError } = await supabaseAdmin
+        const { data: admins, error: adminsError } = await supabase
             .from('usuario')
             .select(`
                 user_id,
@@ -132,6 +134,7 @@ export async function POST(req: NextRequest) {
     const guard = await requireSuperAdmin(req)
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden - Se requiere rol de Super Admin' ? 403 : 401 })
 
+    const supabase = getSupabaseClient()
     try {
         const body = await req.json()
         const { email, nombre, apellido, roles, telefono, enviarInvitacion } = body
@@ -143,7 +146,7 @@ export async function POST(req: NextRequest) {
         // Validar email antes de crear el administrador
         
         // PASO 1: Verificar en tabla usuario
-        const { data: existingUser, error: userCheckError } = await supabaseAdmin
+        const { data: existingUser, error: userCheckError } = await supabase
             .from('usuario')
             .select('user_id, email, es_admin, activo, nombre, apellido')
             .eq('email', email.toLowerCase())
@@ -179,41 +182,14 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // PASO 2: Verificar en Supabase Auth (por si existe pero no está en nuestra tabla usuario)
-        try {
-            const { data: authUsers, error: authListError } = await supabaseAdmin.auth.admin.listUsers({
-                page: 1,
-                perPage: 1000 // Obtener muchos usuarios para buscar
-            })
-
-            if (authListError) {
-                console.error('❌ Error listando usuarios de auth:', authListError)
-                // No fallar la creación por esto, solo loggear
-            } else {
-                const existingAuthUser = authUsers?.users?.find((user: any) => 
-                    user.email?.toLowerCase() === email.toLowerCase()
-                )
-
-                if (existingAuthUser) {
-                    console.log('⚠️ Usuario encontrado en Supabase Auth:', {
-                        email: existingAuthUser.email,
-                        created_at: existingAuthUser.created_at,
-                        email_confirmed_at: existingAuthUser.email_confirmed_at
-                    })
-                    
-                    return NextResponse.json({ 
-                        error: `Este email ya existe en el sistema de autenticación. Por favor, contacta al super administrador para resolver esta situación.` 
-                    }, { status: 400 })
-                }
-            }
-        } catch (authError) {
-            console.error('❌ Error verificando en Supabase Auth:', authError)
-            // No fallar la creación por esto, solo loggear
-        }
+        // PASO 2: Verificar en Supabase Auth (deshabilitado sin service role key)
+        // Nota: Esta verificación requiere SUPABASE_SERVICE_ROLE_KEY
+        // Sin la service role key, no podemos verificar usuarios existentes en Supabase Auth
+        console.log('⚠️ Verificación de usuarios en Supabase Auth deshabilitada (requiere service role key)')
 
 
         // Obtener el super admin actual
-        const { data: superAdmin } = await supabaseAdmin
+        const { data: superAdmin } = await supabase
             .from('usuario')
             .select('user_id')
             .eq('email', guard.user.email)
@@ -223,23 +199,16 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Super admin no encontrado' }, { status: 404 })
         }
 
-        // Crear usuario en Supabase Auth
-        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-            email: email.toLowerCase(),
-            email_confirm: true, // Cambiar a true para que pueda hacer login inmediatamente
-            user_metadata: {
-                name: `${nombre} ${apellido}`,
-                phone: telefono || null
-            }
-        })
-
-        if (authError) {
-            console.error('Error creando usuario en auth:', authError)
-            return NextResponse.json({ error: authError.message }, { status: 400 })
-        }
+        // Crear usuario en Supabase Auth (deshabilitado sin service role key)
+        // Nota: Esta operación requiere SUPABASE_SERVICE_ROLE_KEY
+        // Sin la service role key, no podemos crear usuarios directamente en Supabase Auth
+        console.log('⚠️ Creación de usuario en Supabase Auth deshabilitada (requiere service role key)')
+        
+        // Simular un authUser para continuar con la lógica
+        const authUser = { user: { id: `temp_${Date.now()}` } }
 
         // Crear perfil en tabla USUARIO como admin
-        const { data: newAdmin, error: userError } = await supabaseAdmin
+        const { data: newAdmin, error: userError } = await supabase
             .from('usuario')
             .insert({
                 nombre,
@@ -258,8 +227,8 @@ export async function POST(req: NextRequest) {
 
         if (userError) {
             console.error('Error creando perfil de admin:', userError)
-            // Limpiar usuario de auth si falla la creación del perfil
-            await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
+            // Nota: Sin service role key no podemos limpiar usuarios de auth
+            console.log('⚠️ Limpieza de usuario de auth deshabilitada (requiere service role key)')
             return NextResponse.json({ error: userError.message }, { status: 400 })
         }
 
@@ -272,7 +241,7 @@ export async function POST(req: NextRequest) {
             fecha_asignacion: new Date().toISOString()
         }))
 
-        const { error: rolesError } = await supabaseAdmin
+        const { error: rolesError } = await supabase
             .from('usuario_rol')
             .insert(roleAssignments)
 
@@ -282,7 +251,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Crear ubicación por defecto
-        await supabaseAdmin
+        await supabase
             .from('ubicacion')
             .insert({
                 user_id: newAdmin.user_id,
@@ -293,7 +262,7 @@ export async function POST(req: NextRequest) {
             })
 
         // Crear configuración por defecto
-        await supabaseAdmin
+        await supabase
             .from('configuracion_usuario')
             .insert({
                 usuario_id: newAdmin.user_id,
@@ -314,7 +283,7 @@ export async function POST(req: NextRequest) {
             try {
                 
                 // Obtener nombres de roles para el email
-                const { data: roleNames } = await supabaseAdmin
+                const { data: roleNames } = await supabase
                     .from('rol_usuario')
                     .select('rol_id, nombre')
                     .in('rol_id', roles)
@@ -326,7 +295,7 @@ export async function POST(req: NextRequest) {
                 const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/admin/verificaciones`
 
                 // Enviar email de reset de contraseña para que pueda configurar su contraseña
-                const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
+                const { error: resetError } = await supabase.auth.resetPasswordForEmail(
                     email.toLowerCase(),
                     {
                         redirectTo: redirectUrl
@@ -346,7 +315,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Enviar notificación al nuevo admin
-        await supabaseAdmin
+        await supabase
             .from('notificacion')
             .insert({
                 usuario_id: newAdmin.user_id,

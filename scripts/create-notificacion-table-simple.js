@@ -4,7 +4,6 @@
  * Script simplificado para crear la tabla NOTIFICACION usando Supabase
  */
 
-const { createClient } = require('@supabase/supabase-js')
 
 // Configuración de Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

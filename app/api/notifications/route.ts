@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function authUser(req: NextRequest) {
+    const supabase = getSupabaseClient()
+    if (!supabase) return null
+    
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return null
     
-    const { data } = await supabaseAdmin.auth.getUser(token)
+    const { data } = await supabase.auth.getUser(token)
     if (!data?.user) return null
 
     // Obtener usuario de la base de datos
-    const { data: userData } = await supabaseAdmin
+    const { data: userData } = await supabase
         .from('usuario')
         .select('user_id, email')
         .eq('email', data.user.email)
@@ -30,7 +33,12 @@ export async function GET(req: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '20')
         const unreadOnly = searchParams.get('unread_only') === 'true'
 
-        let query = supabaseAdmin
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+        
+        let query = supabase
             .from('notificacion')
             .select(`
                 notificacion_id,
@@ -81,7 +89,8 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: 'notification_ids debe ser un array' }, { status: 400 })
         }
 
-        const { error } = await supabaseAdmin
+        const supabase = getSupabaseClient()
+        const { error } = await supabase
             .from('notificacion')
             .update({ leida: mark_as_read })
             .eq('usuario_id', user.user_id)

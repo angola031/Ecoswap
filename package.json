@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:setup": "node scripts/setup-dev.js",
     "build": "next build",
     "build:static": "node scripts/build-static.js",
     "build:cloudflare": "next build && next export",
@@ -21,7 +22,7 @@
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
-    "@heroicons/react": "^2.0.18",
+    "@heroicons/react": "^2.2.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.57.0",
     "@tailwindcss/forms": "^0.5.10",

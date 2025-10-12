@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { supabase } from '@/lib/supabase'
 import { ChatInfo, ChatMessage, ChatProposal } from '@/lib/types/chat'
 import AuthGuard from '@/components/auth/AuthGuard'
+import { getSupabaseClient } from '@/lib/supabase-client'
 // import imageCompression from 'browser-image-compression' // Importación dinámica
 
 
@@ -151,6 +151,9 @@ function ChatPageContent() {
         }
       })
 
+      const supabase = getSupabaseClient()
+      if (!supabase) return
+      
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       if (!token) return
@@ -200,6 +203,9 @@ function ChatPageContent() {
     
     const getCurrentUser = async () => {
       try {
+        const supabase = getSupabaseClient()
+        if (!supabase) return
+        
         const { data: { user } } = await supabase.auth.getUser()
         if (isMounted && user) {
           // Obtener el user_id de la tabla usuario
@@ -249,6 +255,9 @@ function ChatPageContent() {
         setError(null)
         
         // Obtener token de sesión
+        const supabase = getSupabaseClient()
+        if (!supabase) return
+        
         const { data: { session } } = await supabase.auth.getSession()
         if (!session?.access_token) {
           throw new Error('No hay sesión activa')
@@ -297,6 +306,9 @@ function ChatPageContent() {
       try {
         
         // Obtener token de sesión
+        const supabase = getSupabaseClient()
+        if (!supabase) return
+        
         const { data: { session } } = await supabase.auth.getSession()
         if (!session?.access_token) {
           return
@@ -383,6 +395,7 @@ function ChatPageContent() {
     const loadProposals = async () => {
       if (!chatId || !currentUserId) return
       
+      const supabase = getSupabaseClient()
       try {
         // Obtener token de sesión
         const { data: { session } } = await supabase.auth.getSession()
@@ -419,6 +432,8 @@ function ChatPageContent() {
 
   // Sistema de realtime para mensajes instantáneos
   useEffect(() => {
+    const supabase = getSupabaseClient()
+    
     // Limpiar canal anterior
     if (realtimeChannel) {
       supabase.removeChannel(realtimeChannel)
@@ -531,6 +546,7 @@ function ChatPageContent() {
   useEffect(() => {
     if (!chatId || !currentUserId) return
 
+    const supabase = getSupabaseClient()
     const chatIdNum = Number(chatId)
     let lastMessageId = messages.length > 0 
       ? Number(messages[messages.length - 1].id)
@@ -776,6 +792,8 @@ function ChatPageContent() {
       return
     }
     
+    const supabase = getSupabaseClient()
+    
     const messageContent = newMessage.trim()
     setNewMessage('')
     
@@ -906,6 +924,7 @@ function ChatPageContent() {
   const handleSubmitProposal = async (proposalData: any) => {
     if (!chatId || !currentUserId) return
 
+    const supabase = getSupabaseClient()
     setIsSubmittingProposal(true)
     
     try {
@@ -1038,6 +1057,8 @@ function ChatPageContent() {
   const handleSubmitProposalFromModal = async () => {
     if (!chatId || !currentUserId) return
 
+    const supabase = getSupabaseClient()
+    
     try {
       // Obtener datos del formulario
       const type = (document.getElementById('proposal-type') as HTMLSelectElement)?.value
@@ -1149,6 +1170,8 @@ function ChatPageContent() {
   const handleRespondToProposal = async (proposalId: number, response: 'aceptar' | 'rechazar' | 'contrapropuesta', reason?: string) => {
     if (!chatId) return
 
+    const supabase = getSupabaseClient()
+    
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
@@ -1311,6 +1334,8 @@ function ChatPageContent() {
 
   // Función para enviar notificación push sobre la propuesta
   const sendProposalNotification = async (proposal: any) => {
+    const supabase = getSupabaseClient()
+    
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
@@ -1356,6 +1381,8 @@ function ChatPageContent() {
 
   // Función para enviar notificación push sobre la respuesta a propuesta
   const sendProposalResponseNotification = async (proposal: any, response: string) => {
+    const supabase = getSupabaseClient()
+    
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
@@ -1532,6 +1559,7 @@ function ChatPageContent() {
   const uploadImageWithComment = async () => {
     if (!imagePreview.file || !chatId || !currentUserId || !currentUserInfo) return
 
+    const supabase = getSupabaseClient()
 
     // Crear mensaje temporal optimista
     const tempId = `temp-image-${Date.now()}`
@@ -1956,6 +1984,8 @@ function ChatPageContent() {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={async () => {
+                            const supabase = getSupabaseClient()
+                            
                             try {
                               const { data: { session } } = await supabase.auth.getSession()
                               if (!session?.access_token) return

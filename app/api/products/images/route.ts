@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      console.error('❌ API Images: Supabase no está configurado')
+      return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+    }
     
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
@@ -13,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verificar autenticación
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+    const { data: { user } } = await supabase.auth.getUser(token)
     if (!user) {
       console.error('❌ API Images: Usuario no autenticado')
       return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 })
@@ -29,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verificar que el producto existe
-    const { data: productData, error: productError } = await supabaseAdmin
+    const { data: productData, error: productError } = await supabase
       .from('producto')
       .select('producto_id, user_id')
       .eq('producto_id', producto_id)
@@ -43,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verificar que el usuario autenticado sea el propietario (versión simplificada)
-    const { data: userData } = await supabaseAdmin
+    const { data: userData } = await supabase
       .from('usuario')
       .select('user_id, email')
       .eq('email', user.email)
@@ -69,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     // Insertar imágenes en la base de datos
     
-    const { data: insertedImages, error: insertError } = await supabaseAdmin
+    const { data: insertedImages, error: insertError } = await supabase
       .from('imagen_producto')
       .insert(imagenes)
       .select()
@@ -99,6 +104,12 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      console.error('❌ API Images: Supabase no está configurado')
+      return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+    }
+
     const { searchParams } = new URL(req.url)
     const productoId = searchParams.get('producto_id')
 
@@ -109,7 +120,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Obtener imágenes del producto
-    const { data: imagenes, error } = await supabaseAdmin
+    const { data: imagenes, error } = await supabase
       .from('imagen_producto')
       .select('*')
       .eq('producto_id', productoId)

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import {
     UserIcon,
     MapPinIcon,
@@ -21,7 +22,6 @@ import {
     BookmarkIcon
 } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { uploadUserProfileImage } from '@/lib/storage'
 
 interface BadgeDetail {
@@ -164,6 +164,13 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
             try {
                 setIsLoading(true)
 
+                const supabase = getSupabaseClient()
+                if (!supabase) {
+                    setProfileData(null)
+                    setIsLoading(false)
+                    return
+                }
+                
                 const { data: { session } } = await supabase.auth.getSession()
                 const email = session?.user?.email || currentUser?.email
 
@@ -441,6 +448,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     const [deletingId, setDeletingId] = useState<string | null>(null)
 
     const pauseOrResumeProduct = async (productId: string, pause: boolean) => {
+        const supabase = getSupabaseClient()
         try {
             setPausingId(productId)
             const { error } = await supabase
@@ -462,6 +470,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     }
 
     const deleteProduct = async (productId: string) => {
+        const supabase = getSupabaseClient()
         const yes = confirm('¿Seguro que deseas eliminar este producto y su publicación? Esta acción no se puede deshacer.')
         if (!yes) return
         try {
@@ -641,6 +650,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         <button
                                             onClick={async () => {
                                                 if (!selectedFile) return
+                                                const supabase = getSupabaseClient()
                                                 try {
                                                     setIsUploading(true)
                                                     setUploadError(null)

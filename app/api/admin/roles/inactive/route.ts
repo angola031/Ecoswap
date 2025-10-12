@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Middleware para verificar super admin
 async function requireSuperAdmin(req: NextRequest) {
@@ -7,22 +7,23 @@ async function requireSuperAdmin(req: NextRequest) {
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return { ok: false, error: 'Unauthorized' as const }
 
-    if (!supabaseAdmin) return { ok: false, error: 'Database not configured' as const }
+    const supabase = getSupabaseClient()
+    if (!supabase) return { ok: false, error: 'Database not configured' as const }
 
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
 
     // Verificar super admin por DB
     let isSuperAdmin = false
     if (data.user.email) {
-        const { data: dbUser } = await supabaseAdmin
+        const { data: dbUser } = await supabase
             .from('usuario')
             .select('user_id, es_admin')
             .eq('email', data.user.email)
             .single()
 
         if (dbUser?.es_admin) {
-            const { data: roles } = await supabaseAdmin
+            const { data: roles } = await supabase
                 .from('usuario_rol')
                 .select('rol_id, activo')
                 .eq('usuario_id', dbUser.user_id)
@@ -30,7 +31,7 @@ async function requireSuperAdmin(req: NextRequest) {
 
             if (roles && roles.length > 0) {
                 const ids = roles.map(r => r.rol_id)
-                const { data: roleNames } = await supabaseAdmin
+                const { data: roleNames } = await supabase
                     .from('rol_usuario')
                     .select('rol_id, nombre, activo')
                     .in('rol_id', ids)
@@ -47,11 +48,12 @@ export async function GET(req: NextRequest) {
     const guard = await requireSuperAdmin(req)
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden - Se requiere rol de Super Admin' ? 403 : 401 })
 
-    if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    const supabase = getSupabaseClient()
+    if (!supabase) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
 
     try {
         // Obtener administradores desactivados
-        const { data: inactiveAdmins, error: adminsError } = await supabaseAdmin
+        const { data: inactiveAdmins, error: adminsError } = await supabase
             .from('usuario')
             .select(`
                 user_id,

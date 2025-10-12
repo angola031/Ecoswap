@@ -2,7 +2,8 @@
 // 🚀 UTILIDADES DE CONSULTAS PARA ADMINISTRADORES - ECOSWAP
 // =============================================
 
-import { supabase } from './supabase'
+import { getSupabaseClient } from './supabase-client'
+
 
 // Interfaces para tipado
 export interface AdminUser {
@@ -38,6 +39,7 @@ export interface AdminRole {
  */
 export async function getAllAdmins(): Promise<{ data: AdminUser[] | null; error: string | null }> {
     try {
+        const supabase = getSupabaseClient()
         const { data, error } = await supabase
             .from('usuario')
             .select(`
@@ -104,6 +106,7 @@ export async function getAllAdmins(): Promise<{ data: AdminUser[] | null; error:
  * Obtiene solo super administradores
  */
 export async function getSuperAdmins(): Promise<{ data: AdminUser[] | null; error: string | null }> {
+    const supabase = getSupabaseClient();
     try {
         const { data, error } = await supabase
             .from('usuario')
@@ -145,6 +148,7 @@ export async function getSuperAdmins(): Promise<{ data: AdminUser[] | null; erro
  * Verifica si un usuario es administrador
  */
 export async function isUserAdmin(email: string): Promise<{ isAdmin: boolean; roles: string[]; error: string | null }> {
+    const supabase = getSupabaseClient();
     try {
         const { data, error } = await supabase
             .from('usuario')
@@ -183,6 +187,7 @@ export async function isUserAdmin(email: string): Promise<{ isAdmin: boolean; ro
  * Obtiene administradores con un permiso específico
  */
 export async function getAdminsWithPermission(permission: string): Promise<{ data: AdminUser[] | null; error: string | null }> {
+    const supabase = getSupabaseClient();
     try {
         const { data, error } = await supabase
             .from('usuario')
@@ -221,6 +226,7 @@ export async function getAdminsWithPermission(permission: string): Promise<{ dat
  * Obtiene roles disponibles
  */
 export async function getAvailableRoles(): Promise<{ data: any[] | null; error: string | null }> {
+    const supabase = getSupabaseClient();
     try {
         const { data, error } = await supabase
             .from('rol_usuario')
@@ -251,6 +257,7 @@ export async function getAvailableRoles(): Promise<{ data: any[] | null; error: 
  * Obtiene historial de asignaciones de roles
  */
 export async function getRoleAssignmentHistory(): Promise<{ data: any[] | null; error: string | null }> {
+    const supabase = getSupabaseClient();
     try {
         const { data, error } = await supabase
             .from('usuario_rol')

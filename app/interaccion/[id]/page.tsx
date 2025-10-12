@@ -27,8 +27,8 @@ import {
     TagIcon
 } from '@heroicons/react/24/outline'
 import { useRouter, useParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { InteractionDetail } from '@/lib/types/interactions'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface User {
     id: string
@@ -137,16 +137,7 @@ const mockInteraction: Interaction = {
     status: 'in_progress',
     title: 'Intercambio Guitarra por Amplificador',
     description: 'Intercambio de guitarra acústica por amplificador de guitarra. Ambos productos están en excelente estado.',
-    product: {
-        id: '1',
-        title: 'Guitarra Acústica Yamaha',
-        image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
-        price: 450000,
-        currency: 'COP',
-        description: 'Guitarra acústica Yamaha en excelente estado. Perfecta para principiantes y músicos intermedios.',
-        condition: 'excellent',
-        category: 'music'
-    },
+    product: null,
     otherUser: {
         id: '2',
         name: 'Carlos Mendoza',
@@ -255,6 +246,14 @@ export default function InteraccionDetailPage() {
     const router = useRouter()
     const params = useParams()
     const interactionId = params.id as string
+    
+    // Función auxiliar para obtener sesión de Supabase
+    const getSession = async () => {
+        const supabase = getSupabaseClient()
+        if (!supabase) return null
+        const { data: { session } } = await supabase.auth.getSession()
+        return session
+    }
 
     const [interaction, setInteraction] = useState<Interaction | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -288,10 +287,17 @@ export default function InteraccionDetailPage() {
 
             try {
                 // Obtener sesión de Supabase
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+                const supabase = getSupabaseClient()
+                if (!supabase) {
+                    console.log('❌ Supabase no está configurado')
+                    setError('Error de configuración')
+                    return
+                }
                 
-                if (sessionError) {
-                    console.error('Error obteniendo sesión:', sessionError)
+                const session = await getSession()
+                
+                if (!session) {
+                    console.error('Error obteniendo sesión')
                     setError('Error de autenticación')
                     setIsLoading(false)
                     return
@@ -409,7 +415,13 @@ export default function InteraccionDetailPage() {
             setProposalsLoading(true)
             setProposalsError(null)
             try {
-                const { data: { session } } = await supabase.auth.getSession()
+                const supabase = getSupabaseClient()
+                if (!supabase) {
+                    console.log('❌ Supabase no está configurado')
+                    return
+                }
+                
+                const session = await getSession()
                 const token = session?.access_token
                 if (!token) {
                     setProposalsError('No autenticado')
@@ -456,7 +468,7 @@ export default function InteraccionDetailPage() {
             
             try {
                 
-                const { data: { session } } = await supabase.auth.getSession()
+                const session = await getSession()
                 const token = session?.access_token
                 if (!token) {
                     console.error('❌ [InteractionDetail] No hay token de sesión')
@@ -557,7 +569,10 @@ export default function InteraccionDetailPage() {
     useEffect(() => {
         // Limpiar canal anterior
         if (realtimeChannel) {
-            supabase.removeChannel(realtimeChannel)
+            const supabase = getSupabaseClient()
+            if (supabase) {
+                supabase.removeChannel(realtimeChannel)
+            }
             setRealtimeChannel(null)
         }
 
@@ -575,6 +590,9 @@ export default function InteraccionDetailPage() {
 
 
         // Crear canal realtime
+        const supabase = getSupabaseClient()
+        if (!supabase) return
+        
         const channel = supabase
             .channel(`chat_${chatIdNumber}`)
             .on('postgres_changes', {
@@ -738,7 +756,10 @@ export default function InteraccionDetailPage() {
 
         return () => {
             if (channel) {
-                supabase.removeChannel(channel)
+                const supabase = getSupabaseClient()
+                if (supabase) {
+                    supabase.removeChannel(channel)
+                }
             }
             setRealtimeChannel(null)
         }
@@ -755,7 +776,7 @@ export default function InteraccionDetailPage() {
 
         const pollForNewMessages = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession()
+                const session = await getSession()
                 if (!session?.access_token) return
 
                 const response = await fetch(`/api/chat/${chatId}/messages?since=${lastMessageId}`, {
@@ -1009,7 +1030,7 @@ export default function InteraccionDetailPage() {
 
         // Enviar al servidor en background
         try {
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) {
                 console.error('❌ [InteractionDetail] No hay token de sesión')
@@ -1092,7 +1113,7 @@ export default function InteraccionDetailPage() {
             return
         }
         try {
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) throw new Error('No autenticado')
             const chatIdNum = Number(interaction.chatId)
@@ -1160,7 +1181,7 @@ export default function InteraccionDetailPage() {
 
         // Para rechazar, usar el flujo normal
         try {
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) throw new Error('No autenticado')
             const chatIdNum = Number(interaction.chatId)
@@ -1312,7 +1333,7 @@ export default function InteraccionDetailPage() {
             })
 
             // 4. Enviar aceptación al servidor
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) throw new Error('No hay token de sesión')
 
@@ -1406,7 +1427,7 @@ export default function InteraccionDetailPage() {
     ) => {
         if (!interaction) return
         try {
-            const { data: { session } } = await supabase.auth.getSession()
+            const session = await getSession()
             const token = session?.access_token
             if (!token) throw new Error('No autenticado')
             // Combinar fecha y hora si ambas existen
@@ -1642,7 +1663,7 @@ export default function InteraccionDetailPage() {
                                     <button
                                         onClick={async () => {
                                             try {
-                                                const { data: { session } } = await supabase.auth.getSession()
+                                                const session = await getSession()
                                                 const token = session?.access_token
                                                 if (!token) return
                                                 // Determinar a quién vas a calificar: el otro usuario de la interacción

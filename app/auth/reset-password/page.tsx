@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export default function ResetPasswordPage() {
     const router = useRouter()
@@ -24,6 +24,12 @@ export default function ResetPasswordPage() {
 
         // Obtener información del usuario actual
         const getUserInfo = async () => {
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                console.log('❌ Supabase no está configurado')
+                return
+            }
+            
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
                 setUserInfo(user)
@@ -49,6 +55,12 @@ export default function ResetPasswordPage() {
 
                 if (finalAccessToken && finalRefreshToken) {
                     // Establecer la sesión con los tokens
+                    const supabase = getSupabaseClient()
+                    if (!supabase) {
+                        console.log('❌ Supabase no está configurado')
+                        return
+                    }
+                    
                     const { data, error } = await supabase.auth.setSession({
                         access_token: finalAccessToken,
                         refresh_token: finalRefreshToken
@@ -90,6 +102,13 @@ export default function ResetPasswordPage() {
         }
 
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                console.log('❌ Supabase no está configurado')
+                setError('Error de configuración')
+                return
+            }
+            
             const { error } = await supabase.auth.updateUser({
                 password: password
             })

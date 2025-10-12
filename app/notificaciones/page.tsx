@@ -1,28 +1,40 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import ClientNotifications from '@/components/client/ClientNotifications'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export default function NotificationsPage() {
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState<any>(null)
+    const [error, setError] = useState<string | null>(null)
     const router = useRouter()
 
     useEffect(() => {
         const checkUser = async () => {
             try {
+                const supabase = getSupabaseClient()
+                if (!supabase) {
+                    console.log('❌ Supabase no está configurado - usando modo estático')
+                    // En lugar de redirigir, mostrar mensaje de configuración
+                    setError('Sistema de notificaciones no disponible. Configura Supabase para habilitar esta funcionalidad.')
+                    setLoading(false)
+                    return
+                }
+                
                 const { data: { session } } = await supabase.auth.getSession()
                 
                 if (!session) {
+                    console.log('🔐 No hay sesión activa - redirigiendo a login')
                     router.push('/login')
                     return
                 }
 
+                console.log('✅ Usuario autenticado:', session.user.email)
                 setUser(session.user)
             } catch (error) {
-                console.error('Error checking user:', error)
+                console.error('❌ Error checking user:', error)
                 router.push('/login')
             } finally {
                 setLoading(false)
@@ -36,6 +48,25 @@ export default function NotificationsPage() {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+            </div>
+        )
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="max-w-md mx-auto text-center">
+                    <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-lg">
+                        <h2 className="text-lg font-semibold mb-2">⚠️ Configuración Requerida</h2>
+                        <p className="text-sm">{error}</p>
+                        <button
+                            onClick={() => router.push('/')}
+                            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                            Volver al Inicio
+                        </button>
+                    </div>
+                </div>
             </div>
         )
     }

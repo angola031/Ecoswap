@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
 
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Obtener intercambios donde el usuario está involucrado y están en estado 'en_progreso' o 'pendiente_validacion'
-    const { data: intercambios, error: intercambiosError } = await supabaseAdmin
+    const { data: intercambios, error: intercambiosError } = await supabase
       .from('intercambio')
       .select(`
         intercambio_id,

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface DashboardOverviewProps {
     onViewUsers: () => void
@@ -42,6 +42,9 @@ export default function DashboardOverview({
         
         // Configurar actualización en tiempo real
         const setupRealtime = async () => {
+            const supabase = getSupabaseClient()
+            if (!supabase) return
+            
             // Suscribirse a cambios en la tabla usuario
             const userSubscription = supabase
                 .channel('dashboard-overview-users')
@@ -95,6 +98,12 @@ export default function DashboardOverview({
 
     const fetchOverviewStats = async (isManualRefresh = false) => {
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                console.error('❌ Supabase no está configurado')
+                return
+            }
+            
             if (isManualRefresh) {
                 setRefreshing(true)
             } else {

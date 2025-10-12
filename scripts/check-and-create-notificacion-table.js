@@ -4,7 +4,6 @@
  * Script para verificar y crear la tabla NOTIFICACION si no existe
  */
 
-const { createClient } = require('@supabase/supabase-js')
 const fs = require('fs')
 const path = require('path')
 

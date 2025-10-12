@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export default function VerificacionIdentidadPage() {
     const router = useRouter()
@@ -188,6 +188,13 @@ export default function VerificacionIdentidadPage() {
         }
         setIsLoading(true)
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                console.log('❌ Supabase no está configurado')
+                setError('Error de configuración')
+                return
+            }
+            
             const { data: { session } } = await supabase.auth.getSession()
             const token = session?.access_token
             if (!token) {

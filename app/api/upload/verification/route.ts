@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export async function POST(req: NextRequest) {
+        const supabase = getSupabaseClient()
     try {
         const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
         if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
@@ -9,7 +10,7 @@ export async function POST(req: NextRequest) {
         }
 
         const token = authHeader.split(' ')[1]
-        const { data: userInfo, error: userErr } = await supabaseAdmin.auth.getUser(token)
+        const { data: userInfo, error: userErr } = await supabase.auth.getUser(token)
         if (userErr || !userInfo?.user) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
         }
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Validar pertenencia del usuario
-        const { data: dbUser, error: dbErr } = await supabaseAdmin
+        const { data: dbUser, error: dbErr } = await supabase
             .from('usuario')
             .select('user_id, email')
             .eq('user_id', userId)
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
             
             
             // Usar upsert: true para sobrescribir archivos existentes
-            const { error: upErr } = await supabaseAdmin.storage
+            const { error: upErr } = await supabase.storage
                 .from('Ecoswap')
                 .upload(path, buffer, { 
                     upsert: true, 
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
         paths.selfie_validacion = await uploadOne(selfie, 'selfie_validacion.jpg')
 
         // Verificar si ya existe una validación para este usuario
-        const { data: existingValidation } = await supabaseAdmin
+        const { data: existingValidation } = await supabase
             .from('validacion_usuario')
             .select('validacion_id, estado')
             .eq('usuario_id', Number(userId))
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
         if (existingValidation) {
             // Si existe, actualizar la validación existente
             
-            const { error: updateError } = await supabaseAdmin
+            const { error: updateError } = await supabase
                 .from('validacion_usuario')
                 .update({
                     estado: 'pendiente',
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
         } else {
             // Si no existe, crear una nueva validación
             
-            const { error: insertError } = await supabaseAdmin
+            const { error: insertError } = await supabase
                 .from('validacion_usuario')
                 .insert({
                     usuario_id: Number(userId),
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Actualizar el usuario para marcar que tiene validación pendiente
-        await supabaseAdmin
+        await supabase
             .from('usuario')
             .update({ 
                 pediente_validacion: true

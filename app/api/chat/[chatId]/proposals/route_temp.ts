@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+const supabase = getSupabaseClient()
 
 async function getAuthUserId(request: NextRequest): Promise<number | null> {
   try {
@@ -12,12 +9,12 @@ async function getAuthUserId(request: NextRequest): Promise<number | null> {
     if (!authHeader) return null
 
     const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+    const { data: { user }, error } = await supabase.auth.getUser(token)
     
     if (error || !user) return null
 
     // Buscar el usuario en la tabla usuario por auth_user_id
-    const { data: usuario } = await supabaseAdmin
+    const { data: usuario } = await supabase
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', user.id)
@@ -50,7 +47,7 @@ export async function GET(
     }
 
     // Verificar que el usuario tenga acceso al chat
-    const { data: chat, error: chatError } = await supabaseAdmin
+    const { data: chat, error: chatError } = await supabase
       .from('chat')
       .select(`
         chat_id,
@@ -76,7 +73,7 @@ export async function GET(
     }
 
     // Obtener propuestas del chat
-    const { data: propuestas, error: propuestasError } = await supabaseAdmin
+    const { data: propuestas, error: propuestasError } = await supabase
       .from('propuesta')
       .select(`
         propuesta_id,
@@ -171,7 +168,7 @@ export async function POST(
     }
 
     // Verificar que el usuario tenga acceso al chat
-    const { data: chat, error: chatError } = await supabaseAdmin
+    const { data: chat, error: chatError } = await supabase
       .from('chat')
       .select(`
         chat_id,
@@ -198,7 +195,7 @@ export async function POST(
       : intercambio.usuario_propone_id
 
     // Crear nueva propuesta
-    const { data: nuevaPropuesta, error: createError } = await supabaseAdmin
+    const { data: nuevaPropuesta, error: createError } = await supabase
       .from('propuesta')
       .insert({
         chat_id: chatId,

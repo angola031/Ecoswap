@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function authUser(req: NextRequest) {
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return null
-    const { data } = await supabaseAdmin.auth.getUser(token)
+    
+    const supabase = getSupabaseClient()
+    const { data } = await supabase.auth.getUser(token)
     return data?.user || null
 }
 
@@ -14,8 +16,9 @@ export async function GET(req: NextRequest) {
         const user = await authUser(req)
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+        const supabase = getSupabaseClient()
         // Resolver usuario actual
-        const { data: u } = await supabaseAdmin
+        const { data: u } = await supabase
             .from('usuario')
             .select('user_id, activo, verificado')
             .eq('email', user.email)
@@ -27,7 +30,7 @@ export async function GET(req: NextRequest) {
         const tipo = url.searchParams.get('tipo') // 'proponidos', 'recibidos', 'todos'
 
         // Construir query base
-        let query = supabaseAdmin
+        let query = supabase
             .from('intercambio')
             .select(`
                 intercambio_id,
@@ -154,8 +157,9 @@ export async function POST(req: NextRequest) {
         const user = await authUser(req)
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+        const supabase = getSupabaseClient()
         // Resolver usuario actual
-        const { data: u } = await supabaseAdmin
+        const { data: u } = await supabase
             .from('usuario')
             .select('user_id, activo, verificado')
             .eq('email', user.email)
@@ -188,7 +192,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Verificar que los productos existen y pertenecen a los usuarios correctos
-        const { data: productoOfrecido, error: errorOfrecido } = await supabaseAdmin
+        const { data: productoOfrecido, error: errorOfrecido } = await supabase
             .from('producto')
             .select('producto_id, user_id, estado_publicacion, titulo')
             .eq('producto_id', producto_ofrecido_id)
@@ -212,7 +216,7 @@ export async function POST(req: NextRequest) {
             }, { status: 400 })
         }
 
-        const { data: productoSolicitado, error: errorSolicitado } = await supabaseAdmin
+        const { data: productoSolicitado, error: errorSolicitado } = await supabase
             .from('producto')
             .select('producto_id, user_id, estado_publicacion, titulo')
             .eq('producto_id', producto_solicitado_id)
@@ -237,7 +241,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Verificar que el usuario receptor existe y está activo
-        const { data: usuarioRecibe, error: errorRecibe } = await supabaseAdmin
+        const { data: usuarioRecibe, error: errorRecibe } = await supabase
             .from('usuario')
             .select('user_id, activo, nombre, apellido')
             .eq('user_id', usuario_recibe_id)
@@ -250,7 +254,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Verificar si ya existe un intercambio pendiente entre estos usuarios con estos productos
-        const { data: intercambioExistente, error: errorExistente } = await supabaseAdmin
+        const { data: intercambioExistente, error: errorExistente } = await supabase
             .from('intercambio')
             .select('intercambio_id, estado')
             .or(`and(producto_ofrecido_id.eq.${producto_ofrecido_id},producto_solicitado_id.eq.${producto_solicitado_id}),and(producto_ofrecido_id.eq.${producto_solicitado_id},producto_solicitado_id.eq.${producto_ofrecido_id})`)
@@ -271,7 +275,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Crear el intercambio
-        const { data: nuevoIntercambio, error: createError } = await supabaseAdmin
+        const { data: nuevoIntercambio, error: createError } = await supabase
             .from('intercambio')
             .insert({
                 producto_ofrecido_id,
@@ -305,7 +309,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Crear chat asociado al intercambio
-        const { data: nuevoChat, error: chatError } = await supabaseAdmin
+        const { data: nuevoChat, error: chatError } = await supabase
             .from('chat')
             .insert({
                 intercambio_id: nuevoIntercambio.intercambio_id
@@ -320,7 +324,7 @@ export async function POST(req: NextRequest) {
 
         // Crear notificación para el usuario receptor
         try {
-            await supabaseAdmin
+            await supabase
                 .from('notificacion')
                 .insert({
                     usuario_id: usuario_recibe_id,
@@ -343,7 +347,7 @@ export async function POST(req: NextRequest) {
 
         // Marcar productos como temporalmente no disponibles (opcional)
         try {
-            await supabaseAdmin
+            await supabase
                 .from('producto')
                 .update({ estado_publicacion: 'pausado' })
                 .in('producto_id', [producto_ofrecido_id, producto_solicitado_id])

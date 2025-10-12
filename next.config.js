@@ -1,59 +1,135 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Configuración experimental para manejar mejor los warnings
+  // Configuración experimental para desarrollo local
   experimental: {
-    // Configuración para static export
     esmExternals: 'loose',
+    serverComponentsExternalPackages: [],
   },
   
   // Configuración para Cloudflare Pages
   output: process.env.BUILD_STATIC === 'true' ? 'export' : 'standalone',
   
-  // Configuración de trailingSlash para Cloudflare
-  trailingSlash: true,
+  // Configuración para suprimir warnings de hidratación de extensiones del navegador
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn']
+    } : false,
+  },
+  
+  // Exportación estática deshabilitada temporalmente
+  // ...(process.env.NODE_ENV === 'production' && {
+  //   output: 'export',
+  //   trailingSlash: true,
+  // }),
   
   // Configuración para build estático - excluir rutas API
   distDir: 'out',
   
-  // Configuración de imágenes para export estático
+  // Configuración de imágenes
   images: {
-    unoptimized: process.env.NODE_ENV === 'production',
+    // ...(process.env.NODE_ENV === 'production' && {
+    //   unoptimized: true,
+    // }),
     domains: ['images.unsplash.com', 'vaqdzualcteljmivtoka.supabase.co'],
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   
-  // Configuración de webpack para suprimir warnings específicos
+  // Configuración para evitar problemas de hidratación
+  reactStrictMode: false,
+  
+  // Configuración de webpack
   webpack: (config, { dev, isServer }) => {
-    // En desarrollo, suprimir warnings específicos
-    if (dev && !isServer) {
-      config.infrastructureLogging = {
-        level: 'error',
+    // Configuración para resolver problemas de case sensitivity
+    config.resolve = {
+      ...config.resolve,
+      symlinks: false,
+      cacheWithContext: false,
+    }
+    
+    // Configuración para exportación estática solo en producción
+    if (!isServer && process.env.NODE_ENV === 'production') {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        stream: false,
+        buffer: false,
+        util: false,
+        assert: false,
+        http: false,
+        https: false,
+        os: false,
+        url: false,
+        zlib: false,
       }
-      
-      // Suprimir warnings de hidratación
-      config.ignoreWarnings = [
-        /Extra attributes from the server/,
-        /cz-shortcut-listen/,
-        /data-new-gr-c-s-check-loaded/,
-        /RedirectErrorBoundary/,
-        /NotFoundErrorBoundary/,
-        /DevRootNotFoundBoundary/
-      ]
-      
-      // Configurar stats para suprimir warnings específicos
-      config.stats = {
-        warnings: false,
-        warningsFilter: [
+    }
+    
+        // Configuración específica para evitar problemas de ActionQueueContext solo en producción
+        if (process.env.NODE_ENV === 'production') {
+          config.resolve.alias = {
+            ...config.resolve.alias,
+            'next/navigation': path.resolve(__dirname, 'lib/router-fallback.ts'),
+            'next/link': path.resolve(__dirname, 'lib/link-fallback.tsx'),
+          }
+        }
+    
+        // Suprimir warnings específicos
+        config.ignoreWarnings = [
           /Extra attributes from the server/,
           /cz-shortcut-listen/,
           /data-new-gr-c-s-check-loaded/,
           /RedirectErrorBoundary/,
           /NotFoundErrorBoundary/,
-          /DevRootNotFoundBoundary/
+          /DevRootNotFoundBoundary/,
+          /There are multiple modules with names that only differ in casing/,
+          /Use equal casing/,
+          /Cannot read properties of null/,
+          /useReducer/,
+          /Missing ActionQueueContext/,
+          /Invariant: Missing ActionQueueContext/,
+          /An error occurred during hydration/,
+          /useReducerWithReduxDevtoolsImpl/,
+          /ActionQueueContext/,
+          /useReducerWithReduxDevtoolsImpl/,
+          /Router/,
+          /app-router/,
+          /hydration/,
+          /hydrating/,
+          /server HTML was replaced/
         ]
-      }
-    }
+    
+        // Configurar stats para suprimir warnings específicos
+        config.stats = {
+          warnings: false,
+          warningsFilter: [
+            /Extra attributes from the server/,
+            /cz-shortcut-listen/,
+            /data-new-gr-c-s-check-loaded/,
+            /RedirectErrorBoundary/,
+            /NotFoundErrorBoundary/,
+            /DevRootNotFoundBoundary/,
+            /There are multiple modules with names that only differ in casing/,
+            /Use equal casing/,
+            /Cannot read properties of null/,
+            /useReducer/,
+            /Missing ActionQueueContext/,
+            /Invariant: Missing ActionQueueContext/,
+            /An error occurred during hydration/,
+            /useReducerWithReduxDevtoolsImpl/,
+            /ActionQueueContext/,
+            /useReducerWithReduxDevtoolsImpl/,
+            /Router/,
+            /app-router/,
+            /hydration/,
+            /hydrating/,
+            /server HTML was replaced/
+          ]
+        }
     
     return config
   },

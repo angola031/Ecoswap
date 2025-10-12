@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Endpoint GET para probar la conexión
 export async function GET() {
   try {
     // Probar una consulta simple
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Supabase no está configurado' }, { status: 500 })
+    }
+    
     const { data, error } = await supabase
       .from('usuario')
       .select('user_id, telefono')
@@ -42,6 +47,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const supabase = getSupabaseClient()
 
     // Limpiar el teléfono (remover espacios, guiones, paréntesis)
     const cleanPhone = phone.replace(/[\s\-\(\)]/g, '')

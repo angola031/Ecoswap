@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export default function AdminAccessDeniedClientPage() {
     const router = useRouter()
@@ -10,6 +10,13 @@ export default function AdminAccessDeniedClientPage() {
     useEffect(() => {
         // Verificar si el usuario es administrador
         const checkAdmin = async () => {
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                // Si Supabase no está configurado, redirigir a la página principal
+                router.push('/')
+                return
+            }
+            
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
                 const { data: userData } = await supabase
@@ -66,7 +73,10 @@ export default function AdminAccessDeniedClientPage() {
 
                     <button
                         onClick={() => {
-                            supabase.auth.signOut()
+                            const supabase = getSupabaseClient()
+                            if (supabase) {
+                                supabase.auth.signOut()
+                            }
                             router.push('/')
                         }}
                         className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium"

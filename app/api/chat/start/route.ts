@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
+  const supabase = getSupabaseClient()
+  if (!supabase) return null
+  
   const auth = req.headers.get('authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
   if (!token) return null
   
   try {
-    const { data } = await supabaseAdmin.auth.getUser(token)
+    const { data } = await supabase.auth.getUser(token)
     const authUserId = data?.user?.id
     if (!authUserId) return null
     
-    const { data: usuario } = await supabaseAdmin
+    const { data: usuario } = await supabase
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', authUserId)
@@ -43,7 +46,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Verificar que el vendedor existe
-    const { data: seller, error: sellerError } = await supabaseAdmin
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+    }
+    
+    const { data: seller, error: sellerError } = await supabase
       .from('usuario')
       .select('user_id, nombre, apellido, foto_perfil')
       .eq('user_id', sellerId)
@@ -54,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verificar que el producto existe y pertenece al vendedor
-    const { data: product, error: productError } = await supabaseAdmin
+    const { data: product, error: productError } = await supabase
       .from('producto')
       .select('producto_id, titulo, user_id')
       .eq('producto_id', productId)
@@ -67,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     // Obtener imagen principal del producto
     let productImageUrl = null
-    const { data: productImage } = await supabaseAdmin
+    const { data: productImage } = await supabase
       .from('imagen_producto')
       .select('url_imagen')
       .eq('producto_id', product.producto_id)
@@ -77,7 +85,7 @@ export async function POST(req: NextRequest) {
     productImageUrl = productImage?.url_imagen || null
 
     // Buscar si ya existe un intercambio entre estos usuarios para este producto
-    const { data: existingIntercambio, error: intercambioError } = await supabaseAdmin
+    const { data: existingIntercambio, error: intercambioError } = await supabase
       .from('intercambio')
       .select('intercambio_id')
       .eq('usuario_propone_id', userId)
@@ -89,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     // Si no existe intercambio, crear uno
     if (!existingIntercambio) {
-      const { data: newIntercambio, error: createIntercambioError } = await supabaseAdmin
+      const { data: newIntercambio, error: createIntercambioError } = await supabase
         .from('intercambio')
         .insert({
           usuario_propone_id: userId,
@@ -111,7 +119,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Buscar si ya existe un chat para este intercambio
-    const { data: existingChat, error: chatError } = await supabaseAdmin
+    const { data: existingChat, error: chatError } = await supabase
       .from('chat')
       .select('chat_id')
       .eq('intercambio_id', intercambioId)
@@ -138,7 +146,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Crear nuevo chat
-    const { data: newChat, error: createError } = await supabaseAdmin
+    const { data: newChat, error: createError } = await supabase
       .from('chat')
       .insert({
         intercambio_id: intercambioId,
@@ -156,7 +164,7 @@ export async function POST(req: NextRequest) {
     // Enviar mensaje de bienvenida automático
     const welcomeMessage = `¡Hola! Me interesa tu producto "${product.titulo}". ¿Podrías darme más información?`
     
-    await supabaseAdmin
+    await supabase
       .from('mensaje')
       .insert({
         chat_id: newChat.chat_id,
@@ -168,20 +176,20 @@ export async function POST(req: NextRequest) {
       })
 
     // Actualizar último mensaje del chat
-    await supabaseAdmin
+    await supabase
       .from('chat')
       .update({ ultimo_mensaje: new Date().toISOString() })
       .eq('chat_id', newChat.chat_id)
 
     // Obtener información del comprador para la notificación
-    const { data: buyer } = await supabaseAdmin
+    const { data: buyer } = await supabase
       .from('usuario')
       .select('nombre, apellido')
       .eq('user_id', userId)
       .single()
 
     // Crear notificación detallada para el vendedor
-    await supabaseAdmin
+    await supabase
       .from('notificacion')
       .insert({
         usuario_id: sellerId,

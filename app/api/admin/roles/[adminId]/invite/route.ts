@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Middleware para verificar super admin
 async function requireSuperAdmin(req: NextRequest) {
@@ -7,22 +7,23 @@ async function requireSuperAdmin(req: NextRequest) {
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return { ok: false, error: 'Unauthorized' as const }
 
-    if (!supabaseAdmin) return { ok: false, error: 'Database not configured' as const }
+    const supabase = getSupabaseClient()
+    if (!supabase) return { ok: false, error: 'Database not configured' as const }
 
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
 
     // Verificar super admin por DB
     let isSuperAdmin = false
     if (data.user.email) {
-        const { data: dbUser } = await supabaseAdmin
+        const { data: dbUser } = await supabase
             .from('usuario')
             .select('user_id, es_admin')
             .eq('email', data.user.email)
             .single()
 
         if (dbUser?.es_admin) {
-            const { data: roles } = await supabaseAdmin
+            const { data: roles } = await supabase
                 .from('usuario_rol')
                 .select('rol_id, activo')
                 .eq('usuario_id', dbUser.user_id)
@@ -30,7 +31,7 @@ async function requireSuperAdmin(req: NextRequest) {
 
             if (roles && roles.length > 0) {
                 const ids = roles.map(r => r.rol_id)
-                const { data: roleNames } = await supabaseAdmin
+                const { data: roleNames } = await supabase
                     .from('rol_usuario')
                     .select('rol_id, nombre, activo')
                     .in('rol_id', ids)
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: { adminId: st
     const guard = await requireSuperAdmin(req)
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden - Se requiere rol de Super Admin' ? 403 : 401 })
 
-    if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    const supabase = getSupabaseClient()
 
     try {
         const adminId = Number(params.adminId)
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: { adminId: st
         }
 
         // Obtener información del administrador
-        const { data: admin, error: adminError } = await supabaseAdmin
+        const { data: admin, error: adminError } = await supabase
             .from('usuario')
             .select(`
                 user_id,
@@ -82,37 +83,37 @@ export async function POST(req: NextRequest, { params }: { params: { adminId: st
             ?.map(ur => (ur.rol_usuario as any)?.nombre)
             .filter(Boolean) || ['administrador']
 
-        // Enviar email de invitación
-        const { error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-            admin.email,
-            {
-                data: {
-                    name: `${admin.nombre} ${admin.apellido}`,
-                    roles: roleNames
-                }
-            }
-        )
-
-        if (inviteError) {
-            console.error('Error enviando invitación:', inviteError)
-            return NextResponse.json({ error: inviteError.message }, { status: 400 })
-        }
+        // Enviar email de invitación (deshabilitado sin service role key)
+        // Nota: Esta operación requiere SUPABASE_SERVICE_ROLE_KEY
+        // Sin la service role key, no podemos enviar invitaciones directamente desde Supabase Auth
+        console.log('⚠️ Envío de invitación por email deshabilitado (requiere service role key)')
+        console.log(`📧 Email del administrador: ${admin.email}`)
+        console.log(`👤 Nombre: ${admin.nombre} ${admin.apellido}`)
+        console.log(`🔑 Roles: ${roleNames.join(', ')}`)
+        
+        // En lugar de enviar la invitación, solo loggeamos la información
+        // El administrador necesitará registrarse manualmente o usar el flujo normal de registro
 
         // Crear notificación
-        await supabaseAdmin
+        await supabase
             .from('notificacion')
             .insert({
                 usuario_id: admin.user_id,
                 tipo: 'admin_invitation_resent',
                 titulo: 'Invitación Reenviada',
-                mensaje: 'Se ha reenviado la invitación para configurar tu contraseña. Revisa tu email.',
+                mensaje: 'Se ha registrado la información del administrador. Contacta al super administrador para completar el proceso.',
                 es_push: true,
-                es_email: true
+                es_email: false // No enviar email automáticamente sin service role
             })
 
         return NextResponse.json({
             ok: true,
-            message: 'Invitación enviada exitosamente'
+            message: 'Información del administrador registrada. Contacta al super administrador para completar el proceso.',
+            adminInfo: {
+                email: admin.email,
+                name: `${admin.nombre} ${admin.apellido}`,
+                roles: roleNames
+            }
         })
 
     } catch (error) {

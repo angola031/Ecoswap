@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { PhotoIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 
 interface FormState {
@@ -76,6 +76,12 @@ export default function EditProductPage() {
                 setError(null)
 
                 // Verificar sesión
+                const supabase = getSupabaseClient()
+                if (!supabase) {
+                    router.push('/login')
+                    return
+                }
+                
                 const { data: { session } } = await supabase.auth.getSession()
                 if (!session) {
                     router.push('/login')
@@ -225,6 +231,9 @@ export default function EditProductPage() {
             setSaving(true)
             setError(null)
 
+            const supabase = getSupabaseClient()
+            if (!supabase) throw new Error('Supabase no está configurado')
+            
             const { data: { session } } = await supabase.auth.getSession()
             if (!session) throw new Error('Sesión no válida')
 
@@ -317,6 +326,8 @@ export default function EditProductPage() {
 
             // Si hay imágenes nuevas, subirlas a Storage y registrar en BD
             if (images.length > 0) {
+                if (!supabase) throw new Error('Supabase no está configurado')
+                
                 const { data: { session } } = await supabase.auth.getSession()
                 if (!session?.access_token) throw new Error('Sesión no válida para subir imágenes')
 
@@ -447,6 +458,9 @@ export default function EditProductPage() {
 
     const setAsPrimary = async (imagenId: number) => {
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) throw new Error('Supabase no está configurado')
+            
             // Poner todas en false y la seleccionada en true
             await supabase.from('imagen_producto').update({ es_principal: false }).eq('producto_id', productId)
             const { error } = await supabase.from('imagen_producto').update({ es_principal: true }).eq('imagen_id', imagenId)
@@ -459,6 +473,9 @@ export default function EditProductPage() {
 
     const deleteExistingImage = async (imagenId: number) => {
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) throw new Error('Supabase no está configurado')
+            
             const { error } = await supabase.from('imagen_producto').delete().eq('imagen_id', imagenId)
             if (error) throw error
             setExistingImages(prev => prev.filter(img => img.id !== imagenId))
@@ -762,6 +779,9 @@ export default function EditProductPage() {
                         <button
                             onClick={async ()=>{
                                 try{
+                                    const supabase = getSupabaseClient()
+                                    if (!supabase) { setShowLocationModal(false); return }
+                                    
                                     const { data: { session } } = await supabase.auth.getSession()
                                     if(!session?.user?.email){ setShowLocationModal(false); return }
                                     const { data: usuario } = await supabase.from('usuario').select('user_id').eq('email', session.user.email).single()

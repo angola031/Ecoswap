@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Middleware para verificar admin
 async function requireAdmin(req: NextRequest) {
@@ -7,27 +7,28 @@ async function requireAdmin(req: NextRequest) {
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
     if (!token) return { ok: false, error: 'Unauthorized' as const }
 
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.auth.getUser(token)
     if (error || !data?.user) return { ok: false, error: 'Unauthorized' as const }
 
     // Verificar admin por DB
     let isAdmin = false
     if (data.user.email) {
-        const { data: dbUser } = await supabaseAdmin
+        const { data: dbUser } = await supabase
             .from('usuario')
             .select('user_id, es_admin')
             .eq('email', data.user.email)
             .single()
         if (dbUser?.es_admin) isAdmin = true
         else if (dbUser?.user_id) {
-            const { data: roles } = await supabaseAdmin
+            const { data: roles } = await supabase
                 .from('usuario_rol')
                 .select('rol_id, activo')
                 .eq('usuario_id', dbUser.user_id)
                 .eq('activo', true)
             if (roles && roles.length > 0) {
                 const ids = roles.map(r => r.rol_id)
-                const { data: roleNames } = await supabaseAdmin
+                const { data: roleNames } = await supabase
                     .from('rol_usuario')
                     .select('rol_id, nombre, activo')
                     .in('rol_id', ids)
@@ -52,8 +53,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Chat ID y contenido son requeridos' }, { status: 400 })
         }
 
+        const supabase = getSupabaseClient()
+        
         // Verificar que el chat existe y está activo
-        const { data: chat } = await supabaseAdmin
+        const { data: chat } = await supabase
             .from('chat')
             .select('chat_id, activo')
             .eq('chat_id', chatId)
@@ -64,7 +67,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Obtener el ID del admin actual
-        const { data: adminUser } = await supabaseAdmin
+        const { data: adminUser } = await supabase
             .from('usuario')
             .select('user_id')
             .eq('email', guard.user.email)
@@ -75,7 +78,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Crear mensaje como admin (usando un ID especial para admin)
-        const { data: message, error: messageError } = await supabaseAdmin
+        const { data: message, error: messageError } = await supabase
             .from('mensaje')
             .insert({
                 chat_id: chatId,
@@ -95,16 +98,16 @@ export async function POST(req: NextRequest) {
         }
 
         // Actualizar último mensaje del chat
-        await supabaseAdmin
+        await supabase
             .from('chat')
             .update({ ultimo_mensaje: new Date().toISOString() })
             .eq('chat_id', chatId)
 
         // Crear notificación para los usuarios del chat
-        const { data: intercambio } = await supabaseAdmin
+        const { data: intercambio } = await supabase
             .from('intercambio')
             .select('usuario_propone_id, usuario_recibe_id')
-            .eq('intercambio_id', (await supabaseAdmin
+            .eq('intercambio_id', (await supabase
                 .from('chat')
                 .select('intercambio_id')
                 .eq('chat_id', chatId)
@@ -133,7 +136,7 @@ export async function POST(req: NextRequest) {
                 }
             ]
 
-            await supabaseAdmin
+            await supabase
                 .from('notificacion')
                 .insert(notificaciones)
         }

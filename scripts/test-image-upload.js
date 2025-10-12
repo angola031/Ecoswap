@@ -6,7 +6,6 @@
  * 3. La estructura de carpetas sea la esperada
  */
 
-const { createClient } = require('@supabase/supabase-js')
 
 // Configuración de Supabase (usar variables de entorno)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

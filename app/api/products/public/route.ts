@@ -1,83 +1,137 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export async function GET(req: NextRequest) {
     try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ API Products Public: Supabase no está configurado')
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+
+        // Obtener parámetros de consulta
         const { searchParams } = new URL(req.url)
-        const page = parseInt(searchParams.get('page') || '1')
         const limit = parseInt(searchParams.get('limit') || '20')
-        const category = searchParams.get('category')
-        const search = searchParams.get('search')
-        const tipo_transaccion = searchParams.get('tipo_transaccion')
-        const min_price = searchParams.get('min_price')
-        const max_price = searchParams.get('max_price')
-        const ciudad = searchParams.get('ciudad')
+        const offset = parseInt(searchParams.get('offset') || '0')
+        const categoria = searchParams.get('categoria')
+        const tipoTransaccion = searchParams.get('tipo_transaccion')
+        const ubicacion = searchParams.get('ubicacion')
 
-        let query = supabaseAdmin
-            .from('productos_publicos')
-            .select('*')
-            .order('fecha_creacion', { ascending: false })
+        // Construir consulta base usando la tabla PRODUCTO directamente
+        let query = supabase
+            .from('producto')
+            .select(`
+                producto_id,
+                titulo,
+                descripcion,
+                precio,
+                estado,
+                tipo_transaccion,
+                precio_negociable,
+                condiciones_intercambio,
+                que_busco_cambio,
+                fecha_creacion,
+                fecha_publicacion,
+                visualizaciones,
+                user_id,
+                ciudad_snapshot,
+                departamento_snapshot,
+                categoria_id,
+                categoria:categoria(categoria_id, nombre),
+                usuario:usuario!producto_user_id_fkey(
+                    user_id,
+                    nombre,
+                    apellido,
+                    email,
+                    foto_perfil,
+                    calificacion_promedio,
+                    total_intercambios
+                )
+            `)
+            .eq('estado_validacion', 'approved')
+            .eq('estado_publicacion', 'activo')
+            .order('fecha_publicacion', { ascending: false })
+            .range(offset, offset + limit - 1)
 
-        // Aplicar filtros
-        if (category) {
-            query = query.eq('categoria_nombre', category)
+        // Aplicar filtros si existen
+        if (categoria) {
+            query = query.ilike('categoria.nombre', `%${categoria}%`)
         }
 
-        if (tipo_transaccion) {
-            query = query.eq('tipo_transaccion', tipo_transaccion)
+        if (tipoTransaccion) {
+            query = query.eq('tipo_transaccion', tipoTransaccion)
         }
 
-        if (min_price) {
-            query = query.gte('precio', parseFloat(min_price))
+        if (ubicacion) {
+            query = query.or(`ciudad_snapshot.ilike.%${ubicacion}%,departamento_snapshot.ilike.%${ubicacion}%`)
         }
 
-        if (max_price) {
-            query = query.lte('precio', parseFloat(max_price))
-        }
-
-        if (ciudad) {
-            query = query.eq('ciudad', ciudad)
-        }
-
-        if (search) {
-            query = query.or(`titulo.ilike.%${search}%,descripcion.ilike.%${search}%`)
-        }
-
-        // Aplicar paginación
-        const from = (page - 1) * limit
-        const to = from + limit - 1
-
-        const { data: products, error, count } = await query
-            .range(from, to)
+        const { data: productos, error } = await query
 
         if (error) {
-            console.error('Error obteniendo productos públicos:', error)
+            console.error('❌ API Products Public: Error obteniendo productos:', error)
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
 
-        // Obtener el total de productos para paginación
-        let totalCount = 0
-        if (count === null) {
-            const { count: totalCountResult } = await supabaseAdmin
-                .from('productos_publicos')
-                .select('*', { count: 'exact', head: true })
-            totalCount = totalCountResult || 0
-        } else {
-            totalCount = count
+        // Obtener imágenes para cada producto
+        const productosConImagenes = await Promise.all(
+            (productos || []).map(async (producto) => {
+                try {
+                    const { data: imagenes } = await supabase
+                        .from('imagen_producto')
+                        .select('url_imagen, es_principal')
+                        .eq('producto_id', producto.producto_id)
+                        .order('es_principal', { ascending: false })
+
+                    return {
+                        ...producto,
+                        imagenes: imagenes || [],
+                        imagen_principal: imagenes?.find(img => img.es_principal)?.url_imagen || imagenes?.[0]?.url_imagen || null
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ Error obteniendo imágenes para producto ${producto.producto_id}:`, error)
+                    return {
+                        ...producto,
+                        imagenes: [],
+                        imagen_principal: null
+                    }
+                }
+            })
+        )
+
+        // Obtener total de productos para paginación
+        let countQuery = supabase
+            .from('producto')
+            .select('*', { count: 'exact', head: true })
+            .eq('estado_validacion', 'approved')
+            .eq('estado_publicacion', 'activo')
+
+        if (categoria) {
+            countQuery = countQuery.ilike('categoria.nombre', `%${categoria}%`)
         }
 
+        if (tipoTransaccion) {
+            countQuery = countQuery.eq('tipo_transaccion', tipoTransaccion)
+        }
+
+        if (ubicacion) {
+            countQuery = countQuery.or(`ciudad_snapshot.ilike.%${ubicacion}%,departamento_snapshot.ilike.%${ubicacion}%`)
+        }
+
+        const { count } = await countQuery
+
         return NextResponse.json({
-            products: products || [],
-            pagination: {
-                page,
+            productos: productosConImagenes,
+            paginacion: {
+                total: count || 0,
                 limit,
-                total: totalCount,
-                pages: Math.ceil(totalCount / limit)
+                offset,
+                hasMore: (count || 0) > offset + limit
             }
         })
 
     } catch (error: any) {
-        console.error('Error en API de productos públicos:', error)
-        return NextResponse.json({ error: error?.message || 'Error interno' }, { status: 500 })
+        console.error('❌ API Products Public: Error:', error)
+        return NextResponse.json({ error: error?.message || 'Server error' }, { status: 500 })
     }
 }

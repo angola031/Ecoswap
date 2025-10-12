@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
+
+
+
+const supabase = getSupabaseClient()
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
   const auth = req.headers.get('authorization') || ''
@@ -11,7 +15,7 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
   }
   
   try {
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    const { data, error } = await supabase.auth.getUser(token)
     
     if (error) {
       console.error('❌ [API Info] Error de autenticación:', error)
@@ -25,7 +29,7 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
     }
     
     // Primero intentar con auth_user_id
-    let { data: usuario, error: usuarioError } = await supabaseAdmin
+    let { data: usuario, error: usuarioError } = await supabase
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', authUserId)
@@ -35,7 +39,7 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
     // Si no se encuentra con auth_user_id, intentar con el email
     if (usuarioError && data?.user?.email) {
       
-      const { data: usuarioByEmail, error: emailError } = await supabaseAdmin
+      const { data: usuarioByEmail, error: emailError } = await supabase
         .from('usuario')
         .select('user_id')
         .eq('email', data.user.email)
@@ -77,7 +81,7 @@ export async function GET(
     }
 
     // Obtener información del chat con datos del intercambio y usuarios
-    const { data: chat, error: chatError } = await supabaseAdmin
+    const { data: chat, error: chatError } = await supabase
       .from('chat')
       .select(`
         chat_id,
@@ -157,7 +161,7 @@ export async function GET(
     // Obtener imagen principal del producto ofrecido
     let productImageUrl = null
     if (intercambioData?.producto_ofrecido_id) {
-      const { data: productImage } = await supabaseAdmin
+      const { data: productImage } = await supabase
         .from('imagen_producto')
         .select('url_imagen')
         .eq('producto_id', intercambioData.producto_ofrecido_id)
@@ -170,7 +174,7 @@ export async function GET(
     // Obtener imagen principal del producto solicitado
     let requestedProductImageUrl = null
     if (intercambioData?.producto_solicitado_id) {
-      const { data: requestedProductImage } = await supabaseAdmin
+      const { data: requestedProductImage } = await supabase
         .from('imagen_producto')
         .select('url_imagen')
         .eq('producto_id', intercambioData.producto_solicitado_id)
@@ -194,7 +198,7 @@ export async function GET(
     // Obtener ubicación del otro usuario
     let otherUserLocation = null
     if (otherUserData) {
-      const { data: location } = await supabaseAdmin
+      const { data: location } = await supabase
         .from('ubicacion')
         .select('ciudad, departamento')
         .eq('user_id', otherUserData.user_id)

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface Notification {
     notificacion_id: number
@@ -31,6 +31,9 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
         fetchNotifications()
         
         // Configurar suscripción en tiempo real
+        const supabase = getSupabaseClient()
+        if (!supabase) return
+        
         const channel = supabase
             .channel('admin-notifications')
             .on(
@@ -47,12 +50,21 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
             .subscribe()
 
         return () => {
-            supabase.removeChannel(channel)
+            const supabase = getSupabaseClient()
+            if (supabase) {
+                supabase.removeChannel(channel)
+            }
         }
     }, [userId])
 
     const fetchNotifications = async () => {
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                console.error('❌ Supabase no está configurado')
+                return
+            }
+            
             setLoading(true)
             setError(null)
 
@@ -96,6 +108,9 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
 
     const markAsRead = async (notificationId: number) => {
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) return
+            
             const { error } = await supabase
                 .from('notificacion')
                 .update({ 
@@ -128,6 +143,9 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
 
     const markAllAsRead = async () => {
         try {
+            const supabase = getSupabaseClient()
+            if (!supabase) return
+            
             const unreadIds = notifications
                 .filter(n => !n.leida)
                 .map(n => n.notificacion_id)
