@@ -8,8 +8,8 @@ const nextConfig = {
     serverComponentsExternalPackages: [],
   },
   
-  // Configuración para Cloudflare Pages
-  output: process.env.BUILD_STATIC === 'true' ? 'export' : 'standalone',
+  // Configuración para Cloudflare Pages - usar standalone para API routes
+  output: 'standalone',
   
   // Configuración para suprimir warnings de hidratación de extensiones del navegador
   compiler: {
