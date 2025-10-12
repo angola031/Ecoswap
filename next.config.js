@@ -8,6 +8,13 @@ const nextConfig = {
     serverComponentsExternalPackages: [],
   },
   
+  // Configuración para suprimir warnings de hidratación de extensiones del navegador
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn']
+    } : false,
+  },
+  
   // Exportación estática deshabilitada temporalmente
   // ...(process.env.NODE_ENV === 'production' && {
   //   output: 'export',

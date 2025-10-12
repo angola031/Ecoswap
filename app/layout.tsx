@@ -73,12 +73,12 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     return (
-        <html lang="es" className="h-full">
+        <html lang="es" className="h-full" suppressHydrationWarning>
             <head>
                 <script src="/hydration-fix.js" async></script>
                 <script src="/data/sweetalert2.all.min.js" async></script>
             </head>
-                <body className={`${inter.className} h-full`}>
+                <body className={`${inter.className} h-full`} suppressHydrationWarning>
                     <DevMode>
                         <ErrorBoundary fallback={
                             <div className="min-h-screen flex items-center justify-center bg-gray-50">

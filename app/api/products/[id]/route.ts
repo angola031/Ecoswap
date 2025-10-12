@@ -70,9 +70,20 @@ export async function GET(
             .eq('producto_id', productId)
             .order('orden', { ascending: true })
 
+        console.log('🔍 Consulta de imágenes - Producto ID:', productId)
+        console.log('🔍 Error de imágenes:', imagesError)
+        console.log('🔍 Datos de imágenes:', images)
+
         let imageUrls: string[] = []
         if (!imagesError && images && images.length > 0) {
-            imageUrls = images.map(img => img.url_imagen)
+            imageUrls = images
+                .map(img => {
+                    const url = img.url_imagen
+                    console.log('🔍 Procesando imagen:', url, 'Tipo:', typeof url)
+                    return String(url || '')
+                })
+                .filter(url => url && url.trim() !== '' && url !== 'undefined' && url !== 'null')
+            console.log('🔍 Imágenes procesadas:', imageUrls)
         }
 
         // Obtener especificaciones técnicas normalizadas

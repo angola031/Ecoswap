@@ -14,7 +14,10 @@
     'server HTML was replaced',
     'There was an error while hydrating',
     'Because the error happened outside of a Suspense boundary',
-    'entire root will switch to client rendering'
+    'entire root will switch to client rendering',
+    'Extra attributes from the server',
+    'data-darkreader',
+    'Warning: Extra attributes from the server: style,data-darkreader-inline-fill'
   ];
   
   console.error = function(...args) {
