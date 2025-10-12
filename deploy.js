@@ -39,7 +39,7 @@ try {
         env: {
             ...process.env,
             NODE_ENV: 'production',
-            CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || 'ofFE1auhQiIpHwIAOZ6lsjVE2xFLioB5ooBBLnfM'
+            CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || 'iAMG6f4Asi3PEJaHfaUhn04FYd3MYau3qeqK_6FV'
         }
     });
     console.log('✅ Deployment completado exitosamente!');

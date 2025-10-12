@@ -12,7 +12,7 @@ console.log('');
 console.log('3. Agrega estos secrets:');
 console.log('');
 console.log('   🔑 CLOUDFLARE_API_TOKEN');
-console.log('   Value: ofFE1auhQiIpHwIAOZ6lsjVE2xFLioB5ooBBLnfM');
+console.log('   Value: iAMG6f4Asi3PEJaHfaUhn04FYd3MYau3qeqK_6FV');
 console.log('');
 console.log('   🏢 CLOUDFLARE_ACCOUNT_ID (opcional, ya está en el workflow)');
 console.log('   Value: 71fc063294f82b8f8140bee5c94074e8');
