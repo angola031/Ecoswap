@@ -1,0 +1,33 @@
+#!/usr/bin/env node
+
+console.log('🔧 Solución para Build Token de Cloudflare Pages');
+console.log('');
+console.log('❌ Problema: Build token eliminado/revocado');
+console.log('');
+console.log('🎯 SOLUCIÓN RECOMENDADA: Deshabilitar Build Automático');
+console.log('');
+console.log('📋 Pasos en Cloudflare Pages Dashboard:');
+console.log('');
+console.log('1. Ve a: https://dash.cloudflare.com/pages/view/ecoswap');
+console.log('');
+console.log('2. Ve a Settings > Build & deployments');
+console.log('');
+console.log('3. En la sección "Auto-deploy":');
+console.log('   - DESACTIVA "Auto-deploy"');
+console.log('   - Esto evitará que use el build token problemático');
+console.log('');
+console.log('4. Usa solo deployment manual:');
+console.log('   - Comando: npm run deploy');
+console.log('   - O desde el dashboard: Deployments > Deploy manually');
+console.log('');
+console.log('💡 Ventajas de esta solución:');
+console.log('- No depende de build tokens');
+console.log('- Control total sobre el deployment');
+console.log('- Usa el API token que ya funciona');
+console.log('- Evita problemas de tokens expirados');
+console.log('');
+console.log('✅ Estado actual:');
+console.log('- API Token funcionando: ✅');
+console.log('- Deployment manual funcionando: ✅');
+console.log('- Build automático: ❌ (problema de build token)');
+console.log('');
