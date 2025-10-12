@@ -16,6 +16,7 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
       return null
     }
     
+    // Verificar que el token sea válido
     const { data, error } = await supabase.auth.getUser(token)
     if (error) {
       console.error('❌ Error obteniendo usuario:', error.message)
@@ -28,7 +29,8 @@ async function getAuthUserId(req: NextRequest): Promise<number | null> {
       return null
     }
     
-    // Buscar el usuario por auth_user_id
+    // Buscar el usuario por auth_user_id usando el cliente normal
+    // Esto funcionará si RLS está deshabilitado en la tabla usuario
     const { data: usuario, error: usuarioError } = await supabase
       .from('usuario')
       .select('user_id')
