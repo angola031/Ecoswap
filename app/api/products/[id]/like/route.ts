@@ -91,17 +91,27 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     if (!exists) {
       console.log('➕ Creando nuevo favorito...')
-      const { error: insertErr } = await supabase
+      console.log('📝 Datos a insertar:', { usuario_id: userId, producto_id: productoId })
+      
+      const { data: insertData, error: insertErr } = await supabase
         .from('favorito')
         .insert({ usuario_id: userId, producto_id: productoId })
+        .select('favorito_id')
+        .single()
         
       if (insertErr) {
         console.error('❌ Error insertando favorito:', insertErr.message)
-        return NextResponse.json({ error: insertErr.message }, { status: 400 })
+        console.error('❌ Detalles del error:', insertErr)
+        return NextResponse.json({ 
+          error: insertErr.message, 
+          details: insertErr,
+          userId,
+          productoId 
+        }, { status: 400 })
       }
-      console.log('✅ Favorito creado exitosamente')
+      console.log('✅ Favorito creado exitosamente:', insertData)
     } else {
-      console.log('ℹ️ Favorito ya existe')
+      console.log('ℹ️ Favorito ya existe:', exists)
     }
 
     return NextResponse.json({ ok: true })
