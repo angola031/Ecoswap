@@ -2,61 +2,108 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase-client'
 
 async function getAuthUserId(req: NextRequest): Promise<number | null> {
-  const supabase = getSupabaseClient()
-  if (!supabase) return null
-  
-  const auth = req.headers.get('authorization') || ''
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
-  if (!token) return null
-  
   try {
-    const { data } = await supabase.auth.getUser(token)
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      console.error('❌ Supabase client no disponible')
+      return null
+    }
+    
+    const auth = req.headers.get('authorization') || ''
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+    if (!token) {
+      console.log('❌ No hay token de autorización')
+      return null
+    }
+    
+    const { data, error } = await supabase.auth.getUser(token)
+    if (error) {
+      console.error('❌ Error obteniendo usuario:', error.message)
+      return null
+    }
+    
     const authUserId = data?.user?.id
-    if (!authUserId) return null
+    if (!authUserId) {
+      console.log('❌ No hay auth_user_id')
+      return null
+    }
     
     // Buscar el usuario por auth_user_id
-    const { data: usuario } = await supabase
+    const { data: usuario, error: usuarioError } = await supabase
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', authUserId)
       .single()
     
+    if (usuarioError) {
+      console.error('❌ Error buscando usuario:', usuarioError.message)
+      return null
+    }
+    
     return usuario?.user_id ?? null
   } catch (error) {
-    console.error('Error obteniendo user_id:', error)
+    console.error('❌ Error general en getAuthUserId:', error)
     return null
   }
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    console.log('🔍 POST /api/products/like - Iniciando...')
+    
     const supabase = getSupabaseClient()
-    if (!supabase) return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    if (!supabase) {
+      console.error('❌ Supabase client no disponible')
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    }
 
     const productoId = Number(params.id)
-    if (!productoId) return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
+    console.log('📦 Producto ID:', productoId)
+    
+    if (!productoId || isNaN(productoId)) {
+      console.error('❌ Producto ID inválido:', params.id)
+      return NextResponse.json({ error: 'Producto inválido' }, { status: 400 })
+    }
+    
     const userId = await getAuthUserId(req)
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    console.log('👤 User ID:', userId)
+    
+    if (!userId) {
+      console.error('❌ Usuario no autenticado')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     // Evitar duplicados: si ya existe, devolver ok
-    const { data: exists } = await supabase
+    const { data: exists, error: existsError } = await supabase
       .from('favorito')
       .select('favorito_id')
       .eq('usuario_id', userId)
       .eq('producto_id', productoId)
       .maybeSingle()
 
+    if (existsError) {
+      console.error('❌ Error verificando favorito existente:', existsError.message)
+      return NextResponse.json({ error: 'Error verificando favorito' }, { status: 500 })
+    }
+
     if (!exists) {
+      console.log('➕ Creando nuevo favorito...')
       const { error: insertErr } = await supabase
         .from('favorito')
         .insert({ usuario_id: userId, producto_id: productoId })
-      if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 400 })
-
-      // El trigger automáticamente actualizará el contador de likes
+        
+      if (insertErr) {
+        console.error('❌ Error insertando favorito:', insertErr.message)
+        return NextResponse.json({ error: insertErr.message }, { status: 400 })
+      }
+      console.log('✅ Favorito creado exitosamente')
+    } else {
+      console.log('ℹ️ Favorito ya existe')
     }
 
     return NextResponse.json({ ok: true })
   } catch (e: any) {
+    console.error('❌ Error general en POST:', e)
     return NextResponse.json({ error: e?.message || 'Server error' }, { status: 500 })
   }
 }
