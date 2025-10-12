@@ -134,11 +134,6 @@ export default function ProductDetailPage() {
 
         const { product, liked, isOwner: ownerFlag, isInActiveExchange: exchangeFlag } = await response.json()
         
-        console.log('🔍 Producto recibido:', product)
-        console.log('🔍 Imágenes del producto:', product.imagenes)
-        console.log('🔍 Tipo de imágenes:', typeof product.imagenes)
-        console.log('🔍 Es array:', Array.isArray(product.imagenes))
-        
         if (!isMounted) return
         
         // Procesar las imágenes correctamente como en el perfil
@@ -146,29 +141,17 @@ export default function ProductDetailPage() {
           ...product,
           imagenes: Array.isArray(product.imagenes) 
             ? product.imagenes
-                .map((img, index) => {
-                  console.log(`🔍 Procesando imagen ${index}:`, img, 'Tipo:', typeof img)
+                .map((img) => {
                   // Si es un objeto, extraer la URL como en el perfil
                   if (typeof img === 'object' && img !== null) {
-                    const url = img.url_imagen || img.url || img.src
-                    console.log(`🔍 URL extraída de objeto:`, url)
-                    return url
+                    return img.url_imagen || img.url || img.src
                   }
                   // Si ya es un string, usarlo directamente
-                  const url = String(img || '')
-                  console.log(`🔍 URL string:`, url)
-                  return url
+                  return String(img || '')
                 })
-                .filter(img => {
-                  const isValid = img && typeof img === 'string' && img.trim() !== '' && img !== 'undefined' && img !== 'null'
-                  console.log(`🔍 Imagen válida:`, img, '->', isValid)
-                  return isValid
-                })
+                .filter(img => img && typeof img === 'string' && img.trim() !== '' && img !== 'undefined' && img !== 'null')
             : []
         }
-        
-        console.log('🔍 Producto procesado:', processedProduct)
-        console.log('🔍 Imágenes procesadas:', processedProduct.imagenes)
         
         setProduct(processedProduct)
         // Prefijar vistas y likes con los valores de BD si vienen
@@ -595,25 +578,18 @@ export default function ProductDetailPage() {
             {/* Imagen Principal */}
               <div className="relative bg-white rounded-lg overflow-hidden shadow-sm">
               {product.imagenes.length > 0 ? (
-                <div className="relative">
-                  <img
-                    src={product.imagenes[currentImageIndex]}
-                    alt={product.titulo}
-                    className="w-full h-96 object-cover rounded-lg"
-                    onError={(e) => {
-                      console.error('❌ Error cargando imagen:', product.imagenes[currentImageIndex])
-                      e.currentTarget.src = '/default-product.png'
-                    }}
-                    onLoad={() => {
-                      console.log('✅ Imagen cargada exitosamente:', product.imagenes[currentImageIndex])
-                    }}
-                  />
-                  {/* Debug temporal */}
-                  <div className="absolute top-2 left-2 bg-black/70 text-white p-2 text-xs rounded">
-                    <div>URL: {product.imagenes[currentImageIndex]}</div>
-                    <div>Length: {product.imagenes.length}</div>
-                  </div>
-                </div>
+                <img
+                  src={product.imagenes[currentImageIndex]}
+                  alt={product.titulo}
+                  className="w-full h-96 object-cover rounded-lg"
+                  onError={(e) => {
+                    console.error('❌ Error cargando imagen:', product.imagenes[currentImageIndex])
+                    e.currentTarget.src = '/default-product.png'
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Imagen cargada exitosamente:', product.imagenes[currentImageIndex])
+                  }}
+                />
               ) : (
                 <div className="w-full h-96 bg-gray-200 flex items-center justify-center rounded-lg">
                   <img

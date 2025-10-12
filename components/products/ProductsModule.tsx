@@ -121,16 +121,31 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                 const productos = data.productos || []
                 
                 // Transformar los datos de la API al formato esperado
-                const transformedProducts: Product[] = productos.map((p: any) => ({
-                    id: p.producto_id.toString(),
-                    title: p.titulo,
-                    description: p.descripcion,
-                    category: p.categoria?.nombre || 'Sin categoría',
-                    condition: p.estado || 'usado',
-                    price: p.precio || 0,
-                    currency: 'COP',
-                    location: `${p.ciudad_snapshot || ''}, ${p.departamento_snapshot || ''}`.trim(),
-                    images: p.imagenes || [],
+                const transformedProducts: Product[] = productos.map((p: any) => {
+                    // Procesar las imágenes como en el perfil
+                    const images = Array.isArray(p.imagenes) 
+                        ? p.imagenes
+                            .map((img: any) => {
+                                // Si es un objeto, extraer la URL
+                                if (typeof img === 'object' && img !== null) {
+                                    return img.url_imagen || img.url || img.src
+                                }
+                                // Si ya es un string, usarlo directamente
+                                return String(img || '')
+                            })
+                            .filter((url: string) => url && typeof url === 'string' && url.trim() !== '' && url !== 'undefined' && url !== 'null')
+                        : []
+
+                    return {
+                        id: p.producto_id.toString(),
+                        title: p.titulo,
+                        description: p.descripcion,
+                        category: p.categoria?.nombre || 'Sin categoría',
+                        condition: p.estado || 'usado',
+                        price: p.precio || 0,
+                        currency: 'COP',
+                        location: `${p.ciudad_snapshot || ''}, ${p.departamento_snapshot || ''}`.trim(),
+                        images: images,
                     owner: {
                         id: p.user_id.toString(),
                         name: `${p.usuario?.nombre || ''} ${p.usuario?.apellido || ''}`.trim() || 'Usuario',
