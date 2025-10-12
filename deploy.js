@@ -33,8 +33,8 @@ if (outFiles.length === 0) {
 console.log('✅ Build completado. Iniciando deployment...');
 
 try {
-    // Usar wrangler pages deploy con configuración específica
-    execSync('npx wrangler pages deploy out --config wrangler-pages.toml --project-name ecoswap', { 
+    // Usar wrangler pages deploy sin archivo de configuración personalizado
+    execSync('npx wrangler pages deploy out --project-name ecoswap', { 
         stdio: 'inherit',
         env: {
             ...process.env,
