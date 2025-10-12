@@ -9,7 +9,7 @@ const nextConfig = {
   },
   
            // Configuración optimizada para Vercel
-           output: undefined, // Vercel maneja esto automáticamente
+           // output: undefined, // Vercel maneja esto automáticamente
   
   // Configuración para suprimir warnings de hidratación de extensiones del navegador
   compiler: {
@@ -24,8 +24,8 @@ const nextConfig = {
   //   trailingSlash: true,
   // }),
   
-  // Configuración para build estático - excluir rutas API
-  distDir: 'out',
+  // Configuración para build estático - usar .next para Vercel
+  // distDir: 'out', // Comentado para Vercel
   
   // Configuración de imágenes
   images: {
