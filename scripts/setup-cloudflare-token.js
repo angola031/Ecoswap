@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+
+console.log('🔧 Configuración de API Token de Cloudflare');
+console.log('');
+console.log('❌ El token actual no tiene permisos correctos para Cloudflare Pages.');
+console.log('');
+console.log('📋 Pasos para crear un token con permisos correctos:');
+console.log('');
+console.log('1. Ve a: https://dash.cloudflare.com/profile/api-tokens');
+console.log('');
+console.log('2. Haz clic en "Create Token"');
+console.log('');
+console.log('3. Selecciona "Custom token"');
+console.log('');
+console.log('4. Configura estos permisos:');
+console.log('   📋 Permissions:');
+console.log('   - Zone:Zone:Read');
+console.log('   - Zone:Zone Settings:Read');
+console.log('   - Account:Cloudflare Pages:Edit');
+console.log('   - Account:Cloudflare Pages:Read');
+console.log('');
+console.log('   🏢 Account Resources:');
+console.log('   - Include: All accounts');
+console.log('');
+console.log('   🌐 Zone Resources:');
+console.log('   - Include: All zones');
+console.log('');
+console.log('5. Copia el nuevo token y ejecuta:');
+console.log('   setx CLOUDFLARE_API_TOKEN "tu_nuevo_token_aqui"');
+console.log('');
+console.log('6. Reinicia tu terminal y prueba:');
+console.log('   npx wrangler pages deploy out --project-name ecoswap');
+console.log('');
+console.log('💡 Alternativa: Usa autenticación OAuth:');
+console.log('   npx wrangler login');
+console.log('');
