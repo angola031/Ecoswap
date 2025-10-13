@@ -4,6 +4,7 @@ import { getSupabaseClient } from '@/lib/supabase-client'
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     console.log('🔍 DEBUG - Verificando configuración...')
+    // Force update for Vercel deployment
     
     const supabase = getSupabaseClient()
     if (!supabase) {
