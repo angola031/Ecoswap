@@ -1,120 +1,97 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase-client'
 
-export async function GET(request: NextRequest) {
-        const supabase = getSupabaseClient()
-  try {
-    
-    // Verificar que el cliente admin esté disponible
-    if (!supabase) {
-      return NextResponse.json({ 
-        error: 'Cliente admin de Supabase no disponible',
-        details: 'SUPABASE_SERVICE_ROLE_KEY no configurado'
-      }, { status: 500 })
-    }
-
-    // Probar listado de buckets
-    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets()
-    
-    if (bucketsError) {
-      console.error('❌ [API] Error listando buckets:', bucketsError)
-      return NextResponse.json({ 
-        error: 'Error conectando con Supabase Storage',
-        details: bucketsError.message 
-      }, { status: 500 })
-    }
-    
-    
-    // Verificar si el bucket Ecoswap existe
-    const ecoswapBucket = buckets.find(bucket => bucket.name === 'Ecoswap')
-    if (!ecoswapBucket) {
-      return NextResponse.json({ 
-        error: 'Bucket Ecoswap no encontrado',
-        availableBuckets: buckets.map(b => b.name)
-      }, { status: 404 })
-    }
-    
-    
-    // Probar listado de archivos en mensajes
-    const { data: files, error: filesError } = await supabase.storage
-      .from('Ecoswap')
-      .list('mensajes', { limit: 10 })
-    
-    if (filesError) {
-    } else {
-    }
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Conectividad con Supabase Storage OK',
-      bucket: ecoswapBucket,
-      filesInMensajes: files || []
-    })
-    
-  } catch (error: any) {
-    console.error('❌ [API] Error en prueba de conectividad:', error)
-    return NextResponse.json({ 
-      error: 'Error interno del servidor',
-      details: error.message 
-    }, { status: 500 })
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
+    console.log('🧪 [TEST] Iniciando test de subida...')
+    
     const supabase = getSupabaseClient()
+    if (!supabase) {
+      console.error('❌ [TEST] Supabase client no disponible')
+      return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+    }
+
+    // Verificar autenticación
+    const authHeader = request.headers.get('authorization')
+    let token = null
     
-    // Crear un archivo de prueba simple
-    const testContent = Buffer.from('Archivo de prueba para verificar conectividad')
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1]
+      console.log('🔐 [TEST] Token encontrado en header')
+    } else {
+      console.error('❌ [TEST] No se encontró token de autorización')
+      return NextResponse.json({ error: 'Token de autorización requerido' }, { status: 401 })
+    }
+
+    // Verificar usuario
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError) {
+      console.error('❌ [TEST] Error de autenticación:', authError.message)
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
+    }
+    
+    if (!user) {
+      console.error('❌ [TEST] Usuario no encontrado')
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 401 })
+    }
+    
+    console.log('✅ [TEST] Usuario autenticado:', user.id)
+
+    // Test simple de subida
     const testFileName = `test_${Date.now()}.txt`
-    const testPath = `mensajes/test/${testFileName}`
+    const testContent = new Uint8Array(Buffer.from('Test content'))
     
+    console.log('🔄 [TEST] Intentando subir archivo de prueba...')
     
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('Ecoswap')
-      .upload(testPath, testContent, {
+      .upload(`test/${testFileName}`, testContent, {
         contentType: 'text/plain',
-        cacheControl: '3600'
+        cacheControl: '3600',
+        upsert: false
       })
-    
+
     if (uploadError) {
-      console.error('❌ [API] Error subiendo archivo de prueba:', uploadError)
+      console.error('❌ [TEST] Error en subida:', {
+        error: uploadError,
+        message: uploadError.message,
+        statusCode: uploadError.statusCode
+      })
       return NextResponse.json({ 
-        error: 'Error subiendo archivo de prueba',
-        details: uploadError.message 
+        error: 'Error en subida de prueba',
+        details: uploadError.message,
+        code: uploadError.statusCode
       }, { status: 500 })
     }
-    
-    
-    // Obtener URL pública
-    const { data: { publicUrl } } = supabase.storage
-      .from('Ecoswap')
-      .getPublicUrl(testPath)
-    
-    
+
+    console.log('✅ [TEST] Subida exitosa:', uploadData)
+
     // Limpiar archivo de prueba
-    const { error: deleteError } = await supabase.storage
+    await supabase.storage
       .from('Ecoswap')
-      .remove([testPath])
-    
-    if (deleteError) {
-      console.warn('⚠️ [API] Error eliminando archivo de prueba:', deleteError.message)
-    } else {
-    }
-    
-    return NextResponse.json({
+      .remove([`test/${testFileName}`])
+
+    return NextResponse.json({ 
       success: true,
-      message: 'Subida de prueba exitosa',
+      message: 'Test de subida exitoso',
       uploadData,
-      publicUrl,
-      cleaned: !deleteError
+      user: {
+        id: user.id,
+        email: user.email
+      }
+    })
+
+  } catch (error: any) {
+    console.error('❌ [TEST] Error inesperado:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
     })
     
-  } catch (error: any) {
-    console.error('❌ [API] Error en prueba de subida:', error)
     return NextResponse.json({ 
       error: 'Error interno del servidor',
-      details: error.message 
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     }, { status: 500 })
   }
 }

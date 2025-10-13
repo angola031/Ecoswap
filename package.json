@@ -8,6 +8,7 @@
     "dev:setup": "node scripts/dev-setup.js",
     "db:create-favorito-policies": "node scripts/apply-favorito-policies.js",
     "db:disable-favorito-rls": "node scripts/disable-favorito-rls.js",
+    "db:create-chat-storage-policies": "node scripts/apply-chat-storage-policies.js",
     "build": "next build",
     "build:static": "node scripts/build-static.js",
     "build:cloudflare": "next build",

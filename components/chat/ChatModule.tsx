@@ -292,9 +292,48 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   // Función auxiliar para obtener sesión de Supabase
   const getSession = async () => {
     const supabase = getSupabaseClient()
-    if (!supabase) return null
-    const { data: { session } } = await supabase.auth.getSession()
-    return session
+    if (!supabase) {
+      console.error('❌ [ChatModule] Supabase client no disponible')
+      return null
+    }
+    
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        console.error('❌ [ChatModule] Error obteniendo sesión:', error.message)
+        return null
+      }
+      
+      if (!session) {
+        console.warn('⚠️ [ChatModule] No hay sesión activa')
+        return null
+      }
+      
+      // Verificar si la sesión está expirada
+      if (session.expires_at && new Date(session.expires_at * 1000) < new Date()) {
+        console.warn('⚠️ [ChatModule] Sesión expirada, intentando renovar...')
+        
+        // Intentar renovar la sesión
+        const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession()
+        
+        if (refreshError) {
+          console.error('❌ [ChatModule] Error renovando sesión:', refreshError.message)
+          return null
+        }
+        
+        if (newSession) {
+          console.log('✅ [ChatModule] Sesión renovada exitosamente')
+          return newSession
+        }
+      }
+      
+      console.log('✅ [ChatModule] Sesión válida encontrada')
+      return session
+    } catch (error: any) {
+      console.error('❌ [ChatModule] Error inesperado obteniendo sesión:', error.message)
+      return null
+    }
   }
   const [conversations, setConversations] = useState<ChatConversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<ChatConversation | null>(null)
@@ -1120,10 +1159,10 @@ const getCurrentUserId = () => {
         const messages: ChatMessage[] = (json.items || [])
           .filter((m: any) => {
             const content = m.contenido || ''
-            const isProductInfo = content.includes('Producto Ofrecido') && 
-                                 content.includes('$') && 
-                                 content.includes('Negociable')
-            return !isProductInfo && content.trim().length > 0
+            const isProductTag = typeof content === 'string' && /^\[product:\d+\]$/.test(content.trim())
+            const hasImage = !!m.archivo_url || m.tipo === 'imagen'
+            // Permitir imágenes aunque no haya contenido; ocultar únicamente la marca técnica
+            return hasImage || (!isProductTag && content.trim().length > 0)
           })
           .map((m: any) => {
             // Detectar mensajes del sistema de propuestas
@@ -1144,7 +1183,8 @@ const getCurrentUserId = () => {
                 month: '2-digit'
               }),
               isRead: m.leido,
-              type: m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text',
+              // Priorizar archivo_url para tipo imagen
+              type: m.archivo_url ? 'image' : (m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text'),
               metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
               sender: {
                 id: isSystemProposal ? 'system' : String(m.usuario?.user_id || m.usuario_id),
@@ -1432,12 +1472,7 @@ const getCurrentUserId = () => {
           return
         }
 
-        // Verificar si el mensaje es muy reciente (menos de 5 segundos) para evitar duplicados con polling
-        const messageTime = new Date(m.fecha_envio).getTime()
-        const now = Date.now()
-        if (now - messageTime < 5000) {
-          return
-        }
+        // No filtrar por tiempo; dejamos que la lógica de duplicados basada en IDs maneje coincidencias
 
         // Crear mensaje con información básica (sin hacer fetch adicional)
         const incoming: ChatMessage = {
@@ -2452,7 +2487,7 @@ const getCurrentUserId = () => {
                 ;(window as any).Swal.showValidationMessage('No hay sesión activa. Por favor, inicia sesión nuevamente.')
                 return false
               }
-              const response = await fetch('/api/chat/upload-image', {
+              const response = await fetch('/api/chat/upload-image-debug', {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${token}`
@@ -2849,6 +2884,14 @@ const getCurrentUserId = () => {
       }
 
       const uploadData = await uploadResponse.json()
+      
+      // Validar la estructura de la respuesta
+      if (!uploadData || !uploadData.data || !uploadData.data.url) {
+        console.error('❌ [ChatModule] Estructura de respuesta inválida:', uploadData)
+        throw new Error('Respuesta del servidor inválida: falta URL de la imagen')
+      }
+
+      console.log('✅ [ChatModule] Datos de subida recibidos:', uploadData.data)
 
       // Ahora enviar el mensaje con la imagen al chat
       const chatId = Number(selectedConversation.id)
@@ -3324,7 +3367,7 @@ const getCurrentUserId = () => {
                 ;(window as any).Swal.showValidationMessage('No hay sesión activa. Por favor, inicia sesión nuevamente.')
                 return false
               }
-                                  const response = await fetch('/api/chat/upload-image', {
+                                  const response = await fetch('/api/chat/upload-image-debug', {
                                     method: 'POST',
                                     headers: {
                                       'Authorization': `Bearer ${token}`
@@ -3654,11 +3697,54 @@ const getCurrentUserId = () => {
                       <button
                         onClick={async () => {
                           try {
+                            console.log('🔍 [DEBUG] Iniciando validación manual...')
                             const session = await getSession()
                             const token = session?.access_token
                             
+                            console.log('🔍 [DEBUG] Sesión obtenida:', {
+                              hasSession: !!session,
+                              hasToken: !!token,
+                              tokenLength: token?.length || 0,
+                              expiresAt: session?.expires_at,
+                              isExpired: session?.expires_at ? new Date(session.expires_at * 1000) < new Date() : false
+                            })
+                            
                             if (!token) {
+                              console.error('❌ [DEBUG] No hay token disponible')
                               return
+                            }
+
+                            // Crear FormData de prueba
+                            const testFormData = new FormData()
+                            testFormData.append('chatId', selectedConversation?.id || 'test')
+                            testFormData.append('userId', currentUser?.id || 'test')
+                            
+                            // Crear un archivo de prueba
+                            const testFile = new File(['test content'], 'test.txt', { type: 'text/plain' })
+                            testFormData.append('image', testFile)
+
+                            console.log('🔍 [DEBUG] Enviando validación al servidor...')
+                            
+                            const response = await fetch('/api/chat/validate-auth', {
+                              method: 'POST',
+                              headers: {
+                                Authorization: `Bearer ${token}`
+                              },
+                              body: testFormData
+                            })
+
+                            const result = await response.json()
+                            console.log('🔍 [DEBUG] Resultado de validación:', result)
+                            
+                            if (result.canProceed) {
+                              console.log('✅ [DEBUG] La autenticación es válida, puede proceder con la subida')
+                            } else {
+                              console.log('❌ [DEBUG] La autenticación no es válida:', {
+                                tokenValid: result.authentication?.tokenValid,
+                                sessionValid: result.supabase?.sessionValid,
+                                canAccessStorage: result.storage?.canAccess,
+                                tokenExpired: result.authentication?.tokenExpired
+                              })
                             }
                             
                             
@@ -4198,28 +4284,36 @@ const getCurrentUserId = () => {
               )}
             </div>
 
-            {/* Footer del modal - simplificado */}
-            {!imagePreview.isCompressing && (
-              <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
-                <button
-                  onClick={cancelImageUpload}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  Cancelar
-                </button>
-                {imagePreview.file && (
-                  <button
-                    onClick={uploadImageWithComment}
-                    className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors flex items-center space-x-2"
-                  >
+            {/* Footer del modal - siempre visible */}
+            <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={cancelImageUpload}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={uploadImageWithComment}
+                disabled={imagePreview.isCompressing || !(imagePreview.file || imagePreview.url)}
+                className={`px-6 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors flex items-center space-x-2 ${imagePreview.isCompressing || !(imagePreview.file || imagePreview.url) ? 'bg-green-500/60 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'}`}
+              >
+                {imagePreview.isCompressing ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12a8 8 0 018-8v4m0 0a4 4 0 100 8v4m0-4a4 4 0 110-8" />
+                    </svg>
+                    <span>Procesando…</span>
+                  </>
+                ) : (
+                  <>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                     <span>Enviar</span>
-                  </button>
+                  </>
                 )}
-              </div>
-            )}
+              </button>
+            </div>
           </div>
         </div>
       )}

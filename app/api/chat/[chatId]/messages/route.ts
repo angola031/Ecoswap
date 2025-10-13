@@ -14,13 +14,26 @@ async function authUser(req: NextRequest) {
 }
 
 async function userInChat(userId: number, chatId: number) {
-    // CHAT -> INTERCAMBIO -> usuarios
+    // 1) Si el usuario tiene mensajes en este chat, está autorizado
+    const { count: hasOwnMessages } = await supabase
+        .from('mensaje')
+        .select('mensaje_id', { count: 'exact', head: true })
+        .eq('chat_id', chatId)
+        .eq('usuario_id', userId)
+        .limit(1)
+    if ((hasOwnMessages || 0) > 0) return true
+
+    // 2) Si el chat está vinculado a un intercambio, validar contra ese intercambio
     const { data: chat } = await supabase
         .from('chat')
         .select('intercambio_id, activo')
         .eq('chat_id', chatId)
         .single()
     if (!chat || chat.activo === false) return false
+    if (!chat.intercambio_id) {
+        // Chat sin intercambio y sin mensajes del usuario -> no autorizado
+        return false
+    }
     const { data: it } = await supabase
         .from('intercambio')
         .select('usuario_propone_id, usuario_recibe_id')
@@ -89,9 +102,14 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
         
-        
+        // Filtrar mensajes de marca de producto (no deben mostrarse)
+        const visibleMsgs = (msgs || []).filter((m: any) => {
+          const c = m?.contenido
+          return !(typeof c === 'string' && c.startsWith('[product:') && c.endsWith(']'))
+        })
+
         // Transformar los mensajes al formato esperado por el frontend
-        const transformedMessages = (msgs || []).reverse().map((msg: any) => ({
+        const transformedMessages = visibleMsgs.reverse().map((msg: any) => ({
           mensaje_id: msg.mensaje_id,
           usuario_id: msg.usuario_id,
           contenido: msg.contenido || '',
@@ -138,10 +156,15 @@ export async function POST(req: NextRequest, { params }: { params: { chatId: str
             return NextResponse.json({ error: 'Contenido o archivo requerido' }, { status: 400 })
         }
 
+        // Asegurar que 'contenido' jamás sea null (columna NOT NULL)
+        const safeContenido = (typeof contenido === 'string')
+            ? contenido
+            : ''
+
         const payload: any = {
             chat_id: chatId,
             usuario_id: u.user_id,
-            contenido: contenido || null,
+            contenido: safeContenido,
             tipo: tipo && ['texto', 'imagen', 'ubicacion'].includes(tipo) ? tipo : (archivo_url ? 'imagen' : 'texto'),
             archivo_url: archivo_url || null,
             leido: false

@@ -1644,6 +1644,10 @@ function ChatPageContent() {
       }
 
       const uploadData = await uploadResponse.json()
+      if (!uploadData || !uploadData.data || !uploadData.data.url) {
+        console.error('❌ [ChatPage] Estructura de respuesta inválida:', uploadData)
+        throw new Error('Respuesta del servidor inválida: falta URL de la imagen')
+      }
 
       // Ahora enviar el mensaje con la imagen al chat
       const messageResponse = await fetch(`/api/chat/${chatId}/messages`, {
@@ -1824,8 +1828,8 @@ function ChatPageContent() {
               <div className="flex items-center space-x-3">
                 <div className="relative">
                   <img
-                    src={chatInfo.seller.avatar || '/default-avatar.png'}
-                    alt={`${chatInfo.seller.name} ${chatInfo.seller.lastName}`}
+                    src={chatInfo.seller?.avatar || '/placeholder-image.svg'}
+                    alt={`${chatInfo.seller?.name || 'Vendedor'} ${chatInfo.seller?.lastName || ''}`}
                     className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
                   />
                   <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
@@ -1833,10 +1837,10 @@ function ChatPageContent() {
                 
                 <div>
                   <h1 className="text-lg font-semibold text-gray-900">
-                    {chatInfo.seller.name} {chatInfo.seller.lastName}
+                    {(chatInfo.seller?.name || 'Vendedor')} {(chatInfo.seller?.lastName || '')}
                   </h1>
                   <p className="text-sm text-gray-500">En línea</p>
-                  {chatInfo.seller.location && (
+                  {chatInfo.seller?.location && (
                     <p className="text-xs text-gray-400">{chatInfo.seller.location}</p>
                   )}
                 </div>
@@ -1889,18 +1893,18 @@ function ChatPageContent() {
                 <h4 className="font-medium text-gray-900 mb-3">Vendedor</h4>
                 <div className="flex items-center space-x-3 mb-3">
                   <img
-                    src={chatInfo.seller.avatar || '/default-avatar.png'}
-                    alt={`${chatInfo.seller.name} ${chatInfo.seller.lastName}`}
+                    src={chatInfo.seller?.avatar || '/placeholder-image.svg'}
+                    alt={`${chatInfo.seller?.name || 'Vendedor'} ${chatInfo.seller?.lastName || ''}`}
                     className="w-12 h-12 rounded-full object-cover border border-gray-200"
                   />
                   <div>
                     <p className="font-medium text-gray-900">
-                      {chatInfo.seller.name} {chatInfo.seller.lastName}
+                      {(chatInfo.seller?.name || 'Vendedor')} {(chatInfo.seller?.lastName || '')}
                     </p>
-                    <p className="text-sm text-gray-500">{chatInfo.seller.location || 'Ubicación no disponible'}</p>
+                    <p className="text-sm text-gray-500">{chatInfo.seller?.location || 'Ubicación no disponible'}</p>
                     <div className="flex items-center space-x-1 mt-1">
                       <span className="text-xs text-yellow-600">★</span>
-                      <span className="text-xs text-gray-600">{chatInfo.seller.rating.toFixed(1)}</span>
+                      <span className="text-xs text-gray-600">{Number(chatInfo.seller?.rating ?? 0).toFixed(1)}</span>
                     </div>
                   </div>
                 </div>
@@ -1912,15 +1916,15 @@ function ChatPageContent() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Calificación:</span>
-                    <span className="font-medium">{chatInfo.seller.rating.toFixed(1)}/5</span>
+                    <span className="font-medium">{Number(chatInfo.seller?.rating ?? 0).toFixed(1)}/5</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Intercambios:</span>
-                    <span className="font-medium">{chatInfo.seller.totalExchanges}</span>
+                    <span className="font-medium">{chatInfo.seller?.totalExchanges ?? 0}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Miembro desde:</span>
-                    <span className="font-medium">{chatInfo.seller.memberSince}</span>
+                    <span className="font-medium">{chatInfo.seller?.memberSince || '-'}</span>
                   </div>
                 </div>
               </div>
@@ -1929,21 +1933,25 @@ function ChatPageContent() {
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="font-medium text-gray-900 mb-3">Producto</h4>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Título:</span>
-                    <span className="font-medium text-right">{chatInfo.offeredProduct.title}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Tipo:</span>
-                    <span className="font-medium">{chatInfo.offeredProduct.type}</span>
-                  </div>
-                  {chatInfo.offeredProduct.price && (
+                  {chatInfo.offeredProduct?.title && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Título:</span>
+                      <span className="font-medium text-right">{chatInfo.offeredProduct.title}</span>
+                    </div>
+                  )}
+                  {chatInfo.offeredProduct?.type && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Tipo:</span>
+                      <span className="font-medium">{chatInfo.offeredProduct.type}</span>
+                    </div>
+                  )}
+                  {chatInfo.offeredProduct?.price && (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Precio:</span>
                       <span className="font-medium">${chatInfo.offeredProduct.price.toLocaleString()} COP</span>
                     </div>
                   )}
-                  {chatInfo.offeredProduct.category && (
+                  {chatInfo.offeredProduct?.category && (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Categoría:</span>
                       <span className="font-medium">{chatInfo.offeredProduct.category}</span>

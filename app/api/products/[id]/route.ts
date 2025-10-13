@@ -147,19 +147,21 @@ export async function GET(
       } catch {}
     }
 
-    // Verificar si el producto está en un intercambio activo
+    // Verificar si el producto debe considerarse bloqueado por intercambio
+    // Se bloquea si hay un intercambio 'completado' (definitivo)
+    // o temporalmente si está 'aceptado' o 'en_progreso'
     let isInActiveExchange = false
     try {
       const { data: exchangeData } = await supabase
         .from('intercambio')
         .select('intercambio_id, estado')
         .or(`producto_ofrecido_id.eq.${productId},producto_solicitado_id.eq.${productId}`)
-        .in('estado', ['pendiente', 'aceptado', 'en_progreso', 'pendiente_validacion'])
+        .in('estado', ['completado', 'aceptado', 'en_progreso'])
         .limit(1)
       
       isInActiveExchange = !!exchangeData && exchangeData.length > 0
     } catch (error) {
-      console.error('Error verificando intercambio activo:', error)
+      console.error('Error verificando estado de intercambio:', error)
     }
 
     // Incrementar contador de vistas si el viewer NO es el dueño (no bloqueante)

@@ -1,0 +1,51 @@
+const fs = require('fs');
+const path = require('path');
+
+console.log('🔧 Aplicando Políticas RLS para Chat Storage - Versión 3');
+console.log('📁 Estructura exacta: mensajes/chat_{id}/chat_{id}_{user_id}_{timestamp}_{random}.blob');
+console.log('');
+
+const sqlFilePath = path.join(__dirname, '../database/create-chat-storage-policies-v3.sql');
+const sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
+
+console.log('📋 INSTRUCCIONES PARA APLICAR LAS POLÍTICAS FINALES:');
+console.log('');
+console.log('1. 🌐 Abre tu navegador y ve a:');
+console.log('   https://app.supabase.com/project/vaqdzualcteljmivtoka/sql');
+console.log('');
+console.log('2. 📝 Copia y pega el siguiente SQL en el editor:');
+console.log('');
+console.log('─'.repeat(80));
+console.log(sqlContent);
+console.log('─'.repeat(80));
+console.log('');
+console.log('3. ▶️ Haz clic en "Run" para ejecutar el SQL');
+console.log('');
+console.log('4. ✅ Verifica que aparezcan 4 políticas nuevas:');
+console.log('   - allow_auth_upload_chat_images_v3');
+console.log('   - allow_auth_view_chat_images_v3');
+console.log('   - allow_auth_delete_chat_images_v3');
+console.log('   - allow_auth_update_chat_images_v3');
+console.log('');
+console.log('5. 🔄 Después de ejecutar el SQL, prueba subir una imagen en el chat');
+console.log('');
+console.log('💡 Estas políticas permiten exactamente:');
+console.log('   - INSERT: Subir archivos .blob a mensajes/chat_{número}/');
+console.log('   - SELECT: Ver archivos .blob de mensajes/chat_{número}/');
+console.log('   - DELETE: Eliminar archivos .blob de mensajes/chat_{número}/');
+console.log('   - UPDATE: Actualizar metadatos de archivos .blob');
+console.log('');
+console.log('🎯 Ejemplos de rutas permitidas:');
+console.log('   ✅ mensajes/chat_4/chat_4_19_1760316465717_69e2m73g5e9.blob');
+console.log('   ✅ mensajes/chat_5/chat_5_20_1760316465717_69e2m73g5e9.blob');
+console.log('   ✅ mensajes/chat_123/chat_123_25_1760316465717_abc123def.blob');
+console.log('');
+console.log('❌ Ejemplos de rutas NO permitidas:');
+console.log('   ❌ mensajes/otra_carpeta/archivo.blob');
+console.log('   ❌ mensajes/chat_abc/archivo.blob');
+console.log('   ❌ mensajes/chat_4/archivo.jpg');
+console.log('');
+console.log('🔍 Las políticas usan expresiones regulares:');
+console.log('   - ^chat_[0-9]+$ : Solo carpetas que empiecen con "chat_" seguido de números');
+console.log('   - \\.blob$ : Solo archivos que terminen en ".blob"');
+

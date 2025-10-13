@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📤 [API] Iniciando subida de imagen...')
+    console.log('🔍 [DEBUG] Iniciando subida de imagen con debug...')
     
     const supabase = getSupabaseClient()
     if (!supabase) {
-      console.error('❌ [API] Supabase client no disponible')
+      console.error('❌ [DEBUG] Supabase client no disponible')
       return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
     }
     
+    console.log('📋 [DEBUG] Procesando FormData...')
     const formData = await request.formData()
     const file = formData.get('image') as File
     const chatId = formData.get('chatId') as string
     const userId = formData.get('userId') as string
 
-    console.log('📋 [API] Parámetros recibidos:', {
+    console.log('📋 [DEBUG] Parámetros recibidos:', {
       hasFile: !!file,
       fileName: file?.name,
       fileSize: file?.size,
@@ -27,71 +27,41 @@ export async function POST(request: NextRequest) {
     })
 
     if (!file) {
-      console.error('❌ [API] No se encontró el archivo')
+      console.error('❌ [DEBUG] No se encontró el archivo')
       return NextResponse.json({ error: 'No se encontró el archivo' }, { status: 400 })
     }
 
     if (!chatId || !userId) {
-      console.error('❌ [API] Faltan parámetros requeridos:', { chatId, userId })
+      console.error('❌ [DEBUG] Faltan parámetros requeridos:', { chatId, userId })
       return NextResponse.json({ error: 'Faltan parámetros requeridos' }, { status: 400 })
     }
 
-    // Validar que sea una imagen
-    if (!file.type.startsWith('image/')) {
-      console.error('❌ [API] Archivo no es una imagen:', file.type)
-      return NextResponse.json({ error: 'El archivo debe ser una imagen' }, { status: 400 })
-    }
-
-    // Validar tamaño del archivo (máximo 10MB para archivos originales)
-    if (file.size > 10 * 1024 * 1024) {
-      console.error('❌ [API] Archivo demasiado grande:', file.size)
-      return NextResponse.json({ error: 'El archivo es demasiado grande. Máximo 10MB' }, { status: 400 })
-    }
-
-    // Verificar autenticación - primero por header, luego por cookies
+    // Verificar autenticación
     const authHeader = request.headers.get('authorization')
     let token = null
     
     if (authHeader?.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1]
-      console.log('🔐 [API] Token encontrado en Authorization header')
+      console.log('🔐 [DEBUG] Token encontrado en Authorization header')
     } else {
-      // Intentar obtener token de cookies
-      const cookies = request.headers.get('cookie')
-      console.log('🍪 [API] Cookies recibidas:', cookies ? 'Sí' : 'No')
-      
-      if (cookies) {
-        // Buscar el token de Supabase en las cookies
-        const supabaseTokenMatch = cookies.match(/sb-[^=]+-auth-token=([^;]+)/)
-        if (supabaseTokenMatch) {
-          try {
-            const tokenData = JSON.parse(decodeURIComponent(supabaseTokenMatch[1]))
-            token = tokenData.access_token
-            console.log('🔐 [API] Token encontrado en cookies')
-          } catch (e) {
-            console.warn('⚠️ [API] Error parseando token de cookies:', e.message)
-          }
-        }
-      }
-    }
-    
-    if (!token) {
-      console.error('❌ [API] No se encontró token de autorización (ni en header ni en cookies)')
+      console.error('❌ [DEBUG] No se encontró token de autorización')
       return NextResponse.json({ error: 'Token de autorización requerido' }, { status: 401 })
     }
-
-    // Crear cliente scoped con Authorization: Bearer <token>
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('❌ [API] Variables de entorno de Supabase faltantes')
-      return NextResponse.json({ error: 'Configuración de Supabase incompleta' }, { status: 500 })
-    }
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    })
     
+    console.log('🔐 [DEBUG] Verificando autenticación...')
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError) {
+      console.error('❌ [DEBUG] Error de autenticación:', authError.message)
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
+    }
+    
+    if (!user) {
+      console.error('❌ [DEBUG] Usuario no encontrado en token')
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
+    }
+    
+    console.log('✅ [DEBUG] Usuario autenticado:', user.id)
 
     // Generar nombre único para el archivo con carpeta específica del chat
     const timestamp = Date.now()
@@ -100,7 +70,7 @@ export async function POST(request: NextRequest) {
     const fileName = `chat_${chatId}_${userId}_${timestamp}_${randomString}.${fileExtension}`
     const folderPath = `mensajes/chat_${chatId}/${fileName}`
 
-    console.log('📁 [API] Preparando subida:', {
+    console.log('📁 [DEBUG] Preparando subida:', {
       fileName,
       folderPath,
       originalName: file.name,
@@ -109,36 +79,33 @@ export async function POST(request: NextRequest) {
     })
 
     // Convertir archivo a buffer
+    console.log('🔄 [DEBUG] Convirtiendo archivo a buffer...')
     const arrayBuffer = await file.arrayBuffer()
     const buffer = new Uint8Array(arrayBuffer)
+    console.log('✅ [DEBUG] Buffer creado, tamaño:', buffer.length)
 
-    console.log('🔄 [API] Creando carpeta del chat...')
-
-    // Crear carpeta del chat si no existe (usando un archivo dummy) - sin upsert
+    console.log('🔄 [DEBUG] Creando carpeta del chat...')
+    
+    // Crear carpeta del chat si no existe (usando un archivo dummy)
     const chatFolderPath = `mensajes/chat_${chatId}/.keep`
-    const { error: folderError } = await supabaseAuth.storage
+    const { error: folderError } = await supabase.storage
       .from('Ecoswap')
       .upload(chatFolderPath, new Uint8Array([0]), {
         contentType: 'text/plain',
         cacheControl: '3600',
-        upsert: false
+        upsert: true // Permitir sobrescribir si ya existe
       })
 
     if (folderError) {
-      // Si ya existe, tratar como OK
-      if (folderError.message?.toLowerCase().includes('already exists')) {
-        console.log('ℹ️ [API] Carpeta ya existe, continuando')
-      } else {
-        console.warn('⚠️ [API] No se pudo crear carpeta:', folderError.message)
-      }
+      console.warn('⚠️ [DEBUG] No se pudo crear carpeta (puede que ya exista):', folderError.message)
     } else {
-      console.log('✅ [API] Carpeta del chat creada')
+      console.log('✅ [DEBUG] Carpeta del chat creada/verificada')
     }
 
-    console.log('🔄 [API] Subiendo a Supabase Storage...')
+    console.log('🔄 [DEBUG] Subiendo a Supabase Storage...')
     
     // Subir a Supabase Storage en carpeta específica del chat
-    const { data: uploadData, error: uploadError } = await supabaseAuth.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('Ecoswap')
       .upload(folderPath, buffer, {
         contentType: file.type,
@@ -147,8 +114,10 @@ export async function POST(request: NextRequest) {
       })
 
     if (uploadError) {
-      console.error('❌ [API] Error subiendo imagen:', {
+      console.error('❌ [DEBUG] Error subiendo imagen:', {
         error: uploadError,
+        message: uploadError.message,
+        statusCode: uploadError.statusCode,
         folderPath,
         fileName,
         chatId,
@@ -169,22 +138,32 @@ export async function POST(request: NextRequest) {
         errorMessage = 'Error con el bucket de almacenamiento.'
       } else if (uploadError.message.includes('not found')) {
         errorMessage = 'Bucket de almacenamiento no encontrado.'
+      } else if (uploadError.message.includes('row-level security')) {
+        errorMessage = 'Error de permisos RLS (Row Level Security).'
       }
       
       return NextResponse.json({ 
         error: errorMessage,
-        details: uploadError.message
+        details: uploadError.message,
+        code: uploadError.statusCode,
+        debugInfo: {
+          folderPath,
+          fileName,
+          bucketId: 'Ecoswap',
+          userId: user.id,
+          chatId
+        }
       }, { status: 500 })
     }
 
-    console.log('✅ [API] Imagen subida exitosamente:', uploadData)
+    console.log('✅ [DEBUG] Imagen subida exitosamente:', uploadData)
 
     // Obtener URL pública
-    const { data: { publicUrl } } = supabaseAuth.storage
+    const { data: { publicUrl } } = supabase.storage
       .from('Ecoswap')
       .getPublicUrl(folderPath)
 
-    console.log('🔗 [API] URL pública generada:', publicUrl)
+    console.log('🔗 [DEBUG] URL pública generada:', publicUrl)
 
     const response = {
       success: true,
@@ -198,11 +177,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('✅ [API] Respuesta exitosa:', response)
+    console.log('✅ [DEBUG] Respuesta exitosa:', response)
     return NextResponse.json(response)
 
   } catch (error: any) {
-    console.error('❌ [API] Error inesperado en upload-image:', {
+    console.error('❌ [DEBUG] Error inesperado en upload-image-debug:', {
       message: error.message,
       stack: error.stack,
       name: error.name
@@ -214,3 +193,4 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
   }
 }
+

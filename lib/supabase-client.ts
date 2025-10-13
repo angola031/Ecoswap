@@ -17,7 +17,6 @@ export const getSupabaseClient = () => {
         return null
     }
     
-    console.log('🔍 Creando cliente singleton de Supabase')
     supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
             persistSession: true,

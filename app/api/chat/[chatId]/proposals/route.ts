@@ -77,7 +77,21 @@ export async function GET(
     }
 
     const intercambio = chat.intercambio as any
-    if (!intercambio || (intercambio.usuario_propone_id !== userId && intercambio.usuario_recibe_id !== userId)) {
+    if (!intercambio) {
+      // Chat sin intercambio: autorizar por participación en mensajes
+      const { count: participantCount } = await supabase
+        .from('mensaje')
+        .select('mensaje_id', { count: 'exact', head: true })
+        .eq('chat_id', chatId)
+        .eq('usuario_id', userId)
+        .limit(1)
+      if ((participantCount || 0) === 0) {
+        return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
+      }
+      // Sin intercambio -> no hay propuestas aún
+      return NextResponse.json({ data: [], userValidations: [] })
+    }
+    if (intercambio.usuario_propone_id !== userId && intercambio.usuario_recibe_id !== userId) {
       return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
     }
 

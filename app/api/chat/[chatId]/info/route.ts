@@ -158,6 +158,79 @@ export async function GET(
 
     const intercambioData = Array.isArray(chat.intercambio) ? chat.intercambio[0] : chat.intercambio
 
+    // Si no hay intercambio, construir respuesta mínima basada en últimos mensajes
+    if (!intercambioData) {
+      // Determinar otra parte a partir de mensajes recientes
+      const { data: lastMessages } = await supabase
+        .from('mensaje')
+        .select('usuario_id, contenido')
+        .eq('chat_id', chatId)
+        .order('mensaje_id', { ascending: false })
+        .limit(20)
+
+      const participants = new Set<number>()
+      let productIdFromTag: string | null = null
+      for (const m of (lastMessages || [])) {
+        if (typeof m?.usuario_id === 'number') participants.add(m.usuario_id)
+        if (typeof m?.contenido === 'string' && m.contenido.startsWith('[product:') && m.contenido.endsWith(']')) {
+          productIdFromTag = m.contenido.slice(9, -1)
+        }
+      }
+
+      if (!participants.has(userId)) {
+        return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
+      }
+
+      // Resolver otro participante (vendedor) distinto al usuario actual
+      let otherUserId: number | null = null
+      for (const pid of Array.from(participants)) {
+        if (pid !== userId) { otherUserId = pid; break }
+      }
+
+      let sellerPayload: any = null
+      if (otherUserId) {
+        const { data: sellerRow } = await supabase
+          .from('usuario')
+          .select('user_id, nombre, apellido, foto_perfil, calificacion_promedio, total_intercambios, fecha_registro')
+          .eq('user_id', otherUserId)
+          .single()
+
+        let sellerLocation: string | null = null
+        if (sellerRow) {
+          const { data: location } = await supabase
+            .from('ubicacion')
+            .select('ciudad, departamento')
+            .eq('user_id', sellerRow.user_id)
+            .eq('es_principal', true)
+            .single()
+          if (location) sellerLocation = `${location.ciudad}, ${location.departamento}`
+
+          sellerPayload = {
+            id: sellerRow.user_id,
+            name: sellerRow.nombre,
+            lastName: sellerRow.apellido,
+            avatar: sellerRow.foto_perfil,
+            location: sellerLocation,
+            rating: sellerRow.calificacion_promedio || 0,
+            totalExchanges: sellerRow.total_intercambios || 0,
+            memberSince: sellerRow.fecha_registro ? new Date(sellerRow.fecha_registro).getFullYear().toString() : null
+          }
+        }
+      }
+
+      // Respuesta con datos del vendedor y producto si se pudo resolver
+      return NextResponse.json({
+        data: {
+          chatId,
+          seller: sellerPayload,
+          exchangeInfo: null,
+          offeredProduct: productIdFromTag ? { id: Number(productIdFromTag) } : null,
+          requestedProduct: null,
+          createdAt: undefined
+        }
+      })
+    }
+
     // Obtener imagen principal del producto ofrecido
     let productImageUrl = null
     if (intercambioData?.producto_ofrecido_id) {
