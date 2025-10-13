@@ -17,11 +17,17 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
     
-    const diagnosis = {
+    const diagnosis: any = {
       timestamp: new Date().toISOString(),
       productoId,
       hasAuth: !!token,
-      steps: []
+      steps: [],
+      alreadyLiked: false,
+      insertError: null,
+      success: false,
+      userId: null,
+      producto: null,
+      finalStatus: null
     }
 
     // Paso 1: Verificar autenticación

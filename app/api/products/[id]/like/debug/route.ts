@@ -27,7 +27,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       hasToken: !!token,
       tokenLength: token.length,
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseKeyPresent: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      supabaseKeyPresent: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      authUser: null,
+      authError: null
     }
 
     if (token) {

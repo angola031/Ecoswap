@@ -22,14 +22,22 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const auth = req.headers.get('authorization') || ''
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
     
-    const testInfo = {
+    const testInfo: any = {
       productoId,
       isProductIdValid: !isNaN(productoId) && productoId > 0,
       hasAuthHeader: !!auth,
       hasToken: !!token,
       tokenLength: token.length,
       supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      supabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      authUser: null,
+      authError: null,
+      usuarioFound: false,
+      usuarioError: null,
+      usuarioData: null,
+      favoritoTableAccessible: false,
+      favoritoError: null,
+      favoritoSample: null
     }
 
     if (token) {
