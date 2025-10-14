@@ -1,25 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-    // Crear respuesta
+    // Middleware simplificado para evitar conflictos
     const response = NextResponse.next()
     
-    // Configurar headers para evitar problemas con cookies de Cloudflare
-    response.headers.set('X-Content-Type-Options', 'nosniff')
-    response.headers.set('X-Frame-Options', 'DENY')
-    response.headers.set('X-XSS-Protection', '1; mode=block')
-    
-    // Configurar cookies seguras
-    if (request.nextUrl.hostname !== 'localhost') {
-        // En producción (Vercel), configurar cookies seguras
-        response.headers.set('Set-Cookie', 
-            response.headers.get('Set-Cookie')?.split(',').map(cookie => {
-                if (cookie.includes('__cf_bm')) {
-                    return cookie + '; SameSite=Lax; Secure'
-                }
-                return cookie
-            }).join(',') || ''
-        )
+    // Solo configurar headers básicos si es necesario
+    if (request.nextUrl.pathname.startsWith('/api/')) {
+        response.headers.set('Access-Control-Allow-Origin', '*')
+        response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     }
     
     return response
@@ -27,9 +16,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        // Aplicar solo a rutas específicas que necesitan middleware
-        '/api/:path*',
-        '/storage/:path*',
-        '/admin/:path*'
+        // Solo aplicar a APIs
+        '/api/:path*'
     ],
 }
