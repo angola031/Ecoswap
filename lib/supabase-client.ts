@@ -40,18 +40,17 @@ export const getSupabaseAdminClient = () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     
-    // No requerimos SERVICE_ROLE_KEY por seguridad
     if (!supabaseUrl) {
         console.warn('⚠️ NEXT_PUBLIC_SUPABASE_URL no encontrada')
         return null
     }
     
     if (!supabaseServiceRoleKey) {
-        console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY no configurada (modo seguro)')
+        console.log('ℹ️ SUPABASE_SERVICE_ROLE_KEY no configurada (modo localhost)')
         return null
     }
     
-    console.log('🔍 Creando cliente admin de Supabase')
+    console.log('🔧 Creando cliente admin de Supabase (Vercel/Producción)')
     return createClient(supabaseUrl, supabaseServiceRoleKey, {
         auth: {
             autoRefreshToken: false,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdminClient } from '@/lib/supabase-client'
 
 export async function POST(req: NextRequest) {
     try {
@@ -58,8 +59,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         }
 
-        // Usar cliente autenticado (sin admin client)
-        const storageClient = supabaseAuth
+        // Usar admin client si está disponible (Vercel), sino usar cliente autenticado (localhost)
+        const adminClient = getSupabaseAdminClient()
+        const storageClient = adminClient || supabaseAuth
+        const isUsingAdmin = !!adminClient
+        
+        console.log('🔧 Usando cliente:', isUsingAdmin ? 'Admin (Vercel)' : 'Autenticado (Localhost)')
         
         // Usar estructura simple compatible con RLS: usuarios/{auth.uid}/foto_perfil.ext
         const ext = (file.type === 'image/png') ? 'png' : 'jpg'
@@ -96,7 +101,7 @@ export async function POST(req: NextRequest) {
             .from('usuario')
             .update({ foto_perfil: publicUrl })
             .eq('user_id', userId)
-            .eq('auth_user_id', authUid)
+            .eq(isUsingAdmin ? 'user_id' : 'auth_user_id', isUsingAdmin ? userId : authUid)
 
         if (updateErr) {
             console.error('Error actualizando perfil:', updateErr)

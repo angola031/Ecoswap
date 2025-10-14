@@ -23,10 +23,12 @@ export function validateConfig() {
         'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     ]
 
-    // No validamos SUPABASE_SERVICE_ROLE_KEY ya que no la usamos por seguridad
-    // if (typeof window === 'undefined') {
-    //     required.push('SUPABASE_SERVICE_ROLE_KEY')
-    // }
+    // Validar SERVICE_ROLE_KEY solo en servidor si está configurada
+    if (typeof window === 'undefined' && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        console.log('🔧 SERVICE_ROLE_KEY detectada - Modo admin disponible')
+    } else if (typeof window === 'undefined') {
+        console.log('ℹ️ SERVICE_ROLE_KEY no configurada - Modo localhost')
+    }
 
     const missing = required.filter(key => !process.env[key])
 
