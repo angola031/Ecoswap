@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase-client'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: NextRequest) {
-        const supabase = getSupabaseClient()
     try {
         const MAX_BYTES = 2 * 1024 * 1024 // 2MB
         const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png']
@@ -13,11 +12,23 @@ export async function POST(req: NextRequest) {
         }
 
         const accessToken = authHeader.split(' ')[1]
+        // Crear cliente autenticado con Authorization: Bearer <token>
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+        if (!supabaseUrl || !supabaseAnonKey) {
+            return NextResponse.json({ error: 'Configuración de Supabase incompleta' }, { status: 500 })
+        }
+        const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: `Bearer ${accessToken}` } },
+            auth: { persistSession: false, autoRefreshToken: false }
+        })
+
         // Validar usuario a partir del token
-        const { data: userInfo, error: userErr } = await supabase.auth.getUser(accessToken)
+        const { data: userInfo, error: userErr } = await supabaseAuth.auth.getUser(accessToken)
         if (userErr || !userInfo?.user) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
         }
+        const authUid = userInfo.user.id
 
         const form = await req.formData()
         const file = form.get('file') as File | null
@@ -35,37 +46,65 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'El archivo supera 2MB. Reduce o comprime la imagen.' }, { status: 400 })
         }
 
-        // Verificar que el userId pertenezca al email del token
-        const { data: dbUser, error: dbErr } = await supabase
+        // Verificar que el userId pertenezca al auth.uid() del token (cumple RLS típica)
+        const { data: dbUser, error: dbErr } = await supabaseAuth
             .from('usuario')
-            .select('user_id, email')
+            .select('user_id, auth_user_id')
             .eq('user_id', userId)
+            .eq('auth_user_id', authUid)
             .single()
 
-        if (dbErr || !dbUser || dbUser.email !== userInfo.user.email) {
+        if (dbErr || !dbUser) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         }
 
-        const path = `usuarios/${userId}/perfil.jpg`
+        // Usar cliente autenticado (sin admin client)
+        const storageClient = supabaseAuth
+        
+        // Usar estructura simple compatible con RLS: usuarios/{auth.uid}/foto_perfil.ext
+        const ext = (file.type === 'image/png') ? 'png' : 'jpg'
+        const path = `usuarios/${authUid}/foto_perfil.${ext}`
         const arrayBuffer = await file.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
 
-        const { error: uploadError } = await supabase.storage
+        // Subir archivo al storage
+        const { error: uploadError } = await storageClient.storage
             .from('Ecoswap')
-            .upload(path, buffer, { upsert: true, contentType: file.type || 'image/jpeg' })
+            .upload(path, buffer, { 
+                upsert: true, // Permitir sobrescribir
+                contentType: file.type || 'image/jpeg', 
+                cacheControl: '3600' 
+            })
 
         if (uploadError) {
-            return NextResponse.json({ error: uploadError.message }, { status: 400 })
+            console.error('Error subiendo archivo:', uploadError)
+            return NextResponse.json({ 
+                error: `Error subiendo archivo: ${uploadError.message}`, 
+                step: 'storage.upload', 
+                path 
+            }, { status: 400 })
         }
 
-        const { data: urlData } = supabase.storage.from('Ecoswap').getPublicUrl(path)
+        // Obtener URL pública
+        const { data: urlData } = storageClient.storage
+            .from('Ecoswap')
+            .getPublicUrl(path)
         const publicUrl = urlData?.publicUrl || null
 
-        // Actualizar foto_perfil
-        await supabase
+        // Actualizar foto_perfil en la base de datos
+        const { error: updateErr } = await storageClient
             .from('usuario')
             .update({ foto_perfil: publicUrl })
             .eq('user_id', userId)
+            .eq('auth_user_id', authUid)
+
+        if (updateErr) {
+            console.error('Error actualizando perfil:', updateErr)
+            return NextResponse.json({ 
+                error: `Error actualizando perfil: ${updateErr.message}`, 
+                step: 'db.update_profile' 
+            }, { status: 400 })
+        }
 
         return NextResponse.json({ ok: true, path, publicUrl })
     } catch (e: any) {
