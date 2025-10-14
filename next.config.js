@@ -5,9 +5,19 @@ const nextConfig = {
   
   // Configuración de imágenes
   images: {
-    domains: ['images.unsplash.com', 'vaqdzualcteljmivtoka.supabase.co'],
+    domains: [
+      'images.unsplash.com', 
+      'vaqdzualcteljmivtoka.supabase.co',
+      'ecoswap.vercel.app', // Dominio de Vercel
+      'localhost' // Para desarrollo local
+    ],
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+  
+  // Configuración para Vercel
+  experimental: {
+    serverComponentsExternalPackages: ['@supabase/supabase-js']
   },
   
   // React Strict Mode deshabilitado (puedes habilitarlo si lo necesitas)
