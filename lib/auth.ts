@@ -927,7 +927,7 @@ export async function getCurrentUser(): Promise<User | null> {
             .single()
 
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout')), 2000)
+                setTimeout(() => reject(new Error('Timeout')), 1000) // Reducido a 1 segundo
             )
 
             const { data: dbUser } = await Promise.race([dbPromise, timeoutPromise]) as any

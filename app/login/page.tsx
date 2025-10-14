@@ -210,8 +210,10 @@ export default function LoginPage() {
                 // Guardar datos en localStorage
                 localStorage.setItem('ecoswap_user', JSON.stringify(userInfo))
                 
-                // Redirigir inmediatamente sin setTimeout
-                window.location.href = '/admin/verificaciones'
+                // Redirigir con múltiples métodos para asegurar que funcione
+                setTimeout(() => {
+                    window.location.replace('/admin/verificaciones')
+                }, 100)
                 return
             } else {
                 console.log('🔍 Usuario normal detectado, redirigiendo a página principal')
@@ -220,8 +222,10 @@ export default function LoginPage() {
                 // Guardar datos en localStorage
                 localStorage.setItem('ecoswap_user', JSON.stringify(userInfo))
                 
-                // Redirigir inmediatamente sin setTimeout
-                window.location.href = '/'
+                // Redirigir con múltiples métodos para asegurar que funcione
+                setTimeout(() => {
+                    window.location.replace('/')
+                }, 100)
                 return
             }
         } catch (err: any) {

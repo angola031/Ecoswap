@@ -149,12 +149,37 @@ export default function HomePage() {
                 const { data: { session } } = await supabase.auth.getSession()
                 if (session) {
                     console.log('🔍 Sesión inicial detectada:', session.user.email)
-                    const user = await getCurrentUser()
-                    if (user) {
-                        setCurrentUser(user)
-                        setIsAuthenticated(true)
-                        setCurrentScreen('main')
-                        console.log('✅ Usuario autenticado desde sesión inicial:', user.name)
+                    
+                    // Crear usuario básico inmediatamente
+                    const basicUser = {
+                        id: session.user.id,
+                        name: session.user.user_metadata?.full_name || 
+                              session.user.user_metadata?.name || 
+                              session.user.user_metadata?.first_name + ' ' + session.user.user_metadata?.last_name ||
+                              session.user.email.split('@')[0],
+                        email: session.user.email,
+                        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+                        location: 'Colombia',
+                        phone: session.user.user_metadata?.phone || undefined,
+                        isAdmin: false,
+                        roles: [],
+                        adminSince: undefined
+                    }
+                    
+                    setCurrentUser(basicUser)
+                    setIsAuthenticated(true)
+                    setCurrentScreen('main')
+                    console.log('✅ Usuario autenticado desde sesión inicial:', basicUser.name)
+                    
+                    // Intentar obtener datos completos en segundo plano
+                    try {
+                        const user = await getCurrentUser()
+                        if (user) {
+                            setCurrentUser(user)
+                            console.log('✅ Datos completos cargados:', user.name)
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Error cargando datos completos, usando datos básicos:', error)
                     }
                 }
             } catch (error) {
