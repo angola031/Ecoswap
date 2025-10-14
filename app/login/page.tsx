@@ -76,14 +76,10 @@ export default function LoginPage() {
                     if (userData?.activo) {
                         if (userData.es_admin) {
                             console.log('🔍 Redirigiendo a admin dashboard desde sesión existente')
-                            setTimeout(() => {
-                                window.location.href = '/admin/verificaciones'
-                            }, 2000)
+                            window.location.href = '/admin/verificaciones'
                         } else {
                             console.log('🔍 Redirigiendo a página principal desde sesión existente')
-                            setTimeout(() => {
-                                window.location.href = '/'
-                            }, 1000)
+                            window.location.href = '/'
                         }
                     }
                 }
@@ -94,51 +90,14 @@ export default function LoginPage() {
 
         checkExistingSession()
 
-        // Escuchar cambios en el estado de autenticación
+        // Escuchar cambios en el estado de autenticación (simplificado)
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             console.log('🔍 Cambio de estado de auth:', event, !!session)
             
             if (event === 'SIGNED_IN' && session) {
-                console.log('🔍 Usuario inició sesión, verificando permisos...')
-                
-                // Verificar permisos y redirigir
-                const checkAndRedirect = async () => {
-                    try {
-                        let { data: userData } = await supabase
-                            .from('usuario')
-                            .select('es_admin, activo')
-                            .eq('auth_user_id', session.user.id)
-                            .single()
-
-                        if (!userData) {
-                            const emailResult = await supabase
-                                .from('usuario')
-                                .select('es_admin, activo')
-                                .eq('email', session.user.email)
-                                .single()
-                            userData = emailResult.data
-                        }
-
-                        if (userData?.activo) {
-                            if (userData.es_admin) {
-                                console.log('🔍 Redirigiendo a admin dashboard desde auth state change')
-                                // Esperar un poco para que se establezca la sesión
-                                setTimeout(() => {
-                                    window.location.href = '/admin/verificaciones'
-                                }, 2500)
-                            } else {
-                                console.log('🔍 Redirigiendo a página principal desde auth state change')
-                                setTimeout(() => {
-                                    window.location.href = '/'
-                                }, 1500)
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Error verificando permisos en auth state change:', error)
-                    }
-                }
-
-                checkAndRedirect()
+                console.log('🔍 Usuario inició sesión desde auth state change')
+                // No hacer redirección aquí para evitar conflictos con handleLogin
+                // La redirección se maneja en handleLogin
             }
         })
 
@@ -158,107 +117,112 @@ export default function LoginPage() {
         }
 
         try {
-            // Paso 1: Autenticar
-            const { data, error } = await supabase.auth.signInWithPassword({
+            console.log('🔐 Iniciando proceso de login para:', email)
+            
+            // Paso 1: Autenticar con Supabase Auth
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             })
 
-            if (error) {
-                setError(error.message)
+            if (authError) {
+                console.error('❌ Error de autenticación:', authError.message)
+                setError(authError.message)
+                setLoading(false)
                 return
             }
 
-
-            // Paso 2: VERIFICAR la sesión antes de consultar
-            const { data: { session } } = await supabase.auth.getSession()
-
-            if (!session) {
-                setError('No se pudo establecer la sesión')
+            if (!authData.user) {
+                setError('Error al iniciar sesión')
+                setLoading(false)
                 return
             }
 
-            // Paso 3: Ahora SÍ consultar (con sesión activa)
-            console.log('🔍 Verificando usuario en base de datos para:', email)
-            console.log('🔍 ID del usuario autenticado:', session.user.id)
-            
-            // Primero intentar buscar por auth_user_id (método preferido)
-            let { data: userData, error: userError } = await supabase
-                .from('usuario')
-                .select('es_admin, activo, nombre, apellido, auth_user_id')
-                .eq('auth_user_id', session.user.id)
-                .single()
+            console.log('✅ Autenticación exitosa:', authData.user.email)
 
-            // Si no se encuentra por auth_user_id, buscar por email como fallback
-            if (userError || !userData) {
-                console.log('🔍 No encontrado por auth_user_id, buscando por email...')
-                const emailResult = await supabase
+            // Paso 2: Verificar que el email esté confirmado
+            if (!authData.user.email_confirmed_at) {
+                setError('Por favor, verifica tu email antes de iniciar sesión')
+                setLoading(false)
+                return
+            }
+
+            // Paso 3: Intentar obtener datos del usuario de la base de datos
+            let userData = null
+            try {
+                // Buscar por auth_user_id primero
+                const { data: userByAuthId, error: authIdError } = await supabase
                     .from('usuario')
                     .select('es_admin, activo, nombre, apellido, auth_user_id')
-                    .eq('email', email)
+                    .eq('auth_user_id', authData.user.id)
                     .single()
-                
-                userData = emailResult.data
-                userError = emailResult.error
+
+                if (userByAuthId) {
+                    userData = userByAuthId
+                    console.log('✅ Usuario encontrado por auth_user_id')
+                } else {
+                    // Buscar por email como fallback
+                    const { data: userByEmail, error: emailError } = await supabase
+                        .from('usuario')
+                        .select('es_admin, activo, nombre, apellido, auth_user_id')
+                        .eq('email', email)
+                        .single()
+                    
+                    if (userByEmail) {
+                        userData = userByEmail
+                        console.log('✅ Usuario encontrado por email')
+                    }
+                }
+            } catch (dbError) {
+                console.warn('⚠️ Error consultando base de datos:', dbError)
+                // Continuar sin datos de BD, usar solo Supabase Auth
             }
 
-            console.log('🔍 Resultado de consulta usuario:', { userData, userError })
+            // Paso 4: Crear objeto de usuario (con o sin datos de BD)
+            const userInfo = userData ? {
+                ...userData,
+                email: authData.user.email,
+                id: authData.user.id
+            } : {
+                es_admin: false,
+                activo: true,
+                nombre: authData.user.user_metadata?.first_name || 'Usuario',
+                apellido: authData.user.user_metadata?.last_name || 'EcoSwap',
+                email: authData.user.email,
+                id: authData.user.id
+            }
 
-            if (userError) {
-                console.error('❌ Error en la consulta:', userError)
-                setError('Error al verificar permisos: ' + userError.message)
+            console.log('👤 Información del usuario:', userInfo)
+
+            // Paso 5: Verificar si el usuario está activo
+            if (!userInfo.activo) {
+                setError('Tu cuenta está desactivada. Contacta al soporte.')
+                await supabase.auth.signOut()
+                setLoading(false)
                 return
             }
 
-            if (!userData) {
-                console.error('❌ No se encontraron datos del usuario para:', email)
-                setError('No se encontraron datos del usuario')
-                return
-            }
-
-            console.log('✅ Usuario encontrado:', userData)
-
-            // Redirigir directamente según el tipo de usuario
-            if (userData.es_admin && userData.activo) {
+            // Paso 6: Redirigir según el tipo de usuario
+            if (userInfo.es_admin) {
                 console.log('🔍 Usuario admin detectado, redirigiendo a admin dashboard')
                 setSuccess('¡Autenticación exitosa! Redirigiendo al dashboard...')
                 
-                // Esperar a que se establezca completamente la sesión antes de redirigir
-                setTimeout(async () => {
-                    console.log('🔍 Esperando establecimiento de sesión...')
-                    
-                    // Verificar que la sesión esté realmente establecida
-                    const { data: { session } } = await supabase.auth.getSession()
-                    console.log('🔍 Sesión verificada:', !!session)
-                    
-                    if (session) {
-                        console.log('🔍 Sesión establecida, redirigiendo a admin dashboard')
-                        window.location.href = '/admin/verificaciones'
-                    } else {
-                        console.log('🔍 Sesión no establecida, reintentando en 3 segundos...')
-                        setTimeout(() => {
-                            window.location.href = '/admin/verificaciones'
-                        }, 3000)
-                    }
-                }, 3000)
-                return // No ejecutar setLoading(false) si vamos a redirigir
-            } else if (userData && !userData.es_admin && userData.activo) {
+                // Guardar datos en localStorage
+                localStorage.setItem('ecoswap_user', JSON.stringify(userInfo))
+                
+                // Redirigir inmediatamente sin setTimeout
+                window.location.href = '/admin/verificaciones'
+                return
+            } else {
                 console.log('🔍 Usuario normal detectado, redirigiendo a página principal')
                 setSuccess('¡Autenticación exitosa! Redirigiendo...')
                 
-                // Redirigir a la página principal
-                setTimeout(() => {
-                    console.log('🔍 Ejecutando redirección a página principal')
-                    console.log('🔍 Usando window.location.href directamente')
-                    
-                    // Usar window.location.href directamente
-                    window.location.href = '/'
-                }, 1000)
-                return // No ejecutar setLoading(false) si vamos a redirigir
-            } else {
-                console.log('❌ Usuario inactivo o sin permisos:', userData)
-                setError('Tu cuenta no está activa o no tienes permisos')
-                await supabase.auth.signOut()
+                // Guardar datos en localStorage
+                localStorage.setItem('ecoswap_user', JSON.stringify(userInfo))
+                
+                // Redirigir inmediatamente sin setTimeout
+                window.location.href = '/'
+                return
             }
         } catch (err: any) {
             console.error('💥 Error:', err)

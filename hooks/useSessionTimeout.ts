@@ -10,7 +10,7 @@ interface UseSessionTimeoutOptions {
 }
 
 export function useSessionTimeout({
-    timeoutMinutes = 5,
+    timeoutMinutes = 30, // Cambiado de 5 a 30 minutos para coincidir con useInactivity
     onTimeout,
     enabled = true
 }: UseSessionTimeoutOptions = {}) {

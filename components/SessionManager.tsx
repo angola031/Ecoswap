@@ -19,7 +19,7 @@ export default function SessionManager() {
 
     // Usar el mismo hook que SessionTimeoutWarning
     const { resetTimeout, getMinutesRemaining, isInWarningPeriod } = useSessionTimeout({
-        timeoutMinutes: 5,
+        timeoutMinutes: 30, // Cambiado de 5 a 30 minutos para coincidir con useInactivity
         enabled: isProtectedPage,
         onTimeout: () => {
         }
@@ -56,8 +56,8 @@ export default function SessionManager() {
 
     return (
         <SessionTimeoutWarning
-            timeoutMinutes={5}
-            warningMinutes={1}
+            timeoutMinutes={30} // Cambiado de 5 a 30 minutos
+            warningMinutes={5} // Advertencia 5 minutos antes del timeout
             getMinutesRemaining={getMinutesRemaining}
             resetTimeout={resetTimeout}
             isInWarningPeriod={isInWarningPeriod}

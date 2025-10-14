@@ -45,13 +45,125 @@ export default function HomePage() {
     // Hook para notificaciones
     const { unreadCount, loading: notificationsLoading } = useNotifications()
 
+    // Función para verificar sesión después de actividad
+    const checkSessionAfterActivity = async () => {
+        try {
+            const supabase = getSupabaseClient()
+            if (!supabase) return
+
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+                console.log('✅ Sesión válida detectada después de actividad')
+                const user = await getCurrentUser()
+                if (user) {
+                    setCurrentUser(user)
+                    setIsAuthenticated(true)
+                    setCurrentScreen('main')
+                    setTimeoutMessage('') // Limpiar mensaje de timeout
+                    console.log('✅ Estado restaurado correctamente')
+                }
+            } else {
+                console.log('⚠️ No hay sesión válida después de actividad')
+                setIsAuthenticated(false)
+                setCurrentUser(null)
+                setCurrentScreen('main')
+            }
+        } catch (error) {
+            console.error('Error verificando sesión después de actividad:', error)
+        }
+    }
+
+    // Función para navegar a un módulo con validación
+    const navigateToModule = async (module: string) => {
+        try {
+            // Si el módulo requiere autenticación, verificar sesión
+            const protectedModules = ['interactions', 'chat', 'profile', 'notifications']
+            if (protectedModules.includes(module)) {
+                const supabase = getSupabaseClient()
+                if (!supabase) {
+                    console.error('❌ Supabase no está configurado')
+                    return
+                }
+
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session) {
+                    console.log('⚠️ No hay sesión válida, redirigiendo a login')
+                    setCurrentScreen('auth')
+                    return
+                }
+
+                // Verificar que el usuario esté cargado
+                if (!currentUser) {
+                    console.log('🔄 Cargando datos del usuario...')
+                    const user = await getCurrentUser()
+                    if (user) {
+                        setCurrentUser(user)
+                        setIsAuthenticated(true)
+                    } else {
+                        console.error('❌ No se pudo cargar el usuario')
+                        setCurrentScreen('auth')
+                        return
+                    }
+                }
+            }
+
+            // Cambiar al módulo solicitado
+            setCurrentModule(module)
+            console.log(`✅ Navegando a módulo: ${module}`)
+        } catch (error) {
+            console.error('Error navegando a módulo:', error)
+        }
+    }
+
     // Hook para detectar inactividad y cerrar sesión automáticamente
     useInactivity({
         timeout: 30 * 60 * 1000, // 30 minutos de inactividad
         onInactive: async () => {
+            console.log('🔄 Usuario inactivo detectado, limpiando estado...')
+            // Limpiar estado de la aplicación
+            setIsAuthenticated(false)
+            setCurrentUser(null)
+            setCurrentModule('products') // Resetear a módulo por defecto
+            setCurrentScreen('main')
+            setTimeoutMessage('Tu sesión ha expirado por inactividad. Por favor, inicia sesión nuevamente.')
             // El hook ya maneja el logout automáticamente
+        },
+        onActive: () => {
+            console.log('🔄 Usuario activo detectado, verificando sesión...')
+            // Verificar sesión cuando el usuario vuelve a estar activo
+            checkSessionAfterActivity()
         }
     })
+
+    // Verificar sesión inicial al cargar la página
+    useEffect(() => {
+        const checkInitialSession = async () => {
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                console.warn('⚠️ Supabase no está configurado. Ejecutando en modo estático.')
+                return
+            }
+
+            try {
+                // Verificar si hay una sesión activa al cargar la página
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    console.log('🔍 Sesión inicial detectada:', session.user.email)
+                    const user = await getCurrentUser()
+                    if (user) {
+                        setCurrentUser(user)
+                        setIsAuthenticated(true)
+                        setCurrentScreen('main')
+                        console.log('✅ Usuario autenticado desde sesión inicial:', user.name)
+                    }
+                }
+            } catch (error) {
+                console.error('Error verificando sesión inicial:', error)
+            }
+        }
+
+        checkInitialSession()
+    }, [])
 
     // Listener para cambios de sesión de Supabase
     useEffect(() => {
@@ -323,7 +435,7 @@ export default function HomePage() {
                         {/* Navegación */}
                         <nav className="hidden md:flex space-x-8">
                             <button
-                                onClick={() => setCurrentModule('home')}
+                                onClick={() => navigateToModule('home')}
                                 className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'home'
                                     ? 'bg-primary-100 text-primary-700'
                                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
@@ -334,7 +446,7 @@ export default function HomePage() {
                             </button>
 
                             <button
-                                onClick={() => setCurrentModule('products')}
+                                onClick={() => navigateToModule('products')}
                                 className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'products'
                                     ? 'bg-primary-100 text-primary-700'
                                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
@@ -347,7 +459,7 @@ export default function HomePage() {
                             {isAuthenticated && (
                                 <>
                                     <button
-                                        onClick={() => setCurrentModule('interactions')}
+                                        onClick={() => navigateToModule('interactions')}
                                         className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'interactions'
                                             ? 'bg-primary-100 text-primary-700'
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
@@ -358,7 +470,7 @@ export default function HomePage() {
                                     </button>
 
                                     <button
-                                        onClick={() => setCurrentModule('chat')}
+                                        onClick={() => navigateToModule('chat')}
                                         className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'chat'
                                             ? 'bg-primary-100 text-primary-700'
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
@@ -386,7 +498,7 @@ export default function HomePage() {
                                     </button>
 
                                     <button
-                                        onClick={() => setCurrentModule('profile')}
+                                        onClick={() => navigateToModule('profile')}
                                         className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'profile'
                                             ? 'bg-primary-100 text-primary-700'
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'

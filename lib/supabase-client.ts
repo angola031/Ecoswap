@@ -40,8 +40,14 @@ export const getSupabaseAdminClient = () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-        console.warn('⚠️ Variables de entorno de Supabase Admin no encontradas')
+    // No requerimos SERVICE_ROLE_KEY por seguridad
+    if (!supabaseUrl) {
+        console.warn('⚠️ NEXT_PUBLIC_SUPABASE_URL no encontrada')
+        return null
+    }
+    
+    if (!supabaseServiceRoleKey) {
+        console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY no configurada (modo seguro)')
         return null
     }
     

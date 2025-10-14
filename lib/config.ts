@@ -23,10 +23,10 @@ export function validateConfig() {
         'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     ]
 
-    // Solo validar SUPABASE_SERVICE_ROLE_KEY en el servidor
-    if (typeof window === 'undefined') {
-        required.push('SUPABASE_SERVICE_ROLE_KEY')
-    }
+    // No validamos SUPABASE_SERVICE_ROLE_KEY ya que no la usamos por seguridad
+    // if (typeof window === 'undefined') {
+    //     required.push('SUPABASE_SERVICE_ROLE_KEY')
+    // }
 
     const missing = required.filter(key => !process.env[key])
 

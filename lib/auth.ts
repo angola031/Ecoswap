@@ -499,7 +499,7 @@ async function createUserProfile(authUser: any, registerData: RegisterData): Pro
     }
 }
 
-// Función para autenticar un usuario con Supabase Auth
+// Función para autenticar un usuario con Supabase Auth (versión simplificada sin Service Role Key)
 export async function loginUser(data: LoginData): Promise<{ user: User | null; error: string | null }> {
     try {
         const supabase = getSupabaseClient()
@@ -529,86 +529,52 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
             return { user: null, error: 'Por favor, verifica tu email antes de iniciar sesión' }
         }
 
-        // Obtener el perfil del usuario de la tabla USUARIO por email (sin filtrar por activo)
-        const { data: user, error: fetchError } = await supabase
+        // Buscar el usuario en la tabla USUARIO usando RLS (Row Level Security)
+        // Primero por auth_user_id, luego por email como fallback
+        let { data: user, error: fetchError } = await supabase
             .from('usuario')
             .select('*')
-            .eq('email', authData.user.email)
+            .eq('auth_user_id', authData.user.id)
             .single()
 
+        // Si no se encuentra por auth_user_id, buscar por email
         if (fetchError || !user) {
-            // Si no existe el perfil, intentar crearlo con los datos de auth
-            try {
-                const userData = await createUserProfileFromAuth(authData.user)
-                return { user: userData, error: null }
-            } catch (createError: any) {
-                // Si falla por duplicado, intentar obtener el usuario existente
-                if (createError.code === '23505') {
-                    const { data: existingUser, error: existingError } = await supabase
+            console.log('No encontrado por auth_user_id, buscando por email...')
+            const emailResult = await supabase
                         .from('usuario')
                         .select('*')
                         .eq('email', authData.user.email)
                         .single()
                     
-                    if (existingError || !existingUser) {
-                        return { user: null, error: 'Error al obtener perfil de usuario' }
-                    }
-                    
-                    // Reactivar el usuario existente
-                    await supabase
-                        .from('usuario')
-                        .update({ 
-                            activo: true,
-                            ultima_conexion: new Date().toISOString()
-                        })
-                        .eq('user_id', existingUser.user_id)
-                    
-                    // Continuar con el flujo normal usando el usuario existente
-                    const userDataExisting = existingUser
-                    // Obtener ubicación principal del usuario
-                    const { data: location } = await supabase
-                        .from('ubicacion')
-                        .select('ciudad, departamento')
-                        .eq('user_id', userDataExisting.user_id)
-                        .eq('es_principal', true)
-                        .single()
+            user = emailResult.data
+            fetchError = emailResult.error
+        }
 
-                    const userLocation = location
-                        ? `${location.ciudad}, ${location.departamento}`
-                        : 'Colombia'
-
-                    const { isAdmin, roles, adminSince } = await isUserAdmin(userDataExisting.email)
-
+        if (fetchError || !user) {
+            console.error('Usuario no encontrado en base de datos:', fetchError)
+            // Crear un usuario básico usando solo los datos de Supabase Auth
                     const userData: User = {
-                        id: userDataExisting.user_id.toString(),
-                        name: `${userDataExisting.nombre} ${userDataExisting.apellido}`.trim(),
-                        email: userDataExisting.email,
-                        avatar: userDataExisting.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-                        location: userLocation,
-                        phone: userDataExisting.telefono,
-                        isAdmin,
-                        roles,
-                        adminSince
+                id: authData.user.id,
+                name: authData.user.user_metadata?.full_name || 
+                      authData.user.user_metadata?.name || 
+                      authData.user.email.split('@')[0],
+                email: authData.user.email,
+                avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+                location: 'Colombia',
+                phone: authData.user.user_metadata?.phone || undefined,
+                isAdmin: false,
+                roles: [],
+                adminSince: undefined
                     }
                     return { user: userData, error: null }
-                } else {
-                    throw createError
-                }
-            }
         }
 
-        // Actualizar última conexión y marcar como activo (solo si no está ya activo)
+        // Verificar que el usuario esté activo
         if (!user.activo) {
+            return { user: null, error: 'Tu cuenta está desactivada. Contacta al soporte.' }
         }
-        await supabase
-            .from('usuario')
-            .update({ 
-                ultima_conexion: new Date().toISOString(),
-                activo: true
-            })
-            .eq('user_id', user.user_id)
 
-        // Obtener ubicación principal del usuario
+        // Obtener ubicación principal del usuario (si existe)
         const { data: location } = await supabase
             .from('ubicacion')
             .select('ciudad, departamento')
@@ -620,8 +586,8 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
             ? `${location.ciudad}, ${location.departamento}`
             : 'Colombia'
 
-        // Verificar si es administrador
-        const { isAdmin, roles, adminSince } = await isUserAdmin(user.email)
+        // Verificar si es administrador (usando función simplificada)
+        const { isAdmin, roles, adminSince } = await isUserAdminSimple(user.email)
 
         // Retornar datos del usuario para el frontend
         const userData: User = {
@@ -904,9 +870,10 @@ async function createUserProfileFromAuth(authUser: any): Promise<User> {
     }
 }
 
-// Función para verificar si un usuario está autenticado
+// Función simplificada para verificar si un usuario está autenticado (sin consultas complejas)
 export async function getCurrentUser(): Promise<User | null> {
     try {
+        console.log('🔍 getCurrentUser: Iniciando...')
         const supabase = getSupabaseClient()
         
         // Verificar si Supabase está configurado
@@ -917,69 +884,76 @@ export async function getCurrentUser(): Promise<User | null> {
 
         // Obtener la sesión actual de Supabase Auth
         const { data: { session }, error } = await supabase.auth.getSession()
+        console.log('🔍 getCurrentUser: Sesión obtenida:', !!session)
 
         if (error || !session?.user) {
+            console.log('🔍 getCurrentUser: No hay sesión activa')
             localStorage.removeItem(config.auth.sessionKey)
             return null
         }
 
-        // Verificar que el usuario aún existe en la base de datos
-        const { data: dbUser, error: dbError } = await supabase
-            .from('usuario')
-            .select('user_id, activo')
-            .eq('email', session.user.email)
-            .eq('activo', true)
-            .single()
+        console.log('🔍 getCurrentUser: Usuario autenticado:', session.user.email)
 
-        if (dbError || !dbUser) {
-            localStorage.removeItem(config.auth.sessionKey)
-            return null
-        }
-
-        // Obtener datos completos del usuario
-        const { data: user, error: userError } = await supabase
-            .from('usuario')
-            .select('*')
-            .eq('email', session.user.email)
-            .single()
-
-        if (userError || !user) {
-            return null
-        }
-
-        // Obtener ubicación
-        const { data: location } = await supabase
-            .from('ubicacion')
-            .select('ciudad, departamento')
-            .eq('user_id', user.user_id)
-            .eq('es_principal', true)
-            .single()
-
-        const userLocation = location
-            ? `${location.ciudad}, ${location.departamento}`
-            : 'Colombia'
-
-        // Verificar si es administrador
-        const { isAdmin, roles, adminSince } = await isUserAdmin(user.email)
-
+        // Crear usuario básico desde Supabase Auth (sin consultar BD)
         const userData: User = {
-            id: user.user_id.toString(),
-            name: `${user.nombre} ${user.apellido}`.trim(),
-            email: user.email,
-            avatar: user.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-            location: userLocation,
-            phone: user.telefono,
-            isAdmin,
-            roles,
-            adminSince
+            id: session.user.id,
+            name: session.user.user_metadata?.full_name || 
+                  session.user.user_metadata?.name || 
+                  session.user.user_metadata?.first_name + ' ' + session.user.user_metadata?.last_name ||
+                  session.user.email.split('@')[0],
+            email: session.user.email,
+            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+            location: 'Colombia',
+            phone: session.user.user_metadata?.phone || undefined,
+            isAdmin: false, // Por defecto no es admin
+            roles: [],
+            adminSince: undefined
         }
+
+        console.log('✅ getCurrentUser: Usuario creado desde Supabase Auth:', userData.name)
 
         // Guardar en localStorage para compatibilidad
         localStorage.setItem(config.auth.sessionKey, JSON.stringify(userData))
 
+        // Intentar obtener datos adicionales de la BD (opcional, sin bloquear)
+        try {
+            console.log('🔍 getCurrentUser: Intentando obtener datos adicionales de BD...')
+            
+            // Buscar usuario en BD con timeout
+            const dbPromise = supabase
+                .from('usuario')
+                .select('es_admin, activo, nombre, apellido, foto_perfil')
+                .eq('auth_user_id', session.user.id)
+            .single()
+
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout')), 2000)
+            )
+
+            const { data: dbUser } = await Promise.race([dbPromise, timeoutPromise]) as any
+
+            if (dbUser) {
+                console.log('✅ getCurrentUser: Datos adicionales obtenidos de BD')
+                // Actualizar datos del usuario con información de BD
+                userData.isAdmin = dbUser.es_admin || false
+                userData.name = `${dbUser.nombre || ''} ${dbUser.apellido || ''}`.trim() || userData.name
+                if (dbUser.foto_perfil) {
+                    userData.avatar = dbUser.foto_perfil
+                }
+                
+                // Actualizar localStorage con datos mejorados
+        localStorage.setItem(config.auth.sessionKey, JSON.stringify(userData))
+            }
+        } catch (dbError) {
+            console.warn('⚠️ getCurrentUser: No se pudieron obtener datos adicionales de BD:', dbError)
+            // Continuar con datos básicos de Supabase Auth
+        }
+
+        console.log('✅ getCurrentUser: Retornando usuario:', userData.name)
         return userData
+
     } catch (error) {
-        console.error('Error en getCurrentUser:', error)
+        console.error('❌ Error en getCurrentUser:', error)
         localStorage.removeItem(config.auth.sessionKey)
         return null
     }
@@ -1258,7 +1232,43 @@ export async function resendConfirmationEmail(email: string): Promise<{ error: s
 // FUNCIONES DE ADMINISTRACIÓN
 // =============================================
 
-// Función para verificar si un usuario es administrador
+// Función simplificada para verificar si un usuario es administrador (sin Service Role Key)
+export async function isUserAdminSimple(email: string): Promise<{ isAdmin: boolean; roles: string[]; adminSince?: string }> {
+    try {
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            console.error('❌ isUserAdminSimple: Supabase no está configurado')
+            return { isAdmin: false, roles: [] }
+        }
+        
+        // Verificar si es admin por la columna es_admin usando RLS
+        const { data: dbUser, error } = await supabase
+            .from('usuario')
+            .select('user_id, es_admin, admin_desde')
+            .eq('email', email)
+            .single()
+
+        if (error) {
+            console.error('Error verificando admin:', error)
+            return { isAdmin: false, roles: [] }
+        }
+
+        if (dbUser?.es_admin) {
+            return {
+                isAdmin: true,
+                roles: ['admin'], // Rol genérico para simplificar
+                adminSince: dbUser.admin_desde || undefined
+            }
+        }
+
+        return { isAdmin: false, roles: [] }
+    } catch (error) {
+        console.error('Error verificando admin:', error)
+        return { isAdmin: false, roles: [] }
+    }
+}
+
+// Función para verificar si un usuario es administrador (versión original - puede fallar sin Service Role Key)
 export async function isUserAdmin(email: string): Promise<{ isAdmin: boolean; roles: string[]; adminSince?: string }> {
     try {
         const supabase = getSupabaseClient()
