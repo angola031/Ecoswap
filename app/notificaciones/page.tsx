@@ -80,7 +80,7 @@ export default function NotificationsPage() {
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center py-8">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center py-6 md:py-8 gap-4">
                         <div className="flex items-center space-x-4">
                             <div className="bg-white bg-opacity-20 rounded-full p-3">
                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,27 +90,29 @@ export default function NotificationsPage() {
                                 </svg>
                             </div>
                             <div>
-                                <h1 className="text-3xl font-bold">🔔 Notificaciones</h1>
-                                <p className="text-blue-100 mt-1 text-lg">
+                                <h1 className="text-2xl md:text-3xl font-bold">🔔 Notificaciones</h1>
+                                <p className="text-blue-100 mt-1 text-sm md:text-lg">
                                     Mantente al día con las últimas actualizaciones de tu cuenta
                                 </p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => router.push('/')}
-                            className="flex items-center px-6 py-3 text-sm font-medium text-blue-600 bg-white rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-200 shadow-lg"
-                        >
-                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Volver al Inicio
-                        </button>
+                        <div className="md:self-auto">
+                            <button
+                                onClick={() => router.push('/')}
+                                className="w-full md:w-auto flex items-center justify-center px-5 md:px-6 py-2.5 md:py-3 text-sm font-medium text-blue-600 bg-white rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-200 shadow-lg"
+                            >
+                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Volver al Inicio
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-8">
                 <ClientNotifications />
             </div>
         </div>
