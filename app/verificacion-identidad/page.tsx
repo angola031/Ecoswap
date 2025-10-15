@@ -160,12 +160,24 @@ export default function VerificacionIdentidadPage() {
                 // Centrar recorte cuadrado
                 const sx = (video.videoWidth - side) / 2
                 const sy = (video.videoHeight - side) / 2
+                ctx.save()
+                if (mirrorPreview) {
+                    ctx.translate(canvas.width, 0)
+                    ctx.scale(-1, 1)
+                }
                 ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side)
+                ctx.restore()
             } else {
                 // Para cédula, mantener proporción y alta calidad
                 canvas.width = video.videoWidth
                 canvas.height = video.videoHeight
+                ctx.save()
+                if (mirrorPreview) {
+                    ctx.translate(canvas.width, 0)
+                    ctx.scale(-1, 1)
+                }
                 ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
+                ctx.restore()
             }
 
             // Convertir a blob
