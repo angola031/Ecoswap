@@ -3056,7 +3056,7 @@ const getCurrentUserId = () => {
   return (
     <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full max-w-full" style={{ height: '100vh' }}>
       {/* Lista de conversaciones */}
-      <div className="w-full sm:w-80 border-r border-gray-200 flex flex-col flex-shrink-0">
+      <div className={`w-full sm:w-80 border-r border-gray-200 flex flex-col flex-shrink-0 ${selectedConversation ? 'hidden sm:flex' : 'flex'}`}>
         <div className="p-4 border-b border-gray-200 space-y-3 flex-shrink-0">
           <h2 className="text-lg font-semibold text-gray-900">Chats</h2>
           <div>
@@ -3087,152 +3087,158 @@ const getCurrentUserId = () => {
             </div>
           ) : (
             filteredConversations.map((conversation) => (
-            <motion.div
-              key={conversation.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              onClick={() => setSelectedConversation(conversation)}
-              className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedConversation?.id === conversation.id ? 'bg-primary-50 border-r-2 border-primary-500' : ''
-                }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <img
-                    src={conversation.user.avatar}
-                    alt={conversation.user.name}
-                    className="w-12 h-12 rounded-full"
-                  />
-                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                    isUserOnline(conversation.user.id) ? 'bg-green-500' : 'bg-gray-400'
+              <motion.div
+                key={conversation.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                onClick={() => setSelectedConversation(conversation)}
+                className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedConversation?.id === conversation.id ? 'bg-primary-50 border-r-2 border-primary-500' : ''}`}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <img
+                      src={conversation.user.avatar}
+                      alt={conversation.user.name}
+                      className="w-12 h-12 rounded-full"
+                    />
+                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
+                      isUserOnline(conversation.user.id) ? 'bg-green-500' : 'bg-gray-400'
                     }`}></div>
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-gray-900 truncate">
-                      {conversation.user.name}
-                    </h3>
-                    <span className="text-xs text-gray-500">
-                      {conversation.lastMessageTime}
-                    </span>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600 truncate">
-                      {conversation.lastMessage}
-                    </p>
-                    {conversation.unreadCount > 0 && (
-                      <span className="bg-primary-600 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
-                        {conversation.unreadCount}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium text-gray-900 truncate">
+                        {conversation.user.name}
+                      </h3>
+                      <span className="text-xs text-gray-500">
+                        {conversation.lastMessageTime}
                       </span>
-                    )}
-                  </div>
+                    </div>
 
-                  <div className="flex items-center space-x-1 text-xs text-gray-500">
-                    <MapPinIcon className="w-3 h-3" />
-                    <span>{conversation.user.location}</span>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-gray-600 truncate">
+                        {conversation.lastMessage}
+                      </p>
+                      {conversation.unreadCount > 0 && (
+                        <span className="bg-primary-600 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                          {conversation.unreadCount}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center space-x-1 text-xs text-gray-500">
+                      <MapPinIcon className="w-3 h-3" />
+                      <span>{conversation.user.location}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
             ))
           )}
         </div>
       </div>
 
       {/* Área de chat */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+      <div className={`flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden ${selectedConversation ? 'flex' : 'hidden sm:flex'}`}>
         {selectedConversation ? (
           <>
             {/* Header del chat */}
             <div className="border-b border-gray-200 flex-shrink-0">
               <div className="p-3 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <img
-                    src={selectedConversation.user.avatar}
-                    alt={selectedConversation.user.name}
-                    className="w-10 h-10 rounded-full"
-                  />
-                  <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
-                    isUserOnline(selectedConversation.user.id) ? 'bg-green-500' : 'bg-gray-400'
-                    }`}></div>
-                </div>
+                <div className="flex items-center space-x-3">
+                  {/* Botón volver (solo móvil) */}
+                  <button
+                    onClick={() => setSelectedConversation(null as any)}
+                    className="sm:hidden p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
+                    aria-label="Volver a la lista"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  </button>
 
-                <div>
-                  <h3 className="font-medium text-gray-900">
-                    {selectedConversation.user.name}
-                  </h3>
-                  <div className="flex items-center space-x-1 text-sm text-gray-500">
-                    <MapPinIcon className="w-3 h-3" />
-                    <span>{selectedConversation.user.location}</span>
-                    <span>•</span>
-                    <span>
-                      En línea
-                    </span>
+                  <div className="relative">
+                    <img
+                      src={selectedConversation.user.avatar}
+                      alt={selectedConversation.user.name}
+                      className="w-10 h-10 rounded-full"
+                    />
+                    <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
+                      isUserOnline(selectedConversation.user.id) ? 'bg-green-500' : 'bg-gray-400'
+                    }`}></div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-medium text-gray-900">
+                      {selectedConversation.user.name}
+                    </h3>
+                    <div className="flex items-center space-x-1 text-sm text-gray-500">
+                      <MapPinIcon className="w-3 h-3" />
+                      <span>{selectedConversation.user.location}</span>
+                      <span>•</span>
+                      <span>En línea</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center space-x-2">
-                <button 
-                  onClick={async () => {
-                    setShowProposals(!showProposals)
-                    // Refrescar propuestas cuando se hace clic
-                    if (!showProposals) {
-                      try {
-                        setIsLoadingProposals(true)
-                        const session = await getSession()
-                        const token = session?.access_token
-                        if (!token) return
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={async () => {
+                      setShowProposals(!showProposals)
+                      // Refrescar propuestas cuando se hace clic
+                      if (!showProposals) {
+                        try {
+                          setIsLoadingProposals(true)
+                          const session = await getSession()
+                          const token = session?.access_token
+                          if (!token) return
 
-                        
-                        const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
-                          headers: { Authorization: `Bearer ${token}` }
-                        })
-                        
-                        if (response.ok) {
-                          const data = await response.json()
-                          setProposals(data.data || [])
-                          setUserValidations(data.userValidations || [])
+                          
+                          const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                          })
+                          
+                          if (response.ok) {
+                            const data = await response.json()
+                            setProposals(data.data || [])
+                            setUserValidations(data.userValidations || [])
+                          }
+                        } catch (error) {
+                          console.error('❌ [ChatModule] Error refrescando propuestas:', error)
+                        } finally {
+                          setIsLoadingProposals(false)
                         }
-                      } catch (error) {
-                        console.error('❌ [ChatModule] Error refrescando propuestas:', error)
-                      } finally {
-                        setIsLoadingProposals(false)
                       }
-                    }
-                  }} 
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                    showProposals 
-                      ? 'text-primary-600 bg-primary-100' 
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                  title="Ver propuestas"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span className="text-sm font-medium">Propuestas</span>
-                  {proposals.length > 0 && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    }} 
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
                       showProposals 
-                        ? 'bg-primary-200 text-primary-800' 
-                        : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      {proposals.length}
-                    </span>
-                  )}
-                </button>
-                <button onClick={() => setShowProfile(true)} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <PhoneIcon className="w-5 h-5" />
-                </button>
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <VideoCameraIcon className="w-5 h-5" />
-                </button>
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <EllipsisVerticalIcon className="w-5 h-5" />
-                </button>
+                        ? 'text-primary-600 bg-primary-100' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                    title="Ver propuestas"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="text-sm font-medium">Propuestas</span>
+                    {proposals.length > 0 && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        showProposals 
+                          ? 'bg-primary-200 text-primary-800' 
+                          : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {proposals.length}
+                      </span>
+                    )}
+                  </button>
+                  <button onClick={() => setShowProfile(true)} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <PhoneIcon className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <VideoCameraIcon className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <EllipsisVerticalIcon className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
               
@@ -4108,12 +4114,8 @@ const getCurrentUserId = () => {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <ChatBubbleLeftRightIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Selecciona una conversación</h3>
-              <p className="text-gray-600">Elige un chat para comenzar a conversar</p>
-            </div>
+          <div className="hidden sm:flex flex-1 items-center justify-center">
+            {/* vista placeholder desktop */}
           </div>
         )}
       </div>
