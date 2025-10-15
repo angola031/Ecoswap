@@ -28,3 +28,4 @@ FROM storage.objects
 WHERE bucket_id = 'Ecoswap'
 ORDER BY created_at DESC
 LIMIT 10;
+

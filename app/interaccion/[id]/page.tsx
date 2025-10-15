@@ -500,10 +500,10 @@ export default function InteraccionDetailPage() {
                 const messages: Message[] = (json.items || [])
                     .filter((m: any) => {
                         const content = m.contenido || ''
-                        const isProductInfo = content.includes('Producto Ofrecido') && 
-                                             content.includes('$') && 
-                                             content.includes('Negociable')
-                        return !isProductInfo && content.trim().length > 0
+                        const isProductTag = typeof content === 'string' && /^\[product:\d+\]$/.test(content.trim())
+                        const hasImage = !!m.archivo_url || m.tipo === 'imagen'
+                        // Aceptar imágenes aunque no haya texto; ocultar solo la marca técnica
+                        return hasImage || (!isProductTag && content.trim().length > 0)
                     })
                     .map((m: any) => {
                         // Detectar mensajes del sistema de propuestas (igual que ChatModule)
@@ -523,7 +523,8 @@ export default function InteraccionDetailPage() {
                                 lastName: isSystemProposal ? '' : (m.usuario?.apellido || ''),
                                 avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : (m.usuario?.foto_perfil || undefined)
                             },
-                            type: isSystemProposal ? 'system' : (m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text'),
+                            // Priorizar archivo_url para tipo imagen
+                            type: isSystemProposal ? 'system' : ((m.archivo_url || m.tipo === 'imagen') ? 'image' : (m.tipo === 'ubicacion' ? 'location' : 'text')),
                             metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined
                         }
                     })

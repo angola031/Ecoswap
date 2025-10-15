@@ -48,3 +48,4 @@ export default function CookieManager() {
     
     return null // Componente invisible
 }
+

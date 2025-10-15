@@ -59,6 +59,16 @@ export default function EditarPerfilPage() {
     const [showNewPassword, setShowNewPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
+    const getAdultMaxDate = () => {
+        const date = new Date()
+        date.setFullYear(date.getFullYear() - 18)
+        return date.toISOString().split('T')[0]
+    }
+
+    type ColombiaDepartamento = { id: number; departamento: string; ciudades: string[] }
+    const [departamentos, setDepartamentos] = useState<string[]>([])
+    const [departamentosData, setDepartamentosData] = useState<ColombiaDepartamento[]>([])
+
     useEffect(() => {
         const load = async () => {
             try {
@@ -150,6 +160,26 @@ export default function EditarPerfilPage() {
         load()
     }, [])
 
+    useEffect(() => {
+        const loadDepartamentos = async () => {
+            try {
+                const res = await fetch('/data/colombia.json')
+                const data: ColombiaDepartamento[] = await res.json()
+                setDepartamentosData(data)
+                setDepartamentos(data.map(d => d.departamento))
+            } catch (e) {
+                console.error('No se pudieron cargar los departamentos:', e)
+            }
+        }
+        loadDepartamentos()
+    }, [])
+
+    const getCiudadesForDepartamento = (departamento?: string) => {
+        if (!departamento) return [] as string[]
+        const dep = departamentosData.find(d => d.departamento === departamento)
+        return dep ? dep.ciudades : []
+    }
+
     const handleInputChange = (field: string, value: string | boolean | number) => {
         if (field.includes('.')) {
             const [parent, child] = field.split('.')
@@ -203,6 +233,9 @@ export default function EditarPerfilPage() {
         if (formData.fecha_nacimiento && formData.fecha_nacimiento > new Date().toISOString().split('T')[0]) {
             errors.fecha_nacimiento = 'La fecha de nacimiento no puede ser futura'
         }
+        if (formData.fecha_nacimiento && formData.fecha_nacimiento > getAdultMaxDate()) {
+            errors.fecha_nacimiento = 'Debes ser mayor de 18 años'
+        }
 
         setFormErrors(errors)
         return Object.keys(errors).length === 0
@@ -232,121 +265,59 @@ export default function EditarPerfilPage() {
         setIsLoading(true)
 
         try {
-            // Obtener usuario autenticado
+            // Obtener usuario autenticado y token
             const supabase = getSupabaseClient()
             if (!supabase) {
                 console.error('❌ Supabase no está configurado')
                 return
             }
             const { data: { session } } = await supabase.auth.getSession()
-            const email = session?.user?.email
-            if (!email) throw new Error('No hay sesión activa')
-
-            // Buscar registro en tabla usuario
-            const { data: dbUser, error: fetchErr } = await supabase
-                .from('usuario')
-                .select('user_id')
-                .eq('email', email)
-                .single()
-            if (fetchErr || !dbUser) throw new Error('Usuario no encontrado')
+            const accessToken = session?.access_token
+            if (!accessToken) throw new Error('No hay sesión activa')
 
             let newAvatarUrl: string | undefined
-
-            // Subir avatar si hay archivo
             if (avatarFile) {
-                const upload = await uploadUserProfileImage(dbUser.user_id, avatarFile)
+                // Subir avatar con permisos del usuario
+                const upload = await uploadUserProfileImage(session.user.id, avatarFile)
                 if (upload.error) throw new Error(upload.error)
                 newAvatarUrl = upload.url || undefined
             }
 
-            // Actualizar datos básicos del usuario
-            const updatePayload: any = {
-                nombre: formData.nombre || null,
-                apellido: formData.apellido || null,
-                telefono: formData.telefono || null,
-                fecha_nacimiento: formData.fecha_nacimiento || null,
-                biografia: formData.biografia || null
-            }
-            if (newAvatarUrl) updatePayload.foto_perfil = newAvatarUrl
+            const resp = await fetch('/api/users/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    nombre: formData.nombre || null,
+                    apellido: formData.apellido || null,
+                    telefono: formData.telefono || null,
+                    fecha_nacimiento: formData.fecha_nacimiento || null,
+                    biografia: formData.biografia || null,
+                    foto_perfil: newAvatarUrl,
+                    ubicacion: formData.ubicacion ? {
+                        ciudad: formData.ubicacion.ciudad || null,
+                        departamento: formData.ubicacion.departamento || null,
+                        pais: formData.ubicacion.pais || 'Colombia'
+                    } : undefined,
+                    configuracion: formData.configuracion ? {
+                        notif_nuevas_propuestas: formData.configuracion.notif_nuevas_propuestas,
+                        notif_mensajes: formData.configuracion.notif_mensajes,
+                        notif_actualizaciones: formData.configuracion.notif_actualizaciones,
+                        notif_newsletter: formData.configuracion.notif_newsletter,
+                        perfil_publico: formData.configuracion.perfil_publico,
+                        mostrar_ubicacion_exacta: formData.configuracion.mostrar_ubicacion_exacta,
+                        mostrar_telefono: formData.configuracion.mostrar_telefono,
+                        recibir_mensajes_desconocidos: formData.configuracion.recibir_mensajes_desconocidos,
+                        distancia_maxima_km: formData.configuracion.distancia_maxima_km
+                    } : undefined
+                })
+            })
 
-            const { error: updateErr } = await supabase
-                .from('usuario')
-                .update(updatePayload)
-                .eq('user_id', dbUser.user_id)
-
-            if (updateErr) throw new Error(updateErr.message)
-
-            // Actualizar ubicación principal
-            if (formData.ubicacion) {
-                const { data: principal } = await supabase
-                    .from('ubicacion')
-                    .select('ubicacion_id')
-                    .eq('user_id', dbUser.user_id)
-                    .eq('es_principal', true)
-                    .single()
-
-                if (principal) {
-                    await supabase
-                        .from('ubicacion')
-                        .update({ 
-                            ciudad: formData.ubicacion.ciudad || null,
-                            departamento: formData.ubicacion.departamento || null,
-                            pais: formData.ubicacion.pais || 'Colombia'
-                        })
-                        .eq('ubicacion_id', principal.ubicacion_id)
-                } else if (formData.ubicacion.ciudad || formData.ubicacion.departamento) {
-                    await supabase
-                        .from('ubicacion')
-                        .insert({ 
-                            user_id: dbUser.user_id, 
-                            pais: formData.ubicacion.pais || 'Colombia',
-                            ciudad: formData.ubicacion.ciudad || null,
-                            departamento: formData.ubicacion.departamento || null,
-                            es_principal: true 
-                        })
-                }
-            }
-
-            // Actualizar configuración del usuario
-            if (formData.configuracion) {
-                const { data: existingConfig } = await supabase
-                    .from('configuracion_usuario')
-                    .select('usuario_id')
-                    .eq('usuario_id', dbUser.user_id)
-                    .single()
-
-                if (existingConfig) {
-                    await supabase
-                        .from('configuracion_usuario')
-                        .update({
-                            notif_nuevas_propuestas: formData.configuracion.notif_nuevas_propuestas,
-                            notif_mensajes: formData.configuracion.notif_mensajes,
-                            notif_actualizaciones: formData.configuracion.notif_actualizaciones,
-                            notif_newsletter: formData.configuracion.notif_newsletter,
-                            perfil_publico: formData.configuracion.perfil_publico,
-                            mostrar_ubicacion_exacta: formData.configuracion.mostrar_ubicacion_exacta,
-                            mostrar_telefono: formData.configuracion.mostrar_telefono,
-                            recibir_mensajes_desconocidos: formData.configuracion.recibir_mensajes_desconocidos,
-                            distancia_maxima_km: formData.configuracion.distancia_maxima_km,
-                            fecha_actualizacion: new Date().toISOString()
-                        })
-                        .eq('usuario_id', dbUser.user_id)
-                } else {
-                    await supabase
-                        .from('configuracion_usuario')
-                        .insert({
-                            usuario_id: dbUser.user_id,
-                            notif_nuevas_propuestas: formData.configuracion.notif_nuevas_propuestas,
-                            notif_mensajes: formData.configuracion.notif_mensajes,
-                            notif_actualizaciones: formData.configuracion.notif_actualizaciones,
-                            notif_newsletter: formData.configuracion.notif_newsletter,
-                            perfil_publico: formData.configuracion.perfil_publico,
-                            mostrar_ubicacion_exacta: formData.configuracion.mostrar_ubicacion_exacta,
-                            mostrar_telefono: formData.configuracion.mostrar_telefono,
-                            recibir_mensajes_desconocidos: formData.configuracion.recibir_mensajes_desconocidos,
-                            distancia_maxima_km: formData.configuracion.distancia_maxima_km
-                        })
-                }
+            if (!resp.ok) {
+                const j = await resp.json().catch(() => ({}))
+                throw new Error(j.error || 'Error guardando perfil')
             }
 
             router.push('/')
@@ -565,6 +536,7 @@ export default function EditarPerfilPage() {
                                             type="date"
                                             value={formData.fecha_nacimiento || ''}
                                             onChange={(e) => handleInputChange('fecha_nacimiento', e.target.value)}
+                                    max={getAdultMaxDate()}
                                             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.fecha_nacimiento ? 'border-red-300' : 'border-gray-300'
                                                 }`}
                                         />
@@ -576,33 +548,39 @@ export default function EditarPerfilPage() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Ciudad
+                                        Departamento
                                     </label>
                                     <div className="relative">
                                         <MapPinIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={formData.ubicacion?.ciudad || ''}
-                                            onChange={(e) => handleInputChange('ubicacion.ciudad', e.target.value)}
-                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Tu ciudad"
-                                        />
+                                        <select
+                                            value={formData.ubicacion?.departamento || ''}
+                                            onChange={(e) => { handleInputChange('ubicacion.departamento', e.target.value); handleInputChange('ubicacion.ciudad', '') }}
+                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                        >
+                                            <option value="">Selecciona un departamento</option>
+                                            {departamentos.map(dep => (
+                                                <option key={dep} value={dep}>{dep}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Departamento
+                                        Ciudad
                                     </label>
                                     <div className="relative">
                                         <MapPinIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={formData.ubicacion?.departamento || ''}
-                                            onChange={(e) => handleInputChange('ubicacion.departamento', e.target.value)}
-                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Tu departamento"
-                                        />
+                                        <select
+                                            value={formData.ubicacion?.ciudad || ''}
+                                            onChange={(e) => handleInputChange('ubicacion.ciudad', e.target.value)}
+                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                        >
+                                            <option value="">Selecciona una ciudad</option>
+                                            {getCiudadesForDepartamento(formData.ubicacion?.departamento).map(ci => (
+                                                <option key={ci} value={ci}>{ci}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -721,23 +699,7 @@ export default function EditarPerfilPage() {
                                     </button>
                                 </div>
 
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h4 className="text-sm font-medium text-gray-900">Recibir Mensajes Desconocidos</h4>
-                                        <p className="text-sm text-gray-600">Permitir que usuarios no conocidos te envíen mensajes</p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleInputChange('configuracion.recibir_mensajes_desconocidos', !formData.configuracion?.recibir_mensajes_desconocidos)}
-                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.configuracion?.recibir_mensajes_desconocidos ? 'bg-blue-600' : 'bg-gray-200'
-                                            }`}
-                                    >
-                                        <span
-                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.configuracion?.recibir_mensajes_desconocidos ? 'translate-x-6' : 'translate-x-1'
-                                                }`}
-                                        />
-                                    </button>
-                                </div>
+                                
 
                                 <div className="flex items-center justify-between">
                                     <div>

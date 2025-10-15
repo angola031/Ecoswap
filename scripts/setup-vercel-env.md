@@ -45,3 +45,4 @@ Si sigues viendo errores de cookies `__cf_bm`:
 2. **Usa modo incógnito**
 3. **Verifica que el dominio** esté configurado correctamente
 4. **Revisa la consola** para otros errores
+
