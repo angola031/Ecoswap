@@ -404,13 +404,6 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
                                         {/* Acciones */}
                                         <div className="flex space-x-2 mt-4 pt-4 border-t border-gray-200">
-                                            <button 
-                                                onClick={() => openChat(interaction)}
-                                                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center"
-                                            >
-                                                <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
-                                                Ver Chat
-                                            </button>
                                             <button
                                                 onClick={() => openInteractionDetail(interaction)}
                                                 className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center"
