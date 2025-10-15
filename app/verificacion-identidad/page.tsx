@@ -77,7 +77,7 @@ export default function VerificacionIdentidadPage() {
 
     // Función para inicializar la cámara
     const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('user')
-    const [mirrorPreview, setMirrorPreview] = useState(false)
+    const [mirrorPreview, setMirrorPreview] = useState(true)
 
     const initializeCamera = async (facingMode: 'user' | 'environment' = 'user') => {
         try {
@@ -99,7 +99,8 @@ export default function VerificacionIdentidadPage() {
 
             setStream(newStream)
             setCurrentFacingMode(facingMode)
-            setMirrorPreview(facingMode === 'user')
+            // Vista espejo siempre por defecto
+            setMirrorPreview(true)
             
             if (videoRef.current) {
                 videoRef.current.srcObject = newStream
@@ -216,7 +217,8 @@ export default function VerificacionIdentidadPage() {
         const newFacingMode = facing === 'user' ? 'environment' : 'user'
         
         await initializeCamera(newFacingMode)
-        setMirrorPreview(newFacingMode === 'user')
+        // Mantener vista espejo activa al alternar
+        setMirrorPreview(true)
     }
 
     // Efecto para manejar la cámara
