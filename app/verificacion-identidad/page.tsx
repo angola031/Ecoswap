@@ -99,6 +99,7 @@ export default function VerificacionIdentidadPage() {
 
             setStream(newStream)
             setCurrentFacingMode(facingMode)
+            setMirrorPreview(facingMode === 'user')
             
             if (videoRef.current) {
                 videoRef.current.srcObject = newStream
@@ -215,6 +216,7 @@ export default function VerificacionIdentidadPage() {
         const newFacingMode = facing === 'user' ? 'environment' : 'user'
         
         await initializeCamera(newFacingMode)
+        setMirrorPreview(newFacingMode === 'user')
     }
 
     // Efecto para manejar la cámara
