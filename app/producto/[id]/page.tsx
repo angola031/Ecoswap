@@ -595,8 +595,8 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
           {/* Galería de Imágenes */}
           <div className="space-y-4">
             {/* Imagen Principal */}
@@ -605,7 +605,7 @@ export default function ProductDetailPage() {
                 <img
                   src={product.imagenes[currentImageIndex]}
                   alt={product.titulo}
-                  className="w-full h-96 object-cover rounded-lg"
+                  className="w-full h-72 sm:h-80 md:h-96 object-cover rounded-lg"
                   onError={(e) => {
                     console.error('❌ Error cargando imagen:', product.imagenes[currentImageIndex])
                     e.currentTarget.src = '/default-product.png'
@@ -615,7 +615,7 @@ export default function ProductDetailPage() {
                   }}
                 />
               ) : (
-                <div className="w-full h-96 bg-gray-200 flex items-center justify-center rounded-lg">
+                <div className="w-full h-72 sm:h-80 md:h-96 bg-gray-200 flex items-center justify-center rounded-lg">
                   <img
                     src="/default-product.png"
                     alt="Sin imagen"
@@ -675,7 +675,7 @@ export default function ProductDetailPage() {
                     <img
                       src={image}
                       alt={`${product.titulo} ${index + 1}`}
-                      className="w-full h-20 object-cover rounded-lg"
+                      className="w-full h-16 sm:h-20 object-cover rounded-lg"
                     />
                   </button>
                 ))}
@@ -684,10 +684,10 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Información del Producto */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* Header del producto */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-start justify-between mb-4">
+            <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm">
+              <div className="flex items-start justify-between mb-3 md:mb-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getConditionColor(product.estado)}`}>
@@ -702,8 +702,8 @@ export default function ProductDetailPage() {
                        product.tipo_transaccion === 'donacion' ? 'Donación' : 'Mixto'}
                     </span>
                   </div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.titulo}</h1>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">{product.titulo}</h1>
+                  <div className="flex items-center space-x-3 md:space-x-4 text-xs md:text-sm text-gray-500">
                     <span>Publicado el {new Date(product.fecha_creacion).toLocaleDateString('es-CO')}</span>
                     <div className="flex items-center space-x-1">
                       <EyeIcon className="w-4 h-4" />
@@ -719,13 +719,13 @@ export default function ProductDetailPage() {
 
               {/* Precio */}
               {product.precio && (
-                <div className="text-3xl font-bold text-blue-600 mb-4">
+                <div className="text-2xl md:text-3xl font-bold text-blue-600 mb-3 md:mb-4">
                   {formatPrice(product.precio)}
                 </div>
               )}
 
               {/* Ubicación */}
-              <div className="flex items-center text-gray-600 mb-4">
+              <div className="flex items-center text-gray-600 mb-3 md:mb-4 text-sm">
                 <MapPinIcon className="w-5 h-5 mr-2" />
                 <span>{product.ubicacion.ciudad}, {product.ubicacion.departamento}</span>
               </div>
@@ -753,12 +753,12 @@ export default function ProductDetailPage() {
 
               
               {/* Acciones */}
-              <div className="flex space-x-3">
+              <div className="flex space-x-2 md:space-x-3">
                 <button
                   onClick={handleInterest}
                   disabled={isOwner || isInActiveExchange}
                   aria-disabled={isOwner || isInActiveExchange}
-                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${isOwner || isInActiveExchange
+                  className={`flex-1 py-2.5 md:py-3 px-4 rounded-lg font-medium transition-colors ${isOwner || isInActiveExchange
                       ? 'bg-gray-400 text-white cursor-not-allowed pointer-events-none'
                       : isInterested
                         ? 'bg-green-600 text-white hover:bg-green-700'
@@ -773,7 +773,7 @@ export default function ProductDetailPage() {
                   onClick={handleLike}
                   disabled={isOwner}
                   aria-disabled={isOwner}
-                  className={`p-3 rounded-lg border transition-colors flex flex-col items-center space-y-1 min-w-[60px] ${isOwner
+                  className={`p-2.5 md:p-3 rounded-lg border transition-colors flex flex-col items-center space-y-1 min-w-[56px] md:min-w-[60px] ${isOwner
                       ? 'border-gray-400 text-gray-300 bg-gray-100 cursor-not-allowed pointer-events-none'
                       : isLiked
                         ? 'border-red-500 text-red-600 bg-red-50 hover:bg-red-100'
@@ -807,7 +807,7 @@ export default function ProductDetailPage() {
             <div className="bg-white rounded-lg shadow-sm">
               {/* Navegación de tabs */}
               <div className="border-b border-gray-200">
-                <nav className="flex space-x-8 px-6">
+                <nav className="flex space-x-6 md:space-x-8 px-4 md:px-6 overflow-x-auto no-scrollbar whitespace-nowrap">
                   {[
                     { id: 'details', label: 'Detalles', icon: EyeIcon },
                     { id: 'specifications', label: 'Especificaciones', icon: TagIcon },
@@ -816,7 +816,7 @@ export default function ProductDetailPage() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id as any)}
-                      className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${activeTab === tab.id
+                      className={`py-3 md:py-4 px-1 border-b-2 font-medium text-sm md:text-base flex items-center space-x-2 ${activeTab === tab.id
                           ? 'border-blue-500 text-blue-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         }`}
@@ -829,7 +829,7 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Contenido de los tabs */}
-              <div className="p-6">
+              <div className="p-4 md:p-6">
                 {activeTab === 'details' && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900">Descripción</h3>
