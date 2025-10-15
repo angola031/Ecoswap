@@ -21,6 +21,60 @@ export default function VerificacionIdentidadPage() {
     const [cameraError, setCameraError] = useState<string | null>(null)
     const [isCapturing, setIsCapturing] = useState(false)
 
+    // Normaliza orientación EXIF para archivos subidos desde galería/cámara
+    const normalizeImageOrientation = async (file: File): Promise<File> => {
+        try {
+            // createImageBitmap honra la orientación EXIF con imageOrientation: 'from-image'
+            // y es ampliamente soportado en navegadores móviles modernos.
+            if ('createImageBitmap' in window) {
+                // @ts-ignore - imageOrientation es experimental en algunos TS libs
+                const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+                const canvas = document.createElement('canvas')
+                canvas.width = bitmap.width
+                canvas.height = bitmap.height
+                const ctx = canvas.getContext('2d')
+                if (!ctx) return file
+                ctx.drawImage(bitmap, 0, 0)
+                const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92))
+                if (!blob) return file
+                return new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' })
+            }
+        } catch (_) {
+            // fallback abajo
+        }
+
+        // Fallback: cargar en <img> y dibujar (no aplicará orientación EXIF en todos los navegadores)
+        try {
+            const imgUrl = URL.createObjectURL(file)
+            const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+                const i = new Image()
+                i.onload = () => resolve(i)
+                i.onerror = reject
+                i.src = imgUrl
+            })
+            const canvas = document.createElement('canvas')
+            canvas.width = img.naturalWidth
+            canvas.height = img.naturalHeight
+            const ctx = canvas.getContext('2d')
+            if (!ctx) return file
+            ctx.drawImage(img, 0, 0)
+            URL.revokeObjectURL(imgUrl)
+            const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92))
+            if (!blob) return file
+            return new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' })
+        } catch {
+            return file
+        }
+    }
+
+    const handleFileSelect = async (type: 'frente' | 'reverso' | 'selfie', f: File | null) => {
+        if (!f) return
+        const normalized = await normalizeImageOrientation(f)
+        if (type === 'frente') setCedulaFrente(normalized)
+        if (type === 'reverso') setCedulaReverso(normalized)
+        if (type === 'selfie') setSelfie(normalized)
+    }
+
     // Función para inicializar la cámara
     const initializeCamera = async (facingMode: 'user' | 'environment' = 'user') => {
         try {
@@ -433,7 +487,7 @@ export default function VerificacionIdentidadPage() {
                                         <span className="text-sm text-gray-500 truncate max-w-[240px]">
                                             {cedulaFrente?.name || 'No se ha seleccionado ningún archivo'}
                                         </span>
-                                        <input id="file-frente" className="hidden" type="file" accept="image/*" onChange={(e) => setCedulaFrente(e.target.files?.[0] || null)} />
+                                        <input id="file-frente" className="hidden" type="file" accept="image/*" onChange={(e) => handleFileSelect('frente', e.target.files?.[0] || null)} />
                                     </div>
                                     <div className="pt-2 flex justify-end">
                                         <button type="button" disabled={!cedulaFrente} onClick={() => setStep(1)} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50">Siguiente</button>
@@ -572,7 +626,7 @@ export default function VerificacionIdentidadPage() {
                                         <span className="text-sm text-gray-500 truncate max-w-[240px]">
                                             {cedulaReverso?.name || 'No se ha seleccionado ningún archivo'}
                                         </span>
-                                        <input id="file-reverso" className="hidden" type="file" accept="image/*" onChange={(e) => setCedulaReverso(e.target.files?.[0] || null)} />
+                                        <input id="file-reverso" className="hidden" type="file" accept="image/*" onChange={(e) => handleFileSelect('reverso', e.target.files?.[0] || null)} />
                                     </div>
                                     <div className="pt-2 flex justify-between">
                                         <button type="button" onClick={() => setStep(0)} className="px-4 py-2 border rounded">← Anterior</button>
@@ -697,7 +751,7 @@ export default function VerificacionIdentidadPage() {
                                         <span className="text-sm text-gray-500 truncate max-w-[240px]">
                                             {selfie?.name || 'No se ha seleccionado ningún archivo'}
                                         </span>
-                                        <input id="file-selfie" className="hidden" type="file" accept="image/*" onChange={(e) => setSelfie(e.target.files?.[0] || null)} />
+                                        <input id="file-selfie" className="hidden" type="file" accept="image/*" onChange={(e) => handleFileSelect('selfie', e.target.files?.[0] || null)} />
                                     </div>
                                 </div>
                             </div>
