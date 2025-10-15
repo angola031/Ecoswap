@@ -336,8 +336,28 @@ export default function EditarPerfilPage() {
         setIsLoading(true)
 
         try {
-            // Simular cambio de contraseña
-            await new Promise(resolve => setTimeout(resolve, 2000))
+            const supabase = getSupabaseClient()
+            if (!supabase) throw new Error('Supabase no está configurado')
+            const { data: { session } } = await supabase.auth.getSession()
+            const accessToken = session?.access_token
+            if (!accessToken) throw new Error('No hay sesión activa')
+
+            const resp = await fetch('/api/users/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    currentPassword: passwordData.currentPassword,
+                    newPassword: passwordData.newPassword
+                })
+            })
+
+            if (!resp.ok) {
+                const j = await resp.json().catch(() => ({}))
+                throw new Error(j.error || 'Error al cambiar la contraseña')
+            }
 
             setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
             setShowPasswordSection(false)
