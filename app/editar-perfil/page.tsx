@@ -58,6 +58,7 @@ export default function EditarPerfilPage() {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false)
     const [showNewPassword, setShowNewPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [globalMessage, setGlobalMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
     const getAdultMaxDate = () => {
         const date = new Date()
@@ -361,8 +362,13 @@ export default function EditarPerfilPage() {
 
             setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
             setShowPasswordSection(false)
+            setGlobalMessage({ type: 'success', text: 'Contraseña actualizada correctamente.' })
+            setTimeout(() => setGlobalMessage(null), 4000)
         } catch (error) {
             console.error('Error al cambiar contraseña:', error)
+            const message = (error as any)?.message || 'No se pudo cambiar la contraseña.'
+            setGlobalMessage({ type: 'error', text: message })
+            setTimeout(() => setGlobalMessage(null), 5000)
         } finally {
             setIsLoading(false)
         }
@@ -399,6 +405,11 @@ export default function EditarPerfilPage() {
                     transition={{ duration: 0.5 }}
                     className="bg-white rounded-lg shadow-sm border"
                 >
+                    {globalMessage && (
+                        <div className={`px-6 py-3 rounded-t-lg ${globalMessage.type === 'success' ? 'bg-green-50 text-green-700 border-b border-green-200' : 'bg-red-50 text-red-700 border-b border-red-200'}`}>
+                            {globalMessage.text}
+                        </div>
+                    )}
                     <div className="px-6 py-4 border-b border-gray-200">
                         <h2 className="text-lg font-medium text-gray-900">
                             Información Personal
