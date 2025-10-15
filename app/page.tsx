@@ -538,8 +538,8 @@ export default function HomePage() {
 
                         {/* Usuario o botón de login */}
                         <div className="flex items-center space-x-4">
-                            {/* Botón para validar sesión */}
-                            <button
+                            {/* Botón para validar sesión (oculto) */}
+                            {/* <button
                                 onClick={() => {
                                     console.log('🔍 === VALIDACIÓN DE SESIÓN ===')
                                     
@@ -592,7 +592,7 @@ export default function HomePage() {
                                 title="Validar estado de sesión"
                             >
                                 🔍 Validar
-                            </button>
+                            </button> */}
                             
                             {(() => {
                                 console.log('🎯 Header render - isAuthenticated:', isAuthenticated, 'currentUser:', currentUser ? currentUser.name : 'null')
@@ -606,9 +606,6 @@ export default function HomePage() {
                                         alt={currentUser.name}
                                         className="w-8 h-8 rounded-full"
                                     />
-                                    <span className="text-sm font-medium text-gray-700 hidden sm:block">
-                                        {currentUser.name}
-                                    </span>
                                 </div>
                             ) : (
                                 <div className="flex space-x-2">
