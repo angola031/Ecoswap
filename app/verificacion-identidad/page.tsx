@@ -76,6 +76,8 @@ export default function VerificacionIdentidadPage() {
     }
 
     // Función para inicializar la cámara
+    const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('user')
+
     const initializeCamera = async (facingMode: 'user' | 'environment' = 'user') => {
         try {
             setCameraError(null)
@@ -95,9 +97,12 @@ export default function VerificacionIdentidadPage() {
             })
 
             setStream(newStream)
+            setCurrentFacingMode(facingMode)
             
             if (videoRef.current) {
                 videoRef.current.srcObject = newStream
+                videoRef.current.setAttribute('playsinline', 'true')
+                videoRef.current.muted = true
                 await videoRef.current.play()
             }
             
@@ -205,8 +210,8 @@ export default function VerificacionIdentidadPage() {
         if (!stream) return
         
         const currentTrack = stream.getVideoTracks()[0]
-        const currentFacingMode = currentTrack.getSettings().facingMode
-        const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'
+        const facing = (currentTrack.getSettings().facingMode as ('user' | 'environment')) || currentFacingMode
+        const newFacingMode = facing === 'user' ? 'environment' : 'user'
         
         await initializeCamera(newFacingMode)
     }
@@ -378,7 +383,7 @@ export default function VerificacionIdentidadPage() {
                         {useCamera && cameraStep === 'frente' ? (
                             <div className="space-y-4">
                                 <div className="rounded-xl overflow-hidden border relative max-w-2xl mx-auto">
-                                    <video ref={videoRef} className="w-full h-auto" />
+                                    <video ref={videoRef} className="w-full h-auto" style={{ transform: currentFacingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
                                     {/* Overlay con guías para cédula */}
                                     <div className="pointer-events-none absolute inset-0">
                                         <div className="absolute inset-4 border-2 border-blue-400/60 rounded-md"></div>
@@ -520,7 +525,7 @@ export default function VerificacionIdentidadPage() {
                         {useCamera && cameraStep === 'reverso' ? (
                             <div className="space-y-4">
                                 <div className="rounded-xl overflow-hidden border relative max-w-2xl mx-auto">
-                                    <video ref={videoRef} className="w-full h-auto" />
+                                    <video ref={videoRef} className="w-full h-auto" style={{ transform: currentFacingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
                                     {/* Overlay con guías para cédula */}
                                     <div className="pointer-events-none absolute inset-0">
                                         <div className="absolute inset-4 border-2 border-green-400/60 rounded-md"></div>
@@ -660,7 +665,7 @@ export default function VerificacionIdentidadPage() {
                         {useCamera && cameraStep === 'selfie' ? (
                             <div className="space-y-4">
                                 <div className="rounded-xl overflow-hidden border relative max-w-md mx-auto">
-                                    <video ref={videoRef} className="w-full h-auto" />
+                                    <video ref={videoRef} className="w-full h-auto" style={{ transform: currentFacingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
                                     {/* Overlay ovalado para selfie */}
                                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                                         <div className="h-3/4 w-3/4 rounded-full border-4 border-purple-400/70"></div>
