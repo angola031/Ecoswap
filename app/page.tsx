@@ -642,7 +642,7 @@ export default function HomePage() {
             </header>
 
             {/* Contenido Principal */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28 md:pb-8">
                 <motion.div
                     key={currentModule}
                     initial={{ opacity: 0, y: 20 }}
@@ -654,7 +654,7 @@ export default function HomePage() {
             </main>
 
             {/* Navegación Móvil */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 pb-[env(safe-area-inset-bottom)] z-50">
                 <div className="flex justify-around">
                     <button
                         onClick={() => setCurrentModule('home')}
