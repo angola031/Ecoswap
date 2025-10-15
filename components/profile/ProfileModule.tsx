@@ -547,7 +547,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         <img
                             src={previewUrl || profileData.avatar}
                             alt={profileData.name}
-                            className="w-24 h-24 lg:w-32 lg:h-32 rounded-full object-cover"
+                            className="w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-full object-cover"
                         />
                         {profileData.badges?.includes('Verificado') && (
                             <span className="absolute -top-1 -right-1 bg-white rounded-full p-1 shadow-sm">
@@ -579,9 +579,9 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
                     {/* Información básica */}
                     <div className="flex-1">
-                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                             <div>
-                                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2 flex items-center flex-wrap gap-2">
+                                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 flex items-center flex-wrap gap-2">
                                     {profileData.name}
                                     {profileData.badges?.includes('Verificado') && (
                                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -589,7 +589,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         </span>
                                     )}
                                 </h1>
-                                <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                                <div className="flex items-center space-x-3 sm:space-x-4 text-xs sm:text-sm text-gray-600 mb-3">
                                     <div className="flex items-center space-x-1">
                                         <MapPinIcon className="w-4 h-4" />
                                         <span>{profileData.location}</span>
@@ -599,7 +599,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         <span>Miembro desde {profileData.joinDate}</span>
                                     </div>
                                 </div>
-                                <p className="text-gray-700 mb-4 max-w-2xl">
+                                <p className="text-gray-700 mb-4 max-w-2xl text-sm sm:text-base">
                                     {profileData.bio}
                                 </p>
                             </div>
@@ -608,7 +608,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                 <div className="flex gap-2 items-center flex-wrap">
                                     <button
                                         onClick={() => router.push('/verificacion-identidad')}
-                                        className={`${profileData.badges?.includes('Verificado') ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-yellow-500 hover:bg-yellow-600 text-white'} px-3 py-2 rounded-md inline-flex items-center`}
+                                        className={`${profileData.badges?.includes('Verificado') ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-yellow-500 hover:bg-yellow-600 text-white'} px-3 py-2 rounded-md inline-flex items-center text-sm`}
                                     >
                                         <ShieldCheckIcon className="w-4 h-4 mr-2" />
                                         {profileData.badges?.includes('Verificado') ? 'Cuenta verificada' : 'Verificar cuenta'}
@@ -635,12 +635,12 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
                                     <button
                                         onClick={openEditProfile}
-                                        className="btn-secondary"
+                                        className="btn-secondary text-sm"
                                     >
                                         <PencilIcon className="w-4 h-4 mr-2" />
                                         Editar Perfil
                                     </button>
-                                    <button className="btn-secondary">
+                                    <button className="btn-secondary text-sm">
                                         <Cog6ToothIcon className="w-4 h-4" />
                                     </button>
                                 </div>
@@ -717,7 +717,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         )}
 
                         {/* Estadísticas */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                             <div className="text-center">
                                 <div className="text-2xl font-bold text-primary-600">{profileData.rating}</div>
                                 <div className="text-sm text-gray-600">Calificación</div>
@@ -725,7 +725,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                     {[...Array(5)].map((_, i) => (
                                         <StarIcon
                                             key={i}
-                                            className={`w-4 h-4 ${i < Math.floor(profileData.rating)
+                                            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${i < Math.floor(profileData.rating)
                                                 ? 'text-yellow-400 fill-current'
                                                 : 'text-gray-300'
                                                 }`}
@@ -776,7 +776,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
             {/* Navegación de pestañas */}
             <div className="border-b border-gray-200">
-                <nav className="flex space-x-8">
+                <nav className="flex space-x-6 md:space-x-8 overflow-x-auto no-scrollbar -mx-4 px-4 whitespace-nowrap">
                     {[
                         { id: 'overview', name: 'Resumen', icon: UserIcon },
                         { id: 'products', name: 'Productos', icon: HeartIcon },
@@ -789,12 +789,12 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
+                                className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm md:text-base transition-colors ${activeTab === tab.id
                                     ? 'border-primary-500 text-primary-600'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                             >
-                                <Icon className="w-4 h-4" />
+                                <Icon className="w-4 h-4 md:w-5 md:h-5" />
                                 <span>{tab.name}</span>
                             </button>
                         )
