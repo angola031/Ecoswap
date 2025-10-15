@@ -77,6 +77,7 @@ export default function VerificacionIdentidadPage() {
 
     // Función para inicializar la cámara
     const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('user')
+    const [mirrorPreview, setMirrorPreview] = useState(false)
 
     const initializeCamera = async (facingMode: 'user' | 'environment' = 'user') => {
         try {
@@ -383,7 +384,7 @@ export default function VerificacionIdentidadPage() {
                         {useCamera && cameraStep === 'frente' ? (
                             <div className="space-y-4">
                                 <div className="rounded-xl overflow-hidden border relative max-w-2xl mx-auto">
-                                    <video ref={videoRef} className="w-full h-auto" style={{ transform: currentFacingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+                                    <video ref={videoRef} className="w-full h-auto" style={{ transform: mirrorPreview ? 'scaleX(-1)' : 'none' }} />
                                     {/* Overlay con guías para cédula */}
                                     <div className="pointer-events-none absolute inset-0">
                                         <div className="absolute inset-4 border-2 border-blue-400/60 rounded-md"></div>
@@ -418,6 +419,10 @@ export default function VerificacionIdentidadPage() {
                                     </button>
                                     
                                     <div className="flex items-center gap-3">
+                                        <label className="flex items-center gap-2 text-sm text-gray-700">
+                                            <input type="checkbox" checked={mirrorPreview} onChange={(e) => setMirrorPreview(e.target.checked)} />
+                                            Vista espejo
+                                        </label>
                                         <button 
                                             type="button" 
                                             onClick={switchCamera}
@@ -525,7 +530,7 @@ export default function VerificacionIdentidadPage() {
                         {useCamera && cameraStep === 'reverso' ? (
                             <div className="space-y-4">
                                 <div className="rounded-xl overflow-hidden border relative max-w-2xl mx-auto">
-                                    <video ref={videoRef} className="w-full h-auto" style={{ transform: currentFacingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+                                    <video ref={videoRef} className="w-full h-auto" style={{ transform: mirrorPreview ? 'scaleX(-1)' : 'none' }} />
                                     {/* Overlay con guías para cédula */}
                                     <div className="pointer-events-none absolute inset-0">
                                         <div className="absolute inset-4 border-2 border-green-400/60 rounded-md"></div>
@@ -559,6 +564,10 @@ export default function VerificacionIdentidadPage() {
                                     </button>
                                     
                                     <div className="flex items-center gap-3">
+                                        <label className="flex items-center gap-2 text-sm text-gray-700">
+                                            <input type="checkbox" checked={mirrorPreview} onChange={(e) => setMirrorPreview(e.target.checked)} />
+                                            Vista espejo
+                                        </label>
                                         <button 
                                             type="button" 
                                             onClick={switchCamera}
@@ -665,7 +674,7 @@ export default function VerificacionIdentidadPage() {
                         {useCamera && cameraStep === 'selfie' ? (
                             <div className="space-y-4">
                                 <div className="rounded-xl overflow-hidden border relative max-w-md mx-auto">
-                                    <video ref={videoRef} className="w-full h-auto" style={{ transform: currentFacingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+                                    <video ref={videoRef} className="w-full h-auto" style={{ transform: mirrorPreview ? 'scaleX(-1)' : 'none' }} />
                                     {/* Overlay ovalado para selfie */}
                                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                                         <div className="h-3/4 w-3/4 rounded-full border-4 border-purple-400/70"></div>
@@ -696,6 +705,10 @@ export default function VerificacionIdentidadPage() {
                                         Cancelar
                                     </button>
                                     
+                                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                                        <input type="checkbox" checked={mirrorPreview} onChange={(e) => setMirrorPreview(e.target.checked)} />
+                                        Vista espejo
+                                    </label>
                                     <button
                                         type="button"
                                         disabled={isCapturing || !stream}
