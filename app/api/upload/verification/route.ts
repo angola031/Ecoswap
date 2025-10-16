@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
                 
                 console.log(`📤 Subiendo archivo: ${path}`)
                 
-                // Usar upsert: true para sobrescribir archivos existentes
-                const { error: upErr } = await supabase.storage
+                // Usar cliente administrativo para subir archivos (evitar RLS)
+                const { error: upErr } = await supabaseAdmin.storage
                     .from('Ecoswap')
                     .upload(path, buffer, { 
                         upsert: true, 
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
         paths.cedula_reverso = await uploadOne(cedulaReverso, 'cedula_reverso.jpg')
         paths.selfie_validacion = await uploadOne(selfie, 'selfie_validacion.jpg')
 
-        // Verificar si ya existe una validación para este usuario
+        // Verificar si ya existe una validación para este usuario usando cliente administrativo
         const { data: existingValidation, error: validationCheckError } = await supabaseAdmin
             .from('validacion_usuario')
             .select('validacion_id, estado')
