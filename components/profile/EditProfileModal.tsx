@@ -56,6 +56,8 @@ export default function EditProfileModal({ user, isOpen, onClose, onProfileUpdat
         newPassword: '',
         confirmPassword: ''
     })
+    const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
+    const [passwordError, setPasswordError] = useState<string | null>(null)
     const [avatarFile, setAvatarFile] = useState<File | null>(null)
     const [avatarPreview, setAvatarPreview] = useState<string>('')
 
@@ -75,6 +77,14 @@ export default function EditProfileModal({ user, isOpen, onClose, onProfileUpdat
             setAvatarPreview(user.avatar)
         }
     }, [user])
+
+    // Limpiar mensajes cuando se abre/cierra la sección de contraseña
+    useEffect(() => {
+        if (showPasswordSection) {
+            setPasswordError(null)
+            setPasswordSuccess(null)
+        }
+    }, [showPasswordSection])
 
     if (!isOpen || !user || !formData) return null
 
@@ -185,21 +195,44 @@ export default function EditProfileModal({ user, isOpen, onClose, onProfileUpdat
         if (!validatePasswordForm()) return
 
         setIsLoading(true)
+        setPasswordError(null)
+        setPasswordSuccess(null)
 
         try {
-            // Simular delay de API
-            await new Promise(resolve => setTimeout(resolve, 2000))
+            const response = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    currentPassword: passwordData.currentPassword,
+                    newPassword: passwordData.newPassword
+                })
+            })
 
-            // Aquí se cambiaría la contraseña
-            alert('Contraseña cambiada exitosamente')
+            const result = await response.json()
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Error al cambiar la contraseña')
+            }
+
+            // Éxito
+            setPasswordSuccess('Contraseña cambiada exitosamente')
             setPasswordData({
                 currentPassword: '',
                 newPassword: '',
                 confirmPassword: ''
             })
-            setShowPasswordSection(false)
+            
+            // Cerrar la sección de contraseña después de 2 segundos
+            setTimeout(() => {
+                setShowPasswordSection(false)
+                setPasswordSuccess(null)
+            }, 2000)
+
         } catch (error) {
             console.error('Error al cambiar contraseña:', error)
+            setPasswordError(error instanceof Error ? error.message : 'Error al cambiar la contraseña')
         } finally {
             setIsLoading(false)
         }
@@ -529,6 +562,25 @@ export default function EditProfileModal({ user, isOpen, onClose, onProfileUpdat
 
                             {showPasswordSection && (
                                 <form onSubmit={handlePasswordChange} className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                    {/* Mensajes de éxito y error */}
+                                    {passwordSuccess && (
+                                        <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                                            <div className="flex items-center">
+                                                <CheckCircleIcon className="w-5 h-5 text-green-400 mr-2" />
+                                                <p className="text-sm text-green-700">{passwordSuccess}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {passwordError && (
+                                        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                                            <div className="flex items-center">
+                                                <ExclamationTriangleIcon className="w-5 h-5 text-red-400 mr-2" />
+                                                <p className="text-sm text-red-700">{passwordError}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div>
                                         <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2">
                                             Contraseña Actual
