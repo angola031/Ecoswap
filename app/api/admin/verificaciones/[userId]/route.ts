@@ -48,8 +48,16 @@ export async function GET(
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden' ? 403 : 401 })
 
     const { userId } = params
-    if (!userId || isNaN(Number(userId))) {
-        return NextResponse.json({ error: 'ID de usuario inválido' }, { status: 400 })
+    if (!userId) {
+        return NextResponse.json({ error: 'ID de usuario requerido' }, { status: 400 })
+    }
+
+    // Determinar si es UUID o integer
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)
+    const isInteger = !isNaN(Number(userId)) && Number.isInteger(Number(userId))
+    
+    if (!isUUID && !isInteger) {
+        return NextResponse.json({ error: 'ID de usuario inválido. Debe ser UUID o número entero.' }, { status: 400 })
     }
 
     // Usar admin client si está disponible (Vercel), sino usar cliente autenticado (localhost)
@@ -59,10 +67,29 @@ export async function GET(
 
     try {
         // Consultar estado de validación del usuario específico
+        // Si es UUID, buscar por auth_user_id en la tabla usuario primero
+        let usuarioId: number | null = null
+        if (isUUID) {
+            const { data: userData } = await supabase
+                .from('usuario')
+                .select('user_id')
+                .eq('auth_user_id', userId)
+                .single()
+            usuarioId = userData?.user_id || null
+        } else {
+            usuarioId = Number(userId)
+        }
+
+        if (!usuarioId) {
+            return NextResponse.json({
+                error: 'Usuario no encontrado'
+            }, { status: 404 })
+        }
+
         const { data: validation, error: validationError } = await supabase
             .from('validacion_usuario')
             .select('validacion_id, usuario_id, estado, motivo_rechazo, fecha_solicitud, fecha_revision, fecha_aprobacion, tipo_validacion, documentos_adjuntos')
-            .eq('usuario_id', userId)
+            .eq('usuario_id', usuarioId)
             .eq('tipo_validacion', 'identidad')
             .single()
 
@@ -77,7 +104,7 @@ export async function GET(
         // Si no hay validación, devolver estado por defecto
         if (!validation) {
             return NextResponse.json({
-                usuario_id: Number(userId),
+                usuario_id: usuarioId,
                 estado: 'no_solicitado',
                 motivo_rechazo: null,
                 fecha_solicitud: null,
@@ -92,7 +119,7 @@ export async function GET(
         const { data: user, error: userError } = await supabase
             .from('usuario')
             .select('user_id, email, nombre, apellido, verificado, activo')
-            .eq('user_id', userId)
+            .eq('user_id', usuarioId)
             .single()
 
         if (userError) {
@@ -104,7 +131,7 @@ export async function GET(
         }
 
         // Generar URLs de documentos si existen
-        const prefix = `validacion/${userId}/`
+        const prefix = `validacion/${usuarioId}/`
         const documentUrls = {
             cedula_frente: supabase.storage.from('Ecoswap').getPublicUrl(prefix + 'cedula_frente.jpg').data.publicUrl,
             cedula_reverso: supabase.storage.from('Ecoswap').getPublicUrl(prefix + 'cedula_reverso.jpg').data.publicUrl,
@@ -135,8 +162,37 @@ export async function PUT(
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.error === 'Forbidden' ? 403 : 401 })
 
     const { userId } = params
-    if (!userId || isNaN(Number(userId))) {
-        return NextResponse.json({ error: 'ID de usuario inválido' }, { status: 400 })
+    if (!userId) {
+        return NextResponse.json({ error: 'ID de usuario requerido' }, { status: 400 })
+    }
+
+    // Determinar si es UUID o integer
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)
+    const isInteger = !isNaN(Number(userId)) && Number.isInteger(Number(userId))
+    
+    if (!isUUID && !isInteger) {
+        return NextResponse.json({ error: 'ID de usuario inválido. Debe ser UUID o número entero.' }, { status: 400 })
+    }
+
+    // Si es UUID, buscar por auth_user_id en la tabla usuario primero
+    let usuarioId: number | null = null
+    if (isUUID) {
+        const adminClient = getSupabaseAdminClient()
+        const supabase = adminClient || getSupabaseClient()
+        const { data: userData } = await supabase
+            .from('usuario')
+            .select('user_id')
+            .eq('auth_user_id', userId)
+            .single()
+        usuarioId = userData?.user_id || null
+    } else {
+        usuarioId = Number(userId)
+    }
+
+    if (!usuarioId) {
+        return NextResponse.json({
+            error: 'Usuario no encontrado'
+        }, { status: 404 })
     }
 
     const body = await req.json().catch(() => ({}))
@@ -157,7 +213,7 @@ export async function PUT(
             const { error: userError } = await supabase
                 .from('usuario')
                 .update({ verificado: true })
-                .eq('user_id', userId)
+                .eq('user_id', usuarioId)
 
             if (userError) {
                 return NextResponse.json({ error: 'Error actualizando usuario', details: userError.message }, { status: 500 })
@@ -171,7 +227,7 @@ export async function PUT(
                     fecha_aprobacion: new Date().toISOString(),
                     motivo_rechazo: null
                 })
-                .eq('usuario_id', userId)
+                .eq('usuario_id', usuarioId)
                 .eq('tipo_validacion', 'identidad')
 
             if (validationError) {
@@ -183,7 +239,7 @@ export async function PUT(
             const { error: userError } = await supabase
                 .from('usuario')
                 .update({ verificado: false })
-                .eq('user_id', userId)
+                .eq('user_id', usuarioId)
 
             if (userError) {
                 return NextResponse.json({ error: 'Error actualizando usuario', details: userError.message }, { status: 500 })
@@ -197,7 +253,7 @@ export async function PUT(
                     fecha_revision: new Date().toISOString(), 
                     motivo_rechazo: motivo || null 
                 })
-                .eq('usuario_id', userId)
+                .eq('usuario_id', usuarioId)
                 .eq('tipo_validacion', 'identidad')
 
             if (validationError) {
@@ -213,7 +269,7 @@ export async function PUT(
                     fecha_revision: new Date().toISOString(),
                     motivo_rechazo: null
                 })
-                .eq('usuario_id', userId)
+                .eq('usuario_id', usuarioId)
                 .eq('tipo_validacion', 'identidad')
 
             if (validationError) {
@@ -225,7 +281,7 @@ export async function PUT(
         const { data: user } = await supabase
             .from('usuario')
             .select('user_id, email, nombre, apellido')
-            .eq('user_id', userId)
+            .eq('user_id', usuarioId)
             .single()
 
         if (user) {

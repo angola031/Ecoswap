@@ -169,82 +169,30 @@ export default function IdentityVerificationSection({ currentUserId }: IdentityV
 
     const handleVerificationDecision = async (verificationId: number, userId: number, decision: 'aprobado' | 'rechazado') => {
         try {
-            const supabase = getSupabaseClient()
             setProcessingRequest(true)
 
-            // Actualizar la validación en la tabla VALIDACION_USUARIO
-            const { error } = await supabase
-                .from('validacion_usuario')
-                .update({
-                    estado: decision === 'aprobado' ? 'aprobada' : 'rechazada',
-                    notas_admin: observations || null,
-                    motivo_rechazo: decision === 'rechazado' ? observations : null,
-                    fecha_aprobacion: decision === 'aprobado' ? new Date().toISOString() : null,
-                    fecha_revision: new Date().toISOString(),
-                    admin_validador_id: currentUserId
+            // Usar el endpoint API para procesar la verificación
+            const response = await fetch(`/api/admin/verificaciones/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${(await getSupabaseClient().auth.getSession()).data.session?.access_token}`
+                },
+                body: JSON.stringify({
+                    action: decision === 'aprobado' ? 'aprobar' : 'rechazar',
+                    motivo: decision === 'rechazado' ? observations : undefined
                 })
-                .eq('validacion_id', verificationId)
+            })
 
-            // Si se aprueba, actualizar el campo verificado en la tabla usuario
-            if (decision === 'aprobado') {
-                await supabase
-                    .from('usuario')
-                    .update({
-                        verificado: true
-                    })
-                    .eq('user_id', userId)
-            }
-
-            if (error) {
-                console.error('❌ Error actualizando verificación:', error)
-                alert('Error procesando la verificación')
+            if (!response.ok) {
+                const errorData = await response.json()
+                console.error('❌ Error actualizando verificación:', errorData)
+                alert(`Error procesando la verificación: ${errorData.error || 'Error desconocido'}`)
                 return
             }
 
-            // Crear notificación para el usuario
-            try {
-                console.log('📧 Enviando notificación al usuario:', {
-                    usuario_id: userId,
-                    decision,
-                    observations,
-                    verificationId
-                })
-
-                const notificationData = {
-                    usuario_id: userId,
-                    titulo: decision === 'aprobado' ? 'Verificación de Identidad Aprobada' : 'Verificación de Identidad Rechazada',
-                    mensaje: decision === 'aprobado' 
-                        ? 'Tu verificación de identidad ha sido aprobada. Ya puedes usar todas las funciones de la plataforma.'
-                        : `Tu verificación de identidad ha sido rechazada.${observations ? ` Motivo: ${observations}` : ''} Por favor, revisa y vuelve a subir los documentos.`,
-                    tipo: decision === 'aprobado' ? 'verificacion_aprobada' : 'verificacion_identidad',
-                    datos_adicionales: {
-                        status: decision === 'aprobado' ? 'approved' : 'rejected',
-                        motivo_rechazo: decision === 'rechazado' ? observations : null,
-                        validacion_id: verificationId,
-                        fecha_revision: new Date().toISOString(),
-                        url_accion: decision === 'aprobado' ? '/?m=profile' : '/verificacion-identidad'
-                    },
-                    leida: false,
-                    fecha_creacion: new Date().toISOString(),
-                    es_push: true,
-                    es_email: false
-                }
-
-
-                const { data: notificationResult, error: notificationError } = await supabase
-                    .from('notificacion')
-                    .insert(notificationData)
-                    .select()
-
-                if (notificationError) {
-                    console.error('❌ Error enviando notificación al usuario:', notificationError)
-                    alert(`Verificación ${decision === 'aprobado' ? 'aprobada' : 'rechazada'} pero error enviando notificación: ${notificationError.message}`)
-                } else {
-                }
-            } catch (notificationError) {
-                console.error('⚠️ Error enviando notificación al usuario:', notificationError)
-                alert(`Verificación ${decision === 'aprobado' ? 'aprobada' : 'rechazada'} pero error enviando notificación: ${notificationError.message}`)
-            }
+            const result = await response.json()
+            console.log('✅ Verificación procesada:', result)
 
             // Actualizar lista local
             setVerificationRequests(prev => 
