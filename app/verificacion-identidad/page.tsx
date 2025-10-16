@@ -267,8 +267,8 @@ export default function VerificacionIdentidadPage() {
             // Forzar orientación horizontal en móviles para cédulas
             if (isMobile && (cameraStep === 'frente' || cameraStep === 'reverso')) {
                 // Intentar forzar orientación horizontal
-                if (screen.orientation && screen.orientation.lock) {
-                    screen.orientation.lock('landscape').catch(() => {
+                if (typeof screen !== 'undefined' && screen.orientation && 'lock' in screen.orientation) {
+                    (screen.orientation as any).lock('landscape').catch(() => {
                         // Si no se puede bloquear, mostrar mensaje
                         console.log('No se pudo forzar orientación horizontal')
                     })
