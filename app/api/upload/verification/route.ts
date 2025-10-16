@@ -10,19 +10,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Configuración del servidor incompleta: URL faltante' }, { status: 500 })
         }
 
-        if (!process.env.ROLE_KEY) {
-            console.error('❌ ROLE_KEY faltante')
-            return NextResponse.json({ error: 'Configuración del servidor incompleta: ROLE_KEY faltante. Verifica las variables de entorno en Vercel.' }, { status: 500 })
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            console.error('❌ SUPABASE_SERVICE_ROLE_KEY faltante')
+            return NextResponse.json({ error: 'Configuración del servidor incompleta: SUPABASE_SERVICE_ROLE_KEY faltante. Verifica las variables de entorno en Vercel.' }, { status: 500 })
         }
 
         console.log('✅ Variables de entorno verificadas correctamente')
 
         const supabase = getSupabaseClient()
         
-        // Crear cliente administrativo con ROLE_KEY para operaciones que requieren permisos elevados
+        // Crear cliente administrativo con SUPABASE_SERVICE_ROLE_KEY para operaciones que requieren permisos elevados
         const supabaseAdmin = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL,
-            process.env.ROLE_KEY,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
             {
                 auth: {
                     autoRefreshToken: false,
