@@ -104,8 +104,16 @@ export default function NotificationToast({ userId }: NotificationToastProps) {
                 .update({ leida: true })
                 .eq('notificacion_id', currentNotification.notificacion_id)
                 .then(() => {
-                    // Redirigir a la página de notificaciones
-                    window.location.href = '/notificaciones'
+                    // Verificar si hay una URL de acción específica en los datos adicionales
+                    const urlAccion = currentNotification.datos_adicionales?.url_accion
+                    
+                    if (urlAccion) {
+                        // Redirigir a la URL específica (ej: /verificacion-identidad para rechazos)
+                        window.location.href = urlAccion
+                    } else {
+                        // Redirigir a la página de notificaciones por defecto
+                        window.location.href = '/notificaciones'
+                    }
                 })
         }
     }

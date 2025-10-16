@@ -287,19 +287,23 @@ export async function PUT(
         if (user) {
             let titulo = ''
             let mensaje = ''
+            let urlAccion = ''
 
             switch (action) {
                 case 'aprobar':
                     titulo = 'Verificación aprobada'
                     mensaje = 'Tu verificación de identidad fue aprobada. ¡Gracias por completar el proceso!'
+                    urlAccion = '/?m=profile'
                     break
                 case 'rechazar':
                     titulo = 'Verificación rechazada'
                     mensaje = motivo ? `Verificación rechazada: ${motivo}` : 'Tu verificación fue rechazada. Revisa los documentos y vuelve a intentarlo.'
+                    urlAccion = '/verificacion-identidad'
                     break
                 case 'en_revision':
                     titulo = 'Verificación en revisión'
                     mensaje = 'Tu verificación de identidad está siendo revisada por nuestro equipo.'
+                    urlAccion = '/?m=profile'
                     break
             }
 
@@ -308,6 +312,12 @@ export async function PUT(
                 tipo: 'verificacion',
                 titulo,
                 mensaje,
+                datos_adicionales: {
+                    url_accion: urlAccion,
+                    accion: action,
+                    motivo_rechazo: action === 'rechazar' ? motivo : null,
+                    fecha_revision: new Date().toISOString()
+                },
                 es_push: true,
                 es_email: false
             })

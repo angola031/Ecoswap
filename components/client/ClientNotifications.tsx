@@ -218,7 +218,16 @@ export default function ClientNotifications() {
             markAsRead(notification.notificacion_id)
         }
 
-        // Navegar según el tipo de notificación
+        // Verificar si hay una URL de acción específica en los datos adicionales
+        const urlAccion = notification.datos_adicionales?.url_accion
+        
+        if (urlAccion) {
+            // Redirigir a la URL específica (ej: /verificacion-identidad para rechazos)
+            window.location.href = urlAccion
+            return
+        }
+
+        // Navegar según el tipo de notificación (lógica de respaldo)
         if (notification.tipo === 'nuevo_mensaje' && notification.datos_adicionales?.chat_id) {
             // Navegar al chat específico
             window.location.href = `/chat/${notification.datos_adicionales.chat_id}`
@@ -394,12 +403,13 @@ export default function ClientNotifications() {
                                         )}
 
                                         {/* Botón para volver a enviar si fue rechazado */}
-                                        {notification.tipo === 'verificacion_identidad' && 
-                                         notification.datos_adicionales?.status === 'rejected' && (
+                                        {notification.tipo === 'verificacion' && 
+                                         notification.datos_adicionales?.accion === 'rechazar' && (
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation()
-                                                    window.location.href = '/verificacion-identidad'
+                                                    const urlAccion = notification.datos_adicionales?.url_accion || '/verificacion-identidad'
+                                                    window.location.href = urlAccion
                                                 }}
                                                 className="mt-2 px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                                             >

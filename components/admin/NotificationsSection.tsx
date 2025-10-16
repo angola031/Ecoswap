@@ -297,6 +297,13 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
                                 if (!notification.leida) {
                                     markAsRead(notification.notificacion_id)
                                 }
+                                
+                                // Verificar si hay una URL de acción específica
+                                const urlAccion = notification.datos_adicionales?.url_accion
+                                if (urlAccion) {
+                                    // Redirigir a la URL específica
+                                    window.location.href = urlAccion
+                                }
                             }}
                         >
                             <div className="flex items-start space-x-3">
