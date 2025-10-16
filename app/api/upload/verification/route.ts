@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase-client'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: NextRequest) {
         const supabase = getSupabaseClient()
+        
+        // Crear cliente administrativo con ROLE_KEY para operaciones que requieren permisos elevados
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.ROLE_KEY!,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        )
+        
     try {
         const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
         if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
@@ -76,9 +90,9 @@ export async function POST(req: NextRequest) {
         const documentos_adjuntos = paths
 
         if (existingValidation) {
-            // Si existe, actualizar la validación existente
+            // Si existe, actualizar la validación existente usando cliente administrativo
             
-            const { error: updateError } = await supabase
+            const { error: updateError } = await supabaseAdmin
                 .from('validacion_usuario')
                 .update({
                     estado: 'pendiente',
@@ -99,9 +113,9 @@ export async function POST(req: NextRequest) {
             }
 
         } else {
-            // Si no existe, crear una nueva validación
+            // Si no existe, crear una nueva validación usando cliente administrativo
             
-            const { error: insertError } = await supabase
+            const { error: insertError } = await supabaseAdmin
                 .from('validacion_usuario')
                 .insert({
                     usuario_id: Number(userId),
@@ -122,8 +136,8 @@ export async function POST(req: NextRequest) {
 
         }
 
-        // Actualizar el usuario para marcar que tiene validación pendiente
-        await supabase
+        // Actualizar el usuario para marcar que tiene validación pendiente usando cliente administrativo
+        await supabaseAdmin
             .from('usuario')
             .update({ 
                 pediente_validacion: true
