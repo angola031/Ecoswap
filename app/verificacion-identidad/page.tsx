@@ -435,7 +435,9 @@ export default function VerificacionIdentidadPage() {
                                     height: isMobile ? '70vh' : 'auto',
                                     display: 'flex',
                                     justifyContent: 'center',
-                                    alignItems: 'center'
+                                    alignItems: 'center',
+                                    // Forzar aspect ratio 4:3 para mejor visualización horizontal
+                                    aspectRatio: isMobile ? '4/3' : 'auto'
                                 }}>
                                     <video 
                                         ref={videoRef} 
@@ -444,16 +446,22 @@ export default function VerificacionIdentidadPage() {
                                             transform: isMobile 
                                                 ? `rotate(-90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
                                                 : mirrorPreview ? 'scaleX(-1)' : 'none',
-                                            // Forzar orientación horizontal en móviles
+                                            // Ajustar para aspect ratio 4:3
                                             objectFit: 'cover',
-                                            maxHeight: isMobile ? '70vh' : '60vh',
-                                            width: isMobile ? 'auto' : '100%',
-                                            height: isMobile ? '100%' : 'auto'
+                                            width: isMobile ? '100%' : '100%',
+                                            height: isMobile ? '100%' : 'auto',
+                                            // Mejorar la visualización horizontal
+                                            minHeight: isMobile ? '100%' : 'auto'
                                         }} 
                                     />
                                     {/* Overlay con guías para cédula en orientación horizontal */}
                                     <div className="pointer-events-none absolute inset-0">
-                                        <div className="absolute inset-4 border-2 border-blue-400/60 rounded-md aspect-[1.586]"></div>
+                                        <div className="absolute inset-4 border-2 border-blue-400/60 rounded-md" style={{
+                                            width: '85%',
+                                            height: '60%',
+                                            left: '7.5%',
+                                            top: '20%'
+                                        }}></div>
                                         <div className="absolute left-4 top-4 h-10 w-10 rounded-full border-2 border-blue-300/60"></div>
                                         <div className="absolute right-6 top-4 h-3 w-20 bg-blue-300/20 rounded"></div>
                                         <div className="absolute right-6 top-8 h-3 w-28 bg-blue-300/20 rounded"></div>
@@ -604,7 +612,9 @@ export default function VerificacionIdentidadPage() {
                                     height: isMobile ? '70vh' : 'auto',
                                     display: 'flex',
                                     justifyContent: 'center',
-                                    alignItems: 'center'
+                                    alignItems: 'center',
+                                    // Forzar aspect ratio 4:3 para mejor visualización horizontal
+                                    aspectRatio: isMobile ? '4/3' : 'auto'
                                 }}>
                                     <video 
                                         ref={videoRef} 
@@ -613,16 +623,22 @@ export default function VerificacionIdentidadPage() {
                                             transform: isMobile 
                                                 ? `rotate(-90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
                                                 : mirrorPreview ? 'scaleX(-1)' : 'none',
-                                            // Forzar orientación horizontal en móviles
+                                            // Ajustar para aspect ratio 4:3
                                             objectFit: 'cover',
-                                            maxHeight: isMobile ? '70vh' : '60vh',
-                                            width: isMobile ? 'auto' : '100%',
-                                            height: isMobile ? '100%' : 'auto'
+                                            width: isMobile ? '100%' : '100%',
+                                            height: isMobile ? '100%' : 'auto',
+                                            // Mejorar la visualización horizontal
+                                            minHeight: isMobile ? '100%' : 'auto'
                                         }} 
                                     />
                                     {/* Overlay con guías para cédula en orientación horizontal */}
                                     <div className="pointer-events-none absolute inset-0">
-                                        <div className="absolute inset-4 border-2 border-green-400/60 rounded-md aspect-[1.586]"></div>
+                                        <div className="absolute inset-4 border-2 border-green-400/60 rounded-md" style={{
+                                            width: '85%',
+                                            height: '60%',
+                                            left: '7.5%',
+                                            top: '20%'
+                                        }}></div>
                                         <div className="absolute left-4 top-4 h-3 w-24 bg-green-300/20 rounded"></div>
                                         <div className="absolute left-4 top-8 h-3 w-32 bg-green-300/20 rounded"></div>
                                         <div className="absolute bottom-4 left-4 right-4 text-center">
