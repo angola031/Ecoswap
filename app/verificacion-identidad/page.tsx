@@ -450,7 +450,7 @@ export default function VerificacionIdentidadPage() {
                                         ref={videoRef} 
                                         className="w-full h-auto" 
                                         style={{ 
-                                            transform: isMobile && (cameraStep === 'frente' || cameraStep === 'reverso') 
+                                            transform: isMobile 
                                                 ? `rotate(90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
                                                 : mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Forzar orientación horizontal en móviles
@@ -619,7 +619,7 @@ export default function VerificacionIdentidadPage() {
                                         ref={videoRef} 
                                         className="w-full h-auto" 
                                         style={{ 
-                                            transform: isMobile && (cameraStep === 'frente' || cameraStep === 'reverso') 
+                                            transform: isMobile 
                                                 ? `rotate(90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
                                                 : mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Forzar orientación horizontal en móviles
