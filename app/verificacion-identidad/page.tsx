@@ -16,6 +16,7 @@ export default function VerificacionIdentidadPage() {
     const [cameraStep, setCameraStep] = useState<'frente' | 'reverso' | 'selfie' | null>(null)
     const videoRef = useRef<HTMLVideoElement | null>(null)
     const canvasRef = useRef<HTMLCanvasElement | null>(null)
+    const frameRef = useRef<HTMLDivElement | null>(null) // Referencia al marco
     const [step, setStep] = useState<0 | 1 | 2>(0)
     const [stream, setStream] = useState<MediaStream | null>(null)
     const [cameraError, setCameraError] = useState<string | null>(null)
@@ -138,6 +139,52 @@ export default function VerificacionIdentidadPage() {
         setCameraError(null)
     }
 
+    /**
+     * Calcula las coordenadas del marco en relación al video
+     */
+    const getFrameCoordinates = () => {
+        if (!videoRef.current || !frameRef.current) return null
+
+        const video = videoRef.current
+        const frame = frameRef.current
+        
+        // Obtener dimensiones y posiciones
+        const videoRect = video.getBoundingClientRect()
+        const frameRect = frame.getBoundingClientRect()
+
+        // Calcular las coordenadas relativas al video
+        const scaleX = video.videoWidth / videoRect.width
+        const scaleY = video.videoHeight / videoRect.height
+
+        const x = (frameRect.left - videoRect.left) * scaleX
+        const y = (frameRect.top - videoRect.top) * scaleY
+        const width = frameRect.width * scaleX
+        const height = frameRect.height * scaleY
+
+        return { x, y, width, height }
+    }
+
+    /**
+     * Mejora la calidad de la imagen (contraste, brillo)
+     */
+    const enhanceImage = (context: CanvasRenderingContext2D, width: number, height: number) => {
+        const imageData = context.getImageData(0, 0, width, height)
+        const data = imageData.data
+
+        // Aumentar contraste y brillo
+        const contrast = 1.2
+        const brightness = 10
+
+        for (let i = 0; i < data.length; i += 4) {
+            // Aplicar contraste y brillo a RGB
+            data[i] = Math.min(255, Math.max(0, contrast * (data[i] - 128) + 128 + brightness))     // R
+            data[i + 1] = Math.min(255, Math.max(0, contrast * (data[i + 1] - 128) + 128 + brightness)) // G
+            data[i + 2] = Math.min(255, Math.max(0, contrast * (data[i + 2] - 128) + 128 + brightness)) // B
+        }
+
+        context.putImageData(imageData, 0, 0)
+    }
+
     // Función para capturar foto
     const capturePhoto = async (type: 'frente' | 'reverso' | 'selfie') => {
         if (!videoRef.current || !stream) return
@@ -153,104 +200,40 @@ export default function VerificacionIdentidadPage() {
                 throw new Error('No se pudo obtener contexto del canvas')
             }
 
-            // Configurar dimensiones del canvas según el tipo
-            if (type === 'selfie') {
-                // Para selfie, usar formato cuadrado
-                const side = Math.min(video.videoWidth, video.videoHeight)
-                canvas.width = side
-                canvas.height = side
-                
-                // Centrar recorte cuadrado
-                const sx = (video.videoWidth - side) / 2
-                const sy = (video.videoHeight - side) / 2
-                ctx.save()
-                if (mirrorPreview) {
-                    ctx.translate(canvas.width, 0)
-                    ctx.scale(-1, 1)
-                }
-                ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side)
-                ctx.restore()
-            } else {
-                // Para cédula, mantener orientación original pero rotar para visualización horizontal
-                canvas.width = video.videoWidth
-                canvas.height = video.videoHeight
-                ctx.save()
-                
-                // Aplicar transformaciones para orientación horizontal
-                if (mirrorPreview) {
-                    ctx.translate(canvas.width, 0)
-                    ctx.scale(-1, 1)
-                }
-                
-                // Rotar 90 grados para mostrar en horizontal
-                ctx.translate(canvas.width / 2, canvas.height / 2)
-                ctx.rotate(Math.PI / 2)
-                ctx.translate(-canvas.height / 2, -canvas.width / 2)
-                
-                // Dibujar la imagen
-                ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
-                ctx.restore()
-                
-                // Ajustar dimensiones del canvas para orientación horizontal
-                const tempCanvas = document.createElement('canvas')
-                const tempCtx = tempCanvas.getContext('2d')
-                if (tempCtx) {
-                    tempCanvas.width = canvas.height
-                    tempCanvas.height = canvas.width
-                    tempCtx.drawImage(canvas, 0, 0)
-                    
-                    // Reemplazar el canvas original con el rotado
-                    canvas.width = tempCanvas.width
-                    canvas.height = tempCanvas.height
-                    ctx.clearRect(0, 0, canvas.width, canvas.height)
-                    ctx.drawImage(tempCanvas, 0, 0)
-                }
+            // Obtener coordenadas del marco
+            const frameCoords = getFrameCoordinates()
+            
+            if (!frameCoords) {
+                console.error('No se pudieron obtener las coordenadas del marco')
+                setError('Error al obtener coordenadas del marco')
+                return
             }
 
-            // Recortar a proporción de cédula (1.586:1) centrado para documentos
-            let outputCanvas: HTMLCanvasElement = canvas
+            // Configurar canvas con las dimensiones del área recortada
+            canvas.width = frameCoords.width
+            canvas.height = frameCoords.height
+
+            // Dibujar solo el área del marco
+            ctx.drawImage(
+                video,
+                frameCoords.x,     // sx: posición X de origen
+                frameCoords.y,     // sy: posición Y de origen
+                frameCoords.width, // sWidth: ancho de origen
+                frameCoords.height,// sHeight: alto de origen
+                0,                 // dx: posición X de destino
+                0,                 // dy: posición Y de destino
+                frameCoords.width, // dWidth: ancho de destino
+                frameCoords.height // dHeight: alto de destino
+            )
+
+            // Aplicar mejoras de imagen para documentos
             if (type !== 'selfie') {
-                const targetRatio = 1.586 // ancho/alto
-                const currentRatio = canvas.width / canvas.height
-                let cropWidth = canvas.width
-                let cropHeight = canvas.height
-
-                if (currentRatio > targetRatio) {
-                    // Imagen demasiado ancha → ajustar ancho
-                    cropHeight = canvas.height
-                    cropWidth = Math.round(cropHeight * targetRatio)
-                } else if (currentRatio < targetRatio) {
-                    // Imagen demasiado alta → ajustar alto
-                    cropWidth = canvas.width
-                    cropHeight = Math.round(cropWidth / targetRatio)
-                }
-
-                const sx = Math.max(0, Math.floor((canvas.width - cropWidth) / 2))
-                const sy = Math.max(0, Math.floor((canvas.height - cropHeight) / 2))
-
-                const cropCanvas = document.createElement('canvas')
-                cropCanvas.width = cropWidth
-                cropCanvas.height = cropHeight
-                const cropCtx = cropCanvas.getContext('2d')
-                if (cropCtx) {
-                    cropCtx.drawImage(
-                        canvas,
-                        sx,
-                        sy,
-                        cropWidth,
-                        cropHeight,
-                        0,
-                        0,
-                        cropWidth,
-                        cropHeight
-                    )
-                    outputCanvas = cropCanvas
-                }
+                enhanceImage(ctx, canvas.width, canvas.height)
             }
 
             // Convertir a blob
             const blob = await new Promise<Blob | null>((resolve) => {
-                outputCanvas.toBlob(resolve, 'image/jpeg', 0.9)
+                canvas.toBlob(resolve, 'image/jpeg', 0.95)
             })
 
             if (blob) {
@@ -269,7 +252,6 @@ export default function VerificacionIdentidadPage() {
                         setSelfie(file)
                         break
                 }
-
                 
                 // Mostrar vista previa en lugar de cerrar inmediatamente
                 setUseCamera(false)
@@ -503,6 +485,7 @@ export default function VerificacionIdentidadPage() {
                                         {/* Marco horizontal para cédula */}
                                         <div className="relative px-4 w-full flex items-center justify-center">
                                             <div 
+                                                ref={frameRef}
                                                 className="border-4 border-blue-500 rounded-xl relative bg-transparent"
                                                 style={{
                                                     width: '90%',
@@ -692,6 +675,7 @@ export default function VerificacionIdentidadPage() {
                                         {/* Marco horizontal para cédula */}
                                         <div className="relative px-4 w-full flex items-center justify-center">
                                             <div 
+                                                ref={frameRef}
                                                 className="border-4 border-green-500 rounded-xl relative bg-transparent"
                                                 style={{
                                                     width: '90%',
@@ -850,7 +834,10 @@ export default function VerificacionIdentidadPage() {
                                     <video ref={videoRef} className="w-full h-auto" style={{ transform: mirrorPreview ? 'scaleX(-1)' : 'none' }} />
                                     {/* Overlay ovalado para selfie */}
                                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                                        <div className="h-3/4 w-3/4 rounded-full border-4 border-purple-400/70"></div>
+                                        <div 
+                                            ref={frameRef}
+                                            className="h-3/4 w-3/4 rounded-full border-4 border-purple-400/70"
+                                        ></div>
                                     </div>
                                     <div className="absolute bottom-4 left-4 right-4 text-center">
                                         <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
