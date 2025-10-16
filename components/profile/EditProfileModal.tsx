@@ -561,7 +561,7 @@ export default function EditProfileModal({ user, isOpen, onClose, onProfileUpdat
                             </div>
 
                             {showPasswordSection && (
-                                <form onSubmit={handlePasswordChange} className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
                                     {/* Mensajes de éxito y error */}
                                     {passwordSuccess && (
                                         <div className="p-3 bg-green-50 border border-green-200 rounded-md">
@@ -626,13 +626,14 @@ export default function EditProfileModal({ user, isOpen, onClose, onProfileUpdat
                                     </div>
 
                                     <button
-                                        type="submit"
+                                        type="button"
+                                        onClick={handlePasswordChange}
                                         disabled={isLoading}
                                         className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
                                     >
                                         {isLoading ? 'Cambiando...' : 'Cambiar Contraseña'}
                                     </button>
-                                </form>
+                                </div>
                             )}
                         </div>
 
