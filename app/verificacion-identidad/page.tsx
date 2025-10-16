@@ -428,7 +428,7 @@ export default function VerificacionIdentidadPage() {
                             <div className="space-y-4">
                                 {isMobile && (
                                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm text-center">
-                                        📱 La imagen se muestra en horizontal - Centra la cédula en el marco
+                                        📱 Coloca la cédula horizontalmente dentro del marco azul
                                     </div>
                                 )}
                                 <div className={`rounded-xl overflow-hidden border relative mx-auto ${isMobile ? 'max-w-full' : 'max-w-4xl'}`} style={{ 
@@ -443,9 +443,7 @@ export default function VerificacionIdentidadPage() {
                                         ref={videoRef} 
                                         className="w-full h-auto" 
                                         style={{ 
-                                            transform: isMobile 
-                                                ? `rotate(-90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
-                                                : mirrorPreview ? 'scaleX(-1)' : 'none',
+                                            transform: mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Ajustar para aspect ratio 4:3
                                             objectFit: 'cover',
                                             width: isMobile ? '100%' : '100%',
@@ -454,29 +452,38 @@ export default function VerificacionIdentidadPage() {
                                             minHeight: isMobile ? '100%' : 'auto'
                                         }} 
                                     />
-                                    {/* Overlay con guías mejoradas para cédula */}
+                                    {/* Overlay con marco horizontal para cédula */}
                                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                                        <div 
-                                            className="border-4 border-blue-500 rounded-xl relative"
-                                            style={{
-                                                width: isMobile ? '70%' : '85%',
-                                                maxWidth: '350px',
-                                                aspectRatio: 1.586, // Proporción de cédula colombiana
-                                            }}
-                                        >
-                                            {/* Indicadores de esquinas */}
-                                            <div className="absolute -top-2 -left-2 w-6 h-6 border-l-4 border-t-4 border-blue-400 rounded-tl-lg"></div>
-                                            <div className="absolute -top-2 -right-2 w-6 h-6 border-r-4 border-t-4 border-blue-400 rounded-tr-lg"></div>
-                                            <div className="absolute -bottom-2 -left-2 w-6 h-6 border-l-4 border-b-4 border-blue-400 rounded-bl-lg"></div>
-                                            <div className="absolute -bottom-2 -right-2 w-6 h-6 border-r-4 border-b-4 border-blue-400 rounded-br-lg"></div>
+                                        {/* Fondo oscuro semitransparente */}
+                                        <div className="absolute inset-0 bg-black/50" />
+                                        
+                                        {/* Marco horizontal para cédula */}
+                                        <div className="relative px-4 w-full flex items-center justify-center">
+                                            <div 
+                                                className="border-4 border-blue-500 rounded-xl relative bg-transparent"
+                                                style={{
+                                                    width: '90%',
+                                                    maxWidth: '400px',
+                                                    aspectRatio: '1.586', // Proporción cédula (85.6/54)
+                                                }}
+                                            >
+                                                {/* Esquinas del marco */}
+                                                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white rounded-tl-xl" />
+                                                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white rounded-tr-xl" />
+                                                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white rounded-bl-xl" />
+                                                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white rounded-br-xl" />
+                                            </div>
                                         </div>
                                     </div>
                                     
                                     {/* Instrucción mejorada */}
-                                    <div className="absolute bottom-4 left-4 right-4 text-center">
-                                        <div className="bg-black/70 text-white p-4 mx-4 rounded-lg">
+                                        <div className="absolute bottom-4 left-4 right-4 text-center">
+                                        <div className="bg-blue-500 text-white px-4 py-3 rounded-lg text-center">
                                             <p className="text-sm font-medium">
-                                                La previsualización se muestra en horizontal - Centra la cédula en el marco azul
+                                                Centra la cédula en el marco azul
+                                            </p>
+                                            <p className="text-xs mt-1 opacity-90">
+                                                Coloca la cédula horizontalmente dentro del marco
                                             </p>
                                         </div>
                                     </div>
@@ -610,7 +617,7 @@ export default function VerificacionIdentidadPage() {
                             <div className="space-y-4">
                                 {isMobile && (
                                     <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm text-center">
-                                        📱 La imagen se muestra en horizontal - Centra el reverso en el marco
+                                        📱 Coloca el reverso de la cédula horizontalmente dentro del marco verde
                                     </div>
                                 )}
                                 <div className={`rounded-xl overflow-hidden border relative mx-auto ${isMobile ? 'max-w-full' : 'max-w-4xl'}`} style={{ 
@@ -625,9 +632,7 @@ export default function VerificacionIdentidadPage() {
                                         ref={videoRef} 
                                         className="w-full h-auto" 
                                         style={{ 
-                                            transform: isMobile 
-                                                ? `rotate(-90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
-                                                : mirrorPreview ? 'scaleX(-1)' : 'none',
+                                            transform: mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Ajustar para aspect ratio 4:3
                                             objectFit: 'cover',
                                             width: isMobile ? '100%' : '100%',
@@ -636,29 +641,38 @@ export default function VerificacionIdentidadPage() {
                                             minHeight: isMobile ? '100%' : 'auto'
                                         }} 
                                     />
-                                    {/* Overlay con guías mejoradas para cédula reverso */}
+                                    {/* Overlay con marco horizontal para cédula reverso */}
                                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                                        <div 
-                                            className="border-4 border-green-500 rounded-xl relative"
-                                            style={{
-                                                width: isMobile ? '70%' : '85%',
-                                                maxWidth: '350px',
-                                                aspectRatio: 1.586, // Proporción de cédula colombiana
-                                            }}
-                                        >
-                                            {/* Indicadores de esquinas */}
-                                            <div className="absolute -top-2 -left-2 w-6 h-6 border-l-4 border-t-4 border-green-400 rounded-tl-lg"></div>
-                                            <div className="absolute -top-2 -right-2 w-6 h-6 border-r-4 border-t-4 border-green-400 rounded-tr-lg"></div>
-                                            <div className="absolute -bottom-2 -left-2 w-6 h-6 border-l-4 border-b-4 border-green-400 rounded-bl-lg"></div>
-                                            <div className="absolute -bottom-2 -right-2 w-6 h-6 border-r-4 border-b-4 border-green-400 rounded-br-lg"></div>
+                                        {/* Fondo oscuro semitransparente */}
+                                        <div className="absolute inset-0 bg-black/50" />
+                                        
+                                        {/* Marco horizontal para cédula */}
+                                        <div className="relative px-4 w-full flex items-center justify-center">
+                                            <div 
+                                                className="border-4 border-green-500 rounded-xl relative bg-transparent"
+                                                style={{
+                                                    width: '90%',
+                                                    maxWidth: '400px',
+                                                    aspectRatio: '1.586', // Proporción cédula (85.6/54)
+                                                }}
+                                            >
+                                                {/* Esquinas del marco */}
+                                                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white rounded-tl-xl" />
+                                                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white rounded-tr-xl" />
+                                                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white rounded-bl-xl" />
+                                                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white rounded-br-xl" />
+                                            </div>
                                         </div>
                                     </div>
                                     
                                     {/* Instrucción mejorada */}
-                                    <div className="absolute bottom-4 left-4 right-4 text-center">
-                                        <div className="bg-black/70 text-white p-4 mx-4 rounded-lg">
+                                        <div className="absolute bottom-4 left-4 right-4 text-center">
+                                        <div className="bg-green-500 text-white px-4 py-3 rounded-lg text-center">
                                             <p className="text-sm font-medium">
-                                                La previsualización se muestra en horizontal - Centra el reverso en el marco verde
+                                                Centra el reverso de la cédula en el marco verde
+                                            </p>
+                                            <p className="text-xs mt-1 opacity-90">
+                                                Coloca la cédula horizontalmente dentro del marco
                                             </p>
                                         </div>
                                     </div>
