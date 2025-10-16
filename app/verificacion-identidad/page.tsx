@@ -78,6 +78,9 @@ export default function VerificacionIdentidadPage() {
     // Función para inicializar la cámara
     const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('user')
     const [mirrorPreview, setMirrorPreview] = useState(true)
+    
+    // Detectar si es dispositivo móvil
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
     const initializeCamera = async (facingMode: 'user' | 'environment' = 'user') => {
         try {
@@ -88,7 +91,7 @@ export default function VerificacionIdentidadPage() {
                 stream.getTracks().forEach(track => track.stop())
             }
 
-            // Solicitar acceso a la cámara
+            // Solicitar acceso a la cámara con orientación horizontal preferida
             const newStream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: facingMode,
@@ -260,6 +263,17 @@ export default function VerificacionIdentidadPage() {
         if (useCamera && cameraStep) {
             const facingMode = cameraStep === 'selfie' ? 'user' : 'environment'
             initializeCamera(facingMode)
+            
+            // Forzar orientación horizontal en móviles para cédulas
+            if (isMobile && (cameraStep === 'frente' || cameraStep === 'reverso')) {
+                // Intentar forzar orientación horizontal
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(() => {
+                        // Si no se puede bloquear, mostrar mensaje
+                        console.log('No se pudo forzar orientación horizontal')
+                    })
+                }
+            }
         } else {
             stopCamera()
         }
@@ -267,7 +281,7 @@ export default function VerificacionIdentidadPage() {
         return () => {
             stopCamera()
         }
-    }, [useCamera, cameraStep])
+    }, [useCamera, cameraStep, isMobile])
 
     // Limpiar al desmontar
     useEffect(() => {
@@ -421,8 +435,22 @@ export default function VerificacionIdentidadPage() {
 
                         {useCamera && cameraStep === 'frente' ? (
                             <div className="space-y-4">
+                                {isMobile && (
+                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm text-center">
+                                        📱 Para mejor captura, rota tu dispositivo horizontalmente
+                                    </div>
+                                )}
                                 <div className="rounded-xl overflow-hidden border relative max-w-4xl mx-auto">
-                                    <video ref={videoRef} className="w-full h-auto" style={{ transform: mirrorPreview ? 'scaleX(-1)' : 'none' }} />
+                                    <video 
+                                        ref={videoRef} 
+                                        className="w-full h-auto" 
+                                        style={{ 
+                                            transform: mirrorPreview ? 'scaleX(-1)' : 'none',
+                                            // Forzar orientación horizontal en móviles
+                                            objectFit: 'cover',
+                                            maxHeight: '60vh'
+                                        }} 
+                                    />
                                     {/* Overlay con guías para cédula en orientación horizontal */}
                                     <div className="pointer-events-none absolute inset-0">
                                         <div className="absolute inset-4 border-2 border-blue-400/60 rounded-md aspect-[1.586]"></div>
@@ -431,7 +459,7 @@ export default function VerificacionIdentidadPage() {
                                         <div className="absolute right-6 top-8 h-3 w-28 bg-blue-300/20 rounded"></div>
                                         <div className="absolute bottom-4 left-4 right-4 text-center">
                                             <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                                                Centra la cédula en el marco azul - Captura en horizontal
+                                                {isMobile ? 'Rota tu dispositivo horizontalmente y centra la cédula en el marco azul' : 'Centra la cédula en el marco azul - Captura en horizontal'}
                                             </div>
                                         </div>
                                     </div>
@@ -567,8 +595,22 @@ export default function VerificacionIdentidadPage() {
 
                         {useCamera && cameraStep === 'reverso' ? (
                             <div className="space-y-4">
+                                {isMobile && (
+                                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm text-center">
+                                        📱 Para mejor captura, rota tu dispositivo horizontalmente
+                                    </div>
+                                )}
                                 <div className="rounded-xl overflow-hidden border relative max-w-4xl mx-auto">
-                                    <video ref={videoRef} className="w-full h-auto" style={{ transform: mirrorPreview ? 'scaleX(-1)' : 'none' }} />
+                                    <video 
+                                        ref={videoRef} 
+                                        className="w-full h-auto" 
+                                        style={{ 
+                                            transform: mirrorPreview ? 'scaleX(-1)' : 'none',
+                                            // Forzar orientación horizontal en móviles
+                                            objectFit: 'cover',
+                                            maxHeight: '60vh'
+                                        }} 
+                                    />
                                     {/* Overlay con guías para cédula en orientación horizontal */}
                                     <div className="pointer-events-none absolute inset-0">
                                         <div className="absolute inset-4 border-2 border-green-400/60 rounded-md aspect-[1.586]"></div>
@@ -576,7 +618,7 @@ export default function VerificacionIdentidadPage() {
                                         <div className="absolute left-4 top-8 h-3 w-32 bg-green-300/20 rounded"></div>
                                         <div className="absolute bottom-4 left-4 right-4 text-center">
                                             <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                                                Centra el reverso de la cédula en el marco verde - Captura en horizontal
+                                                {isMobile ? 'Rota tu dispositivo horizontalmente y centra el reverso en el marco verde' : 'Centra el reverso de la cédula en el marco verde - Captura en horizontal'}
                                             </div>
                                         </div>
                                     </div>
