@@ -428,8 +428,8 @@ export default function VerificacionIdentidadPage() {
                             <div className="space-y-4">
                                 {isMobile && (
                                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm text-center">
-                                        📱 La previsualización se muestra en horizontal para mejor captura
-                                            </div>
+                                        📱 Centra la cédula en el marco para una mejor captura
+                                    </div>
                                 )}
                                 <div className={`rounded-xl overflow-hidden border relative mx-auto ${isMobile ? 'max-w-full' : 'max-w-4xl'}`} style={{ 
                                     height: isMobile ? '70vh' : 'auto',
@@ -443,9 +443,7 @@ export default function VerificacionIdentidadPage() {
                                         ref={videoRef} 
                                         className="w-full h-auto" 
                                         style={{ 
-                                            transform: isMobile 
-                                                ? `rotate(-90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
-                                                : mirrorPreview ? 'scaleX(-1)' : 'none',
+                                            transform: mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Ajustar para aspect ratio 4:3
                                             objectFit: 'cover',
                                             width: isMobile ? '100%' : '100%',
@@ -459,8 +457,8 @@ export default function VerificacionIdentidadPage() {
                                         <div 
                                             className="border-4 border-blue-500 rounded-xl relative"
                                             style={{
-                                                width: '85%',
-                                                maxWidth: '400px',
+                                                width: isMobile ? '70%' : '85%',
+                                                maxWidth: '350px',
                                                 aspectRatio: 1.586, // Proporción de cédula colombiana
                                                 boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
                                             }}
@@ -477,7 +475,7 @@ export default function VerificacionIdentidadPage() {
                                     <div className="absolute bottom-4 left-4 right-4 text-center">
                                         <div className="bg-black/70 text-white p-4 mx-4 rounded-lg">
                                             <p className="text-sm font-medium">
-                                                {isMobile ? 'Previsualización horizontal - Centra la cédula en el marco azul' : 'Centra la cédula en el marco azul - Captura en horizontal'}
+                                                Centra la cédula en el marco azul
                                             </p>
                                         </div>
                                     </div>
@@ -611,8 +609,8 @@ export default function VerificacionIdentidadPage() {
                             <div className="space-y-4">
                                 {isMobile && (
                                     <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm text-center">
-                                        📱 La previsualización se muestra en horizontal para mejor captura
-                                            </div>
+                                        📱 Centra el reverso de la cédula en el marco para una mejor captura
+                                    </div>
                                 )}
                                 <div className={`rounded-xl overflow-hidden border relative mx-auto ${isMobile ? 'max-w-full' : 'max-w-4xl'}`} style={{ 
                                     height: isMobile ? '70vh' : 'auto',
@@ -626,9 +624,7 @@ export default function VerificacionIdentidadPage() {
                                         ref={videoRef} 
                                         className="w-full h-auto" 
                                         style={{ 
-                                            transform: isMobile 
-                                                ? `rotate(-90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
-                                                : mirrorPreview ? 'scaleX(-1)' : 'none',
+                                            transform: mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Ajustar para aspect ratio 4:3
                                             objectFit: 'cover',
                                             width: isMobile ? '100%' : '100%',
@@ -642,8 +638,8 @@ export default function VerificacionIdentidadPage() {
                                         <div 
                                             className="border-4 border-green-500 rounded-xl relative"
                                             style={{
-                                                width: '85%',
-                                                maxWidth: '400px',
+                                                width: isMobile ? '70%' : '85%',
+                                                maxWidth: '350px',
                                                 aspectRatio: 1.586, // Proporción de cédula colombiana
                                                 boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
                                             }}
@@ -660,7 +656,7 @@ export default function VerificacionIdentidadPage() {
                                     <div className="absolute bottom-4 left-4 right-4 text-center">
                                         <div className="bg-black/70 text-white p-4 mx-4 rounded-lg">
                                             <p className="text-sm font-medium">
-                                                {isMobile ? 'Previsualización horizontal - Centra el reverso en el marco verde' : 'Centra el reverso de la cédula en el marco verde - Captura en horizontal'}
+                                                Centra el reverso de la cédula en el marco verde
                                             </p>
                                         </div>
                                     </div>
