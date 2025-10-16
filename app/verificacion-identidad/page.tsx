@@ -171,43 +171,39 @@ export default function VerificacionIdentidadPage() {
                 ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side)
                 ctx.restore()
             } else {
-                // Para cédula, rotar siempre a horizontal
-                const isCurrentlyPortrait = video.videoHeight > video.videoWidth
+                // Para cédula, mantener orientación original pero rotar para visualización horizontal
+                canvas.width = video.videoWidth
+                canvas.height = video.videoHeight
+                ctx.save()
                 
-                if (isCurrentlyPortrait) {
-                    // Si está en vertical, rotar a horizontal
-                    canvas.width = video.videoHeight
-                    canvas.height = video.videoWidth
-                    ctx.save()
-                    
-                    // Rotar 90 grados para convertir de vertical a horizontal
+                // Aplicar transformaciones para orientación horizontal
+                if (mirrorPreview) {
                     ctx.translate(canvas.width, 0)
-                    ctx.rotate(Math.PI / 2)
+                    ctx.scale(-1, 1)
+                }
+                
+                // Rotar 90 grados para mostrar en horizontal
+                ctx.translate(canvas.width / 2, canvas.height / 2)
+                ctx.rotate(Math.PI / 2)
+                ctx.translate(-canvas.height / 2, -canvas.width / 2)
+                
+                // Dibujar la imagen
+                ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
+                ctx.restore()
+                
+                // Ajustar dimensiones del canvas para orientación horizontal
+                const tempCanvas = document.createElement('canvas')
+                const tempCtx = tempCanvas.getContext('2d')
+                if (tempCtx) {
+                    tempCanvas.width = canvas.height
+                    tempCanvas.height = canvas.width
+                    tempCtx.drawImage(canvas, 0, 0)
                     
-                    if (mirrorPreview) {
-                        ctx.translate(video.videoWidth, 0)
-                        ctx.scale(-1, 1)
-                    }
-                    
-                    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
-                    ctx.restore()
-                } else {
-                    // Si ya está en horizontal, rotar también para consistencia
-                    canvas.width = video.videoHeight
-                    canvas.height = video.videoWidth
-                    ctx.save()
-                    
-                    // Rotar 90 grados para mantener orientación horizontal
-                    ctx.translate(canvas.width, 0)
-                    ctx.rotate(Math.PI / 2)
-                    
-                    if (mirrorPreview) {
-                        ctx.translate(video.videoWidth, 0)
-                        ctx.scale(-1, 1)
-                    }
-                    
-                    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
-                    ctx.restore()
+                    // Reemplazar el canvas original con el rotado
+                    canvas.width = tempCanvas.width
+                    canvas.height = tempCanvas.height
+                    ctx.clearRect(0, 0, canvas.width, canvas.height)
+                    ctx.drawImage(tempCanvas, 0, 0)
                 }
             }
 
