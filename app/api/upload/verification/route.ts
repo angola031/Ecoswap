@@ -3,12 +3,22 @@ import { getSupabaseClient } from '@/lib/supabase-client'
 import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: NextRequest) {
+    try {
+        // Verificar que las variables de entorno estén disponibles
+        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.ROLE_KEY) {
+            console.error('❌ Variables de entorno faltantes:', {
+                url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+                roleKey: !!process.env.ROLE_KEY
+            })
+            return NextResponse.json({ error: 'Configuración del servidor incompleta' }, { status: 500 })
+        }
+
         const supabase = getSupabaseClient()
         
         // Crear cliente administrativo con ROLE_KEY para operaciones que requieren permisos elevados
         const supabaseAdmin = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.ROLE_KEY!,
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.ROLE_KEY,
             {
                 auth: {
                     autoRefreshToken: false,
@@ -16,8 +26,6 @@ export async function POST(req: NextRequest) {
                 }
             }
         )
-        
-    try {
         const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
         if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -52,26 +60,33 @@ export async function POST(req: NextRequest) {
 
         // Helper para subir archivos
         const uploadOne = async (file: File, filename: string) => {
-            const ab = await file.arrayBuffer()
-            const buffer = Buffer.from(ab)
-            const path = `validacion/${userId}/${filename}`
-            
-            
-            // Usar upsert: true para sobrescribir archivos existentes
-            const { error: upErr } = await supabase.storage
-                .from('Ecoswap')
-                .upload(path, buffer, { 
-                    upsert: true, 
-                    contentType: file.type || 'image/jpeg',
-                    cacheControl: '3600'
-                })
+            try {
+                const ab = await file.arrayBuffer()
+                const buffer = Buffer.from(ab)
+                const path = `validacion/${userId}/${filename}`
                 
-            if (upErr) {
-                console.error(`❌ Error subiendo archivo ${path}:`, upErr)
-                throw new Error(`Error subiendo ${filename}: ${upErr.message}`)
+                console.log(`📤 Subiendo archivo: ${path}`)
+                
+                // Usar upsert: true para sobrescribir archivos existentes
+                const { error: upErr } = await supabase.storage
+                    .from('Ecoswap')
+                    .upload(path, buffer, { 
+                        upsert: true, 
+                        contentType: file.type || 'image/jpeg',
+                        cacheControl: '3600'
+                    })
+                    
+                if (upErr) {
+                    console.error(`❌ Error subiendo archivo ${path}:`, upErr)
+                    throw new Error(`Error subiendo ${filename}: ${upErr.message}`)
+                }
+                
+                console.log(`✅ Archivo subido exitosamente: ${path}`)
+                return path
+            } catch (error) {
+                console.error(`❌ Error en uploadOne para ${filename}:`, error)
+                throw new Error(`Error procesando ${filename}: ${error instanceof Error ? error.message : 'Error desconocido'}`)
             }
-            
-            return path
         }
 
         const paths: Record<string, string> = {}
@@ -80,12 +95,18 @@ export async function POST(req: NextRequest) {
         paths.selfie_validacion = await uploadOne(selfie, 'selfie_validacion.jpg')
 
         // Verificar si ya existe una validación para este usuario
-        const { data: existingValidation } = await supabase
+        const { data: existingValidation, error: validationCheckError } = await supabaseAdmin
             .from('validacion_usuario')
             .select('validacion_id, estado')
             .eq('usuario_id', Number(userId))
             .eq('tipo_validacion', 'identidad')
             .single()
+
+        // Si no hay datos pero tampoco hay error, significa que no existe la validación
+        if (validationCheckError && validationCheckError.code !== 'PGRST116') {
+            console.error('❌ Error verificando validación existente:', validationCheckError)
+            return NextResponse.json({ error: 'Error verificando validación existente' }, { status: 500 })
+        }
 
         const documentos_adjuntos = paths
 
@@ -137,16 +158,36 @@ export async function POST(req: NextRequest) {
         }
 
         // Actualizar el usuario para marcar que tiene validación pendiente usando cliente administrativo
-        await supabaseAdmin
+        const { error: userUpdateError } = await supabaseAdmin
             .from('usuario')
             .update({ 
                 pediente_validacion: true
             })
             .eq('user_id', userId)
 
-        return NextResponse.json({ ok: true, paths })
+        if (userUpdateError) {
+            console.error('❌ Error actualizando usuario:', userUpdateError)
+            // No fallar el proceso completo por este error
+        }
+
+        console.log('✅ Verificación completada exitosamente')
+        return NextResponse.json({ 
+            ok: true, 
+            paths,
+            message: 'Archivos subidos y validación creada exitosamente'
+        })
     } catch (e: any) {
-        return NextResponse.json({ error: e?.message || 'Server error' }, { status: 500 })
+        console.error('❌ Error general en API de verificación:', e)
+        
+        // Asegurar que siempre devolvemos JSON válido
+        const errorMessage = e?.message || 'Error interno del servidor'
+        const errorDetails = {
+            error: errorMessage,
+            timestamp: new Date().toISOString(),
+            path: '/api/upload/verification'
+        }
+        
+        return NextResponse.json(errorDetails, { status: 500 })
     }
 }
 
