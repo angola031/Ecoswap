@@ -440,15 +440,24 @@ export default function VerificacionIdentidadPage() {
                                         📱 Para mejor captura, rota tu dispositivo horizontalmente
                                     </div>
                                 )}
-                                <div className="rounded-xl overflow-hidden border relative max-w-4xl mx-auto">
+                                <div className={`rounded-xl overflow-hidden border relative mx-auto ${isMobile ? 'max-w-full' : 'max-w-4xl'}`} style={{ 
+                                    height: isMobile ? '70vh' : 'auto',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center'
+                                }}>
                                     <video 
                                         ref={videoRef} 
                                         className="w-full h-auto" 
                                         style={{ 
-                                            transform: mirrorPreview ? 'scaleX(-1)' : 'none',
+                                            transform: isMobile && (cameraStep === 'frente' || cameraStep === 'reverso') 
+                                                ? `rotate(90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
+                                                : mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Forzar orientación horizontal en móviles
                                             objectFit: 'cover',
-                                            maxHeight: '60vh'
+                                            maxHeight: isMobile ? '70vh' : '60vh',
+                                            width: isMobile ? 'auto' : '100%',
+                                            height: isMobile ? '100%' : 'auto'
                                         }} 
                                     />
                                     {/* Overlay con guías para cédula en orientación horizontal */}
@@ -459,7 +468,7 @@ export default function VerificacionIdentidadPage() {
                                         <div className="absolute right-6 top-8 h-3 w-28 bg-blue-300/20 rounded"></div>
                                         <div className="absolute bottom-4 left-4 right-4 text-center">
                                             <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                                                {isMobile ? 'Rota tu dispositivo horizontalmente y centra la cédula en el marco azul' : 'Centra la cédula en el marco azul - Captura en horizontal'}
+                                                {isMobile ? 'La cámara se muestra en horizontal - Centra la cédula en el marco azul' : 'Centra la cédula en el marco azul - Captura en horizontal'}
                                             </div>
                                         </div>
                                     </div>
@@ -600,15 +609,24 @@ export default function VerificacionIdentidadPage() {
                                         📱 Para mejor captura, rota tu dispositivo horizontalmente
                                     </div>
                                 )}
-                                <div className="rounded-xl overflow-hidden border relative max-w-4xl mx-auto">
+                                <div className={`rounded-xl overflow-hidden border relative mx-auto ${isMobile ? 'max-w-full' : 'max-w-4xl'}`} style={{ 
+                                    height: isMobile ? '70vh' : 'auto',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center'
+                                }}>
                                     <video 
                                         ref={videoRef} 
                                         className="w-full h-auto" 
                                         style={{ 
-                                            transform: mirrorPreview ? 'scaleX(-1)' : 'none',
+                                            transform: isMobile && (cameraStep === 'frente' || cameraStep === 'reverso') 
+                                                ? `rotate(90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
+                                                : mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Forzar orientación horizontal en móviles
                                             objectFit: 'cover',
-                                            maxHeight: '60vh'
+                                            maxHeight: isMobile ? '70vh' : '60vh',
+                                            width: isMobile ? 'auto' : '100%',
+                                            height: isMobile ? '100%' : 'auto'
                                         }} 
                                     />
                                     {/* Overlay con guías para cédula en orientación horizontal */}
@@ -618,7 +636,7 @@ export default function VerificacionIdentidadPage() {
                                         <div className="absolute left-4 top-8 h-3 w-32 bg-green-300/20 rounded"></div>
                                         <div className="absolute bottom-4 left-4 right-4 text-center">
                                             <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                                                {isMobile ? 'Rota tu dispositivo horizontalmente y centra el reverso en el marco verde' : 'Centra el reverso de la cédula en el marco verde - Captura en horizontal'}
+                                                {isMobile ? 'La cámara se muestra en horizontal - Centra el reverso en el marco verde' : 'Centra el reverso de la cédula en el marco verde - Captura en horizontal'}
                                             </div>
                                         </div>
                                     </div>
