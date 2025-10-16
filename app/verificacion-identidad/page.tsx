@@ -168,16 +168,38 @@ export default function VerificacionIdentidadPage() {
                 ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side)
                 ctx.restore()
             } else {
-                // Para cédula, mantener proporción y alta calidad
-                canvas.width = video.videoWidth
-                canvas.height = video.videoHeight
-                ctx.save()
-                if (mirrorPreview) {
+                // Para cédula, forzar orientación horizontal (landscape)
+                const isCurrentlyPortrait = video.videoHeight > video.videoWidth
+                
+                if (isCurrentlyPortrait) {
+                    // Si está en vertical, rotar a horizontal
+                    canvas.width = video.videoHeight
+                    canvas.height = video.videoWidth
+                    ctx.save()
+                    
+                    // Rotar 90 grados para convertir de vertical a horizontal
                     ctx.translate(canvas.width, 0)
-                    ctx.scale(-1, 1)
+                    ctx.rotate(Math.PI / 2)
+                    
+                    if (mirrorPreview) {
+                        ctx.translate(video.videoWidth, 0)
+                        ctx.scale(-1, 1)
+                    }
+                    
+                    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
+                    ctx.restore()
+                } else {
+                    // Si ya está en horizontal, mantener como está
+                    canvas.width = video.videoWidth
+                    canvas.height = video.videoHeight
+                    ctx.save()
+                    if (mirrorPreview) {
+                        ctx.translate(canvas.width, 0)
+                        ctx.scale(-1, 1)
+                    }
+                    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
+                    ctx.restore()
                 }
-                ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
-                ctx.restore()
             }
 
             // Convertir a blob
@@ -399,17 +421,17 @@ export default function VerificacionIdentidadPage() {
 
                         {useCamera && cameraStep === 'frente' ? (
                             <div className="space-y-4">
-                                <div className="rounded-xl overflow-hidden border relative max-w-2xl mx-auto">
+                                <div className="rounded-xl overflow-hidden border relative max-w-4xl mx-auto">
                                     <video ref={videoRef} className="w-full h-auto" style={{ transform: mirrorPreview ? 'scaleX(-1)' : 'none' }} />
-                                    {/* Overlay con guías para cédula */}
+                                    {/* Overlay con guías para cédula en orientación horizontal */}
                                     <div className="pointer-events-none absolute inset-0">
-                                        <div className="absolute inset-4 border-2 border-blue-400/60 rounded-md"></div>
+                                        <div className="absolute inset-4 border-2 border-blue-400/60 rounded-md aspect-[1.586]"></div>
                                         <div className="absolute left-4 top-4 h-10 w-10 rounded-full border-2 border-blue-300/60"></div>
                                         <div className="absolute right-6 top-4 h-3 w-20 bg-blue-300/20 rounded"></div>
                                         <div className="absolute right-6 top-8 h-3 w-28 bg-blue-300/20 rounded"></div>
                                         <div className="absolute bottom-4 left-4 right-4 text-center">
                                             <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                                                Centra la cédula en el marco azul
+                                                Centra la cédula en el marco azul - Captura en horizontal
                                             </div>
                                         </div>
                                     </div>
@@ -493,7 +515,7 @@ export default function VerificacionIdentidadPage() {
                                     )}
                                 </div>
                                 <div className="space-y-2">
-                                    <p className="text-sm text-gray-600">Sube una foto nítida de la cara frontal. Evita reflejos, recorta a la tarjeta y centra los datos.</p>
+                                    <p className="text-sm text-gray-600">Sube una foto nítida de la cara frontal en orientación horizontal. Evita reflejos, recorta a la tarjeta y centra los datos.</p>
                                     <div className="flex items-center gap-3 flex-wrap">
                                         <label htmlFor="file-frente" className="px-3 py-2 bg-gray-100 border rounded cursor-pointer hover:bg-gray-200 text-sm">Elegir archivo</label>
                                         <button 
@@ -545,16 +567,16 @@ export default function VerificacionIdentidadPage() {
 
                         {useCamera && cameraStep === 'reverso' ? (
                             <div className="space-y-4">
-                                <div className="rounded-xl overflow-hidden border relative max-w-2xl mx-auto">
+                                <div className="rounded-xl overflow-hidden border relative max-w-4xl mx-auto">
                                     <video ref={videoRef} className="w-full h-auto" style={{ transform: mirrorPreview ? 'scaleX(-1)' : 'none' }} />
-                                    {/* Overlay con guías para cédula */}
+                                    {/* Overlay con guías para cédula en orientación horizontal */}
                                     <div className="pointer-events-none absolute inset-0">
-                                        <div className="absolute inset-4 border-2 border-green-400/60 rounded-md"></div>
+                                        <div className="absolute inset-4 border-2 border-green-400/60 rounded-md aspect-[1.586]"></div>
                                         <div className="absolute left-4 top-4 h-3 w-24 bg-green-300/20 rounded"></div>
                                         <div className="absolute left-4 top-8 h-3 w-32 bg-green-300/20 rounded"></div>
                                         <div className="absolute bottom-4 left-4 right-4 text-center">
                                             <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                                                Centra el reverso de la cédula en el marco verde
+                                                Centra el reverso de la cédula en el marco verde - Captura en horizontal
                                             </div>
                                         </div>
                                     </div>
@@ -636,7 +658,7 @@ export default function VerificacionIdentidadPage() {
                                     )}
                                 </div>
                                 <div className="space-y-2">
-                                    <p className="text-sm text-gray-600">Sube la cara posterior. Asegúrate que los textos sean legibles.</p>
+                                    <p className="text-sm text-gray-600">Sube la cara posterior en orientación horizontal. Asegúrate que los textos sean legibles.</p>
                                     <div className="flex items-center gap-3 flex-wrap">
                                         <label htmlFor="file-reverso" className="px-3 py-2 bg-gray-100 border rounded cursor-pointer hover:bg-gray-200 text-sm">Elegir archivo</label>
                                         <button 
