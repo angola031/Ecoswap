@@ -442,7 +442,7 @@ export default function VerificacionIdentidadPage() {
                                         className="w-full h-auto" 
                                         style={{ 
                                             transform: isMobile 
-                                                ? `rotate(90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
+                                                ? `rotate(-90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
                                                 : mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Forzar orientación horizontal en móviles
                                             objectFit: 'cover',
@@ -611,7 +611,7 @@ export default function VerificacionIdentidadPage() {
                                         className="w-full h-auto" 
                                         style={{ 
                                             transform: isMobile 
-                                                ? `rotate(90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
+                                                ? `rotate(-90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
                                                 : mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Forzar orientación horizontal en móviles
                                             objectFit: 'cover',
