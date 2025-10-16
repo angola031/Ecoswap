@@ -207,9 +207,50 @@ export default function VerificacionIdentidadPage() {
                 }
             }
 
+            // Recortar a proporción de cédula (1.586:1) centrado para documentos
+            let outputCanvas: HTMLCanvasElement = canvas
+            if (type !== 'selfie') {
+                const targetRatio = 1.586 // ancho/alto
+                const currentRatio = canvas.width / canvas.height
+                let cropWidth = canvas.width
+                let cropHeight = canvas.height
+
+                if (currentRatio > targetRatio) {
+                    // Imagen demasiado ancha → ajustar ancho
+                    cropHeight = canvas.height
+                    cropWidth = Math.round(cropHeight * targetRatio)
+                } else if (currentRatio < targetRatio) {
+                    // Imagen demasiado alta → ajustar alto
+                    cropWidth = canvas.width
+                    cropHeight = Math.round(cropWidth / targetRatio)
+                }
+
+                const sx = Math.max(0, Math.floor((canvas.width - cropWidth) / 2))
+                const sy = Math.max(0, Math.floor((canvas.height - cropHeight) / 2))
+
+                const cropCanvas = document.createElement('canvas')
+                cropCanvas.width = cropWidth
+                cropCanvas.height = cropHeight
+                const cropCtx = cropCanvas.getContext('2d')
+                if (cropCtx) {
+                    cropCtx.drawImage(
+                        canvas,
+                        sx,
+                        sy,
+                        cropWidth,
+                        cropHeight,
+                        0,
+                        0,
+                        cropWidth,
+                        cropHeight
+                    )
+                    outputCanvas = cropCanvas
+                }
+            }
+
             // Convertir a blob
             const blob = await new Promise<Blob | null>((resolve) => {
-                canvas.toBlob(resolve, 'image/jpeg', 0.9)
+                outputCanvas.toBlob(resolve, 'image/jpeg', 0.9)
             })
 
             if (blob) {
