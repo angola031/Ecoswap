@@ -78,7 +78,7 @@ export default function VerificacionIdentidadPage() {
     // Función para inicializar la cámara
     const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('user')
     const [mirrorPreview, setMirrorPreview] = useState(true)
-    
+
     // Detectar si es dispositivo móvil
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
@@ -91,12 +91,12 @@ export default function VerificacionIdentidadPage() {
                 stream.getTracks().forEach(track => track.stop())
             }
 
-            // Solicitar acceso a la cámara con orientación horizontal preferida
+            // Solicitar acceso a la cámara con mejor configuración
             const newStream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: facingMode,
-                    width: { ideal: 1280, min: 640 },
-                    height: { ideal: 720, min: 480 }
+                    width: { ideal: 1920, min: 1280 },
+                    height: { ideal: 1080, min: 720 }
                 }
             })
 
@@ -193,15 +193,15 @@ export default function VerificacionIdentidadPage() {
                     ctx.restore()
                 } else {
                     // Si ya está en horizontal, mantener como está
-                    canvas.width = video.videoWidth
-                    canvas.height = video.videoHeight
-                    ctx.save()
-                    if (mirrorPreview) {
-                        ctx.translate(canvas.width, 0)
-                        ctx.scale(-1, 1)
-                    }
-                    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
-                    ctx.restore()
+                canvas.width = video.videoWidth
+                canvas.height = video.videoHeight
+                ctx.save()
+                if (mirrorPreview) {
+                    ctx.translate(canvas.width, 0)
+                    ctx.scale(-1, 1)
+                }
+                ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
+                ctx.restore()
                 }
             }
 
@@ -429,7 +429,7 @@ export default function VerificacionIdentidadPage() {
                                 {isMobile && (
                                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm text-center">
                                         📱 La previsualización se muestra en horizontal para mejor captura
-                                    </div>
+                                            </div>
                                 )}
                                 <div className={`rounded-xl overflow-hidden border relative mx-auto ${isMobile ? 'max-w-full' : 'max-w-4xl'}`} style={{ 
                                     height: isMobile ? '70vh' : 'auto',
@@ -454,21 +454,31 @@ export default function VerificacionIdentidadPage() {
                                             minHeight: isMobile ? '100%' : 'auto'
                                         }} 
                                     />
-                                    {/* Overlay con guías para cédula en orientación horizontal */}
-                                    <div className="pointer-events-none absolute inset-0">
-                                        <div className="absolute inset-4 border-2 border-blue-400/60 rounded-md" style={{
-                                            width: '85%',
-                                            height: '60%',
-                                            left: '7.5%',
-                                            top: '20%'
-                                        }}></div>
-                                        <div className="absolute left-4 top-4 h-10 w-10 rounded-full border-2 border-blue-300/60"></div>
-                                        <div className="absolute right-6 top-4 h-3 w-20 bg-blue-300/20 rounded"></div>
-                                        <div className="absolute right-6 top-8 h-3 w-28 bg-blue-300/20 rounded"></div>
-                                        <div className="absolute bottom-4 left-4 right-4 text-center">
-                                            <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                                    {/* Overlay con guías mejoradas para cédula */}
+                                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40">
+                                        <div 
+                                            className="border-4 border-blue-500 rounded-xl relative"
+                                            style={{
+                                                width: '85%',
+                                                maxWidth: '400px',
+                                                aspectRatio: 1.586, // Proporción de cédula colombiana
+                                                boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
+                                            }}
+                                        >
+                                            {/* Indicadores de esquinas */}
+                                            <div className="absolute -top-2 -left-2 w-6 h-6 border-l-4 border-t-4 border-blue-400 rounded-tl-lg"></div>
+                                            <div className="absolute -top-2 -right-2 w-6 h-6 border-r-4 border-t-4 border-blue-400 rounded-tr-lg"></div>
+                                            <div className="absolute -bottom-2 -left-2 w-6 h-6 border-l-4 border-b-4 border-blue-400 rounded-bl-lg"></div>
+                                            <div className="absolute -bottom-2 -right-2 w-6 h-6 border-r-4 border-b-4 border-blue-400 rounded-br-lg"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Instrucción mejorada */}
+                                    <div className="absolute bottom-4 left-4 right-4 text-center">
+                                        <div className="bg-black/70 text-white p-4 mx-4 rounded-lg">
+                                            <p className="text-sm font-medium">
                                                 {isMobile ? 'Previsualización horizontal - Centra la cédula en el marco azul' : 'Centra la cédula en el marco azul - Captura en horizontal'}
-                                            </div>
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -511,11 +521,11 @@ export default function VerificacionIdentidadPage() {
                                             type="button"
                                             disabled={isCapturing || !stream}
                                             onClick={() => capturePhoto('frente')}
-                                            className="px-6 py-2 bg-blue-600 text-white rounded disabled:opacity-50 flex items-center gap-2"
+                                            className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold text-lg disabled:opacity-50 flex items-center justify-center gap-2 active:bg-blue-700"
                                         >
                                             {isCapturing ? (
                                                 <>
-                                                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                     </svg>
@@ -523,11 +533,7 @@ export default function VerificacionIdentidadPage() {
                                                 </>
                                             ) : (
                                                 <>
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    </svg>
-                                                    Capturar
+                                                    📸 Capturar
                                                 </>
                                             )}
                                         </button>
@@ -606,7 +612,7 @@ export default function VerificacionIdentidadPage() {
                                 {isMobile && (
                                     <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm text-center">
                                         📱 La previsualización se muestra en horizontal para mejor captura
-                                    </div>
+                                            </div>
                                 )}
                                 <div className={`rounded-xl overflow-hidden border relative mx-auto ${isMobile ? 'max-w-full' : 'max-w-4xl'}`} style={{ 
                                     height: isMobile ? '70vh' : 'auto',
@@ -631,20 +637,31 @@ export default function VerificacionIdentidadPage() {
                                             minHeight: isMobile ? '100%' : 'auto'
                                         }} 
                                     />
-                                    {/* Overlay con guías para cédula en orientación horizontal */}
-                                    <div className="pointer-events-none absolute inset-0">
-                                        <div className="absolute inset-4 border-2 border-green-400/60 rounded-md" style={{
-                                            width: '85%',
-                                            height: '60%',
-                                            left: '7.5%',
-                                            top: '20%'
-                                        }}></div>
-                                        <div className="absolute left-4 top-4 h-3 w-24 bg-green-300/20 rounded"></div>
-                                        <div className="absolute left-4 top-8 h-3 w-32 bg-green-300/20 rounded"></div>
-                                        <div className="absolute bottom-4 left-4 right-4 text-center">
-                                            <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                                    {/* Overlay con guías mejoradas para cédula reverso */}
+                                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40">
+                                        <div 
+                                            className="border-4 border-green-500 rounded-xl relative"
+                                            style={{
+                                                width: '85%',
+                                                maxWidth: '400px',
+                                                aspectRatio: 1.586, // Proporción de cédula colombiana
+                                                boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
+                                            }}
+                                        >
+                                            {/* Indicadores de esquinas */}
+                                            <div className="absolute -top-2 -left-2 w-6 h-6 border-l-4 border-t-4 border-green-400 rounded-tl-lg"></div>
+                                            <div className="absolute -top-2 -right-2 w-6 h-6 border-r-4 border-t-4 border-green-400 rounded-tr-lg"></div>
+                                            <div className="absolute -bottom-2 -left-2 w-6 h-6 border-l-4 border-b-4 border-green-400 rounded-bl-lg"></div>
+                                            <div className="absolute -bottom-2 -right-2 w-6 h-6 border-r-4 border-b-4 border-green-400 rounded-br-lg"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Instrucción mejorada */}
+                                    <div className="absolute bottom-4 left-4 right-4 text-center">
+                                        <div className="bg-black/70 text-white p-4 mx-4 rounded-lg">
+                                            <p className="text-sm font-medium">
                                                 {isMobile ? 'Previsualización horizontal - Centra el reverso en el marco verde' : 'Centra el reverso de la cédula en el marco verde - Captura en horizontal'}
-                                            </div>
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -687,11 +704,11 @@ export default function VerificacionIdentidadPage() {
                                             type="button"
                                             disabled={isCapturing || !stream}
                                             onClick={() => capturePhoto('reverso')}
-                                            className="px-6 py-2 bg-green-600 text-white rounded disabled:opacity-50 flex items-center gap-2"
+                                            className="w-full bg-green-600 text-white py-4 rounded-lg font-semibold text-lg disabled:opacity-50 flex items-center justify-center gap-2 active:bg-green-700"
                                         >
                                             {isCapturing ? (
                                                 <>
-                                                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                     </svg>
@@ -699,11 +716,7 @@ export default function VerificacionIdentidadPage() {
                                                 </>
                                             ) : (
                                                 <>
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    </svg>
-                                                    Capturar
+                                                    📸 Capturar
                                                 </>
                                             )}
                                         </button>
@@ -818,11 +831,11 @@ export default function VerificacionIdentidadPage() {
                                         type="button"
                                         disabled={isCapturing || !stream}
                                         onClick={() => capturePhoto('selfie')}
-                                        className="px-6 py-2 bg-purple-600 text-white rounded disabled:opacity-50 flex items-center gap-2"
+                                        className="w-full bg-purple-600 text-white py-4 rounded-lg font-semibold text-lg disabled:opacity-50 flex items-center justify-center gap-2 active:bg-purple-700"
                                     >
                                         {isCapturing ? (
                                             <>
-                                                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                                <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                 </svg>
@@ -830,11 +843,7 @@ export default function VerificacionIdentidadPage() {
                                             </>
                                         ) : (
                                             <>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                </svg>
-                                                Capturar Selfie
+                                                📸 Capturar Selfie
                                             </>
                                         )}
                                     </button>
