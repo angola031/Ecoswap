@@ -78,7 +78,7 @@ export default function VerificacionIdentidadPage() {
 
     // Función para inicializar la cámara
     const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('user')
-    const [mirrorPreview, setMirrorPreview] = useState(true)
+    const [mirrorPreview, setMirrorPreview] = useState(false) // Por defecto deshabilitado
 
     // Detectar si es dispositivo móvil
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
@@ -103,8 +103,8 @@ export default function VerificacionIdentidadPage() {
 
             setStream(newStream)
             setCurrentFacingMode(facingMode)
-            // Vista espejo siempre por defecto
-            setMirrorPreview(true)
+            // Vista espejo solo para selfie (cámara frontal)
+            setMirrorPreview(facingMode === 'user')
             
             if (videoRef.current) {
                 videoRef.current.srcObject = newStream
@@ -279,8 +279,8 @@ export default function VerificacionIdentidadPage() {
         const newFacingMode = facing === 'user' ? 'environment' : 'user'
         
         await initializeCamera(newFacingMode)
-        // Mantener vista espejo activa al alternar
-        setMirrorPreview(true)
+        // Establecer espejo según el tipo de cámara
+        setMirrorPreview(newFacingMode === 'user')
     }
 
     // Efecto para manejar la cámara
@@ -289,7 +289,12 @@ export default function VerificacionIdentidadPage() {
             const facingMode = cameraStep === 'selfie' ? 'user' : 'environment'
             initializeCamera(facingMode)
             
-            // La previsualización se mostrará en horizontal automáticamente
+            // Establecer espejo según el tipo de cámara
+            if (cameraStep === 'selfie') {
+                setMirrorPreview(true) // Espejo habilitado para selfie
+            } else {
+                setMirrorPreview(false) // Espejo deshabilitado para cédula
+            }
         } else {
             stopCamera()
         }
@@ -535,10 +540,7 @@ export default function VerificacionIdentidadPage() {
                                     </button>
                                     
                                     <div className="flex items-center gap-3">
-                                        <label className="flex items-center gap-2 text-sm text-gray-700">
-                                            <input type="checkbox" checked={mirrorPreview} onChange={(e) => setMirrorPreview(e.target.checked)} />
-                                            Vista espejo
-                                        </label>
+                                        {/* Vista espejo deshabilitada para cédula */}
                                         <button 
                                             type="button" 
                                             onClick={switchCamera}
@@ -725,10 +727,7 @@ export default function VerificacionIdentidadPage() {
                                     </button>
                                     
                                     <div className="flex items-center gap-3">
-                                        <label className="flex items-center gap-2 text-sm text-gray-700">
-                                            <input type="checkbox" checked={mirrorPreview} onChange={(e) => setMirrorPreview(e.target.checked)} />
-                                            Vista espejo
-                                        </label>
+                                        {/* Vista espejo deshabilitada para cédula reverso */}
                                         <button 
                                             type="button" 
                                             onClick={switchCamera}
@@ -865,6 +864,7 @@ export default function VerificacionIdentidadPage() {
                                         Cancelar
                                     </button>
                                     
+                                    {/* Vista espejo habilitada para selfie */}
                                     <label className="flex items-center gap-2 text-sm text-gray-700">
                                         <input type="checkbox" checked={mirrorPreview} onChange={(e) => setMirrorPreview(e.target.checked)} />
                                         Vista espejo

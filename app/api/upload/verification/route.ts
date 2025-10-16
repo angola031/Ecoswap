@@ -5,13 +5,17 @@ import { createClient } from '@supabase/supabase-js'
 export async function POST(req: NextRequest) {
     try {
         // Verificar que las variables de entorno estén disponibles
-        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.ROLE_KEY) {
-            console.error('❌ Variables de entorno faltantes:', {
-                url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-                roleKey: !!process.env.ROLE_KEY
-            })
-            return NextResponse.json({ error: 'Configuración del servidor incompleta' }, { status: 500 })
+        if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+            console.error('❌ NEXT_PUBLIC_SUPABASE_URL faltante')
+            return NextResponse.json({ error: 'Configuración del servidor incompleta: URL faltante' }, { status: 500 })
         }
+
+        if (!process.env.ROLE_KEY) {
+            console.error('❌ ROLE_KEY faltante')
+            return NextResponse.json({ error: 'Configuración del servidor incompleta: ROLE_KEY faltante. Verifica las variables de entorno en Vercel.' }, { status: 500 })
+        }
+
+        console.log('✅ Variables de entorno verificadas correctamente')
 
         const supabase = getSupabaseClient()
         
