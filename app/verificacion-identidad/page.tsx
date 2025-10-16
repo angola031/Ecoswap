@@ -171,7 +171,7 @@ export default function VerificacionIdentidadPage() {
                 ctx.drawImage(video, sx, sy, side, side, 0, 0, side, side)
                 ctx.restore()
             } else {
-                // Para cédula, forzar orientación horizontal (landscape)
+                // Para cédula, rotar siempre a horizontal
                 const isCurrentlyPortrait = video.videoHeight > video.videoWidth
                 
                 if (isCurrentlyPortrait) {
@@ -192,16 +192,22 @@ export default function VerificacionIdentidadPage() {
                     ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
                     ctx.restore()
                 } else {
-                    // Si ya está en horizontal, mantener como está
-                canvas.width = video.videoWidth
-                canvas.height = video.videoHeight
-                ctx.save()
-                if (mirrorPreview) {
+                    // Si ya está en horizontal, rotar también para consistencia
+                    canvas.width = video.videoHeight
+                    canvas.height = video.videoWidth
+                    ctx.save()
+                    
+                    // Rotar 90 grados para mantener orientación horizontal
                     ctx.translate(canvas.width, 0)
-                    ctx.scale(-1, 1)
-                }
-                ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
-                ctx.restore()
+                    ctx.rotate(Math.PI / 2)
+                    
+                    if (mirrorPreview) {
+                        ctx.translate(video.videoWidth, 0)
+                        ctx.scale(-1, 1)
+                    }
+                    
+                    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
+                    ctx.restore()
                 }
             }
 
