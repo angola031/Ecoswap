@@ -428,7 +428,7 @@ export default function VerificacionIdentidadPage() {
                             <div className="space-y-4">
                                 {isMobile && (
                                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm text-center">
-                                        📱 Centra la cédula en el marco para una mejor captura
+                                        📱 La imagen se muestra en horizontal - Centra la cédula en el marco
                                     </div>
                                 )}
                                 <div className={`rounded-xl overflow-hidden border relative mx-auto ${isMobile ? 'max-w-full' : 'max-w-4xl'}`} style={{ 
@@ -443,7 +443,9 @@ export default function VerificacionIdentidadPage() {
                                         ref={videoRef} 
                                         className="w-full h-auto" 
                                         style={{ 
-                                            transform: mirrorPreview ? 'scaleX(-1)' : 'none',
+                                            transform: isMobile 
+                                                ? `rotate(-90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
+                                                : mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Ajustar para aspect ratio 4:3
                                             objectFit: 'cover',
                                             width: isMobile ? '100%' : '100%',
@@ -453,14 +455,13 @@ export default function VerificacionIdentidadPage() {
                                         }} 
                                     />
                                     {/* Overlay con guías mejoradas para cédula */}
-                                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40">
+                                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                                         <div 
                                             className="border-4 border-blue-500 rounded-xl relative"
                                             style={{
                                                 width: isMobile ? '70%' : '85%',
                                                 maxWidth: '350px',
                                                 aspectRatio: 1.586, // Proporción de cédula colombiana
-                                                boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
                                             }}
                                         >
                                             {/* Indicadores de esquinas */}
@@ -475,7 +476,7 @@ export default function VerificacionIdentidadPage() {
                                     <div className="absolute bottom-4 left-4 right-4 text-center">
                                         <div className="bg-black/70 text-white p-4 mx-4 rounded-lg">
                                             <p className="text-sm font-medium">
-                                                Centra la cédula en el marco azul
+                                                La previsualización se muestra en horizontal - Centra la cédula en el marco azul
                                             </p>
                                         </div>
                                     </div>
@@ -609,7 +610,7 @@ export default function VerificacionIdentidadPage() {
                             <div className="space-y-4">
                                 {isMobile && (
                                     <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm text-center">
-                                        📱 Centra el reverso de la cédula en el marco para una mejor captura
+                                        📱 La imagen se muestra en horizontal - Centra el reverso en el marco
                                     </div>
                                 )}
                                 <div className={`rounded-xl overflow-hidden border relative mx-auto ${isMobile ? 'max-w-full' : 'max-w-4xl'}`} style={{ 
@@ -624,7 +625,9 @@ export default function VerificacionIdentidadPage() {
                                         ref={videoRef} 
                                         className="w-full h-auto" 
                                         style={{ 
-                                            transform: mirrorPreview ? 'scaleX(-1)' : 'none',
+                                            transform: isMobile 
+                                                ? `rotate(-90deg) ${mirrorPreview ? 'scaleX(-1)' : 'scaleX(1)'}` 
+                                                : mirrorPreview ? 'scaleX(-1)' : 'none',
                                             // Ajustar para aspect ratio 4:3
                                             objectFit: 'cover',
                                             width: isMobile ? '100%' : '100%',
@@ -634,14 +637,13 @@ export default function VerificacionIdentidadPage() {
                                         }} 
                                     />
                                     {/* Overlay con guías mejoradas para cédula reverso */}
-                                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40">
+                                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                                         <div 
                                             className="border-4 border-green-500 rounded-xl relative"
                                             style={{
                                                 width: isMobile ? '70%' : '85%',
                                                 maxWidth: '350px',
                                                 aspectRatio: 1.586, // Proporción de cédula colombiana
-                                                boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
                                             }}
                                         >
                                             {/* Indicadores de esquinas */}
@@ -656,7 +658,7 @@ export default function VerificacionIdentidadPage() {
                                     <div className="absolute bottom-4 left-4 right-4 text-center">
                                         <div className="bg-black/70 text-white p-4 mx-4 rounded-lg">
                                             <p className="text-sm font-medium">
-                                                Centra el reverso de la cédula en el marco verde
+                                                La previsualización se muestra en horizontal - Centra el reverso en el marco verde
                                             </p>
                                         </div>
                                     </div>
