@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase-client'
 
+// Forzar runtime de Node en Vercel (evita Edge Runtime incompatibles con algunos SDKs)
+export const runtime = 'nodejs'
+// Evitar caching y asegurar ejecución dinámica
+export const dynamic = 'force-dynamic'
+
 // Valida el resultado de un intercambio por parte del usuario autenticado
 // Estados resultantes cuando hay dos validaciones:
 // - ambos es_exitoso = true  => intercambio.estado = 'completado'
