@@ -277,6 +277,8 @@ export default function InteraccionDetailPage() {
     const [showRejectProposalModal, setShowRejectProposalModal] = useState(false)
     const [rejectProposalReason, setRejectProposalReason] = useState('')
     const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null)
+    const [isUnderAdminReview, setIsUnderAdminReview] = useState(false)
+    const [reviewTicketId, setReviewTicketId] = useState<number | null>(null)
 
     useEffect(() => {
         const loadInteraction = async () => {
@@ -390,6 +392,25 @@ export default function InteraccionDetailPage() {
                     }
                     
                     setInteraction(transformedInteraction)
+                    
+                    // Verificar si el intercambio está en revisión administrativa
+                    if (interactionData.estado === 'pendiente_revision') {
+                        setIsUnderAdminReview(true)
+                        // Intentar obtener el ticket de soporte relacionado
+                        try {
+                            const ticketResponse = await fetch(`/api/tickets?intercambio_id=${interactionId}`, {
+                                headers: { 'Authorization': `Bearer ${session.access_token}` }
+                            })
+                            if (ticketResponse.ok) {
+                                const ticketData = await ticketResponse.json()
+                                if (ticketData.tickets && ticketData.tickets.length > 0) {
+                                    setReviewTicketId(ticketData.tickets[0].ticket_id)
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('No se pudo obtener el ticket de soporte:', e)
+                        }
+                    }
                 } else {
                     const errorText = await response.text()
                     console.error('❌ ERROR: Error cargando detalles:', response.status, errorText)
@@ -1541,6 +1562,19 @@ export default function InteraccionDetailPage() {
                     <div className="lg:col-span-2 space-y-6">
                         {/* Información general */}
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            {/* Aviso de revisión administrativa por discrepancia */}
+                            {isUnderAdminReview && (
+                                <div className="mb-4 p-3 rounded-md border border-yellow-300 bg-yellow-50 text-yellow-800">
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <p className="font-medium">Caso en revisión por administración</p>
+                                            <p className="text-sm mt-1">Se detectó una discrepancia en la validación del intercambio. Esto está siendo revisado por el equipo y puede influir en la calificación de los usuarios involucrados.</p>
+                                            <p className="text-sm mt-1">Ticket: <span className="font-semibold">#{reviewTicketId ?? '—'}</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center space-x-3">
                                     <div className={`p-2 rounded-lg bg-primary-100 text-primary-600`}>

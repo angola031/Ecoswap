@@ -1944,6 +1944,19 @@ function ChatPageContent() {
             </div>
           </div>
           
+          {/* Aviso de revisión administrativa por discrepancia */}
+          {isUnderAdminReview && (
+            <div className="mt-3 p-3 rounded-md border border-yellow-300 bg-yellow-50 text-yellow-800">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-medium">Caso en revisión por administración</p>
+                  <p className="text-sm mt-1">Se detectó una discrepancia en la validación del intercambio. Esto está siendo revisado por el equipo y puede influir en la calificación de los usuarios involucrados.</p>
+                  <p className="text-sm mt-1">Ticket: <span className="font-semibold">#{reviewTicketId ?? '—'}</span></p>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -2088,7 +2101,7 @@ function ChatPageContent() {
                   </div>
                 )
               })()}
-              {/* Sección de Propuestas - Arriba */}
+               {/* Sección de Propuestas - Arriba */}
               {proposals.length > 0 && (
                 <div className="bg-white border-b border-gray-200">
                   <button
@@ -2252,7 +2265,19 @@ function ChatPageContent() {
                 </div>
               )}
 
-              {/* Chat Box - Mensajes */}
+               {/* Banner de revisión dentro del flujo de interacción */}
+               {isUnderAdminReview && (
+                 <div className="sticky top-0 z-10 bg-yellow-50 border-b border-yellow-200">
+                   <div className="px-4 py-2 flex items-center justify-between">
+                     <div className="flex items-center space-x-2">
+                       <span className="text-yellow-700 text-sm font-medium">⚠️ En revisión por administración</span>
+                       <span className="text-xs text-yellow-700 hidden sm:inline">Ticket #{reviewTicketId ?? '—'} — Este proceso puede afectar las calificaciones</span>
+                     </div>
+                   </div>
+                 </div>
+               )}
+
+               {/* Chat Box - Mensajes */}
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                 {messages.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
