@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { ChatInfo, ChatMessage, ChatProposal } from '@/lib/types/chat'
+import { useUserStatus } from '@/hooks/useUserStatus'
 import AuthGuard from '@/components/auth/AuthGuard'
 import { getSupabaseClient } from '@/lib/supabase-client'
 // import imageCompression from 'browser-image-compression' // Importación dinámica
@@ -30,6 +31,7 @@ function ChatPageContent() {
   const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
+  const { onlineUsers } = useUserStatus()
   
   // Estados para imágenes
   const [imagePreview, setImagePreview] = useState<{
@@ -1832,14 +1834,14 @@ function ChatPageContent() {
                     alt={`${chatInfo.seller?.name || 'Vendedor'} ${chatInfo.seller?.lastName || ''}`}
                     className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
                   />
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 border-2 border-white rounded-full ${chatInfo?.seller?.id && onlineUsers.some(u => u.id === String(chatInfo.seller.id) && u.isOnline) ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                 </div>
                 
                 <div>
                   <h1 className="text-lg font-semibold text-gray-900">
                     {(chatInfo.seller?.name || 'Vendedor')} {(chatInfo.seller?.lastName || '')}
                   </h1>
-                  <p className="text-sm text-gray-500">En línea</p>
+                  <p className="text-sm text-gray-500">{chatInfo?.seller?.id && onlineUsers.some(u => u.id === String(chatInfo.seller.id) && u.isOnline) ? 'En línea' : 'Desconectado'}</p>
                   {chatInfo.seller?.location && (
                     <p className="text-xs text-gray-400">{chatInfo.seller.location}</p>
                   )}
