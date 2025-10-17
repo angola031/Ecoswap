@@ -46,20 +46,53 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const usuarioId = dbUser.user_id
 
     // Registrar/actualizar validación del intercambio por este usuario
-    // Suponemos una restricción única (intercambio_id, usuario_id) en validacion_intercambio
-    const { data: upsertVal, error: upsertErr } = await supabase
+    // Primero verificar si ya existe una validación de este usuario
+    const { data: existingVal, error: checkErr } = await supabase
       .from('validacion_intercambio')
-      .upsert({
-        intercambio_id: intercambioId,
-        usuario_id: usuarioId,
-        es_exitoso: isValid,
-        calificacion: typeof rating === 'number' ? rating : null,
-        comentario: typeof comment === 'string' ? comment : null,
-        aspectos: typeof aspects === 'string' ? aspects : null,
-        fecha_validacion: new Date().toISOString()
-      }, { onConflict: 'intercambio_id,usuario_id' })
-      .select()
+      .select('validacion_id')
+      .eq('intercambio_id', intercambioId)
+      .eq('usuario_id', usuarioId)
       .single()
+
+    let upsertVal: any = null
+    let upsertErr: any = null
+
+    if (existingVal) {
+      // Actualizar validación existente
+      const { data, error } = await supabase
+        .from('validacion_intercambio')
+        .update({
+          es_exitoso: isValid,
+          calificacion: typeof rating === 'number' ? rating : null,
+          comentario: typeof comment === 'string' ? comment : null,
+          aspectos: typeof aspects === 'string' ? aspects : null,
+          fecha_validacion: new Date().toISOString()
+        })
+        .eq('validacion_id', existingVal.validacion_id)
+        .select()
+        .single()
+      
+      upsertVal = data
+      upsertErr = error
+    } else {
+      // Crear nueva validación
+      const { data, error } = await supabase
+        .from('validacion_intercambio')
+        .insert({
+          intercambio_id: intercambioId,
+          usuario_id: usuarioId,
+          es_exitoso: isValid,
+          calificacion: typeof rating === 'number' ? rating : null,
+          comentario: typeof comment === 'string' ? comment : null,
+          aspectos: typeof aspects === 'string' ? aspects : null,
+          fecha_validacion: new Date().toISOString()
+        })
+        .select()
+        .single()
+      
+      upsertVal = data
+      upsertErr = error
+    }
 
     if (upsertErr) {
       return NextResponse.json({ error: 'No se pudo registrar la validación' }, { status: 500 })
