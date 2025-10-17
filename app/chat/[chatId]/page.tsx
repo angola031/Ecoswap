@@ -20,6 +20,8 @@ function ChatPageContent() {
   const [proposals, setProposals] = useState<ChatProposal[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [showSidebar, setShowSidebar] = useState(true)
+  const [isUnderAdminReview, setIsUnderAdminReview] = useState(false)
+  const [reviewTicketId, setReviewTicketId] = useState<number | null>(null)
   const [showProposalModal, setShowProposalModal] = useState(false)
   const [showProposals, setShowProposals] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -160,8 +162,9 @@ function ChatPageContent() {
       const token = session?.access_token
       if (!token) return
 
-      if (result.isConfirmed) {
-        await fetch(`/api/intercambios/${intercambioId}/validate`, {
+       let validateResponse: Response | null = null
+       if (result.isConfirmed) {
+         validateResponse = await fetch(`/api/intercambios/${intercambioId}/validate`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify(result.value)
@@ -176,15 +179,84 @@ function ChatPageContent() {
           cancelButtonText: 'Cancelar',
           confirmButtonColor: '#EF4444'
         })
-        if (problem.isConfirmed) {
-          await fetch(`/api/intercambios/${intercambioId}/validate`, {
+         if (problem.isConfirmed) {
+           validateResponse = await fetch(`/api/intercambios/${intercambioId}/validate`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ isValid: false, comment: problem.value || null })
           })
         }
       }
-      window.location.reload()
+
+       // Manejo de respuesta y UX
+       if (validateResponse && validateResponse.ok) {
+         const payload = await validateResponse.json().catch(() => ({}))
+         if (payload?.adminReview) {
+           setIsUnderAdminReview(true)
+           const tid = payload?.ticket?.ticket_id || null
+           setReviewTicketId(tid)
+           // Notificar a usuarios: actual y contraparte
+           try {
+             const { data: { session: session2 } } = await supabase.auth.getSession()
+             const tok = session2?.access_token
+             if (tok) {
+               // Determinar otro usuario
+               const sellerId = (chatInfo as any)?.seller?.id ? Number((chatInfo as any).seller.id) : null
+               const buyerId = (chatInfo as any)?.buyer?.id ? Number((chatInfo as any).buyer.id) : null
+               const me = currentUserId ? Number(currentUserId) : null
+               const otherUserId = me && sellerId && buyerId ? (me === sellerId ? buyerId : sellerId) : null
+               const notify = async (uid: number | null, who: 'tú' | 'la contraparte') => {
+                 if (!uid) return
+                 await fetch('/api/notifications', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
+                   body: JSON.stringify({
+                     usuario_id: uid,
+                     tipo: 'revision_intercambio',
+                     titulo: `Intercambio enviado a revisión` ,
+                     mensaje: `Se generó un ticket #${tid || ''} por discrepancia en la validación (${who}).`,
+                     datos_adicionales: { ticket_id: tid, intercambio_id: intercambioId },
+                     es_push: true,
+                     es_email: false
+                   })
+                 })
+               }
+               await notify(me as any, 'tú')
+               await notify(otherUserId as any, 'la contraparte')
+             }
+           } catch {}
+
+           if ((window as any).Swal) {
+             ;(window as any).Swal.fire({
+               icon: 'info',
+               title: 'Enviado a revisión',
+               text: `Ticket #${tid || '—'} creado. Un administrador verificará la discrepancia.`,
+               confirmButtonText: 'Entendido'
+             })
+           }
+         } else if (payload?.intercambioEstado === 'completado') {
+           if ((window as any).Swal) {
+             ;(window as any).Swal.fire({
+               icon: 'success',
+               title: 'Intercambio completado',
+               text: 'Ahora puedes calificar a la otra persona.',
+               confirmButtonText: 'Aceptar'
+             })
+           }
+         } else if (payload?.intercambioEstado === 'fallido') {
+           if ((window as any).Swal) {
+             ;(window as any).Swal.fire({
+               icon: 'warning',
+               title: 'Intercambio fallido',
+               text: 'Se registró como no exitoso por ambas partes.',
+               confirmButtonText: 'Aceptar'
+             })
+           }
+         }
+       }
+
+       // Opcional: refrescar datos del chat sin recargar toda la página
+       // window.location.reload()
     } catch (e) {
       console.error('Error en validación:', e)
     }
