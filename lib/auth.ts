@@ -569,9 +569,24 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
                     return { user: userData, error: null }
         }
 
-        // Verificar que el usuario esté activo
-        if (!user.activo) {
-            return { user: null, error: 'Tu cuenta está desactivada. Contacta al soporte.' }
+        // Activar usuario al iniciar sesión y actualizar última conexión
+        try {
+            const { data: activatedUser, error: activateError } = await supabase
+                .from('usuario')
+                .update({
+                    activo: true,
+                    ultima_conexion: new Date().toISOString()
+                })
+                .eq('user_id', user.user_id)
+                .select()
+                .single()
+
+            if (!activateError && activatedUser) {
+                user = activatedUser
+            }
+        } catch (e) {
+            // Solo log, no bloquear el login si falla esta actualización
+            console.warn('⚠️ No se pudo actualizar activo/ultima_conexion en login:', e)
         }
 
         // Obtener ubicación principal del usuario (si existe)
