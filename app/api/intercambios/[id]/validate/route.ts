@@ -70,7 +70,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           es_exitoso: isValid,
           calificacion: typeof rating === 'number' ? rating : null,
           comentario: typeof comment === 'string' ? comment : null,
-          aspectos: typeof aspects === 'string' ? aspects : null,
+          aspectos_destacados: typeof aspects === 'string' ? aspects : null,
           fecha_validacion: new Date().toISOString()
         })
         .eq('validacion_id', existingVal.validacion_id)
@@ -89,7 +89,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           es_exitoso: isValid,
           calificacion: typeof rating === 'number' ? rating : null,
           comentario: typeof comment === 'string' ? comment : null,
-          aspectos: typeof aspects === 'string' ? aspects : null,
+          aspectos_destacados: typeof aspects === 'string' ? aspects : null,
           fecha_validacion: new Date().toISOString()
         })
         .select()
