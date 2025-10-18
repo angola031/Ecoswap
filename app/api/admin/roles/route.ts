@@ -294,7 +294,7 @@ export async function POST(req: NextRequest) {
                 const roleNamesList = roleNames?.map(r => r.nombre) || ['administrador']
 
                 // Construir URL de redirección
-                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+                const siteUrl = 'https://ecoswap-lilac.vercel.app'
                 const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/admin/verificaciones`
 
                 // Enviar email de reset de contraseña para que pueda configurar su contraseña

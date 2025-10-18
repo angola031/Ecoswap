@@ -195,7 +195,7 @@ export async function POST(req: NextRequest, { params }: { params: { adminId: st
 
         // Enviar correo de reactivación con enlace para restablecer contraseña
         try {
-            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+            const siteUrl = 'https://ecoswap-lilac.vercel.app'
             const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/auth/reset-password`
             
             
