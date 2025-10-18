@@ -37,8 +37,10 @@ export default function ResetPasswordPage() {
             console.log('🔍 Usuario obtenido:', user ? user.email : 'No hay usuario')
             
             if (user) {
+                console.log('✅ Usuario encontrado, estableciendo userInfo:', user.email)
                 setUserInfo(user)
             } else {
+                console.log('❌ No se encontró usuario, buscando tokens...')
                 
                 // Buscar tokens en query parameters (de la reactivación)
                 const accessToken = searchParams.get('access_token')
@@ -78,7 +80,10 @@ export default function ResetPasswordPage() {
                     }
 
                     if (data.user) {
+                        console.log('✅ Sesión establecida con tokens, usuario:', data.user.email)
                         setUserInfo(data.user)
+                    } else {
+                        console.log('❌ No se pudo obtener usuario después de establecer sesión')
                     }
                 } else {
                     // Si no hay tokens y no hay sesión, mostrar mensaje de error
