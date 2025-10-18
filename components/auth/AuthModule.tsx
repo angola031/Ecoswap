@@ -571,8 +571,17 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
       }
 
       // Enviar email de restablecimiento de contraseña
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      // En producción, usar siempre la variable de entorno, no window.location.origin
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+        (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+          ? window.location.origin 
+          : 'https://ecoswap-lilac.vercel.app')
       console.log('🔗 URL de redirección configurada:', `${siteUrl}/auth/callback?next=/auth/reset-password`)
+      console.log('🔍 Detalles de configuración:', {
+        envVar: process.env.NEXT_PUBLIC_SITE_URL,
+        windowOrigin: typeof window !== 'undefined' ? window.location.origin : 'N/A',
+        finalSiteUrl: siteUrl
+      })
       
       const { error } = await supabase.auth.resetPasswordForEmail(
         forgotPasswordForm.email,
