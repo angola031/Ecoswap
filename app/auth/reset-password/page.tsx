@@ -39,6 +39,22 @@ export default function ResetPasswordPage() {
             if (user) {
                 console.log('✅ Usuario encontrado, estableciendo userInfo:', user.email)
                 setUserInfo(user)
+                
+                // Verificar si el usuario es administrador para mostrar interfaz específica
+                try {
+                    const { data: dbUser } = await supabase
+                        .from('usuario')
+                        .select('es_admin, activo')
+                        .eq('email', user.email)
+                        .single()
+                    
+                    if (dbUser?.es_admin) {
+                        console.log('🔧 Usuario es administrador, activando modo reactivación')
+                        setIsReactivation(true)
+                    }
+                } catch (error) {
+                    console.log('Error verificando rol de administrador:', error)
+                }
             } else {
                 console.log('❌ No se encontró usuario, buscando tokens...')
                 
@@ -82,6 +98,22 @@ export default function ResetPasswordPage() {
                     if (data.user) {
                         console.log('✅ Sesión establecida con tokens, usuario:', data.user.email)
                         setUserInfo(data.user)
+                        
+                        // Verificar si el usuario es administrador
+                        try {
+                            const { data: dbUser } = await supabase
+                                .from('usuario')
+                                .select('es_admin, activo')
+                                .eq('email', data.user.email)
+                                .single()
+                            
+                            if (dbUser?.es_admin) {
+                                console.log('🔧 Usuario es administrador (tokens), activando modo reactivación')
+                                setIsReactivation(true)
+                            }
+                        } catch (error) {
+                            console.log('Error verificando rol de administrador (tokens):', error)
+                        }
                     } else {
                         console.log('❌ No se pudo obtener usuario después de establecer sesión')
                     }
@@ -195,14 +227,19 @@ export default function ResetPasswordPage() {
                         }
                     </p>
                     {userInfo && (
-                        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                            <p className="text-sm text-blue-800">
+                        <div className={`mt-4 p-4 rounded-md ${isReactivation ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'}`}>
+                            <p className={`text-sm ${isReactivation ? 'text-green-800' : 'text-blue-800'}`}>
                                 <strong>Usuario:</strong> {userInfo.email}
                             </p>
                             {isReactivation && (
-                                <p className="text-sm text-blue-600 mt-1">
-                                    Tu cuenta de administrador ha sido reactivada exitosamente.
-                                </p>
+                                <div className="mt-2">
+                                    <p className="text-sm text-green-600 font-medium">
+                                        ✅ Tu cuenta de administrador ha sido reactivada exitosamente.
+                                    </p>
+                                    <p className="text-xs text-green-500 mt-1">
+                                        Establece una nueva contraseña para acceder al dashboard de administración.
+                                    </p>
+                                </div>
                             )}
                         </div>
                     )}

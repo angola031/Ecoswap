@@ -204,7 +204,7 @@ export async function POST(req: NextRequest, { params }: { params: { adminId: st
                 // No fallar la operación si no se puede enviar el correo
             } else {
                 const siteUrl = 'https://ecoswap-lilac.vercel.app'
-                const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/auth/reset-password`
+                const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/auth/reset-password?reactivation=true`
                 
                 console.log('📧 API Reactivate Admin: Enviando email a:', user.email)
                 console.log('🔗 API Reactivate Admin: URL de redirección:', redirectUrl)
