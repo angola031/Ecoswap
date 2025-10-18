@@ -10,6 +10,17 @@ export async function GET(request: NextRequest) {
     const errorCode = searchParams.get('error_code')
     const errorDescription = searchParams.get('error_description')
 
+    console.log('🔍 Callback recibido:', {
+        origin,
+        code: code ? 'presente' : 'ausente',
+        next,
+        reactivation,
+        error,
+        errorCode,
+        errorDescription,
+        fullUrl: request.url
+    })
+
     // Si hay errores en la URL, redirigir a la página de error con información específica
     if (error || errorCode || errorDescription) {
         const errorParams = new URLSearchParams()
@@ -52,15 +63,18 @@ export async function GET(request: NextRequest) {
         if (!exchangeError) {
             // Si es una reactivación, redirigir a la página de reset de contraseña
             if (reactivation === 'true') {
+                console.log('🔄 Redirigiendo a reset-password (reactivación):', `${origin}/auth/reset-password?reactivation=true`)
                 return NextResponse.redirect(`${origin}/auth/reset-password?reactivation=true`)
             }
 
             // Si hay un parámetro 'next', redirigir a esa página
             if (next && next !== '/') {
+                console.log('🔄 Redirigiendo a página específica:', `${origin}${next}`)
                 return NextResponse.redirect(`${origin}${next}`)
             }
 
             // Si no es reactivación y no hay 'next', redirigir a la página principal
+            console.log('🔄 Redirigiendo a página principal:', `${origin}/`)
             return NextResponse.redirect(`${origin}/`)
         } else {
             // Si hay error en el intercambio, redirigir a la página de error con detalles

@@ -572,6 +572,8 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
 
       // Enviar email de restablecimiento de contraseña
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      console.log('🔗 URL de redirección configurada:', `${siteUrl}/auth/callback?next=/auth/reset-password`)
+      
       const { error } = await supabase.auth.resetPasswordForEmail(
         forgotPasswordForm.email,
         {
