@@ -1,0 +1,115 @@
+#!/usr/bin/env node
+
+/**
+ * Script para diagnosticar errores de autenticación de Supabase
+ */
+
+console.log('🔍 Diagnosticando errores de autenticación de Supabase...\n')
+
+console.log('📋 ERRORES IDENTIFICADOS:')
+console.log('   ❌ /auth/v1/verify')
+console.log('   ❌ POST /auth/v1/token')
+console.log('   ❌ GET /auth/v1/verify')
+console.log('')
+
+console.log('🔧 CAUSAS COMUNES Y SOLUCIONES:')
+console.log('')
+
+console.log('1. 🚨 SITE URL INCORRECTA EN SUPABASE:')
+console.log('   Problema: Site URL configurada como localhost')
+console.log('   Solución:')
+console.log('   - Ve a Supabase Dashboard → Authentication → URL Configuration')
+console.log('   - Site URL: https://ecoswap-lilac.vercel.app')
+console.log('   - Redirect URLs: https://ecoswap-lilac.vercel.app/auth/callback')
+console.log('')
+
+console.log('2. 🚨 REDIRECT URLs NO CONFIGURADAS:')
+console.log('   Problema: Supabase no reconoce las URLs de redirección')
+console.log('   Solución:')
+console.log('   - Agregar a Redirect URLs:')
+console.log('     * https://ecoswap-lilac.vercel.app/auth/callback')
+console.log('     * https://ecoswap-lilac.vercel.app/auth/callback?next=/auth/reset-password')
+console.log('     * https://ecoswap-lilac.vercel.app/auth/reset-password')
+console.log('')
+
+console.log('3. 🚨 CONFIGURACIÓN DE EMAIL INCORRECTA:')
+console.log('   Problema: Plantillas de email mal configuradas')
+console.log('   Solución:')
+console.log('   - Ve a Authentication → Email Templates')
+console.log('   - Reset Password template debe usar {{ .ConfirmationURL }}')
+console.log('   - Verificar que la URL base sea correcta')
+console.log('')
+
+console.log('4. 🚨 VARIABLES DE ENTORNO INCORRECTAS:')
+console.log('   Problema: NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY incorrectas')
+console.log('   Solución:')
+console.log('   - Verificar en Vercel Dashboard → Settings → Environment Variables')
+console.log('   - NEXT_PUBLIC_SUPABASE_URL debe ser: https://vaqdzualcteljmivtoka.supabase.co')
+console.log('   - NEXT_PUBLIC_SUPABASE_ANON_KEY debe ser la clave anónima correcta')
+console.log('')
+
+console.log('🧪 PASOS PARA SOLUCIONAR:')
+console.log('')
+
+console.log('PASO 1: Verificar Supabase Dashboard')
+console.log('   1. Ve a https://supabase.com/dashboard')
+console.log('   2. Selecciona tu proyecto')
+console.log('   3. Ve a Settings → Authentication')
+console.log('   4. Verifica URL Configuration:')
+console.log('      - Site URL: https://ecoswap-lilac.vercel.app')
+console.log('      - Redirect URLs: https://ecoswap-lilac.vercel.app/auth/callback')
+console.log('')
+
+console.log('PASO 2: Verificar Email Templates')
+console.log('   1. Ve a Authentication → Email Templates')
+console.log('   2. Selecciona "Reset Password"')
+console.log('   3. Verifica que use {{ .ConfirmationURL }}')
+console.log('   4. Guarda los cambios')
+console.log('')
+
+console.log('PASO 3: Verificar Variables de Entorno en Vercel')
+console.log('   1. Ve a Vercel Dashboard → tu proyecto')
+console.log('   2. Settings → Environment Variables')
+console.log('   3. Verifica:')
+console.log('      - NEXT_PUBLIC_SUPABASE_URL')
+console.log('      - NEXT_PUBLIC_SUPABASE_ANON_KEY')
+console.log('   4. Si están mal, corrígelas y haz redeploy')
+console.log('')
+
+console.log('PASO 4: Probar nuevamente')
+console.log('   1. Espera 2-3 minutos después de los cambios')
+console.log('   2. Ve a https://ecoswap-lilac.vercel.app/login')
+console.log('   3. Prueba el restablecimiento de contraseña')
+console.log('   4. Revisa los logs en la consola del navegador')
+console.log('')
+
+console.log('🚨 CONFIGURACIÓN ESPECÍFICA PARA TU PROYECTO:')
+console.log('')
+
+console.log('Supabase Dashboard → Authentication → URL Configuration:')
+console.log('   Site URL: https://ecoswap-lilac.vercel.app')
+console.log('   Redirect URLs:')
+console.log('     - https://ecoswap-lilac.vercel.app/auth/callback')
+console.log('     - https://ecoswap-lilac.vercel.app/auth/callback?next=/auth/reset-password')
+console.log('     - https://ecoswap-lilac.vercel.app/auth/reset-password')
+console.log('     - https://ecoswap-lilac.vercel.app/**')
+console.log('')
+
+console.log('Vercel Dashboard → Environment Variables:')
+console.log('   NEXT_PUBLIC_SUPABASE_URL: https://vaqdzualcteljmivtoka.supabase.co')
+console.log('   NEXT_PUBLIC_SUPABASE_ANON_KEY: [tu clave anónima]')
+console.log('   NEXT_PUBLIC_SITE_URL: https://ecoswap-lilac.vercel.app')
+console.log('')
+
+console.log('📞 SI SIGUES TENIENDO PROBLEMAS:')
+console.log('   1. Comparte una captura de pantalla de la configuración de Supabase')
+console.log('   2. Verifica que las variables de entorno estén correctas en Vercel')
+console.log('   3. Revisa los logs de Supabase Dashboard → Logs')
+console.log('   4. Asegúrate de que el proyecto esté desplegado correctamente')
+console.log('')
+
+console.log('🎯 RESUMEN:')
+console.log('   - Los errores /auth/v1/verify indican configuración incorrecta')
+console.log('   - Principalmente es problema de Site URL en Supabase')
+console.log('   - También verificar Redirect URLs y variables de entorno')
+console.log('   - Después de corregir, esperar 2-3 minutos y probar')

@@ -563,36 +563,30 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
     setSuccess(null)
 
     try {
-      const supabase = getSupabaseClient()
-      if (!supabase) {
-        setError('Error de configuración del sistema')
-        setIsLoading(false)
-        return
-      }
-
-      // Enviar email de restablecimiento de contraseña
-      // Solo usar Vercel - no incluir lógica de localhost
-      const siteUrl = 'https://ecoswap-lilac.vercel.app'
+      console.log('🔧 Cliente: Enviando solicitud de restablecimiento...')
+      console.log('📧 Email:', forgotPasswordForm.email)
       
-      console.log('🔗 URL de redirección configurada:', `${siteUrl}/auth/callback?next=/auth/reset-password`)
-      console.log('🔍 Configuración Vercel:', {
-        siteUrl: siteUrl,
-        isVercel: true
+      // Usar API route que maneja la service role key
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: forgotPasswordForm.email
+        })
       })
       
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        forgotPasswordForm.email,
-        {
-          redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`
-        }
-      )
-
-      if (error) {
-        console.error('Error enviando email de restablecimiento:', error)
-        setError(error.message)
+      const data = await response.json()
+      
+      if (!response.ok) {
+        console.error('❌ Cliente: Error en API:', data.error)
+        setError(data.error || 'Error enviando email de restablecimiento')
         setIsLoading(false)
         return
       }
+      
+      console.log('✅ Cliente: Email enviado exitosamente')
 
       // Éxito - mostrar pantalla de confirmación
       setCurrentScreen('reset-sent')
