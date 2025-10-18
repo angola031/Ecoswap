@@ -5,132 +5,142 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
 
 export default function SupabaseRedirectPage() {
-    const router = useRouter()
-    const searchParams = useSearchParams()
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState('')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [message, setMessage] = useState('Procesando...')
 
-    useEffect(() => {
-        const handleRedirect = async () => {
-            try {
-                // Obtener parámetros de la URL
-                const accessToken = searchParams.get('access_token')
-                const refreshToken = searchParams.get('refresh_token')
-                const type = searchParams.get('type')
-
-                // Si es un reset de contraseña, redirigir a la página de reset con tokens
-                if (type === 'recovery') {
-                    
-                    // Construir URL con tokens para la página de reset
-                    const resetUrl = new URL('/auth/reset-password', window.location.origin)
-                    resetUrl.searchParams.set('reactivation', 'true')
-                    if (accessToken) resetUrl.searchParams.set('access_token', accessToken)
-                    if (refreshToken) resetUrl.searchParams.set('refresh_token', refreshToken)
-                    
-                    router.replace(resetUrl.toString())
-                    return
-                }
-
-                // Si hay tokens, establecer la sesión
-                if (accessToken && refreshToken) {
-                    const supabase = getSupabaseClient()
-                    if (!supabase) {
-                        console.log('❌ Supabase no está configurado')
-                        setError('Error de configuración')
-                        return
-                    }
-                    
-                    const { data, error: sessionError } = await supabase.auth.setSession({
-                        access_token: accessToken,
-                        refresh_token: refreshToken
-                    })
-
-                    if (sessionError) {
-                        setError('Error estableciendo sesión: ' + sessionError.message)
-                        setLoading(false)
-                        return
-                    }
-
-                    if (data.user) {
-                        // Verificar si es administrador
-                        const { data: userData } = await supabase
-                            .from('usuario')
-                            .select('es_admin, activo')
-                            .eq('email', data.user.email)
-                            .single()
-
-                        if (userData?.es_admin && userData?.activo) {
-                            // Si es administrador, ir al dashboard
-                            router.replace('/admin/verificaciones')
-                        } else {
-                            // Si no es administrador, ir a la página principal
-                            router.replace('/')
-                        }
-                        return
-                    }
-                }
-
-                // Si no hay tokens ni usuario, redirigir al login de admin
-                router.replace('/login')
-                return
-
-            } catch (err: any) {
-                setError('Error procesando redirección: ' + err.message)
-                setLoading(false)
-            }
+  useEffect(() => {
+    const handleRedirect = async () => {
+      try {
+        console.log('🔧 SupabaseRedirect: Procesando redirección...')
+        
+        // Obtener parámetros de la URL
+        const type = searchParams.get('type')
+        const next = searchParams.get('next')
+        
+        console.log('🔍 Parámetros:', { type, next })
+        
+        // Obtener el hash de la URL (donde está el token)
+        const hash = window.location.hash.substring(1) // Remover el #
+        const hashParams = new URLSearchParams(hash)
+        
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
+        const tokenType = hashParams.get('token_type')
+        const expiresIn = hashParams.get('expires_in')
+        const typeFromHash = hashParams.get('type')
+        
+        console.log('🔍 Hash params:', {
+          accessToken: accessToken ? 'presente' : 'ausente',
+          refreshToken: refreshToken ? 'presente' : 'ausente',
+          tokenType,
+          expiresIn,
+          typeFromHash
+        })
+        
+        if (!accessToken) {
+          throw new Error('No se encontró access_token en la URL')
         }
+        
+        // Configurar la sesión en Supabase
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+          throw new Error('Error de configuración de Supabase')
+        }
+        
+        // Establecer la sesión con los tokens
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || ''
+        })
+        
+        if (error) {
+          console.error('❌ Error estableciendo sesión:', error)
+          throw error
+        }
+        
+        console.log('✅ Sesión establecida correctamente')
+        setStatus('success')
+        setMessage('¡Autenticación exitosa! Redirigiendo...')
+        
+        // Determinar a dónde redirigir
+        let redirectPath = '/'
+        
+        if (type === 'recovery' || typeFromHash === 'recovery') {
+          // Es un restablecimiento de contraseña
+          if (next) {
+            redirectPath = next
+          } else {
+            redirectPath = '/auth/reset-password'
+          }
+        } else if (next) {
+          redirectPath = next
+        }
+        
+        console.log('🔄 Redirigiendo a:', redirectPath)
+        
+        // Redirigir después de un breve delay
+        setTimeout(() => {
+          router.push(redirectPath)
+        }, 2000)
+        
+      } catch (error) {
+        console.error('❌ Error en SupabaseRedirect:', error)
+        setStatus('error')
+        setMessage(`Error: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+        
+        // Redirigir a página de error después de 3 segundos
+        setTimeout(() => {
+          router.push('/auth/auth-code-error?error=redirect_failed')
+        }, 3000)
+      }
+    }
+    
+    handleRedirect()
+  }, [router, searchParams])
 
-        handleRedirect()
-    }, [router, searchParams])
-
-if (loading) {
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Procesando redirección...</p>
-            </div>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full space-y-8 p-8">
+        <div className="text-center">
+          <div className="mx-auto h-12 w-12 flex items-center justify-center">
+            {status === 'loading' && (
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            )}
+            {status === 'success' && (
+              <div className="rounded-full h-12 w-12 bg-green-100 flex items-center justify-center">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            )}
+            {status === 'error' && (
+              <div className="rounded-full h-12 w-12 bg-red-100 flex items-center justify-center">
+                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            )}
+          </div>
+          
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            {status === 'loading' && 'Procesando...'}
+            {status === 'success' && '¡Éxito!'}
+            {status === 'error' && 'Error'}
+          </h2>
+          
+          <p className="mt-2 text-sm text-gray-600">
+            {message}
+          </p>
+          
+          {status === 'loading' && (
+            <p className="mt-4 text-xs text-gray-500">
+              Estableciendo tu sesión de usuario...
+            </p>
+          )}
         </div>
-    )
-}
-
-if (error) {
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="max-w-md w-full space-y-8 text-center">
-                <div>
-                    <div className="mx-auto h-12 w-12 text-red-500">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
-                        </svg>
-                    </div>
-                    <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-                        Error de Redirección
-                    </h2>
-                    <p className="mt-2 text-sm text-gray-600">
-                        {error}
-                    </p>
-                </div>
-
-                <div className="space-y-4">
-                    <button
-                        onClick={() => router.push('/login')}
-                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                    >
-                        Ir al Login
-                    </button>
-
-                    <button
-                        onClick={() => router.push('/')}
-                        className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                    >
-                        Ir al Inicio
-                    </button>
-                </div>
-            </div>
-        </div>
-    )
-}
-
-return null
+      </div>
+    </div>
+  )
 }

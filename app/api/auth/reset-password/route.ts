@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     
     // URL de redirección hardcodeada para Vercel
     const siteUrl = 'https://ecoswap-lilac.vercel.app'
-    const redirectUrl = `${siteUrl}/auth/callback?next=/auth/reset-password`
+    const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/auth/reset-password`
     
     console.log('🔗 API Reset Password: URL de redirección:', redirectUrl)
     
