@@ -122,7 +122,8 @@ export default function ResetPasswordPage() {
                     if (isReactivation) {
                         router.push('/admin/verificaciones')
                     } else {
-                        router.push('/admin/verificaciones')
+                        // Para usuarios normales, redirigir a la página principal
+                        router.push('/')
                     }
                 }, 3000)
             }
@@ -153,7 +154,10 @@ export default function ResetPasswordPage() {
                             }
                         </p>
                         <p className="mt-1 text-sm text-gray-500">
-                            Serás redirigido al dashboard en unos segundos...
+                            {isReactivation
+                                ? 'Serás redirigido al dashboard de administrador en unos segundos...'
+                                : 'Serás redirigido a la página principal en unos segundos...'
+                            }
                         </p>
                     </div>
                 </div>

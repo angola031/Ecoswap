@@ -16,6 +16,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { registerUser, loginUser, resendConfirmationEmail, checkEmailExists, requestRegistrationCode, completeRegistrationWithCode, type User, type RegisterData, type LoginData } from '@/lib/auth'
 import { config } from '@/lib/config'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface AuthModuleProps {
   onLogin: (user: User) => void
@@ -558,13 +559,42 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
+    setSuccess(null)
 
-    // Simular delay de API
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    try {
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        setError('Error de configuración del sistema')
+        setIsLoading(false)
+        return
+      }
 
-    // Simular envío de email
-    setCurrentScreen('reset-sent')
-    setIsLoading(false)
+      // Enviar email de restablecimiento de contraseña
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        forgotPasswordForm.email,
+        {
+          redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`
+        }
+      )
+
+      if (error) {
+        console.error('Error enviando email de restablecimiento:', error)
+        setError(error.message)
+        setIsLoading(false)
+        return
+      }
+
+      // Éxito - mostrar pantalla de confirmación
+      setCurrentScreen('reset-sent')
+      setSuccess('Te hemos enviado un enlace para restablecer tu contraseña. Revisa tu correo electrónico.')
+      setIsLoading(false)
+    } catch (err: any) {
+      console.error('Error en restablecimiento de contraseña:', err)
+      setError('Error interno del servidor. Inténtalo de nuevo.')
+      setIsLoading(false)
+    }
   }
 
   const handleResendConfirmation = async () => {

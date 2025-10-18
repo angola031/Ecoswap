@@ -42,8 +42,13 @@ export async function GET(request: NextRequest) {
                 return NextResponse.redirect(`${origin}/auth/reset-password?reactivation=true`)
             }
 
-            // Si no es reactivación, redirigir al dashboard o página principal
-            return NextResponse.redirect(`${origin}/dashboard`)
+            // Si hay un parámetro 'next', redirigir a esa página
+            if (next && next !== '/') {
+                return NextResponse.redirect(`${origin}${next}`)
+            }
+
+            // Si no es reactivación y no hay 'next', redirigir a la página principal
+            return NextResponse.redirect(`${origin}/`)
         }
     }
 

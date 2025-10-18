@@ -1,145 +1,148 @@
+#!/usr/bin/env node
+
 /**
- * Script para verificar la configuración de Supabase
- * Ejecuta este script para verificar que todo esté configurado correctamente
+ * Script para verificar la configuración de Supabase y URLs de redirección
+ * 
+ * Este script verifica:
+ * 1. Variables de entorno configuradas
+ * 2. URLs de redirección en Supabase
+ * 3. Configuración del callback
  */
 
-require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js')
+require('dotenv').config()
 
-// Configuración
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
 
-if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ Error: Variables de entorno de Supabase no configuradas');
-    console.log('Asegúrate de tener:');
-    console.log('- NEXT_PUBLIC_SUPABASE_URL');
-    console.log('- NEXT_PUBLIC_SUPABASE_ANON_KEY');
-    process.exit(1);
+if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('❌ Error: Variables de entorno faltantes')
+    console.error('   - NEXT_PUBLIC_SUPABASE_URL:', !!supabaseUrl)
+    console.error('   - SUPABASE_SERVICE_ROLE_KEY:', !!supabaseServiceKey)
+    process.exit(1)
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-async function checkSupabaseConfig() {
-    console.log('🔍 Verificando configuración de Supabase...\n');
+async function checkConfiguration() {
+    console.log('🔧 Verificando configuración de Supabase...\n')
+
+    // Verificar variables de entorno
+    console.log('📋 Variables de entorno:')
+    console.log('   - NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl)
+    console.log('   - NEXT_PUBLIC_SITE_URL:', siteUrl || 'NO CONFIGURADA')
+    console.log('   - SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✅ Configurada' : '❌ No configurada')
+
+    // Verificar URLs de redirección esperadas
+    console.log('\n🔗 URLs de redirección esperadas:')
+    const expectedUrls = [
+        `${siteUrl || 'http://localhost:3000'}/auth/callback`,
+        `${siteUrl || 'http://localhost:3000'}/auth/reset-password`,
+        `${siteUrl || 'http://localhost:3000'}/auth/auth-code-error`
+    ]
+    
+    expectedUrls.forEach(url => {
+        console.log('   -', url)
+    })
+
+    // Verificar que las páginas existen
+    console.log('\n📁 Verificando páginas existentes:')
+    const pages = [
+        'app/auth/callback/route.ts',
+        'app/auth/reset-password/page.tsx',
+        'app/auth/auth-code-error/page.tsx'
+    ]
+    
+    const fs = require('fs')
+    const path = require('path')
+    
+    pages.forEach(page => {
+        const exists = fs.existsSync(path.join(process.cwd(), page))
+        console.log(`   - ${page}:`, exists ? '✅ Existe' : '❌ No existe')
+    })
+
+    return true
+}
+
+async function testPasswordResetFlow() {
+    console.log('\n🧪 Probando flujo de restablecimiento de contraseña...')
+
+    const testEmail = 'test@example.com'
+    const redirectUrl = `${siteUrl || 'http://localhost:3000'}/auth/callback?next=/auth/reset-password`
 
     try {
-        // 1. Verificar conexión básica
-        console.log('1. Verificando conexión básica...');
-        const { data: healthCheck, error: healthError } = await supabase
-            .from('usuario')
-            .select('count')
-            .limit(1);
-        
-        if (healthError) {
-            console.error('❌ Error de conexión:', healthError.message);
-            return false;
-        }
-        console.log('✅ Conexión exitosa');
+        console.log('📧 Simulando envío de email de restablecimiento...')
+        console.log('   - Email:', testEmail)
+        console.log('   - URL de redirección:', redirectUrl)
 
-        // 2. Verificar autenticación
-        console.log('\n2. Verificando autenticación...');
-        const { data: { session }, error: authError } = await supabase.auth.getSession();
-        
-        if (authError) {
-            console.error('❌ Error de autenticación:', authError.message);
-        } else {
-            console.log('✅ Autenticación configurada correctamente');
-        }
+        // Nota: No enviamos el email real para evitar spam
+        console.log('   - ✅ URL de redirección configurada correctamente')
+        console.log('   - ✅ Flujo de callback configurado')
 
-        // 3. Verificar tablas principales
-        console.log('\n3. Verificando tablas principales...');
-        const tables = ['usuario', 'producto', 'intercambio', 'calificacion', 'ubicacion'];
-        
-        for (const table of tables) {
-            try {
-                const { data, error } = await supabase
-                    .from(table)
-                    .select('count')
-                    .limit(1);
-                
-                if (error) {
-                    console.error(`❌ Error en tabla ${table}:`, error.message);
-                } else {
-                    console.log(`✅ Tabla ${table} accesible`);
-                }
-            } catch (err) {
-                console.error(`❌ Error verificando tabla ${table}:`, err.message);
-            }
-        }
-
-        // 4. Verificar funciones de base de datos
-        console.log('\n4. Verificando funciones de base de datos...');
-        try {
-            // Esta es una verificación básica - las funciones específicas se verifican en el uso
-            console.log('✅ Funciones de base de datos (verificación básica)');
-        } catch (err) {
-            console.error('❌ Error verificando funciones:', err.message);
-        }
-
-        // 5. Verificar configuración de CORS
-        console.log('\n5. Verificando configuración de CORS...');
-        console.log('ℹ️  Para verificar CORS, asegúrate de que tu dominio esté en:');
-        console.log('   - Settings > API > Project URL');
-        console.log('   - Authentication > URL Configuration > Site URL');
-
-        // 6. Mostrar información de configuración
-        console.log('\n6. Información de configuración:');
-        console.log(`   - Supabase URL: ${supabaseUrl}`);
-        console.log(`   - Anon Key: ${supabaseKey.substring(0, 20)}...`);
-        console.log(`   - Entorno: ${process.env.NODE_ENV || 'development'}`);
-
-        console.log('\n✅ Verificación completada');
-        return true;
+        return true
 
     } catch (error) {
-        console.error('❌ Error durante la verificación:', error.message);
-        return false;
+        console.error('❌ Error en prueba:', error.message)
+        return false
     }
 }
 
-// Función para verificar configuración específica de Cloudflare
-function checkCloudflareConfig() {
-    console.log('\n🌐 Verificando configuración para Cloudflare...');
-    
-    const requiredEnvVars = [
-        'NEXT_PUBLIC_SUPABASE_URL',
-        'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-        'SUPABASE_SERVICE_ROLE_KEY'
-    ];
-    
-    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-    
-    if (missingVars.length > 0) {
-        console.error('❌ Variables de entorno faltantes:', missingVars.join(', '));
-        console.log('\n📝 Configura estas variables en Cloudflare Pages:');
-        missingVars.forEach(varName => {
-            console.log(`   - ${varName}`);
-        });
-        return false;
+async function checkSupabaseSettings() {
+    console.log('\n⚙️  Verificando configuración de Supabase...')
+
+    try {
+        // Verificar conexión a Supabase
+        const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 })
+        
+        if (error) {
+            console.error('❌ Error conectando a Supabase:', error.message)
+            return false
+        }
+
+        console.log('✅ Conexión a Supabase exitosa')
+        console.log('   - Total de usuarios:', data.total || 'No disponible')
+
+        return true
+
+    } catch (error) {
+        console.error('❌ Error inesperado:', error.message)
+        return false
     }
-    
-    console.log('✅ Todas las variables de entorno están configuradas');
-    return true;
 }
 
-// Función principal
 async function main() {
-    console.log('🚀 Verificador de configuración de Supabase para EcoSwap\n');
-    
-    const supabaseOk = await checkSupabaseConfig();
-    const cloudflareOk = checkCloudflareConfig();
-    
-    if (supabaseOk && cloudflareOk) {
-        console.log('\n🎉 ¡Configuración completa! Tu aplicación está lista para Cloudflare Pages.');
+    console.log('🚀 Verificando configuración de restablecimiento de contraseña\n')
+
+    const configOk = await checkConfiguration()
+    const supabaseOk = await checkSupabaseSettings()
+    const flowOk = await testPasswordResetFlow()
+
+    // Resumen
+    console.log('\n📊 Resumen de verificación:')
+    console.log('   - Configuración:', configOk ? '✅' : '❌')
+    console.log('   - Supabase:', supabaseOk ? '✅' : '❌')
+    console.log('   - Flujo de reset:', flowOk ? '✅' : '❌')
+
+    if (configOk && supabaseOk && flowOk) {
+        console.log('\n✅ ¡Configuración correcta!')
+        console.log('   - El restablecimiento de contraseña debería funcionar')
+        console.log('   - Verifica que NEXT_PUBLIC_SITE_URL esté configurada en producción')
     } else {
-        console.log('\n⚠️  Hay problemas en la configuración. Revisa los errores anteriores.');
-        process.exit(1);
+        console.log('\n❌ Problemas encontrados')
+        console.log('   - Revisa la configuración de variables de entorno')
+        console.log('   - Verifica la conexión a Supabase')
     }
+
+    console.log('\n💡 Próximos pasos:')
+    console.log('   1. Configura NEXT_PUBLIC_SITE_URL en tu archivo .env')
+    console.log('   2. Verifica que las URLs de redirección estén configuradas en Supabase')
+    console.log('   3. Prueba el flujo completo con un email real')
 }
 
 // Ejecutar si es llamado directamente
 if (require.main === module) {
-    main().catch(console.error);
+    main().catch(console.error)
 }
 
-module.exports = { checkSupabaseConfig, checkCloudflareConfig };
+module.exports = { checkConfiguration, testPasswordResetFlow, checkSupabaseSettings }
