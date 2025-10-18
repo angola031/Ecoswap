@@ -1,0 +1,160 @@
+#!/usr/bin/env node
+
+/**
+ * Script para diagnosticar por qué no se registra el administrador en Supabase Auth
+ * y por qué no llega el correo para registrar la contraseña
+ */
+
+console.log('🔧 Diagnosticando problema de registro en Supabase Auth...\n')
+
+console.log('📋 PROBLEMA IDENTIFICADO:')
+console.log('❌ Administrador no se registra en Supabase Auth')
+console.log('❌ No llega el correo para registrar contraseña')
+console.log()
+
+console.log('🔍 CAUSAS MÁS PROBABLES:')
+console.log('1. ❌ Service Role Key no configurada en Vercel')
+console.log('2. ❌ Usuario ya existe en Supabase Auth (como vemos en la imagen)')
+console.log('3. ❌ Configuración de email deshabilitada en Supabase')
+console.log('4. ❌ URLs de redirección no configuradas')
+console.log('5. ❌ Error en resetPasswordForEmail()')
+console.log()
+
+console.log('🛠️  SOLUCIONES PASO A PASO:')
+console.log()
+
+console.log('PASO 1: Verificar Service Role Key en Vercel')
+console.log('1. Ve a Vercel Dashboard → Settings → Environment Variables')
+console.log('2. Verifica que SUPABASE_SERVICE_ROLE_KEY esté configurada')
+console.log('3. Verifica que no tenga espacios o caracteres extra')
+console.log('4. Si no está, cópiala desde Supabase Dashboard → Settings → API')
+console.log()
+
+console.log('PASO 2: Verificar configuración de Email en Supabase')
+console.log('1. En la imagen veo que estás en Authentication → Users')
+console.log('2. Ve a Authentication → Emails (en el sidebar izquierdo)')
+console.log('3. Verifica que "Enable email confirmations" esté activado')
+console.log('4. Verifica que "Enable email change confirmations" esté activado')
+console.log('5. Verifica la configuración de SMTP si usas proveedor personalizado')
+console.log()
+
+console.log('PASO 3: Verificar URLs de redirección')
+console.log('1. Ve a Authentication → URL Configuration')
+console.log('2. Site URL debe ser: https://ecoswap-lilac.vercel.app')
+console.log('3. Redirect URLs debe incluir:')
+console.log('   - https://ecoswap-lilac.vercel.app/auth/supabase-redirect')
+console.log('   - https://ecoswap-lilac.vercel.app/auth/callback')
+console.log('   - https://ecoswap-lilac.vercel.app/auth/reset-password')
+console.log()
+
+console.log('PASO 4: Usar email que NO exista en Supabase Auth')
+console.log('1. En la imagen veo estos emails existentes:')
+console.log('   - ecoswap03@gmail.com')
+console.log('   - angola03@gmail.com')
+console.log('   - angola03bitcoin@gmail.com')
+console.log('   - carlingen70@gmail.com')
+console.log('2. NO uses ninguno de estos emails')
+console.log('3. Usa un email completamente nuevo, ejemplo:')
+console.log('   - test-admin-' + Date.now() + '@ejemplo.com')
+console.log('   - nuevo-admin-' + Date.now() + '@gmail.com')
+console.log()
+
+console.log('PASO 5: Verificar logs en Vercel')
+console.log('1. Ve a Vercel Dashboard → Functions')
+console.log('2. Busca la función que maneja /api/admin/roles')
+console.log('3. Revisa los logs para ver errores específicos')
+console.log('4. Busca estos logs:')
+console.log('   ✅ "API Create Admin: Cliente admin creado correctamente"')
+console.log('   ❌ "API Create Admin: No se pudo crear cliente admin"')
+console.log('   ❌ "API Create Admin: Error enviando email: [error]"')
+console.log()
+
+console.log('🧪 PRUEBA ESPECÍFICA:')
+console.log()
+
+console.log('1. 🎯 PREPARACIÓN:')
+console.log('   - Ve a https://ecoswap-lilac.vercel.app/admin/verificaciones')
+console.log('   - Asegúrate de estar logueado como Super Admin')
+console.log('   - Abre herramientas de desarrollador (F12) → Console')
+console.log()
+
+console.log('2. 📧 USAR EMAIL ÚNICO:')
+console.log('   - NO uses: ecoswap03@gmail.com, angola03@gmail.com, etc.')
+console.log('   - Usa: test-admin-' + Date.now() + '@ejemplo.com')
+console.log('   - O: nuevo-admin-' + Date.now() + '@gmail.com')
+console.log()
+
+console.log('3. 🔍 CREAR ADMINISTRADOR:')
+console.log('   - Haz clic en "Nuevo Administrador"')
+console.log('   - Completa el formulario con el email único')
+console.log('   - Selecciona roles (ej: super_admin, admin_soporte)')
+console.log('   - Haz clic en "Crear"')
+console.log()
+
+console.log('4. 📊 VERIFICAR LOGS:')
+console.log('   - Revisa la consola del navegador')
+console.log('   - Revisa logs en Vercel Dashboard → Functions')
+console.log('   - Verifica si se creó en tabla usuario')
+console.log('   - Verifica si se envió el email')
+console.log()
+
+console.log('5. ✅ VERIFICAR RESULTADO:')
+console.log('   - El usuario debe aparecer en la lista de administradores')
+console.log('   - Debe tener los roles asignados')
+console.log('   - Debe recibir el email de configuración')
+console.log('   - Debe aparecer en Supabase Auth → Users')
+console.log()
+
+console.log('❌ LOGS DE ERROR COMUNES:')
+console.log()
+
+console.log('Si ves "No se pudo crear cliente admin":')
+console.log('1. Service Role Key no configurada en Vercel')
+console.log('2. Verificar en Vercel Dashboard → Settings → Environment Variables')
+console.log()
+
+console.log('Si ves "Usuario ya existe en Supabase Auth":')
+console.log('1. El email ya está registrado en Supabase Auth')
+console.log('2. Usar un email diferente')
+console.log('3. O eliminar el usuario existente de Supabase Auth')
+console.log()
+
+console.log('Si ves "Error enviando email: Invalid redirect URL":')
+console.log('1. URLs de redirección no configuradas en Supabase')
+console.log('2. Verificar en Authentication → URL Configuration')
+console.log()
+
+console.log('Si ves "Error enviando email: User not found":')
+console.log('1. El usuario no existe en Supabase Auth')
+console.log('2. resetPasswordForEmail requiere que el usuario exista')
+console.log('3. Esto puede ser normal para emails nuevos')
+console.log()
+
+console.log('🔧 SOLUCIÓN ALTERNATIVA:')
+console.log()
+
+console.log('Si el problema persiste, podemos modificar el código para:')
+console.log('1. Crear el usuario en Supabase Auth primero')
+console.log('2. Luego crear el registro en la tabla usuario')
+console.log('3. Esto asegura que resetPasswordForEmail funcione')
+console.log()
+
+console.log('📞 SI NADA FUNCIONA:')
+console.log('1. Verificar logs detallados en Vercel y Supabase')
+console.log('2. Probar con un email completamente nuevo')
+console.log('3. Verificar que el Service Role Key tenga permisos completos')
+console.log('4. Contactar soporte de Supabase si es problema de email')
+console.log()
+
+console.log('💡 NOTA IMPORTANTE:')
+console.log('El problema más común es que el usuario ya existe en Supabase Auth.')
+console.log('resetPasswordForEmail() falla si el usuario ya está registrado.')
+console.log('Solución: Usar un email diferente o eliminar el usuario existente.')
+console.log()
+
+console.log('🔗 URLs ÚTILES:')
+console.log('- Dashboard Admin: https://ecoswap-lilac.vercel.app/admin/verificaciones')
+console.log('- Supabase Auth Users: https://supabase.com/dashboard/project/vaqdzualcteljmivtoka/auth/users')
+console.log('- Supabase Auth Emails: https://supabase.com/dashboard/project/vaqdzualcteljmivtoka/auth/emails')
+console.log('- Supabase URL Config: https://supabase.com/dashboard/project/vaqdzualcteljmivtoka/auth/url-configuration')
+console.log('- Vercel Dashboard: https://vercel.com/dashboard')
