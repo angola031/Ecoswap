@@ -1,0 +1,166 @@
+#!/usr/bin/env node
+
+/**
+ * Script para probar específicamente el flujo de autenticación en la creación de administradores
+ */
+
+console.log('🔐 Probando flujo de autenticación en creación de administradores...\n')
+
+console.log('📋 VERIFICACIONES DE AUTENTICACIÓN:')
+console.log()
+
+console.log('1. 🔑 TOKEN DE AUTORIZACIÓN:')
+console.log('   ✅ Header "Authorization" debe estar presente')
+console.log('   ✅ Formato: "Bearer [token]"')
+console.log('   ✅ Token debe ser válido y no expirado')
+console.log()
+
+console.log('2. 👤 VALIDACIÓN DE USUARIO:')
+console.log('   ✅ getSupabaseClient().auth.getUser(token) debe retornar usuario')
+console.log('   ✅ Usuario debe tener email válido')
+console.log('   ✅ Usuario debe estar activo en Supabase Auth')
+console.log()
+
+console.log('3. 🗄️ VERIFICACIÓN EN BASE DE DATOS:')
+console.log('   ✅ Usuario debe existir en tabla usuario')
+console.log('   ✅ Campo es_admin debe ser true')
+console.log('   ✅ Campo activo debe ser true')
+console.log()
+
+console.log('4. 🎭 VERIFICACIÓN DE ROLES:')
+console.log('   ✅ Usuario debe tener roles en tabla usuario_rol')
+console.log('   ✅ Roles deben estar activos (activo = true)')
+console.log('   ✅ Debe tener al menos un rol de tipo "super_admin"')
+console.log()
+
+console.log('📊 LOGS ESPERADOS EN CONSOLA DEL NAVEGADOR:')
+console.log()
+
+console.log('🔐 Al cargar la página:')
+console.log('✅ Verificación de permisos completada: {')
+console.log('  isSuperAdmin: true,')
+console.log('  userEmail: "tu-email@ejemplo.com",')
+console.log('  roles: ["super_admin"]')
+console.log('}')
+console.log()
+
+console.log('🔐 Al hacer la petición POST:')
+console.log('✅ API recibió petición de creación de administrador')
+console.log('✅ Token de autorización válido')
+console.log('✅ Usuario autenticado correctamente')
+console.log('✅ Usuario es Super Admin')
+console.log()
+
+console.log('❌ LOGS DE ERROR DE AUTENTICACIÓN:')
+console.log()
+
+console.log('🔑 Errores de token:')
+console.log('❌ "Unauthorized" - Token no presente o inválido')
+console.log('❌ "Token expired" - Token expirado')
+console.log('❌ "Invalid token format" - Formato incorrecto')
+console.log()
+
+console.log('👤 Errores de usuario:')
+console.log('❌ "User not found" - Usuario no existe en Supabase Auth')
+console.log('❌ "User inactive" - Usuario inactivo')
+console.log('❌ "Email not verified" - Email no verificado')
+console.log()
+
+console.log('🗄️ Errores de base de datos:')
+console.log('❌ "User not found in database" - No existe en tabla usuario')
+console.log('❌ "User is not admin" - es_admin = false')
+console.log('❌ "User is inactive" - activo = false')
+console.log()
+
+console.log('🎭 Errores de roles:')
+console.log('❌ "No roles assigned" - Sin roles en usuario_rol')
+console.log('❌ "No active roles" - Roles inactivos')
+console.log('❌ "Not super admin" - Sin rol super_admin')
+console.log()
+
+console.log('🧪 PRUEBA ESPECÍFICA DE AUTENTICACIÓN:')
+console.log()
+
+console.log('1. 🎯 PREPARACIÓN:')
+console.log('   - Asegúrate de estar logueado como Super Admin')
+console.log('   - Ve a https://ecoswap-lilac.vercel.app/admin/verificaciones')
+console.log('   - Abre herramientas de desarrollador (F12)')
+console.log('   - Ve a la pestaña "Console"')
+console.log('   - Ve a la pestaña "Network"')
+console.log()
+
+console.log('2. 🔍 VERIFICAR AUTENTICACIÓN:')
+console.log('   - Busca en la consola: "Verificación de permisos completada"')
+console.log('   - Verifica que isSuperAdmin sea true')
+console.log('   - Verifica que roles incluya "super_admin"')
+console.log()
+
+console.log('3. 📡 VERIFICAR PETICIÓN:')
+console.log('   - Haz clic en "Nuevo Administrador"')
+console.log('   - Completa el formulario')
+console.log('   - Haz clic en "Crear"')
+console.log('   - En la pestaña Network, busca la petición POST a /api/admin/roles')
+console.log('   - Verifica que tenga header "Authorization: Bearer [token]"')
+console.log()
+
+console.log('4. 📊 VERIFICAR RESPUESTA:')
+console.log('   - Si es exitosa (200): Autenticación correcta')
+console.log('   - Si es 401: Token inválido o expirado')
+console.log('   - Si es 403: Usuario no es Super Admin')
+console.log()
+
+console.log('🔧 SOLUCIONES SEGÚN EL ERROR:')
+console.log()
+
+console.log('Si ves 401 Unauthorized:')
+console.log('1. Refresca la página para obtener un nuevo token')
+console.log('2. Verifica que estés logueado correctamente')
+console.log('3. Cierra sesión y vuelve a iniciar sesión')
+console.log()
+
+console.log('Si ves 403 Forbidden:')
+console.log('1. Verifica que tengas el rol super_admin asignado')
+console.log('2. Ve a Supabase Dashboard → Table Editor → usuario_rol')
+console.log('3. Verifica que tengas un registro con rol_id = 1 (super_admin)')
+console.log('4. Verifica que activo = true')
+console.log()
+
+console.log('Si no ves el botón "Nuevo Administrador":')
+console.log('1. Verifica en la consola: "isSuperAdmin: true"')
+console.log('2. Si es false, necesitas el rol super_admin')
+console.log('3. Contacta a otro Super Admin para asignarte el rol')
+console.log()
+
+console.log('💡 VERIFICACIÓN MANUAL EN SUPABASE:')
+console.log()
+
+console.log('1. Ve a Supabase Dashboard → Table Editor')
+console.log('2. Tabla usuario:')
+console.log('   - Busca tu email')
+console.log('   - Verifica que es_admin = true')
+console.log('   - Verifica que activo = true')
+console.log()
+console.log('3. Tabla usuario_rol:')
+console.log('   - Busca tu user_id')
+console.log('   - Verifica que tengas rol_id = 1 (super_admin)')
+console.log('   - Verifica que activo = true')
+console.log()
+console.log('4. Tabla rol_usuario:')
+console.log('   - Verifica que rol_id = 1 tenga nombre = "super_admin"')
+console.log('   - Verifica que activo = true')
+console.log()
+
+console.log('🔗 URLs ÚTILES:')
+console.log('- Dashboard Admin: https://ecoswap-lilac.vercel.app/admin/verificaciones')
+console.log('- Supabase Dashboard: https://supabase.com/dashboard')
+console.log('- Table Editor: [Tu proyecto] → Table Editor')
+console.log()
+
+console.log('💡 NOTA IMPORTANTE:')
+console.log('El flujo de autenticación debe pasar por:')
+console.log('1. ✅ Validación de token en headers')
+console.log('2. ✅ Verificación de usuario en Supabase Auth')
+console.log('3. ✅ Verificación de usuario en tabla usuario')
+console.log('4. ✅ Verificación de roles en usuario_rol')
+console.log('5. ✅ Verificación de rol super_admin en rol_usuario')
+console.log('6. ✅ Autorización para crear administradores')

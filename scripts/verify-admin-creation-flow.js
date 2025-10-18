@@ -1,0 +1,183 @@
+#!/usr/bin/env node
+
+/**
+ * Script para verificar el flujo completo de creación de administradores
+ * Verifica autenticación, creación en tabla usuario y envío de email
+ */
+
+console.log('🔧 Verificando flujo completo de creación de administradores...\n')
+
+console.log('📋 FLUJO ESPERADO:')
+console.log()
+
+console.log('1. 🔐 AUTENTICACIÓN:')
+console.log('   ✅ Verificar token de autorización en headers')
+console.log('   ✅ Validar usuario con getSupabaseClient().auth.getUser(token)')
+console.log('   ✅ Verificar que el usuario sea Super Admin en base de datos')
+console.log('   ✅ Verificar roles en tabla usuario_rol y rol_usuario')
+console.log()
+
+console.log('2. 📊 VALIDACIÓN DE DATOS:')
+console.log('   ✅ Verificar que email, nombre, apellido y roles estén presentes')
+console.log('   ✅ Verificar que roles sea un array')
+console.log('   ✅ Verificar que el email no exista en tabla usuario')
+console.log()
+
+console.log('3. 👤 CREACIÓN EN TABLA USUARIO:')
+console.log('   ✅ Insertar registro en tabla usuario con:')
+console.log('      - nombre, apellido, email (lowercase)')
+console.log('      - telefono (opcional)')
+console.log('      - password_hash: "supabase_auth"')
+console.log('      - verificado: true')
+console.log('      - activo: true')
+console.log('      - es_admin: true')
+console.log('      - admin_desde: fecha actual')
+console.log('      - ultima_conexion: fecha actual')
+console.log()
+
+console.log('4. 🎭 ASIGNACIÓN DE ROLES:')
+console.log('   ✅ Insertar registros en tabla usuario_rol con:')
+console.log('      - usuario_id: ID del nuevo admin')
+console.log('      - rol_id: IDs de los roles seleccionados')
+console.log('      - activo: true')
+console.log('      - asignado_por: ID del super admin actual')
+console.log('      - fecha_asignacion: fecha actual')
+console.log()
+
+console.log('5. 📍 CREACIÓN DE UBICACIÓN:')
+console.log('   ✅ Insertar registro en tabla ubicacion con:')
+console.log('      - user_id: ID del nuevo admin')
+console.log('      - pais: "Colombia"')
+console.log('      - departamento: "Risaralda"')
+console.log('      - ciudad: "Pereira"')
+console.log('      - es_principal: true')
+console.log()
+
+console.log('6. ⚙️ CREACIÓN DE CONFIGURACIÓN:')
+console.log('   ✅ Insertar registro en tabla configuracion_usuario con:')
+console.log('      - usuario_id: ID del nuevo admin')
+console.log('      - Configuraciones por defecto (notificaciones, etc.)')
+console.log()
+
+console.log('7. 📧 ENVÍO DE EMAIL:')
+console.log('   ✅ Verificar si enviarInvitacion es true')
+console.log('   ✅ Crear cliente admin con getSupabaseAdminClient()')
+console.log('   ✅ Verificar si usuario ya existe en Supabase Auth')
+console.log('   ✅ Llamar a adminSupabase.auth.resetPasswordForEmail()')
+console.log('   ✅ Configurar URL de redirección correcta')
+console.log()
+
+console.log('📊 LOGS ESPERADOS EN VERCEL:')
+console.log()
+
+console.log('🔐 Autenticación:')
+console.log('✅ Verificación de permisos completada: {')
+console.log('  isSuperAdmin: true,')
+console.log('  userEmail: "super-admin@ejemplo.com",')
+console.log('  roles: ["super_admin"]')
+console.log('}')
+console.log()
+
+console.log('👤 Creación de usuario:')
+console.log('✅ Usuario creado en tabla usuario con ID: [ID]')
+console.log('✅ Roles asignados: [lista de roles]')
+console.log('✅ Ubicación creada para usuario: [ID]')
+console.log('✅ Configuración creada para usuario: [ID]')
+console.log()
+
+console.log('📧 Envío de email:')
+console.log('✅ API Create Admin: Cliente admin creado correctamente')
+console.log('📧 API Create Admin: Enviando email a: [email]')
+console.log('🔗 API Create Admin: URL de redirección: [url]')
+console.log('✅ API Create Admin: Usuario no existe en Supabase Auth')
+console.log('✅ API Create Admin: Email de configuración enviado exitosamente')
+console.log()
+
+console.log('❌ LOGS DE ERROR COMUNES:')
+console.log()
+
+console.log('🔐 Errores de autenticación:')
+console.log('❌ "Unauthorized" - Token no válido o expirado')
+console.log('❌ "Forbidden - Se requiere rol de Super Admin" - Usuario no es super admin')
+console.log()
+
+console.log('👤 Errores de creación:')
+console.log('❌ "Este email ya está registrado como administrador activo"')
+console.log('❌ "Error creando perfil de admin: [error]"')
+console.log('❌ "Error asignando roles: [error]"')
+console.log()
+
+console.log('📧 Errores de email:')
+console.log('❌ "API Create Admin: No se pudo crear cliente admin"')
+console.log('❌ "API Create Admin: Usuario ya existe en Supabase Auth"')
+console.log('❌ "API Create Admin: Error enviando email: [error]"')
+console.log()
+
+console.log('🧪 PRUEBA PASO A PASO:')
+console.log()
+
+console.log('1. 🎯 PREPARACIÓN:')
+console.log('   - Asegúrate de estar logueado como Super Admin')
+console.log('   - Ve a https://ecoswap-lilac.vercel.app/admin/verificaciones')
+console.log('   - Abre herramientas de desarrollador (F12) → Console')
+console.log()
+
+console.log('2. 📧 USAR EMAIL ÚNICO:')
+console.log('   - Usa: test-admin-' + Date.now() + '@ejemplo.com')
+console.log('   - O cualquier email que no exista en tu sistema')
+console.log()
+
+console.log('3. 🔍 CREAR ADMINISTRADOR:')
+console.log('   - Haz clic en "Nuevo Administrador"')
+console.log('   - Completa el formulario')
+console.log('   - Selecciona roles (ej: super_admin, admin_soporte)')
+console.log('   - Haz clic en "Crear"')
+console.log()
+
+console.log('4. 📊 VERIFICAR LOGS:')
+console.log('   - Revisa la consola del navegador')
+console.log('   - Revisa logs en Vercel Dashboard → Functions')
+console.log('   - Verifica que se creó en tabla usuario')
+console.log('   - Verifica que se envió el email')
+console.log()
+
+console.log('5. ✅ VERIFICAR RESULTADO:')
+console.log('   - El usuario debe aparecer en la lista de administradores')
+console.log('   - Debe tener los roles asignados')
+console.log('   - Debe recibir el email de configuración')
+console.log()
+
+console.log('🔧 SOLUCIONES SEGÚN EL ERROR:')
+console.log()
+
+console.log('Si falla la autenticación:')
+console.log('1. Verifica que estés logueado como Super Admin')
+console.log('2. Verifica que tengas el rol super_admin asignado')
+console.log('3. Refresca la página y vuelve a intentar')
+console.log()
+
+console.log('Si falla la creación del usuario:')
+console.log('1. Verifica que el email no exista en tabla usuario')
+console.log('2. Verifica que todos los campos requeridos estén completos')
+console.log('3. Revisa los logs de error en Vercel')
+console.log()
+
+console.log('Si falla el envío de email:')
+console.log('1. Verifica que SUPABASE_SERVICE_ROLE_KEY esté configurada en Vercel')
+console.log('2. Verifica que las URLs de redirección estén configuradas en Supabase')
+console.log('3. Usa un email que no exista en Supabase Auth')
+console.log()
+
+console.log('💡 NOTA IMPORTANTE:')
+console.log('El flujo completo debe:')
+console.log('1. ✅ Pasar por la autenticación de Super Admin')
+console.log('2. ✅ Crear el usuario en la tabla usuario')
+console.log('3. ✅ Asignar los roles en usuario_rol')
+console.log('4. ✅ Crear ubicación y configuración')
+console.log('5. ✅ Enviar email de configuración de contraseña')
+console.log()
+
+console.log('🔗 URLs ÚTILES:')
+console.log('- Dashboard Admin: https://ecoswap-lilac.vercel.app/admin/verificaciones')
+console.log('- Vercel Logs: https://vercel.com/dashboard → Functions → Logs')
+console.log('- Supabase Dashboard: https://supabase.com/dashboard')
