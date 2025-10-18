@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase-client'
+import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase-client'
 // Forzar renderizado dinámico para esta ruta
 export const dynamic = 'force-dynamic'
 
@@ -195,21 +195,33 @@ export async function POST(req: NextRequest, { params }: { params: { adminId: st
 
         // Enviar correo de reactivación con enlace para restablecer contraseña
         try {
-            const siteUrl = 'https://ecoswap-lilac.vercel.app'
-            const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/auth/reset-password`
+            console.log('🔧 API Reactivate Admin: Enviando email de reactivación...')
             
-            
-            const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-                user.email,
-                {
-                    redirectTo: redirectUrl
-                }
-            )
-
-            if (resetError) {
-                console.error('❌ Error enviando correo de reactivación:', resetError.message)
-                // No fallar la operación si el correo falla
+            // Usar cliente admin con service role key para resetPasswordForEmail
+            const adminSupabase = getSupabaseAdminClient()
+            if (!adminSupabase) {
+                console.error('❌ API Reactivate Admin: No se pudo crear cliente admin')
+                // No fallar la operación si no se puede enviar el correo
             } else {
+                const siteUrl = 'https://ecoswap-lilac.vercel.app'
+                const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/auth/reset-password`
+                
+                console.log('📧 API Reactivate Admin: Enviando email a:', user.email)
+                console.log('🔗 API Reactivate Admin: URL de redirección:', redirectUrl)
+                
+                const { error: resetError } = await adminSupabase.auth.resetPasswordForEmail(
+                    user.email,
+                    {
+                        redirectTo: redirectUrl
+                    }
+                )
+
+                if (resetError) {
+                    console.error('❌ API Reactivate Admin: Error enviando email:', resetError.message)
+                    // No fallar la operación si el correo falla
+                } else {
+                    console.log('✅ API Reactivate Admin: Email de reactivación enviado exitosamente')
+                }
             }
         } catch (emailError) {
             console.error('❌ Error enviando correo de reactivación:', emailError)

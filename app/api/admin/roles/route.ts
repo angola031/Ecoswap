@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase-client'
+import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase-client'
 // Forzar renderizado dinámico para esta ruta
 export const dynamic = 'force-dynamic'
 
@@ -297,19 +297,30 @@ export async function POST(req: NextRequest) {
                 const siteUrl = 'https://ecoswap-lilac.vercel.app'
                 const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/admin/verificaciones`
 
-                // Enviar email de reset de contraseña para que pueda configurar su contraseña
-                const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-                    email.toLowerCase(),
-                    {
-                        redirectTo: redirectUrl
-                    }
-                )
-
-                if (resetError) {
-                    console.error('❌ Error enviando email de configuración de contraseña:', resetError)
+                // Usar cliente admin con service role key para resetPasswordForEmail
+                const adminSupabase = getSupabaseAdminClient()
+                if (!adminSupabase) {
+                    console.error('❌ API Create Admin: No se pudo crear cliente admin')
                     emailEnviado = false
                 } else {
-                    emailEnviado = true
+                    console.log('📧 API Create Admin: Enviando email a:', email.toLowerCase())
+                    console.log('🔗 API Create Admin: URL de redirección:', redirectUrl)
+                    
+                    // Enviar email de reset de contraseña para que pueda configurar su contraseña
+                    const { error: resetError } = await adminSupabase.auth.resetPasswordForEmail(
+                        email.toLowerCase(),
+                        {
+                            redirectTo: redirectUrl
+                        }
+                    )
+
+                    if (resetError) {
+                        console.error('❌ API Create Admin: Error enviando email:', resetError.message)
+                        emailEnviado = false
+                    } else {
+                        console.log('✅ API Create Admin: Email de configuración enviado exitosamente')
+                        emailEnviado = true
+                    }
                 }
             } catch (error) {
                 console.error('❌ Error enviando email de configuración de contraseña:', error)
