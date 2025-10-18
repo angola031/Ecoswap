@@ -306,6 +306,25 @@ export async function POST(req: NextRequest) {
                     console.log('📧 API Create Admin: Enviando email a:', email.toLowerCase())
                     console.log('🔗 API Create Admin: URL de redirección:', redirectUrl)
                     
+                    // Verificar si el usuario ya existe en Supabase Auth
+                    const { data: existingUsers, error: listError } = await adminSupabase.auth.admin.listUsers()
+                    const existingUser = existingUsers?.users?.find(u => u.email === email.toLowerCase())
+                    
+                    if (existingUser) {
+                        console.log('⚠️  API Create Admin: Usuario ya existe en Supabase Auth')
+                        console.log('   ID:', existingUser.id)
+                        console.log('   Email confirmado:', existingUser.email_confirmed_at ? 'Sí' : 'No')
+                        
+                        if (existingUser.email_confirmed_at) {
+                            console.log('❌ API Create Admin: Usuario ya confirmado - resetPasswordForEmail puede fallar')
+                            // Intentar enviar email de reset de todas formas
+                        } else {
+                            console.log('✅ API Create Admin: Usuario no confirmado - resetPasswordForEmail debería funcionar')
+                        }
+                    } else {
+                        console.log('✅ API Create Admin: Usuario no existe en Supabase Auth - resetPasswordForEmail debería funcionar')
+                    }
+                    
                     // Enviar email de reset de contraseña para que pueda configurar su contraseña
                     const { error: resetError } = await adminSupabase.auth.resetPasswordForEmail(
                         email.toLowerCase(),
@@ -316,6 +335,18 @@ export async function POST(req: NextRequest) {
 
                     if (resetError) {
                         console.error('❌ API Create Admin: Error enviando email:', resetError.message)
+                        console.error('   Código:', resetError.status)
+                        console.error('   Detalles:', resetError)
+                        
+                        // Proporcionar información específica sobre el error
+                        if (resetError.message.includes('User not found')) {
+                            console.log('💡 API Create Admin: Usuario no encontrado - puede necesitar ser creado primero en Supabase Auth')
+                        } else if (resetError.message.includes('Invalid redirect URL')) {
+                            console.log('💡 API Create Admin: URL de redirección inválida - verificar configuración en Supabase Dashboard')
+                        } else if (resetError.message.includes('Email rate limit')) {
+                            console.log('💡 API Create Admin: Límite de emails alcanzado - esperar antes de enviar otro')
+                        }
+                        
                         emailEnviado = false
                     } else {
                         console.log('✅ API Create Admin: Email de configuración enviado exitosamente')
