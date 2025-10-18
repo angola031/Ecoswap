@@ -202,18 +202,56 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Super admin no encontrado' }, { status: 404 })
         }
 
-        // Crear usuario en Supabase Auth (deshabilitado sin service role key)
-        // Nota: Esta operación requiere SUPABASE_SERVICE_ROLE_KEY
-        // Sin la service role key, no podemos crear usuarios directamente en Supabase Auth
-        console.log('⚠️ Creación de usuario en Supabase Auth deshabilitada (requiere service role key)')
+        // Crear usuario en Supabase Auth primero (requiere service role key)
+        let authUserId = null
+        const adminSupabase = getSupabaseAdminClient()
         
-        // Simular un authUser para continuar con la lógica
-        const authUser = { user: { id: `temp_${Date.now()}` } }
+        if (adminSupabase) {
+            console.log('🔧 API Create Admin: Creando usuario en Supabase Auth...')
+            
+            // Verificar si el usuario ya existe
+            const { data: existingUsers, error: listError } = await adminSupabase.auth.admin.listUsers()
+            const existingUser = existingUsers?.users?.find((u: any) => u.email === email.toLowerCase())
+            
+            if (existingUser) {
+                console.log('⚠️  API Create Admin: Usuario ya existe en Supabase Auth')
+                console.log('   ID:', existingUser.id)
+                authUserId = existingUser.id
+            } else {
+                console.log('✅ API Create Admin: Creando nuevo usuario en Supabase Auth')
+                
+                const { data: authUser, error: createError } = await adminSupabase.auth.admin.createUser({
+                    email: email.toLowerCase(),
+                    email_confirm: false, // No confirmar email automáticamente
+                    user_metadata: {
+                        nombre: nombre,
+                        apellido: apellido,
+                        telefono: telefono || null,
+                        es_admin: true
+                    }
+                })
+                
+                if (createError) {
+                    console.error('❌ API Create Admin: Error creando usuario en Supabase Auth:', createError.message)
+                    console.error('   Detalles:', createError)
+                    return NextResponse.json({ error: `Error creando usuario en Supabase Auth: ${createError.message}` }, { status: 400 })
+                } else {
+                    console.log('✅ API Create Admin: Usuario creado en Supabase Auth')
+                    console.log('   ID:', authUser.user?.id)
+                    console.log('   Email:', authUser.user?.email)
+                    authUserId = authUser.user?.id
+                }
+            }
+        } else {
+            console.error('❌ API Create Admin: No se pudo crear cliente admin - Service Role Key no configurada')
+            return NextResponse.json({ error: 'Service Role Key no configurada' }, { status: 500 })
+        }
 
-        // Crear perfil en tabla USUARIO como admin
+        // Crear perfil en tabla USUARIO como admin usando el ID de Supabase Auth
         const { data: newAdmin, error: userError } = await supabase
             .from('usuario')
             .insert({
+                user_id: authUserId, // Usar el ID real de Supabase Auth
                 nombre,
                 apellido,
                 email: email.toLowerCase(),
@@ -230,8 +268,11 @@ export async function POST(req: NextRequest) {
 
         if (userError) {
             console.error('Error creando perfil de admin:', userError)
-            // Nota: Sin service role key no podemos limpiar usuarios de auth
-            console.log('⚠️ Limpieza de usuario de auth deshabilitada (requiere service role key)')
+            // Limpiar usuario de Supabase Auth si falla la creación en la tabla
+            if (adminSupabase && authUserId) {
+                console.log('🧹 Limpiando usuario de Supabase Auth...')
+                await adminSupabase.auth.admin.deleteUser(authUserId)
+            }
             return NextResponse.json({ error: userError.message }, { status: 400 })
         }
 
@@ -297,61 +338,36 @@ export async function POST(req: NextRequest) {
                 const siteUrl = 'https://ecoswap-lilac.vercel.app'
                 const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/admin/verificaciones`
 
-                // Usar cliente admin con service role key para resetPasswordForEmail
-                const adminSupabase = getSupabaseAdminClient()
-                if (!adminSupabase) {
-                    console.error('❌ API Create Admin: No se pudo crear cliente admin')
+                // Enviar email de configuración de contraseña (usuario ya existe en Supabase Auth)
+                console.log('📧 API Create Admin: Enviando email de configuración a:', email.toLowerCase())
+                console.log('🔗 API Create Admin: URL de redirección:', redirectUrl)
+                
+                // Enviar email de reset de contraseña para que pueda configurar su contraseña
+                const { error: resetError } = await adminSupabase.auth.resetPasswordForEmail(
+                    email.toLowerCase(),
+                    {
+                        redirectTo: redirectUrl
+                    }
+                )
+
+                if (resetError) {
+                    console.error('❌ API Create Admin: Error enviando email:', resetError.message)
+                    console.error('   Código:', resetError.status)
+                    console.error('   Detalles:', resetError)
+                    
+                    // Proporcionar información específica sobre el error
+                    if (resetError.message.includes('User not found')) {
+                        console.log('💡 API Create Admin: Usuario no encontrado - puede necesitar ser creado primero en Supabase Auth')
+                    } else if (resetError.message.includes('Invalid redirect URL')) {
+                        console.log('💡 API Create Admin: URL de redirección inválida - verificar configuración en Supabase Dashboard')
+                    } else if (resetError.message.includes('Email rate limit')) {
+                        console.log('💡 API Create Admin: Límite de emails alcanzado - esperar antes de enviar otro')
+                    }
+                    
                     emailEnviado = false
                 } else {
-                    console.log('📧 API Create Admin: Enviando email a:', email.toLowerCase())
-                    console.log('🔗 API Create Admin: URL de redirección:', redirectUrl)
-                    
-                    // Verificar si el usuario ya existe en Supabase Auth
-                    const { data: existingUsers, error: listError } = await adminSupabase.auth.admin.listUsers()
-                    const existingUser = existingUsers?.users?.find((u: any) => u.email === email.toLowerCase())
-                    
-                    if (existingUser) {
-                        console.log('⚠️  API Create Admin: Usuario ya existe en Supabase Auth')
-                        console.log('   ID:', existingUser.id)
-                        console.log('   Email confirmado:', existingUser.email_confirmed_at ? 'Sí' : 'No')
-                        
-                        if (existingUser.email_confirmed_at) {
-                            console.log('❌ API Create Admin: Usuario ya confirmado - resetPasswordForEmail puede fallar')
-                            // Intentar enviar email de reset de todas formas
-                        } else {
-                            console.log('✅ API Create Admin: Usuario no confirmado - resetPasswordForEmail debería funcionar')
-                        }
-                    } else {
-                        console.log('✅ API Create Admin: Usuario no existe en Supabase Auth - resetPasswordForEmail debería funcionar')
-                    }
-                    
-                    // Enviar email de reset de contraseña para que pueda configurar su contraseña
-                    const { error: resetError } = await adminSupabase.auth.resetPasswordForEmail(
-                        email.toLowerCase(),
-                        {
-                            redirectTo: redirectUrl
-                        }
-                    )
-
-                    if (resetError) {
-                        console.error('❌ API Create Admin: Error enviando email:', resetError.message)
-                        console.error('   Código:', resetError.status)
-                        console.error('   Detalles:', resetError)
-                        
-                        // Proporcionar información específica sobre el error
-                        if (resetError.message.includes('User not found')) {
-                            console.log('💡 API Create Admin: Usuario no encontrado - puede necesitar ser creado primero en Supabase Auth')
-                        } else if (resetError.message.includes('Invalid redirect URL')) {
-                            console.log('💡 API Create Admin: URL de redirección inválida - verificar configuración en Supabase Dashboard')
-                        } else if (resetError.message.includes('Email rate limit')) {
-                            console.log('💡 API Create Admin: Límite de emails alcanzado - esperar antes de enviar otro')
-                        }
-                        
-                        emailEnviado = false
-                    } else {
-                        console.log('✅ API Create Admin: Email de configuración enviado exitosamente')
-                        emailEnviado = true
-                    }
+                    console.log('✅ API Create Admin: Email de configuración enviado exitosamente')
+                    emailEnviado = true
                 }
             } catch (error) {
                 console.error('❌ Error enviando email de configuración de contraseña:', error)
