@@ -6,6 +6,19 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get('code')
     const next = searchParams.get('next') ?? '/'
     const reactivation = searchParams.get('reactivation')
+    const error = searchParams.get('error')
+    const errorCode = searchParams.get('error_code')
+    const errorDescription = searchParams.get('error_description')
+
+    // Si hay errores en la URL, redirigir a la página de error con información específica
+    if (error || errorCode || errorDescription) {
+        const errorParams = new URLSearchParams()
+        if (error) errorParams.set('error', error)
+        if (errorCode) errorParams.set('error_code', errorCode)
+        if (errorDescription) errorParams.set('error_description', errorDescription)
+        
+        return NextResponse.redirect(`${origin}/auth/auth-code-error?${errorParams.toString()}`)
+    }
 
     if (code) {
         const supabase = createServerClient(
@@ -34,9 +47,9 @@ export async function GET(request: NextRequest) {
             }
         )
 
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
-        if (!error) {
+        if (!exchangeError) {
             // Si es una reactivación, redirigir a la página de reset de contraseña
             if (reactivation === 'true') {
                 return NextResponse.redirect(`${origin}/auth/reset-password?reactivation=true`)
@@ -49,9 +62,16 @@ export async function GET(request: NextRequest) {
 
             // Si no es reactivación y no hay 'next', redirigir a la página principal
             return NextResponse.redirect(`${origin}/`)
+        } else {
+            // Si hay error en el intercambio, redirigir a la página de error con detalles
+            const errorParams = new URLSearchParams()
+            errorParams.set('error', exchangeError.message || 'unknown_error')
+            errorParams.set('error_code', exchangeError.status?.toString() || 'exchange_failed')
+            
+            return NextResponse.redirect(`${origin}/auth/auth-code-error?${errorParams.toString()}`)
         }
     }
 
-    // Si hay error o no hay código, redirigir a la página de error
-    return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+    // Si no hay código ni errores, redirigir a la página de error
+    return NextResponse.redirect(`${origin}/auth/auth-code-error?error=no_code&error_code=missing_code`)
 }
