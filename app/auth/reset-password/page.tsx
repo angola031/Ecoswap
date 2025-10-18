@@ -30,7 +30,12 @@ export default function ResetPasswordPage() {
                 return
             }
             
+            // Esperar un poco para que la sesión se establezca si viene de supabase-redirect
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            
             const { data: { user } } = await supabase.auth.getUser()
+            console.log('🔍 Usuario obtenido:', user ? user.email : 'No hay usuario')
+            
             if (user) {
                 setUserInfo(user)
             } else {
@@ -76,8 +81,9 @@ export default function ResetPasswordPage() {
                         setUserInfo(data.user)
                     }
                 } else {
-                    // Si no hay tokens y no hay sesión, redirigir al login de admin
-                    router.push('/login')
+                    // Si no hay tokens y no hay sesión, mostrar mensaje de error
+                    console.log('❌ No se encontraron tokens ni sesión activa')
+                    setError('No se encontró una sesión válida para restablecer la contraseña. Por favor, solicita un nuevo enlace de restablecimiento.')
                 }
             }
         }

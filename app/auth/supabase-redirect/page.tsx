@@ -50,7 +50,7 @@ export default function SupabaseRedirectPage() {
         }
         
         // Establecer la sesión con los tokens
-        const { error } = await supabase.auth.setSession({
+        const { data, error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken || ''
         })
@@ -60,7 +60,11 @@ export default function SupabaseRedirectPage() {
           throw error
         }
         
-        console.log('✅ Sesión establecida correctamente')
+        if (!data.user) {
+          throw new Error('No se pudo obtener información del usuario después de establecer la sesión')
+        }
+        
+        console.log('✅ Sesión establecida correctamente para usuario:', data.user.email)
         setStatus('success')
         setMessage('¡Autenticación exitosa! Redirigiendo...')
         
@@ -80,10 +84,11 @@ export default function SupabaseRedirectPage() {
         
         console.log('🔄 Redirigiendo a:', redirectPath)
         
-        // Redirigir después de un breve delay
+        // Redirigir después de un delay para asegurar que la sesión se establezca
         setTimeout(() => {
+          console.log('🔄 Redirigiendo a:', redirectPath)
           router.push(redirectPath)
-        }, 2000)
+        }, 3000)
         
       } catch (error) {
         console.error('❌ Error en SupabaseRedirect:', error)
