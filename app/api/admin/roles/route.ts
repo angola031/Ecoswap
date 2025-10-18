@@ -308,7 +308,7 @@ export async function POST(req: NextRequest) {
                     
                     // Verificar si el usuario ya existe en Supabase Auth
                     const { data: existingUsers, error: listError } = await adminSupabase.auth.admin.listUsers()
-                    const existingUser = existingUsers?.users?.find(u => u.email === email.toLowerCase())
+                    const existingUser = existingUsers?.users?.find((u: any) => u.email === email.toLowerCase())
                     
                     if (existingUser) {
                         console.log('⚠️  API Create Admin: Usuario ya existe en Supabase Auth')
