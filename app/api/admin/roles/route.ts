@@ -336,7 +336,7 @@ export async function POST(req: NextRequest) {
 
                 // Construir URL de redirección
                 const siteUrl = 'https://ecoswap-lilac.vercel.app'
-                const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/admin/verificaciones`
+                const redirectUrl = `${siteUrl}/auth/supabase-redirect?type=recovery&next=/auth/reset-password?reactivation=true`
 
                 // Enviar email de configuración de contraseña (usuario ya existe en Supabase Auth)
                 console.log('📧 API Create Admin: Enviando email de configuración a:', email.toLowerCase())
@@ -382,7 +382,7 @@ export async function POST(req: NextRequest) {
                 usuario_id: newAdmin.user_id,
                 tipo: 'admin_invitation',
                 titulo: 'Bienvenido como Administrador',
-                mensaje: `Has sido registrado como administrador de EcoSwap. ${enviarInvitacion ? 'Revisa tu email para configurar tu contraseña.' : 'Contacta al super administrador para obtener acceso.'}`,
+                mensaje: `Has sido registrado como administrador de EcoSwap. ${enviarInvitacion ? 'Revisa tu email para establecer tu contraseña y acceder al dashboard.' : 'Contacta al super administrador para obtener acceso.'}`,
                 es_push: true,
                 es_email: enviarInvitacion || false
             })
@@ -395,7 +395,7 @@ export async function POST(req: NextRequest) {
             },
             email_enviado: emailEnviado,
             message: emailEnviado 
-                ? `Administrador creado exitosamente. Se ha enviado un correo a ${email} para configurar su contraseña.`
+                ? `Administrador creado exitosamente. Se ha enviado un correo a ${email} para establecer su contraseña y acceder al dashboard.`
                 : `Administrador creado exitosamente. ${enviarInvitacion ? 'Error enviando correo de configuración de contraseña.' : 'No se envió correo de invitación.'}`
         })
 
