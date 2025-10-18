@@ -247,11 +247,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Service Role Key no configurada' }, { status: 500 })
         }
 
-        // Crear perfil en tabla USUARIO como admin usando el ID de Supabase Auth
+        // Crear perfil en tabla USUARIO como admin usando el auth_user_id de Supabase Auth
         const { data: newAdmin, error: userError } = await supabase
             .from('usuario')
             .insert({
-                user_id: authUserId, // Usar el ID real de Supabase Auth
+                auth_user_id: authUserId, // Usar el UUID de Supabase Auth en auth_user_id
                 nombre,
                 apellido,
                 email: email.toLowerCase(),
