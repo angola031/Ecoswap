@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase-client'
+// Forzar renderizado dinámico para esta ruta
+export const dynamic = 'force-dynamic'
+
 
 async function authUser(req: NextRequest) {
     const auth = req.headers.get('authorization') || ''

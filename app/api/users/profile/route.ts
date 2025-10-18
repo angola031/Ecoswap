@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getSupabaseAdminClient } from '@/lib/supabase-client'
+// Forzar renderizado dinámico para esta ruta
+export const dynamic = 'force-dynamic'
+
 
 export async function PUT(req: NextRequest) {
     try {

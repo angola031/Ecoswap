@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRating } from '@/lib/interactions-queries'
 import { getAuthenticatedUserFromToken, createAuthErrorResponse, createSuccessResponse } from '@/lib/auth-helper'
+// Forzar renderizado dinámico para esta ruta
+export const dynamic = 'force-dynamic'
+
 
 export async function POST(
   req: NextRequest,

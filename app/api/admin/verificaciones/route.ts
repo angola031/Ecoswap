@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase-client'
+// Forzar renderizado dinámico para esta ruta
+export const dynamic = 'force-dynamic'
+
 
 // Middleware mínimo: requiere bearer token y rol admin por email/domino simple
 async function requireAdmin(req: NextRequest) {

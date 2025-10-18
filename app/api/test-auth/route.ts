@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUserFromToken, createAuthErrorResponse, createSuccessResponse } from '@/lib/auth-helper'
+// Forzar renderizado dinámico para esta ruta
+export const dynamic = 'force-dynamic'
+
 
 export async function GET(req: NextRequest) {
   try {
