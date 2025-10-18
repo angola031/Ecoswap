@@ -571,35 +571,13 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
       }
 
       // Enviar email de restablecimiento de contraseña
-      // Lógica mejorada para determinar la URL del sitio
-      let siteUrl = 'https://ecoswap-lilac.vercel.app' // Valor por defecto para producción
-      
-      if (typeof window !== 'undefined') {
-        const hostname = window.location.hostname
-        const origin = window.location.origin
-        
-        // Si estamos en localhost, usar localhost
-        if (hostname === 'localhost') {
-          siteUrl = origin
-        }
-        // Si la variable de entorno está configurada y no es localhost, usarla
-        else if (process.env.NEXT_PUBLIC_SITE_URL && !process.env.NEXT_PUBLIC_SITE_URL.includes('localhost')) {
-          siteUrl = process.env.NEXT_PUBLIC_SITE_URL
-        }
-        // Si estamos en Vercel pero la variable no está configurada, usar el dominio actual
-        else if (hostname.includes('vercel.app')) {
-          siteUrl = origin
-        }
-      }
+      // Solo usar Vercel - no incluir lógica de localhost
+      const siteUrl = 'https://ecoswap-lilac.vercel.app'
       
       console.log('🔗 URL de redirección configurada:', `${siteUrl}/auth/callback?next=/auth/reset-password`)
-      console.log('🔍 Detalles de configuración:', {
-        envVar: process.env.NEXT_PUBLIC_SITE_URL,
-        windowOrigin: typeof window !== 'undefined' ? window.location.origin : 'N/A',
-        windowHostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
-        finalSiteUrl: siteUrl,
-        isLocalhost: typeof window !== 'undefined' ? window.location.hostname === 'localhost' : false,
-        isVercel: typeof window !== 'undefined' ? window.location.hostname.includes('vercel.app') : false
+      console.log('🔍 Configuración Vercel:', {
+        siteUrl: siteUrl,
+        isVercel: true
       })
       
       const { error } = await supabase.auth.resetPasswordForEmail(
