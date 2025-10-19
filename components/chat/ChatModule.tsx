@@ -539,27 +539,15 @@ const renderProductInfo = (product: any, label: string) => {
           )}
           <div className="mt-3 flex space-x-2">
             {product.tipo_transaccion === 'donacion' ? (
-              // Para donaciones: verificar si es el propietario
+              // Para donaciones: mostrar botón de solicitar donación
               <>
-                {isOwner ? (
-                  // Si es el propietario: botón para gestionar donaciones
-                  <button
-                    onClick={() => handleManageDonations(product)}
-                    className="text-xs bg-purple-600 text-white px-3 py-1 rounded-full hover:bg-purple-700 transition-colors flex items-center space-x-1"
-                  >
-                    <span>🎁</span>
-                    <span>Gestionar Donaciones</span>
-                  </button>
-                ) : (
-                  // Si no es el propietario: botón para solicitar donación
-                  <button
-                    onClick={() => handleDonationRequest(product)}
-                    className="text-xs bg-purple-600 text-white px-3 py-1 rounded-full hover:bg-purple-700 transition-colors flex items-center space-x-1"
-                  >
-                    <span>🎁</span>
-                    <span>Solicitar Donación</span>
-                  </button>
-                )}
+                <button
+                  onClick={() => handleDonationRequest(product)}
+                  className="text-xs bg-purple-600 text-white px-3 py-1 rounded-full hover:bg-purple-700 transition-colors flex items-center space-x-1"
+                >
+                  <span>🎁</span>
+                  <span>Solicitar Donación</span>
+                </button>
                 <button
                   onClick={() => window.open(`/producto/${product.producto_id || product.id}`, '_blank')}
                   className="text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700 transition-colors"
