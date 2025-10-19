@@ -394,8 +394,12 @@ const handleManageDonations = async (product: any) => {
 }
 
 // Función para renderizar información de producto compacta
-const renderProductInfoCompact = (product: any, label: string) => {
+const renderProductInfoCompact = (product: any, label: string, currentUserId?: string) => {
   if (!product) return null
+  
+  // Determinar si el usuario actual es el propietario del producto
+  const isOwner = currentUserId && product.usuario_id && currentUserId === product.usuario_id.toString()
+  
   
   return (
     <div className="p-2 bg-white rounded border border-gray-200">
@@ -537,7 +541,7 @@ const renderProductInfo = (product: any, label: string) => {
             {product.tipo_transaccion === 'donacion' ? (
               // Para donaciones: verificar si es el propietario
               <>
-                {product.isOwner ? (
+                {isOwner ? (
                   // Si es el propietario: botón para gestionar donaciones
                   <button
                     onClick={() => handleManageDonations(product)}
@@ -3580,8 +3584,8 @@ const getCurrentUserId = () => {
                   })()}
                 </div>
                 <div className="space-y-2">
-                  {offeredProduct && renderProductInfoCompact(offeredProduct, 'Ofrecido')}
-                  {requestedProduct && renderProductInfoCompact(requestedProduct, 'Solicitado')}
+                  {offeredProduct && renderProductInfoCompact(offeredProduct, 'Ofrecido', getCurrentUserId())}
+                  {requestedProduct && renderProductInfoCompact(requestedProduct, 'Solicitado', getCurrentUserId())}
                   {!offeredProduct && !requestedProduct && (
                     <div className="text-center py-2 text-gray-500">
                       <div className="animate-pulse">
