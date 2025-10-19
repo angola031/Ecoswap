@@ -75,17 +75,23 @@ export default function HomePage() {
 
     // Función para navegar a un módulo con validación
     const navigateToModule = async (module: string) => {
+        console.log(`🔍 [navigateToModule] Intentando navegar a: ${module}`)
         try {
             // Si el módulo requiere autenticación, verificar sesión
             const protectedModules = ['interactions', 'chat', 'profile', 'notifications']
             if (protectedModules.includes(module)) {
+                console.log(`🔐 [navigateToModule] Módulo protegido: ${module}`)
+                
                 const supabase = getSupabaseClient()
                 if (!supabase) {
                     console.error('❌ Supabase no está configurado')
                     return
                 }
 
+                console.log('🔍 [navigateToModule] Verificando sesión...')
                 const { data: { session } } = await supabase.auth.getSession()
+                console.log('🔍 [navigateToModule] Sesión:', session ? 'Válida' : 'No válida')
+                
                 if (!session) {
                     console.log('⚠️ No hay sesión válida, redirigiendo a login')
                     setCurrentScreen('auth')
@@ -93,12 +99,14 @@ export default function HomePage() {
                 }
 
                 // Verificar que el usuario esté cargado
+                console.log('🔍 [navigateToModule] Usuario actual:', currentUser ? 'Cargado' : 'No cargado')
                 if (!currentUser) {
                     console.log('🔄 Cargando datos del usuario...')
                     const user = await getCurrentUser()
                     if (user) {
                         setCurrentUser(user)
                         setIsAuthenticated(true)
+                        console.log('✅ Usuario cargado exitosamente')
                     } else {
                         console.error('❌ No se pudo cargar el usuario')
                         setCurrentScreen('auth')
@@ -108,10 +116,12 @@ export default function HomePage() {
             }
 
             // Cambiar al módulo solicitado
+            console.log(`✅ [navigateToModule] Cambiando a módulo: ${module}`)
             setCurrentModule(module)
             console.log(`✅ Navegando a módulo: ${module}`)
         } catch (error) {
-            console.error('Error navegando a módulo:', error)
+            console.error('❌ [navigateToModule] Error navegando a módulo:', error)
+            console.error('❌ [navigateToModule] Stack trace:', error.stack)
         }
     }
 
