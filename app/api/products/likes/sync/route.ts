@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     // Calcular estadísticas
     const totalProductos = stats.length;
     const totalLikes = stats.reduce((sum, p) => sum + (p.total_likes || 0), 0);
-    const promedioLikes = totalProductos > 0 ? (totalLikes / totalProductos).toFixed(2) : 0;
+    const promedioLikes = totalProductos > 0 ? (totalLikes / totalProductos) : 0;
     const maxLikes = Math.max(...stats.map(p => p.total_likes || 0));
     const productosConLikes = stats.filter(p => (p.total_likes || 0) > 0).length;
 
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
         estadisticas: {
           total_productos: totalProductos,
           total_likes_sistema: totalLikes,
-          promedio_likes: parseFloat(promedioLikes),
+          promedio_likes: Number(promedioLikes.toFixed(2)),
           max_likes: maxLikes,
           productos_con_likes: productosConLikes
         },

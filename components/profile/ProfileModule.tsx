@@ -434,7 +434,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
         }
 
         loadProfileData()
-    }, [])
+    }, [currentUser?.email])
 
     // Función para abrir la página de editar perfil
     const openEditProfile = () => {
