@@ -538,7 +538,18 @@ const renderProductInfo = (product: any, label: string) => {
             </p>
           )}
           <div className="mt-3 flex space-x-2">
-            {product.tipo_transaccion === 'donacion' ? (
+            {(() => {
+              // Debug: verificar datos del producto
+              console.log('Debug ChatModule producto:', {
+                tipo_transaccion: product.tipo_transaccion,
+                titulo: product.titulo,
+                id: product.id,
+                producto_id: product.producto_id,
+                usuario_id: product.usuario_id
+              })
+              return null
+            })()}
+            {true ? (
               // Para donaciones: mostrar botón de solicitar donación
               <>
                 <button
