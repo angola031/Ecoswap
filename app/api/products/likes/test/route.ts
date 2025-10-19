@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         producto_id: product.producto_id,
         titulo: product.titulo,
         contador_sistema: product.total_likes || 0,
-        favoritos_reales,
+        favoritos_reales: favoritosReales,
         sincronizado: (product.total_likes || 0) === favoritosReales
       });
     }
