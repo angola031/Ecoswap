@@ -549,7 +549,24 @@ const renderProductInfo = (product: any, label: string) => {
               })
               return null
             })()}
-            {true ? (
+            {(() => {
+              // Debug más detallado
+              const isDonation = product.tipo_transaccion === 'donacion' || 
+                                product.tipo_transaccion === 'donación' ||
+                                product.tipo_transaccion?.toLowerCase() === 'donacion' ||
+                                product.tipo_transaccion?.toLowerCase() === 'donación'
+              
+              console.log('Debug detallado ChatModule:', {
+                tipo_transaccion: product.tipo_transaccion,
+                tipo_transaccion_lower: product.tipo_transaccion?.toLowerCase(),
+                isDonation,
+                titulo: product.titulo,
+                id: product.id,
+                producto_id: product.producto_id
+              })
+              
+              return isDonation
+            })() ? (
               // Para donaciones: mostrar botón de solicitar donación
               <>
                 <button
