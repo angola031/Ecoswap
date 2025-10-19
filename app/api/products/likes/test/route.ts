@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
+import { getSupabaseClient } from '@/lib/supabase-client';
 
 /**
  * Endpoint de prueba para verificar el sistema de likes
@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase-server';
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = getSupabaseClient();
 
     // 1. Verificar que el campo total_likes existe
     const { data: columnCheck, error: columnError } = await supabase

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
+import { getSupabaseClient } from '@/lib/supabase-client';
 
 /**
  * Endpoint de prueba específico para el producto 18
@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase-server';
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = getSupabaseClient();
 
     // 1. Verificar el producto 18
     const { data: product, error: productError } = await supabase
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = getSupabaseClient();
 
     // Sincronizar el contador del producto 18
     const { data: favoritos, error: favoritosError } = await supabase
