@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
                 fecha_creacion,
                 fecha_publicacion,
                 visualizaciones,
+                total_likes,
                 user_id,
                 ciudad_snapshot,
                 departamento_snapshot,

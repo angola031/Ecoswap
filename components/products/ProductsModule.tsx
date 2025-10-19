@@ -158,7 +158,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                     },
                     createdAt: p.fecha_creacion,
                     views: p.visualizaciones || 0,
-                    likes: 0, // TODO: Implementar likes
+                    likes: p.total_likes || 0,
                     status: 'available',
                     tags: [],
                     specifications: {},

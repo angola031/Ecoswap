@@ -20,8 +20,8 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@supabase/supabase-js']
   },
   
-  // React Strict Mode deshabilitado (puedes habilitarlo si lo necesitas)
-  reactStrictMode: false,
+  // React Strict Mode habilitado para mejor Fast Refresh
+  reactStrictMode: true,
   
   // Configuración de compilación
   compiler: {

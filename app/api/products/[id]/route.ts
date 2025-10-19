@@ -37,6 +37,7 @@ export async function GET(
                 fecha_creacion,
                 fecha_publicacion,
                 visualizaciones,
+                total_likes,
                 user_id,
                 ciudad_snapshot,
                 departamento_snapshot,
@@ -167,16 +168,44 @@ export async function GET(
       console.error('Error verificando estado de intercambio:', error)
     }
 
-    // Incrementar contador de vistas si el viewer NO es el dueño (no bloqueante)
+    // Incrementar contador de vistas y registrar visualización si el viewer NO es el dueño
     ;(async () => {
       try {
-        if (!isOwner) {
+        if (!isOwner && currentUsuarioId) {
+          // Incrementar contador de visualizaciones del producto
           await supabase
             .from('producto')
             .update({ visualizaciones: (product.visualizaciones || 0) + 1 })
             .eq('producto_id', Number(productId))
+          
+          // Registrar la visualización del usuario
+          try {
+            // Primero intentar insertar
+            const { error: insertError } = await supabase
+              .from('visualizacion_producto')
+              .insert({
+                usuario_id: currentUsuarioId,
+                producto_id: Number(productId),
+                fecha_visualizacion: new Date().toISOString()
+              })
+            
+            // Si hay error de conflicto (código 23505), actualizar
+            if (insertError && insertError.code === '23505') {
+              await supabase
+                .from('visualizacion_producto')
+                .update({
+                  fecha_visualizacion: new Date().toISOString()
+                })
+                .eq('usuario_id', currentUsuarioId)
+                .eq('producto_id', Number(productId))
+            }
+          } catch (error) {
+            console.error('Error en upsert de visualización:', error)
+          }
         }
-      } catch {}
+      } catch (error) {
+        console.error('Error registrando visualización:', error)
+      }
     })()
 
         // Formatear la respuesta

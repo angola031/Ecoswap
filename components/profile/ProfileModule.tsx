@@ -101,6 +101,7 @@ interface UserActivity {
     description: string
     date: string
     icon: string
+    imagen_producto?: string
 }
 
 export default function ProfileModule({ currentUser }: ProfileModuleProps) {
@@ -272,6 +273,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         estado_validacion,
                         estado_publicacion,
                         fecha_creacion,
+                        total_likes,
                         imagenes:imagen_producto(
                             url_imagen,
                             es_principal,
@@ -327,7 +329,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         validationStatus: (p.estado_validacion || 'pending') as 'pending' | 'approved' | 'rejected',
                         transactionType: p.tipo_transaccion || 'mixto',
                         views: 0,
-                        likes: 0,
+                        likes: p.total_likes || 0,
                         createdAt: p.fecha_creacion || new Date().toISOString(),
                         publicationState: hasSuccessfulExchange ? 'intercambiado' : (p.estado_publicacion || 'activo') as any,
                         hasSuccessfulExchange
@@ -397,11 +399,34 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     totalReviews: transformedReviews.length
                 } : null)
 
-                const mockUserActivities: UserActivity[] = []
+                // Cargar productos vistos del usuario
+                try {
+                    const response = await fetch(`/api/users/${dbUser.user_id}/activity`)
+                    if (response.ok) {
+                        const { data } = await response.json()
+                        const productosVistos = data.productos_vistos || []
+                        
+                        // Convertir productos vistos a formato de actividades
+                        const actividades: UserActivity[] = productosVistos.map((producto: any) => ({
+                            id: `view-${producto.id}`,
+                            title: `Viste el producto "${producto.titulo}"`,
+                            description: `${producto.categoria} • ${producto.ubicacion.ciudad}`,
+                            date: new Date(producto.fecha_visualizacion).toLocaleDateString('es-CO'),
+                            icon: '👁️',
+                            imagen_producto: producto.imagen_principal
+                        }))
+                        
+                        setUserActivities(actividades)
+                    } else {
+                        setUserActivities([])
+                    }
+                } catch (error) {
+                    console.error('Error cargando productos vistos:', error)
+                    setUserActivities([])
+                }
 
                 setUserProducts(transformed)
                 setUserReviews(transformedReviews)
-                setUserActivities(mockUserActivities)
                 setIsLoading(false)
             } catch (e) {
                 setIsLoading(false)
@@ -1134,26 +1159,67 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 {/* Pestaña Actividad */}
                 {activeTab === 'activities' && (
                     <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-gray-900">Actividad Reciente</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">Productos Vistos Recientemente</h3>
 
                         <div className="space-y-4">
-                            {userActivities.map((activity) => (
-                                <motion.div
-                                    key={activity.id}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg"
-                                >
-                                    <div className="text-2xl">{activity.icon}</div>
+                            {userActivities.length > 0 ? (
+                                userActivities.map((activity, index) => {
+                                    // Extraer el ID del producto del activity.id
+                                    const productId = activity.id.replace('view-', '')
+                                    
+                                    return (
+                                        <motion.div
+                                            key={activity.id}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: index * 0.1 }}
+                                            onClick={() => router.push(`/producto/${productId}`)}
+                                            className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                                        >
+                                            <div className="flex-shrink-0">
+                                                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
+                                                    {activity.imagen_producto ? (
+                                                        <img 
+                                                            src={activity.imagen_producto} 
+                                                            alt="Producto"
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => {
+                                                                e.currentTarget.src = '/default-product.png'
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div className="text-2xl text-gray-400">{activity.icon}</div>
+                                                    )}
+                                                </div>
+                                            </div>
 
-                                    <div className="flex-1">
-                                        <h4 className="font-medium text-gray-900">{activity.title}</h4>
-                                        <p className="text-gray-600">{activity.description}</p>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-medium text-gray-900 hover:text-blue-600 transition-colors truncate">
+                                                    {activity.title}
+                                                </h4>
+                                                <p className="text-gray-600 text-sm truncate">{activity.description}</p>
+                                            </div>
+
+                                            <div className="flex flex-col items-end space-y-1 flex-shrink-0">
+                                                <span className="text-sm text-gray-500">{activity.date}</span>
+                                                <span className="text-xs text-blue-600 hover:text-blue-800 transition-colors">
+                                                    Ver producto →
+                                                </span>
+                                            </div>
+                                        </motion.div>
+                                    )
+                                })
+                            ) : (
+                                <div className="text-center py-12">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <EyeIcon className="w-8 h-8 text-gray-400" />
                                     </div>
-
-                                    <span className="text-sm text-gray-500">{activity.date}</span>
-                                </motion.div>
-                            ))}
+                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay actividad reciente</h3>
+                                    <p className="text-gray-600">
+                                        Cuando veas productos, aparecerán aquí para que puedas acceder fácilmente a ellos.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
