@@ -269,6 +269,261 @@ export default function ProductDetailPage() {
     // Aquí iría la lógica para mostrar interés en el producto
   }
 
+  const handleDonationRequest = async () => {
+    // Si no hay sesión, redirigir a la interfaz de login del AuthModule
+    try {
+      const supabase = getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+        return
+      }
+    } catch (e) {
+      router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
+      return
+    }
+
+    if (isOwner) {
+      await (window as any).Swal.fire({
+        title: 'Acción no permitida',
+        text: 'No puedes solicitar tu propia donación',
+        icon: 'warning',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#3B82F6'
+      })
+      return
+    }
+
+    // Verificar si el producto está en un intercambio activo
+    if (isInActiveExchange) {
+      await (window as any).Swal.fire({
+        title: 'Producto No Disponible',
+        text: 'Esta donación está actualmente en proceso y no está disponible por el momento.',
+        icon: 'info',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#3B82F6'
+      })
+      return
+    }
+
+    // Verificar si el usuario está verificado
+    const { isUserVerified } = await import('@/lib/auth')
+    const isVerified = await isUserVerified()
+    
+    if (!isVerified) {
+      // Mostrar mensaje de verificación requerida
+      const result = await (window as any).Swal.fire({
+        title: 'Verificación Requerida',
+        text: 'Por favor, primero verifica tu cuenta para poder solicitar donaciones.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ir a Verificación',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#3B82F6',
+        cancelButtonColor: '#6B7280'
+      })
+
+      if (result.isConfirmed) {
+        router.push('/verificacion-identidad')
+      }
+      return
+    }
+
+    // Mostrar modal de solicitud de donación
+    const { value: formValues } = await (window as any).Swal.fire({
+      title: '🎁 Solicitar Donación',
+      html: `
+        <div class="text-left space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">📝 Mensaje de solicitud</label>
+            <textarea id="donation-message" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500" rows="4" placeholder="Ej: Hola, me interesa mucho esta donación porque... ¿Podrías considerar donármela? Estoy disponible para coordinarnos..."></textarea>
+            <p class="text-xs text-gray-500 mt-1">Explica por qué te interesa esta donación y cómo planeas usarla</p>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">📅 Fecha preferida</label>
+              <input type="date" id="preferred-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">🕐 Hora preferida</label>
+              <select id="preferred-time" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                <option value="">Seleccionar hora</option>
+                <option value="08:00">8:00 AM</option>
+                <option value="09:00">9:00 AM</option>
+                <option value="10:00">10:00 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="12:00">12:00 PM</option>
+                <option value="13:00">1:00 PM</option>
+                <option value="14:00">2:00 PM</option>
+                <option value="15:00">3:00 PM</option>
+                <option value="16:00">4:00 PM</option>
+                <option value="17:00">5:00 PM</option>
+                <option value="18:00">6:00 PM</option>
+                <option value="19:00">7:00 PM</option>
+              </select>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">📍 Lugar de encuentro</label>
+            <input type="text" id="meeting-place" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Ej: Centro comercial, parque, estación de metro...">
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Enviar Solicitud',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#7C3AED',
+      cancelButtonColor: '#6B7280',
+      preConfirm: () => {
+        const message = (document.getElementById('donation-message') as HTMLTextAreaElement)?.value
+        const preferredDate = (document.getElementById('preferred-date') as HTMLInputElement)?.value
+        const preferredTime = (document.getElementById('preferred-time') as HTMLSelectElement)?.value
+        const meetingPlace = (document.getElementById('meeting-place') as HTMLInputElement)?.value
+
+        if (!message || message.trim().length < 10) {
+          (window as any).Swal.showValidationMessage('Por favor, escribe un mensaje de al menos 10 caracteres')
+          return false
+        }
+
+        return {
+          message: message.trim(),
+          preferredDate,
+          preferredTime,
+          meetingPlace: meetingPlace?.trim() || ''
+        }
+      }
+    })
+
+    if (formValues) {
+      // Aquí iría la lógica para enviar la solicitud de donación
+      // Por ahora, solo mostramos un mensaje de confirmación
+      await (window as any).Swal.fire({
+        title: '✅ Solicitud Enviada',
+        text: 'Tu solicitud de donación ha sido enviada al propietario. Te notificaremos cuando responda.',
+        icon: 'success',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#7C3AED'
+      })
+      
+      setIsInterested(true)
+    }
+  }
+
+  const handleAcceptDonation = async () => {
+    // Mostrar modal para gestionar solicitudes de donación
+    const { value: selectedRequest } = await (window as any).Swal.fire({
+      title: '🎁 Gestionar Solicitudes de Donación',
+      html: `
+        <div class="text-left space-y-4">
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <p class="text-sm text-gray-600">
+              Aquí puedes ver y gestionar las solicitudes de donación que han recibido para este producto.
+              <br><br>
+              <strong>Funcionalidad en desarrollo:</strong> Próximamente podrás ver todas las solicitudes y aceptar la que prefieras.
+            </p>
+          </div>
+          
+          <div class="space-y-3">
+            <div class="border border-gray-200 rounded-lg p-3 bg-white">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="font-medium text-gray-900">Solicitud de María González</h4>
+                  <p class="text-sm text-gray-600">"Me interesa mucho esta donación porque..."</p>
+                  <p class="text-xs text-gray-500 mt-1">📅 Fecha preferida: 15 de Noviembre, 2:00 PM</p>
+                  <p class="text-xs text-gray-500">📍 Lugar: Centro comercial</p>
+                </div>
+                <div class="flex space-x-2">
+                  <button class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200" onclick="acceptRequest('maria')">
+                    ✅ Aceptar
+                  </button>
+                  <button class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs hover:bg-red-200" onclick="rejectRequest('maria')">
+                    ❌ Rechazar
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="border border-gray-200 rounded-lg p-3 bg-white">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="font-medium text-gray-900">Solicitud de Carlos Ruiz</h4>
+                  <p class="text-sm text-gray-600">"Soy estudiante y esta donación me ayudaría mucho..."</p>
+                  <p class="text-xs text-gray-500 mt-1">📅 Fecha preferida: 18 de Noviembre, 10:00 AM</p>
+                  <p class="text-xs text-gray-500">📍 Lugar: Parque central</p>
+                </div>
+                <div class="flex space-x-2">
+                  <button class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200" onclick="acceptRequest('carlos')">
+                    ✅ Aceptar
+                  </button>
+                  <button class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs hover:bg-red-200" onclick="rejectRequest('carlos')">
+                    ❌ Rechazar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      cancelButtonText: 'Cerrar',
+      confirmButtonText: 'Ver Todas las Solicitudes',
+      confirmButtonColor: '#7C3AED',
+      cancelButtonColor: '#6B7280',
+      showConfirmButton: false,
+      didOpen: () => {
+        // Agregar funciones globales para los botones
+        (window as any).acceptRequest = (userId: string) => {
+          (window as any).Swal.fire({
+            title: '✅ Solicitud Aceptada',
+            html: `
+              <div class="text-left space-y-4">
+                <p class="text-gray-700">Has aceptado la solicitud de donación. Ahora puedes coordinar la entrega.</p>
+                
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h4 class="font-medium text-blue-900 mb-2">📋 Próximos pasos:</h4>
+                  <ul class="text-sm text-blue-800 space-y-1">
+                    <li>• Contacta al solicitante para coordinar la entrega</li>
+                    <li>• Acuerda fecha, hora y lugar de encuentro</li>
+                    <li>• Confirma que el producto esté en buen estado</li>
+                    <li>• Realiza la entrega y confirma la donación</li>
+                  </ul>
+                </div>
+                
+                <div class="flex space-x-3">
+                  <button class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onclick="startChat()">
+                    💬 Iniciar Chat
+                  </button>
+                  <button class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" onclick="markAsCompleted()">
+                    ✅ Marcar como Completado
+                  </button>
+                </div>
+              </div>
+            `,
+            showCancelButton: true,
+            cancelButtonText: 'Cerrar',
+            confirmButtonText: 'Continuar',
+            confirmButtonColor: '#7C3AED',
+            cancelButtonColor: '#6B7280'
+          })
+        }
+        
+        (window as any).rejectRequest = (userId: string) => {
+          (window as any).Swal.fire({
+            title: '❌ Solicitud Rechazada',
+            text: 'La solicitud ha sido rechazada. El solicitante será notificado.',
+            icon: 'info',
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#7C3AED'
+          })
+        }
+      }
+    })
+  }
+
   const handleLike = async () => {
     if (!product) return
     
@@ -755,19 +1010,25 @@ export default function ProductDetailPage() {
               {/* Acciones */}
               <div className="flex space-x-2 md:space-x-3">
                 <button
-                  onClick={handleInterest}
+                  onClick={product.tipo_transaccion === 'donacion' ? handleDonationRequest : handleInterest}
                   disabled={isOwner || isInActiveExchange}
                   aria-disabled={isOwner || isInActiveExchange}
                   className={`flex-1 py-2.5 md:py-3 px-4 rounded-lg font-medium transition-colors ${isOwner || isInActiveExchange
                       ? 'bg-gray-400 text-white cursor-not-allowed pointer-events-none'
-                      : isInterested
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                      : product.tipo_transaccion === 'donacion'
+                        ? isInterested
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-purple-600 text-white hover:bg-purple-700'
+                        : isInterested
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                 >
                   {isOwner ? 'Tu publicación' : 
                    isInActiveExchange ? 'No disponible' :
-                   (isInterested ? 'Interesado ✓' : 'Me Interesa')}
+                   product.tipo_transaccion === 'donacion' 
+                     ? (isInterested ? 'Solicitud Enviada ✓' : '🎁 Solicitar Donación')
+                     : (isInterested ? 'Interesado ✓' : 'Me Interesa')}
                 </button>
                 <button
                   onClick={handleLike}
@@ -801,6 +1062,19 @@ export default function ProductDetailPage() {
                   <ChatBubbleLeftRightIcon className="w-5 h-5" />
                 </button>
               </div>
+              
+              {/* Botón especial para propietario de donación */}
+              {isOwner && product.tipo_transaccion === 'donacion' && (
+                <div className="mt-4">
+                  <button
+                    onClick={handleAcceptDonation}
+                    className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <span>🎁</span>
+                    <span>Gestionar Solicitudes de Donación</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Tabs de información */}
