@@ -23,6 +23,7 @@ import {
 import { useUserStatus } from '@/hooks/useUserStatus'
 import { useInactivity } from '@/hooks/useInactivity'
 import { getSupabaseClient } from '@/lib/supabase-client'
+import { logoutUser } from '@/lib/auth'
 // import imageCompression from 'browser-image-compression' // Importación dinámica
 
 
@@ -1350,10 +1351,37 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   }
 
   // Hook para detectar inactividad y cerrar sesión automáticamente
-  useInactivity({
+  const { resetTimeout } = useInactivity({
     timeout: 30 * 60 * 1000, // 30 minutos de inactividad
     onInactive: async () => {
-      // El hook ya maneja el logout automáticamente
+      console.log('🕐 [ChatModule] Sesión expirada por inactividad')
+      setShowSessionWarning(true)
+      
+      // Mostrar advertencia antes de cerrar sesión
+      if ((window as any).Swal) {
+        const { isConfirmed } = await (window as any).Swal.fire({
+          title: 'Sesión Expirada',
+          text: 'Tu sesión ha expirado por inactividad. ¿Deseas continuar?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Continuar',
+          cancelButtonText: 'Cerrar Sesión',
+          confirmButtonColor: '#10B981',
+          cancelButtonColor: '#EF4444'
+        })
+        
+        if (isConfirmed) {
+          // Extender sesión
+          resetTimeout()
+          setShowSessionWarning(false)
+          return
+        }
+      }
+      
+      // Si no confirma, cerrar sesión
+      await logoutUser()
+      localStorage.removeItem('ecoswap_user')
+      window.location.href = '/'
     }
   })
 
@@ -1394,8 +1422,9 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const [userValidations, setUserValidations] = useState<{usuario_id: number, es_exitoso: boolean, fecha_validacion: string}[]>([])
   const [showProposals, setShowProposals] = useState(false)
   const [isLoadingProposals, setIsLoadingProposals] = useState(false)
-const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
-const [isUserScrolling, setIsUserScrolling] = useState(false)
+  const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
+  const [isUserScrolling, setIsUserScrolling] = useState(false)
+  const [showSessionWarning, setShowSessionWarning] = useState(false)
 
 const getCurrentUserId = () => {
   return String(currentUser?.id || '')
@@ -3522,6 +3551,34 @@ const getCurrentUserId = () => {
                       <span>•</span>
                       <span>En línea</span>
                     </div>
+                  </div>
+                  
+                  {/* Botón de extender sesión */}
+                  <div className="flex items-center space-x-2">
+                    {showSessionWarning && (
+                      <div className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
+                        ⚠️ Sesión expirando
+                      </div>
+                    )}
+                    <button
+                      onClick={() => {
+                        resetTimeout()
+                        setShowSessionWarning(false)
+                        if ((window as any).Swal) {
+                          (window as any).Swal.fire({
+                            title: 'Sesión Extendida',
+                            text: 'Tu sesión ha sido extendida por 30 minutos más',
+                            icon: 'success',
+                            timer: 2000,
+                            showConfirmButton: false
+                          })
+                        }
+                      }}
+                      className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full hover:bg-green-200 transition-colors"
+                      title="Extender sesión por 30 minutos más"
+                    >
+                      ⏰ Extender Sesión
+                    </button>
                   </div>
                 </div>
 
