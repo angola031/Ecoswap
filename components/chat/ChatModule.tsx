@@ -556,16 +556,27 @@ const renderProductInfo = (product: any, label: string) => {
                                 product.tipo_transaccion?.toLowerCase() === 'donacion' ||
                                 product.tipo_transaccion?.toLowerCase() === 'donación'
               
+              // También verificar si el título contiene "donación" o si hay algún indicador visual
+              const hasDonationTag = product.titulo?.toLowerCase().includes('donacion') ||
+                                    product.titulo?.toLowerCase().includes('donación') ||
+                                    product.estado === 'donacion' ||
+                                    product.estado === 'donación'
+              
+              const finalIsDonation = isDonation || hasDonationTag
+              
               console.log('Debug detallado ChatModule:', {
                 tipo_transaccion: product.tipo_transaccion,
                 tipo_transaccion_lower: product.tipo_transaccion?.toLowerCase(),
                 isDonation,
+                hasDonationTag,
+                finalIsDonation,
                 titulo: product.titulo,
+                estado: product.estado,
                 id: product.id,
                 producto_id: product.producto_id
               })
               
-              return isDonation
+              return finalIsDonation
             })() ? (
               // Para donaciones: mostrar botón de solicitar donación
               <>
