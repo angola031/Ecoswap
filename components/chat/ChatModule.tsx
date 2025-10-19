@@ -110,7 +110,9 @@ interface Proposal {
 
 // Función para formatear precio
 const formatPrice = (precio: number | null, tipoTransaccion: string | null, condicionesIntercambio: string | null, queBuscoCambio: string | null, precioNegociable: boolean | null) => {
-  if (tipoTransaccion === 'cambio') {
+  if (tipoTransaccion === 'donacion') {
+    return '🎁 Donación'
+  } else if (tipoTransaccion === 'cambio') {
     return condicionesIntercambio || queBuscoCambio || 'Intercambio'
   } else if (precio) {
     const formattedPrice = new Intl.NumberFormat('es-CO', {
@@ -151,6 +153,11 @@ const renderProductInfoCompact = (product: any, label: string) => {
             <span className="text-xs font-medium text-gray-600 bg-gray-200 px-2 py-0.5 rounded-full">
               {label}
             </span>
+            {product.tipo_transaccion === 'donacion' && (
+              <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                🎁 Donación
+              </span>
+            )}
             {product.estado && (
               <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${
                 product.estado === 'activo' ? 'bg-green-100 text-green-700' :
@@ -216,6 +223,11 @@ const renderProductInfo = (product: any, label: string) => {
             <span className="text-xs font-medium text-blue-800 bg-blue-200 px-3 py-1 rounded-full">
               {label}
             </span>
+            {product.tipo_transaccion === 'donacion' && (
+              <span className="text-xs font-medium px-2 py-1 rounded-full bg-purple-100 text-purple-800">
+                🎁 Donación
+              </span>
+            )}
             {product.estado && (
               <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                 product.estado === 'activo' ? 'bg-green-100 text-green-800' :
