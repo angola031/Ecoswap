@@ -4479,14 +4479,34 @@ const getCurrentUserId = () => {
                     const donationProduct = offeredProduct || requestedProduct
                     
                     // Verificar si el usuario actual es el propietario de la donación
-                    const isDonor = donationProduct && currentUserId && 
-                      currentUserId === donationProduct.usuario_id?.toString()
+                    // Comparar tanto como string como número para asegurar compatibilidad
+                    const currentUserIdStr = currentUserId?.toString()
+                    const currentUserIdNum = parseInt(currentUserId || '0')
+                    const productUserIdStr = donationProduct?.usuario_id?.toString()
+                    const productUserIdNum = parseInt(donationProduct?.usuario_id || '0')
                     
-                    console.log('🔍 Donación - Verificando donador:', {
+                    const isDonor = donationProduct && currentUserId && (
+                      currentUserIdStr === productUserIdStr ||
+                      currentUserIdNum === productUserIdNum ||
+                      currentUserId === productUserIdStr ||
+                      currentUserId === productUserIdNum
+                    )
+                    
+                    console.log('🔍 Donación - Verificando donador (detallado):', {
                       currentUserId,
+                      currentUserIdStr,
+                      currentUserIdNum,
                       productUsuarioId: donationProduct?.usuario_id,
+                      productUserIdStr,
+                      productUserIdNum,
                       isDonor,
-                      productTitle: donationProduct?.titulo
+                      productTitle: donationProduct?.titulo,
+                      comparaciones: {
+                        'str === str': currentUserIdStr === productUserIdStr,
+                        'num === num': currentUserIdNum === productUserIdNum,
+                        'str === productStr': currentUserId === productUserIdStr,
+                        'str === productNum': currentUserId === productUserIdNum
+                      }
                     })
                     
                     if (isDonor) {
