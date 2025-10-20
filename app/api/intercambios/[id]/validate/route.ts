@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase-client'
+import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase-client'
 
 // Forzar runtime de Node en Vercel (evita Edge Runtime incompatibles con algunos SDKs)
 export const runtime = 'nodejs'
@@ -18,6 +18,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!supabase) {
       return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
     }
+    // Cliente admin con SERVICE ROLE (Vercel) para operaciones con RLS
+    // Si no está disponible, seguimos con el cliente normal (modo local)
+    const admin = getSupabaseAdminClient() || supabase
 
     const intercambioId = Number(params.id)
     if (!intercambioId || Number.isNaN(intercambioId)) {
@@ -38,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     // Obtener user_id interno
-    const { data: dbUser, error: userErr } = await supabase
+    const { data: dbUser, error: userErr } = await admin
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', user.id)
@@ -52,7 +55,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     // Registrar/actualizar validación del intercambio por este usuario
     // Primero verificar si ya existe una validación de este usuario
-    const { data: existingVal, error: checkErr } = await supabase
+    const { data: existingVal, error: checkErr } = await admin
       .from('validacion_intercambio')
       .select('validacion_id')
       .eq('intercambio_id', intercambioId)
@@ -64,7 +67,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     if (existingVal) {
       // Actualizar validación existente
-      const { data, error } = await supabase
+      const { data, error } = await admin
         .from('validacion_intercambio')
         .update({
           es_exitoso: isValid,
@@ -81,7 +84,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       upsertErr = error
     } else {
       // Crear nueva validación
-      const { data, error } = await supabase
+      const { data, error } = await admin
         .from('validacion_intercambio')
         .insert({
           intercambio_id: intercambioId,
@@ -104,7 +107,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     // Obtener ambas validaciones (si existen)
-    const { data: bothVals, error: valsErr } = await supabase
+    const { data: bothVals, error: valsErr } = await admin
       .from('validacion_intercambio')
       .select('usuario_id, es_exitoso')
       .eq('intercambio_id', intercambioId)
@@ -132,7 +135,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     // Actualizar estado del intercambio si corresponde
     if (newEstado) {
-      const { error: updErr } = await supabase
+      const { error: updErr } = await admin
         .from('intercambio')
         .update({ estado: newEstado, fecha_actualizacion: new Date().toISOString() })
         .eq('intercambio_id', intercambioId)
@@ -154,7 +157,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           validaciones: bothVals || [],
         }
 
-        const { data: ticket, error: ticketErr } = await supabase
+        const { data: ticket, error: ticketErr } = await admin
           .from('ticket_soporte')
           .insert({
             usuario_id: usuarioId, // quien reporta la discrepancia (validador actual)
@@ -175,7 +178,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         if (!ticketErr && ticket) {
           createdTicket = ticket
           // Registrar mensaje interno con el detalle estructurado si se desea
-          await supabase.from('mensaje_soporte').insert({
+          await admin.from('mensaje_soporte').insert({
             ticket_id: ticket.ticket_id,
             remitente_id: usuarioId,
             tipo_remitente: 'usuario',

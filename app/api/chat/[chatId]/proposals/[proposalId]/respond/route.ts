@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase-client'
+import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase-client'
 // Forzar renderizado dinámico para esta ruta
 export const dynamic = 'force-dynamic'
 
 
 const supabase = getSupabaseClient()
+const admin = getSupabaseAdminClient() || supabase
 
 async function getAuthUserId(request: NextRequest): Promise<number | null> {
   try {
@@ -17,7 +18,7 @@ async function getAuthUserId(request: NextRequest): Promise<number | null> {
     if (error || !user) return null
 
     // Intentar por auth_user_id
-    const { data: usuarioByAuth } = await supabase
+    const { data: usuarioByAuth } = await admin
       .from('usuario')
       .select('user_id')
       .eq('auth_user_id', user.id)
@@ -27,7 +28,7 @@ async function getAuthUserId(request: NextRequest): Promise<number | null> {
 
     // Fallback por email
     if (user.email) {
-      const { data: usuarioByEmail } = await supabase
+      const { data: usuarioByEmail } = await admin
         .from('usuario')
         .select('user_id')
         .eq('email', user.email)
@@ -67,7 +68,7 @@ export async function PATCH(
     }
 
     // Verificar que la propuesta existe y el usuario puede responderla
-    const { data: propuesta, error: propuestaError } = await supabase
+    const { data: propuesta, error: propuestaError } = await admin
       .from('propuesta')
       .select(`
         propuesta_id,
@@ -126,7 +127,7 @@ export async function PATCH(
       updateData.respuesta = 'Propuesta aceptada'
     }
 
-    const { data: propuestaActualizada, error: updateError } = await supabase
+    const { data: propuestaActualizada, error: updateError } = await admin
       .from('propuesta')
       .update(updateData)
       .eq('propuesta_id', proposalId)
@@ -186,7 +187,7 @@ export async function PATCH(
           intercambioUpdateData.monto_adicional = propuesta.precio_propuesto
         }
 
-        const { data: intercambioActualizado, error: intercambioUpdateError } = await supabase
+        const { data: intercambioActualizado, error: intercambioUpdateError } = await admin
           .from('intercambio')
           .update(intercambioUpdateData)
           .eq('intercambio_id', intercambioExistente.intercambio_id)
@@ -238,7 +239,7 @@ export async function PATCH(
           nuevoIntercambioData.condiciones_adicionales = propuesta.condiciones
         }
 
-        const { data: nuevoIntercambio, error: intercambioCreateError } = await supabase
+        const { data: nuevoIntercambio, error: intercambioCreateError } = await admin
           .from('intercambio')
           .insert(nuevoIntercambioData)
           .select('intercambio_id')
@@ -252,7 +253,7 @@ export async function PATCH(
         intercambioId = nuevoIntercambio.intercambio_id
 
         // Actualizar el chat para que apunte al nuevo intercambio
-        const { error: chatUpdateError } = await supabase
+        const { error: chatUpdateError } = await admin
           .from('chat')
           .update({ intercambio_id: intercambioId })
           .eq('chat_id', chatId)

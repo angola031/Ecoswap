@@ -152,3 +152,4 @@ console.log('   - El admin debe poder establecer nueva contraseña')
 console.log('   - La interfaz debe detectar automáticamente que es administrador')
 console.log('   - Todo el flujo debe funcionar sin errores')
 
+

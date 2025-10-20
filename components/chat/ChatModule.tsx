@@ -22,6 +22,7 @@ import {
 } from '@/lib/types'
 import { useUserStatus } from '@/hooks/useUserStatus'
 import { useInactivity } from '@/hooks/useInactivity'
+import { useNotifications } from '@/hooks/useNotifications'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { logoutUser } from '@/lib/auth'
 // import imageCompression from 'browser-image-compression' // Importación dinámica
@@ -733,6 +734,9 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
     usuarioProponeId: null,
     usuarioRecibeId: null
   })
+  
+  // Notificaciones
+  const { refresh: refreshNotifications } = useNotifications()
   
   const isUserOnline = (userId: string): boolean => {
     return onlineUsers.some(user => user.id === userId && user.isOnline)
@@ -1447,6 +1451,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const [showProposals, setShowProposals] = useState(false)
   const [isLoadingProposals, setIsLoadingProposals] = useState(false)
   const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
+  const [notificationsChannel, setNotificationsChannel] = useState<any>(null)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
   const [showSessionWarning, setShowSessionWarning] = useState(false)
 
@@ -1630,6 +1635,70 @@ const getCurrentUserId = () => {
       isMounted = false
     }
   }, [selectedConversation?.id])
+
+  // Suscribirse a notificaciones para mostrar toast en tiempo real
+  useEffect(() => {
+    // Limpiar canal anterior
+    if (notificationsChannel) {
+      const supabase = getSupabaseClient()
+      if (supabase) {
+        supabase.removeChannel(notificationsChannel)
+      }
+      setNotificationsChannel(null)
+    }
+
+    const userId = Number(currentUser?.id)
+    if (!userId) return
+
+    const supabase = getSupabaseClient()
+    if (!supabase) return
+
+    const channel = supabase
+      .channel(`notifications_user_${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notificacion',
+          filter: `usuario_id=eq.${userId}`
+        },
+        (payload: any) => {
+          try {
+            const noti = payload?.new
+            if (!noti) return
+            const tipo = noti.tipo as string
+            const titulo = noti.titulo || 'Notificación'
+            const mensaje = noti.mensaje || ''
+
+            // Solo mostrar toast para respuestas de propuestas o nuevas propuestas
+            if (tipo === 'respuesta_propuesta' || tipo === 'nueva_propuesta') {
+              if ((window as any).Swal) {
+                ;(window as any).Swal.fire({
+                  title: titulo,
+                  text: mensaje,
+                  icon: tipo === 'respuesta_propuesta' ? 'success' : 'info',
+                  toast: true,
+                  position: 'top-end',
+                  timer: 3500,
+                  showConfirmButton: false
+                })
+              }
+            }
+          } catch (e) {
+            console.warn('⚠️ [ChatModule] Error mostrando toast de notificación:', e)
+          }
+        }
+      )
+      .subscribe()
+
+    setNotificationsChannel(channel)
+
+    return () => {
+      const supa = getSupabaseClient()
+      if (supa) supa.removeChannel(channel)
+    }
+  }, [currentUser?.id])
 
   // Función para reducir el tamaño de la imagen
   const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 600, quality: number = 0.8): Promise<File> => {
@@ -2349,6 +2418,9 @@ const getCurrentUserId = () => {
         
         // Agregar notificación en el chat sobre la propuesta enviada
         await addProposalNotificationToChat(data.data)
+
+        // Refrescar contador de notificaciones del hook
+        try { refreshNotifications() } catch {}
         
         if ((window as any).Swal) {
           (window as any).Swal.fire({
@@ -2411,6 +2483,26 @@ const getCurrentUserId = () => {
         setProposals(prev => prev.map(prop => 
           prop.id === proposalId ? updatedProposal : prop
         ))
+        
+        // Refrescar contador de notificaciones al responder propuestas
+        try { refreshNotifications() } catch {}
+
+        // Mensaje del sistema según respuesta
+        const isDonation = (updatedProposal as any)?.type === 'donacion'
+        if (response === 'rechazar') {
+          const rejectedLabel = isDonation ? 'Donación Rechazada' : 'Propuesta Rechazada'
+          const systemMsg = {
+            id: `system-${Date.now()}`,
+            senderId: 'system',
+            content: `[system_proposal] ${rejectedLabel}.`,
+            timestamp: new Date().toLocaleString('es-CO', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }),
+            isRead: true,
+            type: 'text' as const,
+            sender: { id: 'system', name: 'Sistema', lastName: '', avatar: undefined }
+          }
+          setSelectedConversation(prev => prev ? { ...prev, messages: [...prev.messages, systemMsg] } : prev)
+          setConversations(prev => prev.map(conv => conv.id === selectedConversation.id ? { ...conv, messages: [...(conv.messages || []), systemMsg], lastMessage: systemMsg.content, lastMessageTime: systemMsg.timestamp } : conv))
+        }
         
         // Refrescar validaciones si hay cambio de estado a pendiente_validacion
         if (updatedProposal.status === 'pendiente_validacion') {
@@ -2588,6 +2680,16 @@ const getCurrentUserId = () => {
         prop.id === proposalId ? { ...prop, ...data.data } : prop
       ))
       
+      // Refrescar contador de notificaciones al aceptar propuestas
+      try { refreshNotifications() } catch {}
+
+      // Enviar notificación push al otro usuario sobre aceptación
+      try {
+        await sendProposalResponseNotification(data.data, 'aceptar')
+      } catch (e) {
+        console.warn('⚠️ [ChatModule] No se pudo enviar notificación de aceptación:', e)
+      }
+      
       // Refrescar validaciones si hay cambio de estado a pendiente_validacion
       if (data.data.status === 'pendiente_validacion') {
         try {
@@ -2604,10 +2706,14 @@ const getCurrentUserId = () => {
       }
 
       // 6. Crear mensaje automático en el chat
+      const isDonationAccepted = ((data.data as any)?.type === 'donacion') || ((proposal as any).type === 'donacion')
+      const acceptedLabel = isDonationAccepted
+        ? 'Donación Aceptada'
+        : 'Propuesta Aceptada'
       const systemMessage = {
         id: `system-${Date.now()}`,
         senderId: 'system',
-        content: `✅ Propuesta aceptada. Intercambio iniciado. ${meetingDetails ? `Encuentro programado para ${meetingDetails.date} a las ${meetingDetails.time} en ${meetingDetails.place}` : ''}`,
+        content: `[system_proposal] ${acceptedLabel}. ${meetingDetails ? `Encuentro programado para ${meetingDetails.date} a las ${meetingDetails.time} en ${meetingDetails.place}` : ''}`,
         timestamp: new Date().toLocaleString('es-CO', { 
           hour: '2-digit', 
           minute: '2-digit',
@@ -3632,33 +3738,7 @@ const getCurrentUserId = () => {
                     </div>
                   </div>
                   
-                  {/* Botón de extender sesión */}
-                  <div className="flex items-center space-x-2">
-                    {showSessionWarning && (
-                      <div className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
-                        ⚠️ Sesión expirando
-                      </div>
-                    )}
-                    <button
-                      onClick={() => {
-                        resetTimeout()
-                        setShowSessionWarning(false)
-                        if ((window as any).Swal) {
-                          (window as any).Swal.fire({
-                            title: 'Sesión Extendida',
-                            text: 'Tu sesión ha sido extendida por 30 minutos más',
-                            icon: 'success',
-                            timer: 2000,
-                            showConfirmButton: false
-                          })
-                        }
-                      }}
-                      className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full hover:bg-green-200 transition-colors"
-                      title="Extender sesión por 30 minutos más"
-                    >
-                      ⏰ Extender Sesión
-                    </button>
-                  </div>
+                  {/* Botón de extender sesión eliminado */}
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -3957,6 +4037,25 @@ const getCurrentUserId = () => {
                               {proposal.meetingPlace && ` en ${proposal.meetingPlace}`}
                             </p>
                           )}
+                          {proposal.status !== 'pendiente' && (
+                            <div
+                              className={`mb-2 inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                                proposal.status === 'aceptada'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : proposal.status === 'pendiente_validacion'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : proposal.status === 'rechazada'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}
+                              title={proposal.status}
+                            >
+                              {proposal.status === 'aceptada' && '✅ Propuesta aceptada'}
+                              {proposal.status === 'pendiente_validacion' && '⏳ Pendiente de validación'}
+                              {proposal.status === 'rechazada' && '❌ Rechazada'}
+                              {['aceptada','pendiente_validacion','rechazada'].includes(proposal.status as any) ? '' : proposal.status}
+                            </div>
+                          )}
                           
                           {proposal.response && (
                             <div className="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
@@ -4038,121 +4137,7 @@ const getCurrentUserId = () => {
                 </div>
               )}
 
-            {/* Seguimiento de Intercambios Activos */}
-            {(() => {
-              const acceptedProposals = proposals.filter(p => p.status === 'aceptada')
-              
-              // Verificar si el usuario actual ya validó el encuentro
-              const currentUserId = parseInt(getCurrentUserId())
-              const userAlreadyValidated = userValidations.some(
-                validation => validation.usuario_id === currentUserId
-              )
-              
-              
-              // Si el usuario ya validó, no mostrar la sección de intercambios activos
-              if (userAlreadyValidated) return null
-              
-              return acceptedProposals.length > 0 && (
-                <div className="border-t border-gray-200 bg-blue-50 flex-shrink-0 overflow-hidden flex flex-col" style={{ maxHeight: '220px' }}>
-                  <div className="px-3 py-2 flex-shrink-0">
-                    <h4 className="font-medium text-blue-900 mb-3">🔄 Intercambios Activos</h4>
-                  </div>
-                  <div className="flex-1 overflow-y-auto px-4 pb-3">
-                    <div className="space-y-3">
-                      {acceptedProposals.map((proposal) => (
-                        <div key={proposal.id} className="bg-white border border-blue-200 rounded-lg p-3">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center space-x-2">
-                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                (proposal as any).status === 'completado' 
-                                  ? 'bg-emerald-100 text-emerald-800' 
-                                  : 'bg-green-100 text-green-800'
-                              }`}>
-                                {(proposal as any).status === 'completado' ? 'Completado' : 'Aceptada'}
-                              </span>
-                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                                {proposal.type}
-                              </span>
-                            </div>
-                            <span className="text-xs text-gray-500">
-                              {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
-                            </span>
-            </div>
-                          
-                          <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
-                          
-                          {proposal.proposedPrice && (
-                            <p className="text-sm font-medium text-green-600 mb-2">
-                              Precio acordado: ${proposal.proposedPrice.toLocaleString('es-CO')}
-                            </p>
-                          )}
-                          
-                          {(proposal.meetingDate || proposal.meetingPlace) && (
-                            <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
-                              <h5 className="text-xs font-medium text-blue-900 mb-1">Detalles del encuentro:</h5>
-                              {proposal.meetingDate && (
-                                <p className="text-xs text-blue-800">📅 {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}</p>
-                              )}
-                              {proposal.meetingPlace && (
-                                <p className="text-xs text-blue-800">📍 {proposal.meetingPlace}</p>
-                              )}
-                            </div>
-                          )}
-                          
-                          <div className="mt-3 flex space-x-2">
-                            <button
-                              onClick={() => handleViewProposal(proposal)}
-                              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-1"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                              <span>Ver Detalles</span>
-                            </button>
-                            {/* Solo mostrar botón de validar si el intercambio no está completado */}
-                            {(proposal as any).status !== 'completado' && (
-                              <button
-                                onClick={() => handleValidateMeeting((proposal as any).intercambioId || proposal.id)}
-                                className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-1"
-                              >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span>Validar Encuentro</span>
-                              </button>
-                            )}
-                            <button
-                              onClick={() => {
-                                if ((window as any).Swal) {
-                                  (window as any).Swal.fire({
-                                    title: '¿Cancelar Intercambio?',
-                                    text: 'Esta acción cancelará el intercambio en curso.',
-                                    icon: 'warning',
-                                    showCancelButton: true,
-                                    confirmButtonText: 'Sí, Cancelar',
-                                    cancelButtonText: 'No',
-                                    confirmButtonColor: '#EF4444',
-                                    cancelButtonColor: '#6B7280'
-                                  }).then((result: any) => {
-                                    if (result.isConfirmed) {
-                                      // Aquí se implementaría la lógica de cancelación
-                                    }
-                                  })
-                                }
-                              }}
-                              className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )
-            })()}
+            {/* Seguimiento de Intercambios Activos eliminado */}
 
             {/* Banner fijo: Pendiente de Validación */}
             {(() => {
@@ -4189,6 +4174,17 @@ const getCurrentUserId = () => {
                         className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
                       >
                         Validar Encuentro
+                      </button>
+                      {/* Botón Ver detalles (reemplaza al de la sección superior) */}
+                      <button
+                        onClick={() => {
+                          const firstProposal = proposals.find(p => p.status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
+                          if (firstProposal) handleViewProposal(firstProposal)
+                        }}
+                        className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                        title="Ver Detalles"
+                      >
+                        Ver
                       </button>
                       
                       {/* Botón de diagnóstico temporal */}
