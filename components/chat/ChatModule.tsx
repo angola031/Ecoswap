@@ -577,7 +577,9 @@ const renderProductInfo = (product: any, label: string) => {
                 producto_id: product.producto_id
               })
               
-              return finalIsDonation
+              // TEMPORAL: Siempre mostrar botones de donación para debug
+              console.log('🔍 TEMPORAL: Forzando botones de donación para debug')
+              return true
             })() ? (
               // Para donaciones: mostrar botón de solicitar donación
               <>
