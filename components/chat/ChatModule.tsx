@@ -4562,21 +4562,52 @@ const getCurrentUserId = () => {
                   })
                   
                   if (hasDonation) {
-                    // Si hay una donación, usar la misma lógica que isCurrentUserBuyer()
-                    // pero para determinar si es el donador (usuario que recibe la donación)
-                    const isDonor = !isCurrentUserBuyer() // El donador es el que RECIBE, no el que propone
+                    // Si hay una donación, determinar si es el donador usando múltiples métodos
+                    const currentUserId = getCurrentUserId()
+                    const currentUserIdNumber = parseInt(currentUserId || '0')
                     
-                    console.log('🔍 Donación - Verificando donador (usando lógica de exchangeInfo):', {
+                    // Método 1: Usar lógica de exchangeInfo
+                    const isDonorByExchangeInfo = !isCurrentUserBuyer()
+                    
+                    // Método 2: Verificar directamente los user_id de los productos
+                    const isDonorByProductId = (donationProduct: any) => {
+                      if (!donationProduct || !currentUserId) return false
+                      return donationProduct.user_id?.toString() === currentUserId ||
+                             donationProduct.user_id === currentUserIdNumber ||
+                             donationProduct.user_id?.toString() === currentUserIdNumber.toString()
+                    }
+                    
+                    // Determinar cuál es el producto de donación
+                    const donationProduct = isDonorByExchangeInfo ? requestedProduct : offeredProduct
+                    const isDonorByProduct = isDonorByProductId(donationProduct)
+                    
+                    // Usar ambos métodos para mayor confiabilidad
+                    const isDonor = isDonorByExchangeInfo && isDonorByProduct
+                    
+                    console.log('🔍 Donación - Verificando donador (método dual):', {
                       exchangeInfo,
                       isCurrentUserBuyer: isCurrentUserBuyer(),
+                      isDonorByExchangeInfo,
+                      isDonorByProduct,
                       isDonor,
                       currentUserId: getCurrentUserId(),
+                      currentUserIdNumber,
                       offeredProduct: offeredProduct?.titulo,
-                      requestedProduct: requestedProduct?.titulo
+                      requestedProduct: requestedProduct?.titulo,
+                      offeredProductUserId: offeredProduct?.user_id,
+                      requestedProductUserId: requestedProduct?.user_id,
+                      currentUserFromSession: currentUser?.id,
+                      donationProduct: donationProduct?.titulo,
+                      donationProductUserId: donationProduct?.user_id,
+                      detailedExchangeInfo: {
+                        usuarioProponeId: exchangeInfo.usuarioProponeId,
+                        usuarioRecibeId: exchangeInfo.usuarioRecibeId,
+                        currentUserId: getCurrentUserId(),
+                        currentUserIdNumber: parseInt(getCurrentUserId() || '0')
+                      }
                     })
                     
-                    // Determinar cuál es el producto de donación basándose en la lógica de exchangeInfo
-                    const donationProduct = isDonor ? requestedProduct : offeredProduct
+                    // Ya determinamos donationProduct arriba, no necesitamos redefinirlo
                     
                     if (isDonor) {
                       // Si es el donador (usuario que recibe), mostrar botón para gestionar donaciones
