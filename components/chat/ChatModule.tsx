@@ -399,7 +399,7 @@ const renderProductInfoCompact = (product: any, label: string, currentUserId?: s
   if (!product) return null
   
   // Determinar si el usuario actual es el propietario del producto
-  const isOwner = currentUserId && product.usuario_id && currentUserId === product.usuario_id.toString()
+  const isOwner = currentUserId && product.user_id && currentUserId === product.user_id.toString()
   
   
   return (
@@ -546,7 +546,7 @@ const renderProductInfo = (product: any, label: string) => {
                 titulo: product.titulo,
                 id: product.id,
                 producto_id: product.producto_id,
-                usuario_id: product.usuario_id
+                user_id: product.user_id
               })
               return null
             })()}
@@ -4482,8 +4482,8 @@ const getCurrentUserId = () => {
                     // Comparar tanto como string como número para asegurar compatibilidad
                     const currentUserIdStr = currentUserId?.toString()
                     const currentUserIdNum = parseInt(currentUserId || '0')
-                    const productUserIdStr = donationProduct?.usuario_id?.toString()
-                    const productUserIdNum = parseInt(donationProduct?.usuario_id || '0')
+                    const productUserIdStr = donationProduct?.user_id?.toString()
+                    const productUserIdNum = parseInt(donationProduct?.user_id || '0')
                     
                     const isDonor = donationProduct && currentUserId && (
                       currentUserIdStr === productUserIdStr ||
@@ -4496,7 +4496,7 @@ const getCurrentUserId = () => {
                       currentUserId,
                       currentUserIdStr,
                       currentUserIdNum,
-                      productUsuarioId: donationProduct?.usuario_id,
+                      productUserId: donationProduct?.user_id,
                       productUserIdStr,
                       productUserIdNum,
                       isDonor,
