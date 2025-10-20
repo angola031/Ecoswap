@@ -960,10 +960,19 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
         
         if (data.data.bothValidated) {
           if (data.data.newEstado === 'completado') {
+            console.log('🔄 [DEBUG] Intercambio completado, refrescando datos...')
+            
             // Refrescar datos para actualizar el estado del intercambio
+            console.log('🔄 [DEBUG] Refrescando loadProductsInfo...')
             await loadProductsInfo()
+            
+            console.log('🔄 [DEBUG] Refrescando loadProposals...')
             await loadProposals()
+            
+            console.log('🔄 [DEBUG] Refrescando loadUserValidations...')
             await loadUserValidations()
+            
+            console.log('✅ [DEBUG] Datos refrescados, mostrando modal de éxito')
             
             ;(window as any).Swal.fire({
               title: '¡Intercambio Completado!',
@@ -1764,10 +1773,84 @@ const getCurrentUserId = () => {
     }
   }, [selectedConversation?.id])
 
+  // Función global para cargar propuestas
+  const loadProposals = async () => {
+    if (!selectedConversation?.id) {
+      setProposals([])
+      return
+    }
+
+    try {
+      setIsLoadingProposals(true)
+      const session = await getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      
+      const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('🔍 [DEBUG] Propuestas cargadas:', {
+          proposals: data.data || [],
+          userValidations: data.userValidations || [],
+          proposalsWithStatus: (data.data || []).map((p: any) => ({
+            id: p.id,
+            status: p.status,
+            titulo: p.titulo || 'Sin título'
+          }))
+        })
+        setProposals(data.data || [])
+        setUserValidations(data.userValidations || [])
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }))
+        console.error('❌ [ChatModule] Error cargando propuestas:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        })
+      }
+    } catch (error) {
+      console.error('❌ [ChatModule] Error cargando propuestas:', error)
+    } finally {
+      setIsLoadingProposals(false)
+    }
+  }
+
+  // Función global para cargar validaciones del usuario
+  const loadUserValidations = async () => {
+    if (!selectedConversation?.id) {
+      setUserValidations([])
+      return
+    }
+
+    try {
+      const session = await getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setUserValidations(data.userValidations || [])
+      } else {
+        console.error('❌ [ChatModule] Error cargando validaciones del usuario:', response.status)
+      }
+    } catch (error) {
+      console.error('❌ [ChatModule] Error cargando validaciones del usuario:', error)
+    }
+  }
+
   useEffect(() => {
     let isMounted = true
     
-    const loadProposals = async () => {
+    const loadProposalsEffect = async () => {
       if (!selectedConversation?.id || !isMounted) {
         if (isMounted) {
           setProposals([])
@@ -1775,40 +1858,10 @@ const getCurrentUserId = () => {
         return
       }
 
-      try {
-        setIsLoadingProposals(true)
-        const session = await getSession()
-        const token = session?.access_token
-        if (!token) return
-
-        
-        const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        
-        
-        if (response.ok && isMounted) {
-          const data = await response.json()
-          setProposals(data.data || [])
-          setUserValidations(data.userValidations || [])
-        } else {
-          const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }))
-          console.error('❌ [ChatModule] Error cargando propuestas:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorData
-          })
-        }
-      } catch (error) {
-        console.error('❌ [ChatModule] Error cargando propuestas:', error)
-      } finally {
-        if (isMounted) {
-          setIsLoadingProposals(false)
-        }
-      }
+      await loadProposals()
     }
 
-    loadProposals()
+    loadProposalsEffect()
     
     return () => {
       isMounted = false
