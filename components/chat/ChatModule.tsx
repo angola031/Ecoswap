@@ -4448,32 +4448,79 @@ const getCurrentUserId = () => {
             <div className="bg-gray-50 border-t border-gray-200 px-4 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex-shrink-0">
               <div className="flex items-center justify-center gap-2">
                 {(() => {
-                  const buyer = isCurrentUserBuyer()
-                  return (
-                    <button
-                      onClick={() => { if (buyer) handleSendProposal() }}
-                      disabled={!buyer}
-                      className={`flex items-center space-x-1 px-3 py-1.5 rounded transition-colors text-sm ${
-                        !buyer
-                          ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                          : 'bg-green-600 text-white hover:bg-green-700'
-                      }`}
-                      title={!buyer ? 'Solo los compradores pueden enviar propuestas' : 'Enviar propuesta'}
-                    >
-                      <span>💰</span>
-                      <span>Enviar</span>
-                    </button>
+                  // Verificar si alguno de los productos es una donación
+                  const isOfferedDonation = offeredProduct && (
+                    offeredProduct.tipo_transaccion === 'donacion' ||
+                    offeredProduct.tipo_transaccion === 'donación' ||
+                    offeredProduct.tipo_transaccion?.toLowerCase() === 'donacion' ||
+                    offeredProduct.tipo_transaccion?.toLowerCase() === 'donación'
                   )
+                  
+                  const isRequestedDonation = requestedProduct && (
+                    requestedProduct.tipo_transaccion === 'donacion' ||
+                    requestedProduct.tipo_transaccion === 'donación' ||
+                    requestedProduct.tipo_transaccion?.toLowerCase() === 'donacion' ||
+                    requestedProduct.tipo_transaccion?.toLowerCase() === 'donación'
+                  )
+                  
+                  const hasDonation = isOfferedDonation || isRequestedDonation
+                  
+                  console.log('🔍 Barra de acciones - Productos:', {
+                    offeredProduct: offeredProduct?.titulo,
+                    requestedProduct: requestedProduct?.titulo,
+                    isOfferedDonation,
+                    isRequestedDonation,
+                    hasDonation
+                  })
+                  
+                  if (hasDonation) {
+                    // Si hay una donación, mostrar botones de donación
+                    return (
+                      <>
+                        <button
+                          onClick={() => {
+                            const product = offeredProduct || requestedProduct
+                            handleDonationRequest(product)
+                          }}
+                          className="flex items-center space-x-1 px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-sm"
+                          title="Solicitar Donación"
+                        >
+                          <span>🎁</span>
+                          <span>Solicitar Donación</span>
+                        </button>
+                      </>
+                    )
+                  } else {
+                    // Si no es donación, mostrar botones normales
+                    const buyer = isCurrentUserBuyer()
+                    return (
+                      <>
+                        <button
+                          onClick={() => { if (buyer) handleSendProposal() }}
+                          disabled={!buyer}
+                          className={`flex items-center space-x-1 px-3 py-1.5 rounded transition-colors text-sm ${
+                            !buyer
+                              ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                          title={!buyer ? 'Solo los compradores pueden enviar propuestas' : 'Enviar propuesta'}
+                        >
+                          <span>💰</span>
+                          <span>Enviar</span>
+                        </button>
+                        
+                        <button
+                          onClick={handleNegotiate}
+                          className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                          title="Negociar"
+                        >
+                          <span>🔄</span>
+                          <span>Negociar</span>
+                        </button>
+                      </>
+                    )
+                  }
                 })()}
-                
-                <button
-                  onClick={handleNegotiate}
-                  className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
-                  title="Negociar"
-                >
-                  <span>🔄</span>
-                  <span>Negociar</span>
-                </button>
               </div>
             </div>
 
