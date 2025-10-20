@@ -3986,8 +3986,12 @@ const getCurrentUserId = () => {
                         <div key={proposal.id} className="bg-white border border-blue-200 rounded-lg p-3">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center space-x-2">
-                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                                Aceptada
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                proposal.status === 'completado' 
+                                  ? 'bg-emerald-100 text-emerald-800' 
+                                  : 'bg-green-100 text-green-800'
+                              }`}>
+                                {proposal.status === 'completado' ? 'Completado' : 'Aceptada'}
                               </span>
                               <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
                                 {proposal.type}
@@ -4029,15 +4033,18 @@ const getCurrentUserId = () => {
                               </svg>
                               <span>Ver Detalles</span>
                             </button>
-                            <button
-                              onClick={() => handleValidateMeeting((proposal as any).intercambioId || proposal.id)}
-                              className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-1"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <span>Validar Encuentro</span>
-                            </button>
+                            {/* Solo mostrar botón de validar si el intercambio no está completado */}
+                            {proposal.status !== 'completado' && (
+                              <button
+                                onClick={() => handleValidateMeeting((proposal as any).intercambioId || proposal.id)}
+                                className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-1"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>Validar Encuentro</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 if ((window as any).Swal) {
@@ -4074,6 +4081,7 @@ const getCurrentUserId = () => {
             {(() => {
               const hasAccepted = proposals.some(p => p.status === 'aceptada')
               const hasPendingValidation = proposals.some(p => p.status === 'pendiente_validacion')
+              const isCompleted = proposals.some(p => p.status === 'completado')
               
               // Verificar si el usuario actual ya validó el encuentro
               const currentUserId = parseInt(getCurrentUserId())
@@ -4081,6 +4089,9 @@ const getCurrentUserId = () => {
                 validation => validation.usuario_id === currentUserId
               )
               
+              
+              // Si el intercambio ya está completado, no mostrar el banner
+              if (isCompleted) return null
               
               // Si el usuario ya validó, no mostrar el banner
               if (userAlreadyValidated) return null
