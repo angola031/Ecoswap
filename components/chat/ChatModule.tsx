@@ -960,6 +960,11 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
         
         if (data.data.bothValidated) {
           if (data.data.newEstado === 'completado') {
+            // Refrescar datos para actualizar el estado del intercambio
+            await loadProductsInfo()
+            await loadProposals()
+            await loadUserValidations()
+            
             ;(window as any).Swal.fire({
               title: '¡Intercambio Completado!',
               html: `
@@ -974,6 +979,11 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
               width: '500px'
             })
           } else if (data.data.newEstado === 'fallido') {
+            // Refrescar datos para actualizar el estado del intercambio
+            await loadProductsInfo()
+            await loadProposals()
+            await loadUserValidations()
+            
             ;(window as any).Swal.fire({
               title: 'Intercambio Fallido',
               html: `
@@ -989,6 +999,9 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
             })
           }
         } else {
+          // Refrescar datos para actualizar el estado de validación
+          await loadUserValidations()
+          
           ;(window as any).Swal.fire({
             title: 'Validación Enviada',
             text: 'Tu validación ha sido registrada. Esperando confirmación del otro usuario.',
