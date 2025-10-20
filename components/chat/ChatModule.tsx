@@ -963,8 +963,8 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
             console.log('🔄 [DEBUG] Intercambio completado, refrescando datos...')
             
             // Refrescar datos para actualizar el estado del intercambio
-            console.log('🔄 [DEBUG] Refrescando loadProductsInfo...')
-            await loadProductsInfo()
+            console.log('🔄 [DEBUG] Refrescando loadProductInfo...')
+            await loadProductInfo()
             
             console.log('🔄 [DEBUG] Refrescando loadProposals...')
             await loadProposals()
@@ -989,7 +989,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
             })
           } else if (data.data.newEstado === 'fallido') {
             // Refrescar datos para actualizar el estado del intercambio
-            await loadProductsInfo()
+            await loadProductInfo()
             await loadProposals()
             await loadUserValidations()
             
@@ -1722,10 +1722,50 @@ const getCurrentUserId = () => {
     }
   }
 
+  // Función global para cargar información de productos
+  const loadProductInfo = async () => {
+    if (!selectedConversation?.id) {
+      setOfferedProduct(null)
+      setRequestedProduct(null)
+      return
+    }
+
+    try {
+      const session = await getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      
+      const response = await fetch(`/api/chat/${selectedConversation.id}/info`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      
+      if (response.ok) {
+        const responseData = await response.json()
+        
+        const data = responseData.data || responseData
+        setOfferedProduct(data.offeredProduct)
+        setRequestedProduct(data.requestedProduct)
+        
+        // Obtener información del intercambio desde la respuesta
+        if (data.exchangeInfo) {
+          setExchangeInfo({
+            usuarioProponeId: data.exchangeInfo.usuarioProponeId,
+            usuarioRecibeId: data.exchangeInfo.usuarioRecibeId
+          })
+        }
+        
+      }
+    } catch (error) {
+      console.error('❌ [ChatModule] Error cargando información de productos:', error)
+    }
+  }
+
   useEffect(() => {
     let isMounted = true
     
-    const loadProductInfo = async () => {
+    const loadProductInfoEffect = async () => {
       if (!selectedConversation?.id || !isMounted) {
         if (isMounted) {
           setOfferedProduct(null)
@@ -1734,39 +1774,10 @@ const getCurrentUserId = () => {
         return
       }
 
-      try {
-        const session = await getSession()
-        const token = session?.access_token
-        if (!token) return
-
-        
-        const response = await fetch(`/api/chat/${selectedConversation.id}/info`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        
-        
-        if (response.ok && isMounted) {
-          const responseData = await response.json()
-          
-          const data = responseData.data || responseData
-          setOfferedProduct(data.offeredProduct)
-          setRequestedProduct(data.requestedProduct)
-          
-          // Obtener información del intercambio desde la respuesta
-          if (data.exchangeInfo) {
-            setExchangeInfo({
-              usuarioProponeId: data.exchangeInfo.usuarioProponeId,
-              usuarioRecibeId: data.exchangeInfo.usuarioRecibeId
-            })
-          }
-          
-        }
-      } catch (error) {
-        console.error('❌ [ChatModule] Error cargando información de productos:', error)
-      }
+      await loadProductInfo()
     }
 
-    loadProductInfo()
+    loadProductInfoEffect()
     
     return () => {
       isMounted = false
@@ -4053,11 +4064,11 @@ const getCurrentUserId = () => {
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center space-x-2">
                               <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                proposal.status === 'completado' 
+                                (proposal as any).status === 'completado' 
                                   ? 'bg-emerald-100 text-emerald-800' 
                                   : 'bg-green-100 text-green-800'
                               }`}>
-                                {proposal.status === 'completado' ? 'Completado' : 'Aceptada'}
+                                {(proposal as any).status === 'completado' ? 'Completado' : 'Aceptada'}
                               </span>
                               <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
                                 {proposal.type}
@@ -4100,7 +4111,7 @@ const getCurrentUserId = () => {
                               <span>Ver Detalles</span>
                             </button>
                             {/* Solo mostrar botón de validar si el intercambio no está completado */}
-                            {proposal.status !== 'completado' && (
+                            {(proposal as any).status !== 'completado' && (
                               <button
                                 onClick={() => handleValidateMeeting((proposal as any).intercambioId || proposal.id)}
                                 className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-1"
@@ -4147,7 +4158,7 @@ const getCurrentUserId = () => {
             {(() => {
               const hasAccepted = proposals.some(p => p.status === 'aceptada')
               const hasPendingValidation = proposals.some(p => p.status === 'pendiente_validacion')
-              const isCompleted = proposals.some(p => p.status === 'completado')
+              const isCompleted = proposals.some(p => (p as any).status === 'completado')
               
               // Verificar si el usuario actual ya validó el encuentro
               const currentUserId = parseInt(getCurrentUserId())
