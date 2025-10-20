@@ -4474,22 +4474,54 @@ const getCurrentUserId = () => {
                   })
                   
                   if (hasDonation) {
-                    // Si hay una donación, mostrar botones de donación
-                    return (
-                      <>
-                        <button
-                          onClick={() => {
-                            const product = offeredProduct || requestedProduct
-                            handleDonationRequest(product)
-                          }}
-                          className="flex items-center space-x-1 px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-sm"
-                          title="Solicitar Donación"
-                        >
-                          <span>🎁</span>
-                          <span>Solicitar Donación</span>
-                        </button>
-                      </>
-                    )
+                    // Si hay una donación, verificar si el usuario actual es el donador
+                    const currentUserId = getCurrentUserId()
+                    const donationProduct = offeredProduct || requestedProduct
+                    
+                    // Verificar si el usuario actual es el propietario de la donación
+                    const isDonor = donationProduct && currentUserId && 
+                      currentUserId === donationProduct.usuario_id?.toString()
+                    
+                    console.log('🔍 Donación - Verificando donador:', {
+                      currentUserId,
+                      productUsuarioId: donationProduct?.usuario_id,
+                      isDonor,
+                      productTitle: donationProduct?.titulo
+                    })
+                    
+                    if (isDonor) {
+                      // Si es el donador, mostrar botón para gestionar donaciones
+                      return (
+                        <>
+                          <button
+                            onClick={() => {
+                              handleManageDonations(donationProduct)
+                            }}
+                            className="flex items-center space-x-1 px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-sm"
+                            title="Gestionar Donaciones"
+                          >
+                            <span>🎁</span>
+                            <span>Aceptar Donación</span>
+                          </button>
+                        </>
+                      )
+                    } else {
+                      // Si no es el donador, mostrar botón para solicitar donación
+                      return (
+                        <>
+                          <button
+                            onClick={() => {
+                              handleDonationRequest(donationProduct)
+                            }}
+                            className="flex items-center space-x-1 px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-sm"
+                            title="Solicitar Donación"
+                          >
+                            <span>🎁</span>
+                            <span>Solicitar Donación</span>
+                          </button>
+                        </>
+                      )
+                    }
                   } else {
                     // Si no es donación, mostrar botones normales
                     const buyer = isCurrentUserBuyer()
