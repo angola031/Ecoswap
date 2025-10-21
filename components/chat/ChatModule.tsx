@@ -974,7 +974,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
             await loadProposals()
             
             console.log('🔄 [DEBUG] Refrescando loadUserValidations...')
-            await loadUserValidations()
+            await loadUserValidations(true)
             
             console.log('✅ [DEBUG] Datos refrescados, mostrando modal de éxito')
             
@@ -995,7 +995,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
             // Refrescar datos para actualizar el estado del intercambio
             await loadProductInfo()
             await loadProposals()
-            await loadUserValidations()
+            await loadUserValidations(true)
             
             ;(window as any).Swal.fire({
               title: 'Intercambio Fallido',
@@ -1013,7 +1013,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
           }
         } else {
           // Refrescar datos para actualizar el estado de validación
-          await loadUserValidations()
+          await loadUserValidations(true)
           
           ;(window as any).Swal.fire({
             title: 'Validación Enviada',
@@ -1901,7 +1901,7 @@ const getCurrentUserId = () => {
   }
 
   // Función global para cargar validaciones del usuario
-  const loadUserValidations = async () => {
+  const loadUserValidations = async (forceReload = false) => {
     if (!selectedConversation?.id) {
       setUserValidations([])
       return
@@ -1912,9 +1912,9 @@ const getCurrentUserId = () => {
       const token = session?.access_token
       if (!token) return
 
-      console.log('🔄 [loadUserValidations] Cargando validaciones para chat:', selectedConversation.id)
+      console.log('🔄 [loadUserValidations] Cargando validaciones para chat:', selectedConversation.id, forceReload ? '(forzado)' : '')
       
-      const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
+      const response = await fetch(`/api/chat/${selectedConversation.id}/proposals?t=${Date.now()}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       
@@ -1922,6 +1922,15 @@ const getCurrentUserId = () => {
         const data = await response.json()
         console.log('✅ [loadUserValidations] Validaciones cargadas:', data.userValidations)
         setUserValidations(data.userValidations || [])
+        
+        // Forzar re-render del componente
+        if (forceReload) {
+          console.log('🔄 [loadUserValidations] Forzando re-render después de validación')
+          // Pequeño delay para asegurar que el estado se actualice
+          setTimeout(() => {
+            console.log('🔄 [loadUserValidations] Re-render completado')
+          }, 100)
+        }
       } else {
         console.error('❌ [ChatModule] Error cargando validaciones del usuario:', response.status)
       }
@@ -1952,6 +1961,11 @@ const getCurrentUserId = () => {
       isMounted = false
     }
   }, [selectedConversation?.id])
+
+  // Forzar re-render cuando cambien las validaciones
+  useEffect(() => {
+    console.log('🔄 [useEffect] userValidations cambió:', userValidations)
+  }, [userValidations])
 
   useEffect(() => {
     // Limpiar canal anterior
@@ -4157,24 +4171,34 @@ const getCurrentUserId = () => {
               // Verificar validación con múltiples métodos de comparación
               const userAlreadyValidated = userValidations.some(
                 validation => {
+                  // Normalizar todos los IDs a números para comparación
+                  const validationUserId = Number(validation.usuario_id)
+                  const currentUserIdNum = Number(currentUserId)
+                  const currentUserDirectId = Number(currentUser?.id || 0)
+                  
                   // Comparar como números
-                  const isNumericMatch = validation.usuario_id === currentUserId
-                  // Comparar como strings
-                  const isStringMatch = String(validation.usuario_id) === currentUserIdString
-                  // Comparar con el ID del currentUser directamente
-                  const isDirectMatch = validation.usuario_id === parseInt(String(currentUser?.id || '0'))
+                  const isNumericMatch = validationUserId === currentUserIdNum
+                  // Comparar con el ID directo del currentUser
+                  const isDirectMatch = validationUserId === currentUserDirectId
+                  // Comparar como strings también
+                  const isStringMatch = String(validationUserId) === String(currentUserIdNum)
+                  
+                  const isMatch = isNumericMatch || isDirectMatch || isStringMatch
                   
                   console.log('🔍 [Validation] Comparando IDs:', {
                     validation_usuario_id: validation.usuario_id,
+                    validationUserId,
                     currentUserId,
-                    currentUserIdString,
+                    currentUserIdNum,
                     currentUser_id: currentUser?.id,
+                    currentUserDirectId,
                     isNumericMatch,
+                    isDirectMatch,
                     isStringMatch,
-                    isDirectMatch
+                    isMatch
                   })
                   
-                  return isNumericMatch || isStringMatch || isDirectMatch
+                  return isMatch
                 }
               )
               
