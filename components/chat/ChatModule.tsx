@@ -4193,6 +4193,19 @@ const getCurrentUserId = () => {
               // Verificar validación con múltiples métodos de comparación
               const userAlreadyValidated = userValidations.some(
                 validation => {
+                  // Debug detallado de tipos y valores
+                  console.log('🔍 [Validation Debug] Valores exactos:', {
+                    'validation.usuario_id': validation.usuario_id,
+                    'typeof validation.usuario_id': typeof validation.usuario_id,
+                    'currentUserId': currentUserId,
+                    'typeof currentUserId': typeof currentUserId,
+                    'currentUser?.id': currentUser?.id,
+                    'typeof currentUser?.id': typeof currentUser?.id,
+                    'String(validation.usuario_id)': String(validation.usuario_id),
+                    'String(currentUserId)': String(currentUserId),
+                    'String(currentUser?.id)': String(currentUser?.id)
+                  })
+                  
                   // Normalizar todos los IDs a números para comparación
                   const validationUserId = Number(validation.usuario_id)
                   const currentUserIdNum = Number(currentUserId)
