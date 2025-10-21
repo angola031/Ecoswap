@@ -4152,8 +4152,30 @@ const getCurrentUserId = () => {
               
               // Verificar si el usuario actual ya validó el encuentro
               const currentUserId = parseInt(getCurrentUserId())
+              const currentUserIdString = getCurrentUserId()
+              
+              // Verificar validación con múltiples métodos de comparación
               const userAlreadyValidated = userValidations.some(
-                validation => validation.usuario_id === currentUserId
+                validation => {
+                  // Comparar como números
+                  const isNumericMatch = validation.usuario_id === currentUserId
+                  // Comparar como strings
+                  const isStringMatch = String(validation.usuario_id) === currentUserIdString
+                  // Comparar con el ID del currentUser directamente
+                  const isDirectMatch = validation.usuario_id === parseInt(String(currentUser?.id || '0'))
+                  
+                  console.log('🔍 [Validation] Comparando IDs:', {
+                    validation_usuario_id: validation.usuario_id,
+                    currentUserId,
+                    currentUserIdString,
+                    currentUser_id: currentUser?.id,
+                    isNumericMatch,
+                    isStringMatch,
+                    isDirectMatch
+                  })
+                  
+                  return isNumericMatch || isStringMatch || isDirectMatch
+                }
               )
               
               // Debug adicional para verificar la comparación
