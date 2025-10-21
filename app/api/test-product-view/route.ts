@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase-client';
 
+// Configuraciones para evitar DYNAMIC_SERVER_USAGE
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 /**
  * Endpoint de prueba para simular la visualización de un producto
  * POST /api/test-product-view
