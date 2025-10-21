@@ -4156,6 +4156,18 @@ const getCurrentUserId = () => {
                 validation => validation.usuario_id === currentUserId
               )
               
+              // Debug adicional para verificar la comparación
+              console.log('🔍 [Validation Banner] Comparación de IDs:', {
+                currentUserId,
+                currentUserIdType: typeof currentUserId,
+                userValidations: userValidations.map(v => ({
+                  usuario_id: v.usuario_id,
+                  usuario_id_type: typeof v.usuario_id,
+                  es_exitoso: v.es_exitoso
+                })),
+                userAlreadyValidated
+              })
+              
               // Debug: mostrar información de validación
               console.log('🔍 [Validation Banner] Debug info:', {
                 currentUserId,
