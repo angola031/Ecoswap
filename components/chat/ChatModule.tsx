@@ -4169,10 +4169,31 @@ const getCurrentUserId = () => {
               // Si el intercambio ya está completado, no mostrar el banner
               if (isCompleted) return null
               
-              // Si el usuario ya validó, no mostrar el banner
+              // Si el usuario ya validó, mostrar mensaje de confirmación
               if (userAlreadyValidated) {
-                console.log('✅ [Validation Banner] Usuario ya validó, ocultando banner')
-                return null
+                console.log('✅ [Validation Banner] Usuario ya validó, mostrando mensaje de confirmación')
+                return (
+                  <div className="bg-green-50 border-b border-green-200 flex-shrink-0">
+                    <div className="px-4 py-2 flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-green-700 text-sm font-medium">✅ Ya validaste este encuentro</span>
+                        <span className="text-xs text-green-700 hidden sm:inline">Esperando validación del otro usuario</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => {
+                            const firstProposal = proposals.find(p => p.status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
+                            if (firstProposal) handleViewProposal(firstProposal)
+                          }}
+                          className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                          title="Ver Detalles"
+                        >
+                          Ver
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
               }
               
               if (!hasAccepted && !hasPendingValidation) return null
