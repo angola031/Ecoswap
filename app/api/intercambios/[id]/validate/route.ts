@@ -34,9 +34,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: 'Parámetros inválidos: isValid requerido' }, { status: 400 })
     }
 
-    // Usuario autenticado
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Usuario autenticado - verificar token Bearer del header
+    const authHeader = req.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    
+    // Verificar el token con Supabase
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
     if (authError || !user) {
+      console.error('❌ Error de autenticación:', authError)
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
     }
 
