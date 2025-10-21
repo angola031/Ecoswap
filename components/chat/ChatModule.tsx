@@ -1912,12 +1912,15 @@ const getCurrentUserId = () => {
       const token = session?.access_token
       if (!token) return
 
+      console.log('🔄 [loadUserValidations] Cargando validaciones para chat:', selectedConversation.id)
+      
       const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ [loadUserValidations] Validaciones cargadas:', data.userValidations)
         setUserValidations(data.userValidations || [])
       } else {
         console.error('❌ [ChatModule] Error cargando validaciones del usuario:', response.status)
@@ -1934,11 +1937,13 @@ const getCurrentUserId = () => {
       if (!selectedConversation?.id || !isMounted) {
         if (isMounted) {
           setProposals([])
+          setUserValidations([])
         }
         return
       }
 
       await loadProposals()
+      await loadUserValidations()
     }
 
     loadProposalsEffect()
@@ -4151,12 +4156,24 @@ const getCurrentUserId = () => {
                 validation => validation.usuario_id === currentUserId
               )
               
+              // Debug: mostrar información de validación
+              console.log('🔍 [Validation Banner] Debug info:', {
+                currentUserId,
+                userValidations,
+                userAlreadyValidated,
+                hasAccepted,
+                hasPendingValidation,
+                isCompleted
+              })
               
               // Si el intercambio ya está completado, no mostrar el banner
               if (isCompleted) return null
               
               // Si el usuario ya validó, no mostrar el banner
-              if (userAlreadyValidated) return null
+              if (userAlreadyValidated) {
+                console.log('✅ [Validation Banner] Usuario ya validó, ocultando banner')
+                return null
+              }
               
               if (!hasAccepted && !hasPendingValidation) return null
               const first = proposals.find(p => p.status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
