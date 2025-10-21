@@ -1900,7 +1900,7 @@ const getCurrentUserId = () => {
     }
   }
 
-  // Función global para cargar validaciones del usuario
+  // Función global para cargar validaciones del usuario - consulta directa a validacion_intercambio
   const loadUserValidations = async (forceReload = false) => {
     if (!selectedConversation?.id) {
       setUserValidations([])
@@ -1912,27 +1912,49 @@ const getCurrentUserId = () => {
       const token = session?.access_token
       if (!token) return
 
-      console.log('🔄 [loadUserValidations] Cargando validaciones para chat:', selectedConversation.id, forceReload ? '(forzado)' : '')
+      console.log('🔄 [loadUserValidations] Consulta directa a validacion_intercambio para chat:', selectedConversation.id)
       
-      const response = await fetch(`/api/chat/${selectedConversation.id}/proposals?t=${Date.now()}`, {
+      // Obtener el intercambio_id del chat
+      const chatResponse = await fetch(`/api/chat/${selectedConversation.id}/proposals?t=${Date.now()}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       
-      if (response.ok) {
-        const data = await response.json()
-        console.log('✅ [loadUserValidations] Validaciones cargadas:', data.userValidations)
-        setUserValidations(data.userValidations || [])
+      if (!chatResponse.ok) {
+        console.error('❌ [ChatModule] Error obteniendo datos del chat:', chatResponse.status)
+        return
+      }
+
+      const chatData = await chatResponse.json()
+      const proposals = chatData.data || []
+      
+      // Encontrar el intercambio_id de las propuestas
+      const firstProposal = proposals.find((p: any) => p.intercambioId)
+      if (!firstProposal?.intercambioId) {
+        console.log('ℹ️ [loadUserValidations] No hay intercambio asociado a este chat')
+        setUserValidations([])
+        return
+      }
+
+      const intercambioId = firstProposal.intercambioId
+      console.log('🔍 [loadUserValidations] Intercambio ID encontrado:', intercambioId)
+
+      // Consulta directa a la tabla validacion_intercambio
+      const validationResponse = await fetch(`/api/intercambios/${intercambioId}/validations?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (validationResponse.ok) {
+        const validationData = await validationResponse.json()
+        console.log('✅ [loadUserValidations] Validaciones obtenidas directamente:', validationData)
+        setUserValidations(validationData || [])
         
-        // Forzar re-render del componente
         if (forceReload) {
-          console.log('🔄 [loadUserValidations] Forzando re-render después de validación')
-          // Pequeño delay para asegurar que el estado se actualice
-          setTimeout(() => {
-            console.log('🔄 [loadUserValidations] Re-render completado')
-          }, 100)
+          console.log('🔄 [loadUserValidations] Re-render forzado completado')
         }
       } else {
-        console.error('❌ [ChatModule] Error cargando validaciones del usuario:', response.status)
+        console.error('❌ [ChatModule] Error consultando validaciones directas:', validationResponse.status)
+        // Fallback a datos del chat si la consulta directa falla
+        setUserValidations(chatData.userValidations || [])
       }
     } catch (error) {
       console.error('❌ [ChatModule] Error cargando validaciones del usuario:', error)
