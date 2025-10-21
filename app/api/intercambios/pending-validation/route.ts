@@ -3,6 +3,7 @@ import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Forzar renderizado dinámico para esta ruta
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
