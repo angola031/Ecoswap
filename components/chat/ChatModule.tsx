@@ -4200,15 +4200,35 @@ const getCurrentUserId = () => {
               const currentUserIdString = getCurrentUserId()
               const currentUserIdNumber = parseInt(currentUserIdString || '0')
               
+              // Debug para identificar el problema con getCurrentUserId
+              console.log('🔍 [Banner Debug] getCurrentUserId result:', {
+                currentUserIdString,
+                currentUserIdNumber,
+                isNaN: Number.isNaN(currentUserIdNumber),
+                type: typeof currentUserIdString,
+                length: currentUserIdString?.length
+              })
+              
+              // Si getCurrentUserId falla, intentar obtener el ID del currentUser
+              let finalCurrentUserId = currentUserIdNumber
+              if (Number.isNaN(currentUserIdNumber) && currentUser?.id) {
+                finalCurrentUserId = parseInt(String(currentUser.id))
+                console.log('🔍 [Banner Debug] Usando currentUser.id como fallback:', {
+                  currentUser_id: currentUser.id,
+                  finalCurrentUserId,
+                  isNaN: Number.isNaN(finalCurrentUserId)
+                })
+              }
+              
               // 🔥 CRÍTICO: Normalizar TODOS los IDs a números para comparación
               const userAlreadyValidated = userValidations.some(validation => {
                 const validationUserId = Number(validation.usuario_id)
-                const matchNumber = validationUserId === currentUserIdNumber
+                const matchNumber = validationUserId === finalCurrentUserId
                 
                 console.log('🔍 [Banner] Comparando IDs:', {
                   validation_usuario_id: validation.usuario_id,
                   validationUserId,
-                  currentUserIdNumber,
+                  finalCurrentUserId,
                   matchNumber
                 })
                 
@@ -4218,6 +4238,7 @@ const getCurrentUserId = () => {
               console.log('🔍 [Banner] Estado de validación:', {
                 currentUserId: currentUserIdString,
                 currentUserIdNumber,
+                finalCurrentUserId,
                 userValidations: userValidations.map(v => ({
                   usuario_id: v.usuario_id,
                   usuario_id_normalizado: Number(v.usuario_id)
