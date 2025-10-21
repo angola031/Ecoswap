@@ -942,7 +942,7 @@ export async function getCurrentUser(): Promise<User | null> {
             .single()
 
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout')), 1000) // Reducido a 1 segundo
+                setTimeout(() => reject(new Error('Timeout')), 5000) // Aumentado a 5 segundos
             )
 
             const { data: dbUser } = await Promise.race([dbPromise, timeoutPromise]) as any
@@ -961,7 +961,8 @@ export async function getCurrentUser(): Promise<User | null> {
             }
         } catch (dbError) {
             console.warn('⚠️ getCurrentUser: No se pudieron obtener datos adicionales de BD:', dbError)
-            // Continuar con datos básicos de Supabase Auth
+            // Continuar con datos básicos de Supabase Auth - no es crítico
+            console.log('ℹ️ getCurrentUser: Continuando con datos básicos de Supabase Auth')
         }
 
         console.log('✅ getCurrentUser: Retornando usuario:', userData.name)
