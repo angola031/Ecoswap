@@ -1912,11 +1912,15 @@ const getCurrentUserId = () => {
       const token = session?.access_token
       if (!token) return
 
-      console.log('🔄 [loadUserValidations] Consulta directa a validacion_intercambio para chat:', selectedConversation.id)
+      console.log('🔄 [loadUserValidations] Consulta directa con timestamp:', new Date().toISOString())
       
       // Obtener el intercambio_id del chat
       const chatResponse = await fetch(`/api/chat/${selectedConversation.id}/proposals?t=${Date.now()}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache', // Evitar caché del navegador
+          'Pragma': 'no-cache'
+        }
       })
       
       if (!chatResponse.ok) {
@@ -1938,26 +1942,32 @@ const getCurrentUserId = () => {
       const intercambioId = firstProposal.intercambioId
       console.log('🔍 [loadUserValidations] Intercambio ID encontrado:', intercambioId)
 
-      // Consulta directa a la tabla validacion_intercambio
+      // Consulta directa a la tabla validacion_intercambio CON TIMESTAMP para evitar caché
       const validationResponse = await fetch(`/api/intercambios/${intercambioId}/validations?t=${Date.now()}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       })
       
       if (validationResponse.ok) {
         const validationData = await validationResponse.json()
-        console.log('✅ [loadUserValidations] Validaciones obtenidas directamente:', validationData)
-        setUserValidations(validationData || [])
+        console.log('✅ [loadUserValidations] Validaciones obtenidas:', validationData)
+        
+        // FORZAR actualización del estado con un nuevo array para garantizar re-render
+        setUserValidations([...validationData])
         
         if (forceReload) {
           console.log('🔄 [loadUserValidations] Re-render forzado completado')
         }
       } else {
-        console.error('❌ [ChatModule] Error consultando validaciones directas:', validationResponse.status)
+        console.error('❌ [ChatModule] Error consultando validaciones:', validationResponse.status)
         // Fallback a datos del chat si la consulta directa falla
-        setUserValidations(chatData.userValidations || [])
+        setUserValidations([...(chatData.userValidations || [])])
       }
     } catch (error) {
-      console.error('❌ [ChatModule] Error cargando validaciones del usuario:', error)
+      console.error('❌ [ChatModule] Error cargando validaciones:', error)
     }
   }
 
@@ -4186,78 +4196,36 @@ const getCurrentUserId = () => {
               const hasPendingValidation = proposals.some(p => p.status === 'pendiente_validacion')
               const isCompleted = proposals.some(p => (p as any).status === 'completado')
               
-              // Verificar si el usuario actual ya validó el encuentro
-              const currentUserId = parseInt(getCurrentUserId())
+              // Verificar si el usuario actual ya validó con comparación normalizada
               const currentUserIdString = getCurrentUserId()
+              const currentUserIdNumber = parseInt(currentUserIdString || '0')
               
-              // Verificar validación con múltiples métodos de comparación
-              const userAlreadyValidated = userValidations.some(
-                validation => {
-                  // Debug detallado de tipos y valores
-                  console.log('🔍 [Validation Debug] Valores exactos:', {
-                    'validation.usuario_id': validation.usuario_id,
-                    'typeof validation.usuario_id': typeof validation.usuario_id,
-                    'currentUserId': currentUserId,
-                    'typeof currentUserId': typeof currentUserId,
-                    'currentUser?.id': currentUser?.id,
-                    'typeof currentUser?.id': typeof currentUser?.id,
-                    'String(validation.usuario_id)': String(validation.usuario_id),
-                    'String(currentUserId)': String(currentUserId),
-                    'String(currentUser?.id)': String(currentUser?.id)
-                  })
-                  
-                  // Normalizar todos los IDs a números para comparación
-                  const validationUserId = Number(validation.usuario_id)
-                  const currentUserIdNum = Number(currentUserId)
-                  const currentUserDirectId = Number(currentUser?.id || 0)
-                  
-                  // Comparar como números
-                  const isNumericMatch = validationUserId === currentUserIdNum
-                  // Comparar con el ID directo del currentUser
-                  const isDirectMatch = validationUserId === currentUserDirectId
-                  // Comparar como strings también
-                  const isStringMatch = String(validationUserId) === String(currentUserIdNum)
-                  
-                  const isMatch = isNumericMatch || isDirectMatch || isStringMatch
-                  
-                  console.log('🔍 [Validation] Comparando IDs:', {
-                    validation_usuario_id: validation.usuario_id,
-                    validationUserId,
-                    currentUserId,
-                    currentUserIdNum,
-                    currentUser_id: currentUser?.id,
-                    currentUserDirectId,
-                    isNumericMatch,
-                    isDirectMatch,
-                    isStringMatch,
-                    isMatch
-                  })
-                  
-                  return isMatch
-                }
-              )
+              // 🔥 CRÍTICO: Normalizar TODOS los IDs a números para comparación
+              const userAlreadyValidated = userValidations.some(validation => {
+                const validationUserId = Number(validation.usuario_id)
+                const matchNumber = validationUserId === currentUserIdNumber
+                
+                console.log('🔍 [Banner] Comparando IDs:', {
+                  validation_usuario_id: validation.usuario_id,
+                  validationUserId,
+                  currentUserIdNumber,
+                  matchNumber
+                })
+                
+                return matchNumber
+              })
               
-              // Debug adicional para verificar la comparación
-              console.log('🔍 [Validation Banner] Comparación de IDs:', {
-                currentUserId,
-                currentUserIdType: typeof currentUserId,
+              console.log('🔍 [Banner] Estado de validación:', {
+                currentUserId: currentUserIdString,
+                currentUserIdNumber,
                 userValidations: userValidations.map(v => ({
                   usuario_id: v.usuario_id,
-                  usuario_id_type: typeof v.usuario_id,
-                  es_exitoso: v.es_exitoso
+                  usuario_id_normalizado: Number(v.usuario_id)
                 })),
-                userAlreadyValidated
-              })
-              
-              // Debug: mostrar información de validación
-              console.log('🔍 [Validation Banner] Debug info:', {
-                currentUserId,
-                userValidations,
                 userAlreadyValidated,
-                hasAccepted,
-                hasPendingValidation,
                 isCompleted
               })
+              
               
               // Si el intercambio ya está completado, no mostrar el banner
               if (isCompleted) return null

@@ -52,7 +52,20 @@ export async function GET(
 
     console.log('✅ [Validations API] Validaciones encontradas:', validations?.length || 0)
 
-    return NextResponse.json(validations || [])
+    // Asegurar que usuario_id sea un número en la respuesta
+    const normalizedValidations = (validations || []).map(v => ({
+      ...v,
+      usuario_id: Number(v.usuario_id) // Normalizar a número
+    }))
+    
+    // Headers para evitar caché
+    return NextResponse.json(normalizedValidations, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    })
   } catch (error) {
     console.error('❌ [Validations API] Error interno:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
