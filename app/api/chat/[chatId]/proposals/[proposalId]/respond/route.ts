@@ -179,6 +179,9 @@ export async function PATCH(
           
           if (meetingDetails.notes) {
             intercambioUpdateData.notas_encuentro = meetingDetails.notes
+          } else if (propuesta.respuesta) {
+            // Copiar notas del encuentro desde la propuesta si existen
+            intercambioUpdateData.notas_encuentro = propuesta.respuesta
           }
         }
 
@@ -226,6 +229,8 @@ export async function PATCH(
           
           if (meetingDetails.notes) {
             nuevoIntercambioData.notas_encuentro = meetingDetails.notes
+          } else if (propuesta.respuesta) {
+            nuevoIntercambioData.notas_encuentro = propuesta.respuesta
           }
         }
 

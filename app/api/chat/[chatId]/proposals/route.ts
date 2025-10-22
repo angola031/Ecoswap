@@ -98,8 +98,7 @@ export async function GET(
       return NextResponse.json({ error: 'No tienes acceso a este chat' }, { status: 403 })
     }
 
-    // Obtener propuestas del chat
-    
+    // Obtener propuestas del chat con información del intercambio
     const { data: propuestas, error: propuestasError } = await supabase
       .from('propuesta')
       .select(`
@@ -112,6 +111,7 @@ export async function GET(
         respuesta,
         fecha_creacion,
         fecha_respuesta,
+        fecha_actualizacion,
         fecha_encuentro,
         lugar_encuentro,
         archivo_url,
@@ -128,6 +128,12 @@ export async function GET(
           nombre,
           apellido,
           foto_perfil
+        ),
+        chat:chat!propuesta_chat_id_fkey (
+          intercambio:intercambio!chat_intercambio_id_fkey (
+            intercambio_id,
+            estado
+          )
         )
       `)
       .eq('chat_id', chatId)
@@ -146,33 +152,39 @@ export async function GET(
       .eq('intercambio_id', intercambio.intercambio_id)
 
     // Transformar datos
-    const transformedProposals = (propuestas || []).map((prop: any) => ({
-      id: prop.propuesta_id,
-      intercambioId: intercambio.intercambio_id,
-      type: prop.tipo_propuesta,
-      description: prop.descripcion,
-      proposedPrice: prop.precio_propuesto,
-      conditions: prop.condiciones,
-      status: prop.estado,
-      createdAt: prop.fecha_creacion,
-      respondedAt: prop.fecha_respuesta,
-      response: prop.respuesta,
-      meetingDate: prop.fecha_encuentro,
-      meetingPlace: prop.lugar_encuentro,
-      archivo_url: prop.archivo_url,
-      proposer: {
-        id: prop.usuario_propone.user_id,
-        name: prop.usuario_propone.nombre,
-        lastName: prop.usuario_propone.apellido,
-        avatar: prop.usuario_propone.foto_perfil
-      },
-      receiver: {
-        id: prop.usuario_recibe.user_id,
-        name: prop.usuario_recibe.nombre,
-        lastName: prop.usuario_recibe.apellido,
-        avatar: prop.usuario_recibe.foto_perfil
+    const transformedProposals = (propuestas || []).map((prop: any) => {
+      // Extraer estado del intercambio de manera segura
+      const exchangeStatus = prop.chat?.intercambio?.estado || intercambio?.estado || 'pendiente'
+      
+      return {
+        id: prop.propuesta_id,
+        intercambioId: intercambio.intercambio_id,
+        type: prop.tipo_propuesta,
+        description: prop.descripcion,
+        proposedPrice: prop.precio_propuesto,
+        conditions: prop.condiciones,
+        status: prop.estado,
+        exchangeStatus: exchangeStatus, // Estado del intercambio, no de la propuesta
+        createdAt: prop.fecha_creacion,
+        respondedAt: prop.fecha_respuesta,
+        response: prop.respuesta,
+        meetingDate: prop.fecha_encuentro,
+        meetingPlace: prop.lugar_encuentro,
+        archivo_url: prop.archivo_url,
+        proposer: {
+          id: prop.usuario_propone.user_id,
+          name: prop.usuario_propone.nombre,
+          lastName: prop.usuario_propone.apellido,
+          avatar: prop.usuario_propone.foto_perfil
+        },
+        receiver: {
+          id: prop.usuario_recibe.user_id,
+          name: prop.usuario_recibe.nombre,
+          lastName: prop.usuario_recibe.apellido,
+          avatar: prop.usuario_recibe.foto_perfil
+        }
       }
-    }))
+    })
 
 
     return NextResponse.json({ 
@@ -201,7 +213,7 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { type, description, proposedPrice, conditions, meetingDate, meetingPlace, archivo_url } = body
+    const { type, description, proposedPrice, conditions, meetingDate, meetingPlace, meetingNotes, archivo_url } = body
 
     if (!type || !description) {
       return NextResponse.json({ error: 'Tipo y descripción son requeridos' }, { status: 400 })
@@ -248,6 +260,8 @@ export async function POST(
         condiciones: conditions || null,
         fecha_encuentro: meetingDate || null,
         lugar_encuentro: meetingPlace || null,
+        // Guardar notas del encuentro en condiciones si aplica o usar campo dedicado si existe
+        respuesta: meetingNotes || null,
         archivo_url: archivo_url || null,
         estado: 'pendiente'
       })
@@ -262,6 +276,7 @@ export async function POST(
         fecha_encuentro,
         lugar_encuentro,
         archivo_url,
+        respuesta,
         usuario_propone_id
       `)
       .single()

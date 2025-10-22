@@ -815,20 +815,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
               <textarea id="validation-aspects" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows="2" placeholder="¿Qué aspectos positivos o negativos destacarías?"></textarea>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Lugar del encuentro (opcional)</label>
-                <input id="meeting-place" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Centro Comercial Gran Plaza" />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha y hora del encuentro (opcional)</label>
-                <input id="meeting-date" type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Notas del encuentro (opcional)</label>
-              <textarea id="meeting-notes" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows="2" placeholder="Indicaciones, recordatorios o acuerdos adicionales"></textarea>
-            </div>
+            <!-- Campos de encuentro removidos: ya se definen en la propuesta aceptada -->
           </div>
         `,
         showCancelButton: true,
@@ -883,9 +870,6 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
           const comment = (document.getElementById('validation-comment') as HTMLTextAreaElement)?.value
           const aspects = (document.getElementById('validation-aspects') as HTMLTextAreaElement)?.value
           const rating = document.querySelector('.star-rating.bg-yellow-100')?.getAttribute('data-rating')
-          const meetingPlace = (document.getElementById('meeting-place') as HTMLInputElement)?.value
-          const meetingDate = (document.getElementById('meeting-date') as HTMLInputElement)?.value
-          const meetingNotes = (document.getElementById('meeting-notes') as HTMLTextAreaElement)?.value
           
           // Validación obligatoria de calificación
           if (!rating) {
@@ -903,10 +887,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
             isValid: true,
             rating: parseInt(rating),
             comment: comment || null,
-            aspects: aspects || null,
-            meetingPlace: meetingPlace || null,
-            meetingDate: meetingDate || null,
-            meetingNotes: meetingNotes || null
+            aspects: aspects || null
           }
         }
       })
@@ -3181,6 +3162,16 @@ const getCurrentUserId = () => {
             }
           }
           
+          // Notas del encuentro selector
+          const meetNoteSelect = document.getElementById('meet-note-select') as HTMLSelectElement | null
+          const meetNoteOther = document.getElementById('meet-note-other') as HTMLInputElement | null
+          const meetNotes = (() => {
+            if (!meetNoteSelect) return undefined
+            if (meetNoteSelect.value === 'factura') return 'Llevar factura'
+            if (meetNoteSelect.value === 'otro') return (meetNoteOther?.value || '').trim() || undefined
+            return undefined
+          })()
+
           return { 
             type, 
             description, 
@@ -3188,6 +3179,7 @@ const getCurrentUserId = () => {
             conditions: conditions || undefined,
             meetingDate: meetingDate || undefined,
             meetingPlace: meetingPlace || undefined,
+            meetingNotes: meetNotes,
             archivo_url: imageUrl
           }
         }
