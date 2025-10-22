@@ -81,6 +81,8 @@ export async function PATCH(
         precio_propuesto,
         condiciones,
         nota_intercambio,
+        fecha_encuentro,
+        lugar_encuentro,
         chat:chat (
           intercambio (
             intercambio_id,
@@ -184,6 +186,17 @@ export async function PATCH(
             // Copiar notas del encuentro desde la propuesta si existen
             intercambioUpdateData.notas_encuentro = propuesta.nota_intercambio
           }
+        } else {
+          // Si no hay meetingDetails, copiar desde la propuesta
+          if (propuesta.fecha_encuentro) {
+            intercambioUpdateData.fecha_encuentro = propuesta.fecha_encuentro
+          }
+          if (propuesta.lugar_encuentro) {
+            intercambioUpdateData.lugar_encuentro = propuesta.lugar_encuentro
+          }
+          if (propuesta.nota_intercambio) {
+            intercambioUpdateData.notas_encuentro = propuesta.nota_intercambio
+          }
         }
 
         // Agregar precio si es una propuesta de precio
@@ -231,6 +244,17 @@ export async function PATCH(
           if (meetingDetails.notes) {
             nuevoIntercambioData.notas_encuentro = meetingDetails.notes
           } else if (propuesta.nota_intercambio) {
+            nuevoIntercambioData.notas_encuentro = propuesta.nota_intercambio
+          }
+        } else {
+          // Si no hay meetingDetails, copiar desde la propuesta
+          if (propuesta.fecha_encuentro) {
+            nuevoIntercambioData.fecha_encuentro = propuesta.fecha_encuentro
+          }
+          if (propuesta.lugar_encuentro) {
+            nuevoIntercambioData.lugar_encuentro = propuesta.lugar_encuentro
+          }
+          if (propuesta.nota_intercambio) {
             nuevoIntercambioData.notas_encuentro = propuesta.nota_intercambio
           }
         }
