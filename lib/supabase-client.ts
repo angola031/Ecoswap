@@ -37,6 +37,14 @@ export const getSupabaseAdminClient = () => {
         return null
     }
     
+    // Solo permitir uso del Service Role en Vercel (evita uso local)
+    const isVercel = !!process.env.VERCEL
+    if (!isVercel) {
+        // No exponer ni permitir el uso del Service Role fuera de Vercel
+        console.log('ℹ️ Service Role deshabilitado fuera de Vercel (modo local)')
+        return null
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     
@@ -46,7 +54,7 @@ export const getSupabaseAdminClient = () => {
     }
     
     if (!supabaseServiceRoleKey) {
-        console.log('ℹ️ SUPABASE_SERVICE_ROLE_KEY no configurada (modo localhost)')
+        console.log('ℹ️ SUPABASE_SERVICE_ROLE_KEY no configurada en Vercel')
         return null
     }
     

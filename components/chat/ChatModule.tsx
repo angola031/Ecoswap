@@ -814,6 +814,21 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
               <label class="block text-sm font-medium text-gray-700 mb-2">Aspectos destacados (opcional)</label>
               <textarea id="validation-aspects" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows="2" placeholder="¿Qué aspectos positivos o negativos destacarías?"></textarea>
             </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Lugar del encuentro (opcional)</label>
+                <input id="meeting-place" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Centro Comercial Gran Plaza" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha y hora del encuentro (opcional)</label>
+                <input id="meeting-date" type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Notas del encuentro (opcional)</label>
+              <textarea id="meeting-notes" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows="2" placeholder="Indicaciones, recordatorios o acuerdos adicionales"></textarea>
+            </div>
           </div>
         `,
         showCancelButton: true,
@@ -868,6 +883,9 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
           const comment = (document.getElementById('validation-comment') as HTMLTextAreaElement)?.value
           const aspects = (document.getElementById('validation-aspects') as HTMLTextAreaElement)?.value
           const rating = document.querySelector('.star-rating.bg-yellow-100')?.getAttribute('data-rating')
+          const meetingPlace = (document.getElementById('meeting-place') as HTMLInputElement)?.value
+          const meetingDate = (document.getElementById('meeting-date') as HTMLInputElement)?.value
+          const meetingNotes = (document.getElementById('meeting-notes') as HTMLTextAreaElement)?.value
           
           // Validación obligatoria de calificación
           if (!rating) {
@@ -885,7 +903,10 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
             isValid: true,
             rating: parseInt(rating),
             comment: comment || null,
-            aspects: aspects || null
+            aspects: aspects || null,
+            meetingPlace: meetingPlace || null,
+            meetingDate: meetingDate || null,
+            meetingNotes: meetingNotes || null
           }
         }
       })
@@ -899,23 +920,47 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
       } else if (validationResult.dismiss === (window as any).Swal.DismissReason.cancel) {
         // Mostrar modal para problemas
         const problemResult = await (window as any).Swal.fire({
-          title: '¿Qué problemas hubo?',
-          input: 'textarea',
-          inputLabel: 'Describe los problemas encontrados',
-          inputPlaceholder: 'Explica qué problemas tuviste con este intercambio...',
+          title: 'Reportar problema del intercambio',
+          html: `
+            <div class="text-left space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Motivo del problema (obligatorio)</label>
+                <textarea id="rejection-reason" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" rows="3" placeholder="Describe qué salió mal y por qué consideras que no fue exitoso"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Notas del encuentro (opcional)</label>
+                <textarea id="meeting-notes" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" rows="2" placeholder="Detalles adicionales del encuentro"></textarea>
+              </div>
+            </div>
+          `,
+          focusConfirm: false,
           showCancelButton: true,
           confirmButtonText: 'Reportar problema',
           cancelButtonText: 'Cancelar',
           confirmButtonColor: '#EF4444',
-          cancelButtonColor: '#6B7280'
+          cancelButtonColor: '#6B7280',
+          preConfirm: () => {
+            const rejectionReason = (document.getElementById('rejection-reason') as HTMLTextAreaElement)?.value
+            const meetingNotes = (document.getElementById('meeting-notes') as HTMLTextAreaElement)?.value
+            if (!rejectionReason || !rejectionReason.trim()) {
+              ;(window as any).Swal.showValidationMessage('Por favor describe el motivo del problema')
+              return false
+            }
+            return {
+              rejectionReason: rejectionReason.trim(),
+              meetingNotes: meetingNotes || null
+            }
+          }
         })
 
         if (problemResult.isConfirmed) {
           const submitResult = await submitValidation(intercambioId, {
             isValid: false,
-            comment: problemResult.value,
+            comment: problemResult.value?.rejectionReason || null,
             rating: null,
-            aspects: null
+            aspects: null,
+            rejectionReason: problemResult.value?.rejectionReason || null,
+            meetingNotes: problemResult.value?.meetingNotes || null
           })
           if (!submitResult) {
             return
@@ -962,22 +1007,20 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('🔍 [DEBUG] Respuesta de validación:', data)
         
-        if (data.data.bothValidated) {
-          if (data.data.newEstado === 'completado') {
-            console.log('🔄 [DEBUG] Intercambio completado, refrescando datos...')
-            
-            // Refrescar datos para actualizar el estado del intercambio
-            console.log('🔄 [DEBUG] Refrescando loadProductInfo...')
-            await loadProductInfo()
-            
-            console.log('🔄 [DEBUG] Refrescando loadProposals...')
-            await loadProposals()
-            
-            console.log('🔄 [DEBUG] Refrescando loadUserValidations...')
-            await loadUserValidations(true)
-            
-            console.log('✅ [DEBUG] Datos refrescados, mostrando modal de éxito')
+        // Verificar si hay un nuevo estado del intercambio
+        if (data.intercambioEstado) {
+          console.log('🔄 [DEBUG] Estado del intercambio actualizado:', data.intercambioEstado)
+          
+          // Refrescar datos para actualizar el estado del intercambio
+          console.log('🔄 [DEBUG] Refrescando datos...')
+          await loadProductInfo()
+          await loadProposals()
+          await loadUserValidations(true)
+          
+          if (data.intercambioEstado === 'completado') {
+            console.log('✅ [DEBUG] Intercambio completado, mostrando modal de éxito')
             
             ;(window as any).Swal.fire({
               title: '¡Intercambio Completado!',
@@ -992,11 +1035,8 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
               confirmButtonColor: '#10B981',
               width: '500px'
             })
-          } else if (data.data.newEstado === 'fallido') {
-            // Refrescar datos para actualizar el estado del intercambio
-            await loadProductInfo()
-            await loadProposals()
-            await loadUserValidations(true)
+          } else if (data.intercambioEstado === 'fallido') {
+            console.log('❌ [DEBUG] Intercambio fallido, mostrando modal de fallo')
             
             ;(window as any).Swal.fire({
               title: 'Intercambio Fallido',
@@ -1011,8 +1051,27 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
               confirmButtonColor: '#EF4444',
               width: '500px'
             })
+          } else if (data.intercambioEstado === 'pendiente_revision') {
+            console.log('⚠️ [DEBUG] Intercambio pendiente de revisión')
+            
+            ;(window as any).Swal.fire({
+              title: 'Validación Enviada a Revisión',
+              html: `
+                <div class="text-center space-y-3">
+                  <div class="text-4xl">⚠️</div>
+                  <p class="text-gray-700">Hay una discrepancia en las validaciones.</p>
+                  <p class="text-sm text-gray-600">El intercambio ha sido enviado a revisión de administradores.</p>
+                </div>
+              `,
+              confirmButtonText: 'Entendido',
+              confirmButtonColor: '#F59E0B',
+              width: '500px'
+            })
           }
         } else {
+          // Solo se registró la validación, no se completó el intercambio
+          console.log('✅ [DEBUG] Validación registrada, esperando otra validación')
+          
           // Refrescar datos para actualizar el estado de validación
           await loadUserValidations(true)
           
@@ -4195,7 +4254,9 @@ const getCurrentUserId = () => {
             {(() => {
               const hasAccepted = proposals.some(p => p.status === 'aceptada')
               const hasPendingValidation = proposals.some(p => p.status === 'pendiente_validacion')
-              const isCompleted = proposals.some(p => (p as any).status === 'completado')
+              // Usar exchangeStatus en lugar de status para el estado del intercambio
+              const isCompleted = proposals.some(p => (p as any).exchangeStatus === 'completado')
+              const isRejected = proposals.some(p => (p as any).exchangeStatus === 'rechazado' || (p as any).exchangeStatus === 'fallido')
               
               // Verificar si el usuario actual ya validó con comparación normalizada
               const currentUserIdString = getCurrentUserId()
@@ -4245,14 +4306,50 @@ const getCurrentUserId = () => {
                   usuario_id_normalizado: Number(v.usuario_id)
                 })),
                 userAlreadyValidated,
-                isCompleted
+                isCompleted,
+                isRejected
               })
               
               
-              // Si el intercambio ya está completado, no mostrar el banner
-              if (isCompleted) return null
+              // PRIORIDAD 1: Si el intercambio ya está completado o rechazado, mostrar estado final
+              if (isCompleted || isRejected) {
+                const statusText = isCompleted ? 'completado' : 'rechazado'
+                const statusColor = isCompleted ? 'green' : 'red'
+                const statusIcon = isCompleted ? '✅' : '❌'
+                
+                return (
+                  <div className={`bg-${statusColor}-50 border-b border-${statusColor}-200 flex-shrink-0`}>
+                    <div className="px-4 py-2 flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-${statusColor}-700 text-sm font-medium`}>
+                          {statusIcon} Intercambio {statusText}
+                        </span>
+                        <span className={`text-xs text-${statusColor}-700 hidden sm:inline`}>
+                          {isCompleted ? 'El intercambio se ha completado exitosamente' : 'El intercambio ha sido rechazado'}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => {
+                            const firstProposal = proposals.find(p => p.status === 'pendiente_validacion') || 
+                                                 proposals.find(p => p.status === 'aceptada') ||
+                                                 proposals.find(p => (p as any).status === 'completado') ||
+                                                 proposals.find(p => (p as any).status === 'rechazado') ||
+                                                 proposals.find(p => (p as any).status === 'fallido')
+                            if (firstProposal) handleViewProposal(firstProposal)
+                          }}
+                          className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                          title="Ver Detalles"
+                        >
+                          Ver
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
               
-              // Si el usuario ya validó, mostrar mensaje de confirmación
+              // PRIORIDAD 2: Si el usuario ya validó pero el intercambio no está terminado, mostrar confirmación
               if (userAlreadyValidated) {
                 console.log('✅ [Validation Banner] Usuario ya validó, mostrando mensaje de confirmación')
                 return (
@@ -4279,7 +4376,10 @@ const getCurrentUserId = () => {
                 )
               }
               
+              // PRIORIDAD 3: Si no hay propuestas aceptadas o pendientes de validación, no mostrar banner
               if (!hasAccepted && !hasPendingValidation) return null
+              
+              // PRIORIDAD 4: Mostrar banner de validación pendiente (usuario aún no ha validado)
               const first = proposals.find(p => p.status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
               const intercambioId = (first as any)?.intercambioId || first?.id
               return (

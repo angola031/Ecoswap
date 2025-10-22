@@ -28,7 +28,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const body = await req.json().catch(() => ({}))
-    const { isValid, rating, comment, aspects } = body || {}
+    const {
+      isValid,
+      rating,
+      comment,
+      aspects,
+      // Campos opcionales del intercambio para que los usuarios puedan completar la información
+      meetingPlace,         // string | null -> lugar_encuentro
+      meetingDate,          // string (ISO) | null -> fecha_encuentro
+      meetingNotes,         // string | null -> notas_encuentro
+      rejectionReason       // string | null -> motivo_rechazo
+    } = body || {}
 
     if (typeof isValid !== 'boolean') {
       return NextResponse.json({ error: 'Parámetros inválidos: isValid requerido' }, { status: 400 })
@@ -61,6 +71,36 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const usuarioId = dbUser.user_id
+
+    // Actualizar campos opcionales del intercambio si fueron proporcionados
+    try {
+      const updatePayload: Record<string, any> = {}
+      if (typeof meetingPlace === 'string' && meetingPlace.trim().length > 0) {
+        updatePayload.lugar_encuentro = meetingPlace.trim()
+      }
+      if (typeof meetingDate === 'string' && meetingDate.trim().length > 0) {
+        // Guardar como ISO si es válido, de lo contrario dejar que la BD valide
+        updatePayload.fecha_encuentro = new Date(meetingDate).toISOString()
+      }
+      if (typeof meetingNotes === 'string' && meetingNotes.trim().length > 0) {
+        updatePayload.notas_encuentro = meetingNotes.trim()
+      }
+      if (typeof rejectionReason === 'string' && rejectionReason.trim().length > 0) {
+        updatePayload.motivo_rechazo = rejectionReason.trim()
+      }
+
+      if (Object.keys(updatePayload).length > 0) {
+        const { error: updIntercambioMetaErr } = await admin
+          .from('intercambio')
+          .update(updatePayload)
+          .eq('intercambio_id', intercambioId)
+        if (updIntercambioMetaErr) {
+          console.warn('⚠️ [DEBUG] No se pudieron actualizar campos del intercambio:', updIntercambioMetaErr)
+        }
+      }
+    } catch (metaErr) {
+      console.warn('⚠️ [DEBUG] Excepción actualizando campos opcionales del intercambio:', metaErr)
+    }
 
     // Registrar/actualizar validación del intercambio por este usuario
     // Primero verificar si ya existe una validación de este usuario
@@ -125,6 +165,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: 'No se pudo consultar validaciones' }, { status: 500 })
     }
 
+    // Obtener estado actual del intercambio para debug
+    const { data: currentIntercambio, error: intercambioErr } = await admin
+      .from('intercambio')
+      .select('estado, intercambio_id')
+      .eq('intercambio_id', intercambioId)
+      .single()
+
+    console.log('🔍 [DEBUG] Estado actual del intercambio:', currentIntercambio?.estado)
+    console.log('🔍 [DEBUG] Validaciones encontradas:', bothVals?.length || 0)
+    console.log('🔍 [DEBUG] Detalles de validaciones:', bothVals)
+
     let adminReview = false
     let newEstado: string | null = null
 
@@ -132,27 +183,50 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       const a = bothVals[0]?.es_exitoso === true
       const b = bothVals[1]?.es_exitoso === true
 
+      console.log('🔍 [DEBUG] Validación 1 (es_exitoso):', a)
+      console.log('🔍 [DEBUG] Validación 2 (es_exitoso):', b)
+
       if (a && b) {
         newEstado = 'completado'
+        console.log('✅ [DEBUG] Ambas validaciones exitosas -> completado')
       } else if (a !== b) {
         newEstado = 'pendiente_revision'
         adminReview = true
+        console.log('⚠️ [DEBUG] Discrepancia en validaciones -> pendiente_revision')
       } else {
         newEstado = 'fallido'
+        console.log('❌ [DEBUG] Ambas validaciones fallidas -> fallido')
       }
+    } else {
+      console.log('ℹ️ [DEBUG] No hay suficientes validaciones aún:', bothVals?.length || 0)
     }
 
     // Actualizar estado del intercambio si corresponde
     if (newEstado) {
+      console.log('🔄 [DEBUG] Actualizando estado del intercambio de', currentIntercambio?.estado, 'a', newEstado)
+      
       const { error: updErr } = await admin
         .from('intercambio')
-        .update({ estado: newEstado, fecha_actualizacion: new Date().toISOString() })
+        .update({ 
+          estado: newEstado, 
+          fecha_completado: newEstado === 'completado' ? new Date().toISOString() : null
+        })
         .eq('intercambio_id', intercambioId)
 
       if (updErr) {
         // No bloquear la respuesta por este error, pero informarlo
-        console.warn('No se pudo actualizar estado del intercambio:', updErr)
+        console.error('❌ [DEBUG] Error actualizando estado del intercambio:', updErr)
+        console.error('❌ [DEBUG] Detalles del error:', {
+          intercambioId,
+          newEstado,
+          currentEstado: currentIntercambio?.estado,
+          error: updErr
+        })
+      } else {
+        console.log('✅ [DEBUG] Estado del intercambio actualizado exitosamente')
       }
+    } else {
+      console.log('ℹ️ [DEBUG] No se actualiza el estado del intercambio (newEstado es null)')
     }
 
     // Crear ticket de soporte cuando hay discrepancia (pendiente_revision)
