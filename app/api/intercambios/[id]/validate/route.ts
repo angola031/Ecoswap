@@ -155,6 +155,74 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: 'No se pudo registrar la validación' }, { status: 500 })
     }
 
+    // Si hay una calificación válida, crear registro en la tabla calificacion
+    if (typeof rating === 'number' && rating >= 1 && rating <= 5) {
+      try {
+        // Obtener información del intercambio para determinar quién califica a quién
+        const { data: intercambioData, error: intercambioErr } = await admin
+          .from('intercambio')
+          .select('usuario_propone_id, usuario_recibe_id')
+          .eq('intercambio_id', intercambioId)
+          .single()
+
+        if (!intercambioErr && intercambioData) {
+          // Determinar quién es el calificado (el otro usuario)
+          const calificadoId = intercambioData.usuario_propone_id === usuarioId 
+            ? intercambioData.usuario_recibe_id 
+            : intercambioData.usuario_propone_id
+
+          // Verificar si ya existe una calificación de este usuario para este intercambio
+          const { data: existingRating, error: checkRatingErr } = await admin
+            .from('calificacion')
+            .select('calificacion_id')
+            .eq('intercambio_id', intercambioId)
+            .eq('calificador_id', usuarioId)
+            .single()
+
+          if (existingRating) {
+            // Actualizar calificación existente
+            const { error: updateRatingErr } = await admin
+              .from('calificacion')
+              .update({
+                puntuacion: rating,
+                comentario: typeof comment === 'string' ? comment : null,
+                aspectos_destacados: typeof aspects === 'string' ? aspects : null,
+                fecha_calificacion: new Date().toISOString()
+              })
+              .eq('calificacion_id', existingRating.calificacion_id)
+
+            if (updateRatingErr) {
+              console.warn('⚠️ [DEBUG] Error actualizando calificación:', updateRatingErr)
+            } else {
+              console.log('✅ [DEBUG] Calificación actualizada exitosamente')
+            }
+          } else {
+            // Crear nueva calificación
+            const { error: insertRatingErr } = await admin
+              .from('calificacion')
+              .insert({
+                intercambio_id: intercambioId,
+                calificador_id: usuarioId,
+                calificado_id: calificadoId,
+                puntuacion: rating,
+                comentario: typeof comment === 'string' ? comment : null,
+                aspectos_destacados: typeof aspects === 'string' ? aspects : null,
+                fecha_calificacion: new Date().toISOString(),
+                es_publica: true
+              })
+
+            if (insertRatingErr) {
+              console.warn('⚠️ [DEBUG] Error creando calificación:', insertRatingErr)
+            } else {
+              console.log('✅ [DEBUG] Calificación creada exitosamente')
+            }
+          }
+        }
+      } catch (ratingErr) {
+        console.warn('⚠️ [DEBUG] Excepción manejando calificación:', ratingErr)
+      }
+    }
+
     // Obtener ambas validaciones (si existen)
     const { data: bothVals, error: valsErr } = await admin
       .from('validacion_intercambio')
