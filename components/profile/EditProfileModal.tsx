@@ -15,6 +15,7 @@ import {
     GlobeAltIcon,
     ShieldCheckIcon
 } from '@heroicons/react/24/outline'
+import Avatar from '@/components/ui/Avatar'
 
 interface User {
     id: string
@@ -269,10 +270,11 @@ export default function EditProfileModal({ user, isOpen, onClose, onProfileUpdat
                         {/* Avatar */}
                         <div className="text-center">
                             <div className="relative inline-block">
-                                <img
+                                <Avatar
                                     src={avatarPreview}
                                     alt="Avatar"
-                                    className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
+                                    size="xl"
+                                    className="border-4 border-gray-200"
                                 />
                                 <button
                                     type="button"

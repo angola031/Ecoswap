@@ -25,6 +25,7 @@ import { useInactivity } from '@/hooks/useInactivity'
 import { useNotifications } from '@/hooks/useNotifications'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { logoutUser } from '@/lib/auth'
+import Avatar from '@/components/ui/Avatar'
 // import imageCompression from 'browser-image-compression' // Importación dinámica
 
 
@@ -3706,10 +3707,10 @@ const getCurrentUserId = () => {
               >
                 <div className="flex items-center space-x-3">
                   <div className="relative">
-                    <img
+                    <Avatar
                       src={conversation.user.avatar}
                       alt={conversation.user.name}
-                      className="w-12 h-12 rounded-full"
+                      size="lg"
                     />
                     <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
                       isUserOnline(conversation.user.id) ? 'bg-green-500' : 'bg-gray-400'
@@ -3767,10 +3768,10 @@ const getCurrentUserId = () => {
                   </button>
 
                   <div className="relative">
-                    <img
+                    <Avatar
                       src={selectedConversation.user.avatar}
                       alt={selectedConversation.user.name}
-                      className="w-10 h-10 rounded-full"
+                      size="md"
                     />
                     <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
                       isUserOnline(selectedConversation.user.id) ? 'bg-green-500' : 'bg-gray-400'
@@ -4369,18 +4370,11 @@ const getCurrentUserId = () => {
                 >
                   <div className={`flex items-end space-x-2 max-w-md ${isOwnMessage(message) ? 'flex-row-reverse space-x-reverse' : ''}`}>
                     {!isOwnMessage(message) && (
-                      <img
+                      <Avatar
                         src={message.sender?.avatar || selectedConversation.user.avatar}
                         alt={message.sender?.name || selectedConversation.user.name}
-                        className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const fallback = document.createElement('div');
-                          fallback.className = 'w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-600 border border-gray-200 flex-shrink-0';
-                          fallback.textContent = (message.sender?.name || selectedConversation.user.name).charAt(0).toUpperCase();
-                          target.parentNode?.insertBefore(fallback, target.nextSibling);
-                        }}
+                        size="sm"
+                        className="border border-gray-200 flex-shrink-0"
                       />
                     )}
 
@@ -4520,10 +4514,11 @@ const getCurrentUserId = () => {
               {isTyping && (
                 <div className="flex justify-start">
                   <div className="max-w-xs order-1">
-                    <img
+                    <Avatar
                       src={selectedConversation.user.avatar}
                       alt={selectedConversation.user.name}
-                      className="w-8 h-8 rounded-full mb-2"
+                      size="sm"
+                      className="mb-2"
                     />
                     <div className="rounded-lg px-4 py-2 bg-gray-100 text-gray-900">
                       <div className="flex items-center space-x-1">
@@ -4756,7 +4751,7 @@ const getCurrentUserId = () => {
           </div>
           
           <div className="p-4 space-y-3">
-            <img src={selectedConversation.user.avatar} alt={selectedConversation.user.name} className="w-20 h-20 rounded-full" />
+            <Avatar src={selectedConversation.user.avatar} alt={selectedConversation.user.name} size="xl" />
             <div>
               <p className="font-medium text-gray-900">{selectedConversation.user.name}</p>
               <p className="text-sm text-gray-500 flex items-center space-x-1"><MapPinIcon className="w-4 h-4" /><span>{selectedConversation.user.location}</span></p>

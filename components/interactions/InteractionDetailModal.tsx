@@ -26,6 +26,7 @@ import {
     HeartIcon,
     EyeIcon
 } from '@heroicons/react/24/outline'
+import Avatar from '@/components/ui/Avatar'
 
 interface User {
     id: string
@@ -486,10 +487,10 @@ export default function InteractionDetailModal({
                                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Usuario</h3>
                                     <div className="bg-gray-50 rounded-lg p-4">
                                         <div className="flex items-center space-x-4">
-                                            <img
+                                            <Avatar
                                                 src={interaction.otherUser.avatar}
                                                 alt={interaction.otherUser.name}
-                                                className="w-16 h-16 rounded-full"
+                                                size="xl"
                                             />
                                             <div className="flex-1">
                                                 <h4 className="font-medium text-gray-900 mb-1">{interaction.otherUser.name}</h4>
@@ -624,10 +625,10 @@ export default function InteractionDetailModal({
                                                 }`}
                                             >
                                                 <div className="flex items-center space-x-2 mb-1">
-                                                    <img
+                                                    <Avatar
                                                         src={message.sender.avatar}
                                                         alt={message.sender.name}
-                                                        className="w-6 h-6 rounded-full"
+                                                        size="xs"
                                                     />
                                                     <span className="text-sm font-medium">{message.sender.name}</span>
                                                 </div>

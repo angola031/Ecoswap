@@ -23,6 +23,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { uploadUserProfileImage } from '@/lib/storage'
+import Avatar from '@/components/ui/Avatar'
 
 interface BadgeDetail {
     nombre: string
@@ -569,10 +570,11 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-4 lg:space-y-0 lg:space-x-6">
                     {/* Avatar y foto */}
                     <div className="relative">
-                        <img
+                        <Avatar
                             src={previewUrl || profileData.avatar}
                             alt={profileData.name}
-                            className="w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-full object-cover"
+                            size="xl"
+                            className="w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32"
                         />
                         {profileData.badges?.includes('Verificado') && (
                             <span className="absolute -top-1 -right-1 bg-white rounded-full p-1 shadow-sm">

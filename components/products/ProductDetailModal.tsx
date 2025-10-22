@@ -16,6 +16,7 @@ import {
     ShareIcon,
     FlagIcon
 } from '@heroicons/react/24/outline'
+import Avatar from '@/components/ui/Avatar'
 
 interface User {
     id: string
@@ -493,10 +494,10 @@ export default function ProductDetailModal({ product, isOpen, onClose, currentUs
 
                                         <div className="bg-gray-50 rounded-lg p-4">
                                             <div className="flex items-center space-x-4 mb-4">
-                                                <img
+                                                <Avatar
                                                     src={product.owner.avatar}
                                                     alt={product.owner.name}
-                                                    className="w-16 h-16 rounded-full"
+                                                    size="xl"
                                                 />
                                                 <div className="flex-1">
                                                     <h4 className="font-medium text-gray-900 text-lg">{product.owner.name}</h4>

@@ -11,6 +11,7 @@ import {
     FunnelIcon
 } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
+import Avatar from '@/components/ui/Avatar'
 
 interface User {
     id: string
@@ -426,10 +427,10 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                             {/* Propietario */}
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center space-x-2">
-                                    <img
+                                    <Avatar
                                         src={product.owner.avatar}
                                         alt={product.owner.name}
-                                        className="w-6 h-6 rounded-full"
+                                        size="xs"
                                     />
                                     <span className="text-sm text-gray-700">{product.owner.name}</span>
                                 </div>

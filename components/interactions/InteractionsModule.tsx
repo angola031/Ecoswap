@@ -24,6 +24,7 @@ import { getSupabaseClient } from '@/lib/supabase-client'
 import { 
     User
 } from '@/lib/types'
+import Avatar from '@/components/ui/Avatar'
 import { 
     InteractionSummary, 
     UserActivity, 
@@ -380,10 +381,10 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                                     </div>
                                                     <div className="border-t border-gray-200 pt-3">
                                                         <div className="flex items-center space-x-2 mb-2">
-                                                            <img
-                                                                src={interaction.otherUser.avatar || '/images/default-avatar.png'}
+                                                            <Avatar
+                                                                src={interaction.otherUser.avatar}
                                                                 alt={interaction.otherUser.name}
-                                                                className="w-8 h-8 rounded-full"
+                                                                size="sm"
                                                             />
                                                             <div>
                                                                 <p className="font-medium text-gray-900">{interaction.otherUser.name} {interaction.otherUser.lastName}</p>
