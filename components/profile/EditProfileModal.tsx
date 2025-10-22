@@ -123,7 +123,8 @@ export default function EditProfileModal({ user, isOpen, onClose, onProfileUpdat
 
     const removeAvatar = () => {
         setAvatarFile(null)
-        setAvatarPreview(user.avatar)
+        setAvatarPreview('') // Eliminar el avatar (mostrar el ícono por defecto)
+        setFormData(prev => prev ? { ...prev, avatar: '' } : prev)
     }
 
     const validateForm = () => {
@@ -279,15 +280,17 @@ export default function EditProfileModal({ user, isOpen, onClose, onProfileUpdat
                                 <button
                                     type="button"
                                     onClick={() => document.getElementById('avatar-input')?.click()}
-                                    className="absolute bottom-0 right-0 p-2 bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors"
+                                    className="absolute bottom-0 right-0 p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
+                                    title="Cambiar foto de perfil"
                                 >
                                     <PhotoIcon className="w-4 h-4" />
                                 </button>
-                                {avatarFile && (
+                                {(avatarFile || (user.avatar && user.avatar.trim() !== '')) && (
                                     <button
                                         type="button"
                                         onClick={removeAvatar}
                                         className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                        title="Eliminar foto de perfil"
                                     >
                                         <TrashIcon className="w-3 h-3" />
                                     </button>
@@ -301,7 +304,7 @@ export default function EditProfileModal({ user, isOpen, onClose, onProfileUpdat
                                 className="hidden"
                             />
                             <p className="text-sm text-gray-500 mt-2">
-                                Haz clic en el ícono de cámara para cambiar tu foto
+                                Haz clic en el ícono de cámara para cambiar tu foto o en la papelera para eliminarla
                             </p>
                         </div>
 

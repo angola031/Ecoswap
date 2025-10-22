@@ -292,6 +292,56 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         })
       } else {
         console.log('✅ [DEBUG] Estado del intercambio actualizado exitosamente')
+        
+        // Si el intercambio se completó exitosamente, marcar el producto como intercambiado
+        if (newEstado === 'completado') {
+          try {
+            // Obtener información del intercambio para identificar el producto
+            const { data: intercambioInfo, error: intercambioInfoErr } = await admin
+              .from('intercambio')
+              .select('producto_ofrecido_id, producto_solicitado_id')
+              .eq('intercambio_id', intercambioId)
+              .single()
+
+            if (!intercambioInfoErr && intercambioInfo) {
+              // Actualizar el producto ofrecido como intercambiado
+              if (intercambioInfo.producto_ofrecido_id) {
+                const { error: updateProductErr } = await admin
+                  .from('producto')
+                  .update({ 
+                    estado_publicacion: 'intercambiado',
+                    fecha_actualizacion: new Date().toISOString()
+                  })
+                  .eq('producto_id', intercambioInfo.producto_ofrecido_id)
+
+                if (updateProductErr) {
+                  console.warn('⚠️ [DEBUG] Error actualizando producto ofrecido:', updateProductErr)
+                } else {
+                  console.log('✅ [DEBUG] Producto ofrecido marcado como intercambiado')
+                }
+              }
+
+              // Si hay producto solicitado, también marcarlo como intercambiado
+              if (intercambioInfo.producto_solicitado_id) {
+                const { error: updateRequestedProductErr } = await admin
+                  .from('producto')
+                  .update({ 
+                    estado_publicacion: 'intercambiado',
+                    fecha_actualizacion: new Date().toISOString()
+                  })
+                  .eq('producto_id', intercambioInfo.producto_solicitado_id)
+
+                if (updateRequestedProductErr) {
+                  console.warn('⚠️ [DEBUG] Error actualizando producto solicitado:', updateRequestedProductErr)
+                } else {
+                  console.log('✅ [DEBUG] Producto solicitado marcado como intercambiado')
+                }
+              }
+            }
+          } catch (productUpdateErr) {
+            console.warn('⚠️ [DEBUG] Excepción actualizando productos:', productUpdateErr)
+          }
+        }
       }
     } else {
       console.log('ℹ️ [DEBUG] No se actualiza el estado del intercambio (newEstado es null)')

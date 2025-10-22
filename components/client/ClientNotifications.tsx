@@ -320,7 +320,7 @@ export default function ClientNotifications() {
                     <p className="text-lg font-medium">{error}</p>
                     <button
                         onClick={fetchNotifications}
-                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                     >
                         Reintentar
                     </button>
@@ -343,7 +343,7 @@ export default function ClientNotifications() {
                     {unreadCount > 0 && (
                         <button
                             onClick={markAllAsRead}
-                            className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                            className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
                         >
                             Marcar todas como leídas
                         </button>
@@ -367,7 +367,7 @@ export default function ClientNotifications() {
                             <div
                                 key={notification.notificacion_id}
                                 className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                                    !notification.leida ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                                    !notification.leida ? 'bg-green-50 border-l-4 border-l-green-500' : ''
                                 }`}
                                 onClick={() => handleNotificationClick(notification)}
                             >
@@ -383,7 +383,7 @@ export default function ClientNotifications() {
                                                 {notification.titulo}
                                             </p>
                                             {!notification.leida && (
-                                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                                                <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
                                             )}
                                         </div>
                                         <p className={`text-sm mt-1 ${

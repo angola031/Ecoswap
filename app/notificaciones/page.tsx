@@ -47,7 +47,7 @@ export default function NotificationsPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600"></div>
             </div>
         )
     }
@@ -61,7 +61,7 @@ export default function NotificationsPage() {
                         <p className="text-sm">{error}</p>
                         <button
                             onClick={() => router.push('/')}
-                            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                         >
                             Volver al Inicio
                         </button>
@@ -78,7 +78,7 @@ export default function NotificationsPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
+            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-center py-6 md:py-8 gap-4">
                         <div className="flex items-center space-x-4">
@@ -91,7 +91,7 @@ export default function NotificationsPage() {
                             </div>
                             <div>
                                 <h1 className="text-2xl md:text-3xl font-bold">🔔 Notificaciones</h1>
-                                <p className="text-blue-100 mt-1 text-sm md:text-lg">
+                                <p className="text-green-100 mt-1 text-sm md:text-lg">
                                     Mantente al día con las últimas actualizaciones de tu cuenta
                                 </p>
                             </div>
@@ -99,7 +99,7 @@ export default function NotificationsPage() {
                         <div className="md:self-auto">
                             <button
                                 onClick={() => router.push('/')}
-                                className="w-full md:w-auto flex items-center justify-center px-5 md:px-6 py-2.5 md:py-3 text-sm font-medium text-blue-600 bg-white rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-200 shadow-lg"
+                                className="w-full md:w-auto flex items-center justify-center px-5 md:px-6 py-2.5 md:py-3 text-sm font-medium text-green-600 bg-white rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-200 shadow-lg"
                             >
                                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

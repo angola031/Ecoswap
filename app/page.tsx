@@ -14,7 +14,8 @@ import {
     BellIcon,
     ShoppingBagIcon,
     ArrowsRightLeftIcon,
-    ArrowRightOnRectangleIcon
+    ArrowRightOnRectangleIcon,
+    DocumentTextIcon
 } from '@heroicons/react/24/outline'
 
 // Componentes
@@ -24,6 +25,7 @@ import ProductsModule from '@/components/products/ProductsModule'
 import ChatModule from '@/components/chat/ChatModule'
 import ProfileModule from '@/components/profile/ProfileModule'
 import InteractionsModule from '@/components/interactions/InteractionsModule'
+import { ProposalsModule } from '@/components/proposals/ProposalsModule'
 import NotificationToast from '@/components/NotificationToast'
 
 // Tipos
@@ -408,6 +410,8 @@ export default function HomePage() {
                 return <ProductsModule currentUser={currentUser} />
             case 'interactions':
                 return isAuthenticated ? <InteractionsModule currentUser={currentUser} /> : <AuthModule onLogin={handleLogin} />
+            case 'proposals':
+                return isAuthenticated ? <ProposalsModule currentUser={currentUser} /> : <AuthModule onLogin={handleLogin} />
             case 'chat':
                 return isAuthenticated ? <ChatModule currentUser={currentUser} /> : <AuthModule onLogin={handleLogin} />
             case 'profile':
@@ -505,6 +509,17 @@ export default function HomePage() {
                                     </button>
 
                                     <button
+                                        onClick={() => navigateToModule('proposals')}
+                                        className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'proposals'
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'text-gray-500 hover:text-green-700 hover:bg-green-50'
+                                            }`}
+                                    >
+                                        <DocumentTextIcon className="w-5 h-5" />
+                                        <span>Propuestas</span>
+                                    </button>
+
+                                    <button
                                         onClick={() => navigateToModule('chat')}
                                         className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'chat'
                                             ? 'bg-primary-100 text-primary-700'
@@ -519,14 +534,14 @@ export default function HomePage() {
                                         onClick={() => window.location.href = '/notificaciones'}
                                         className={`relative flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                                             unreadCount > 0 
-                                                ? 'text-red-600 hover:text-red-700 hover:bg-red-50 animate-pulse' 
-                                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                                ? 'text-green-600 hover:text-green-700 hover:bg-green-50 animate-pulse' 
+                                                : 'text-gray-500 hover:text-green-700 hover:bg-green-50'
                                         }`}
                                     >
                                         <BellIcon className={`w-5 h-5 ${unreadCount > 0 ? 'animate-bounce' : ''}`} />
                                         <span>Notificaciones</span>
                                         {unreadCount > 0 && (
-                                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold shadow-lg animate-pulse">
+                                            <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold shadow-lg animate-pulse">
                                                 {unreadCount > 9 ? '9+' : unreadCount}
                                             </span>
                                         )}
@@ -611,11 +626,6 @@ export default function HomePage() {
                             
                             {isAuthenticated && currentUser ? (
                                 <div className="flex items-center space-x-3">
-                                    <img
-                                        src={currentUser.avatar}
-                                        alt={currentUser.name}
-                                        className="w-8 h-8 rounded-full"
-                                    />
                                 </div>
                             ) : (
                                 <div className="flex space-x-2">
@@ -693,6 +703,15 @@ export default function HomePage() {
                             </button>
 
                             <button
+                                onClick={() => setCurrentModule('proposals')}
+                                className={`flex flex-col items-center space-y-1 p-2 ${currentModule === 'proposals' ? 'text-green-600' : 'text-gray-500'
+                                    }`}
+                            >
+                                <DocumentTextIcon className="w-6 h-6" />
+                                <span className="text-xs">Propuestas</span>
+                            </button>
+
+                            <button
                                 onClick={() => setCurrentModule('chat')}
                                 className={`flex flex-col items-center space-y-1 p-2 ${currentModule === 'chat' ? 'text-primary-600' : 'text-gray-500'
                                     }`}
@@ -705,14 +724,14 @@ export default function HomePage() {
                                 onClick={() => window.location.href = '/notificaciones'}
                                 className={`relative flex flex-col items-center space-y-1 p-2 transition-all duration-200 ${
                                     unreadCount > 0 
-                                        ? 'text-red-600 animate-pulse' 
+                                        ? 'text-green-600 animate-pulse' 
                                         : 'text-gray-500'
                                 }`}
                             >
                                 <BellIcon className={`w-6 h-6 ${unreadCount > 0 ? 'animate-bounce' : ''}`} />
                                 <span className="text-xs">Notificaciones</span>
                                 {unreadCount > 0 && (
-                                    <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg animate-pulse">
+                                    <span className="absolute top-0 right-0 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg animate-pulse">
                                         {unreadCount > 9 ? '9+' : unreadCount}
                                     </span>
                                 )}

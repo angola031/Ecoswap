@@ -1054,7 +1054,10 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
           console.log('✅ [DEBUG] Validación registrada, esperando otra validación')
           
           // Refrescar datos para actualizar el estado de validación
-          await loadUserValidations(true)
+          const updatedValidations = await loadUserValidations(true)
+          
+          // Debug adicional para verificar que las validaciones se actualizaron
+          console.log('🔍 [DEBUG] Después de validar - validaciones obtenidas:', updatedValidations)
           
           ;(window as any).Swal.fire({
             title: 'Validación Enviada',
@@ -1495,6 +1498,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const [notificationsChannel, setNotificationsChannel] = useState<any>(null)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
   const [showSessionWarning, setShowSessionWarning] = useState(false)
+  const [bannerKey, setBannerKey] = useState(0) // Para forzar re-render del banner
 
 const getCurrentUserId = () => {
   return String(currentUser?.id || '')
@@ -1945,13 +1949,13 @@ const getCurrentUserId = () => {
   const loadUserValidations = async (forceReload = false) => {
     if (!selectedConversation?.id) {
       setUserValidations([])
-      return
+      return []
     }
 
     try {
       const session = await getSession()
       const token = session?.access_token
-      if (!token) return
+      if (!token) return []
 
       console.log('🔄 [loadUserValidations] Consulta directa con timestamp:', new Date().toISOString())
       
@@ -1966,7 +1970,7 @@ const getCurrentUserId = () => {
       
       if (!chatResponse.ok) {
         console.error('❌ [ChatModule] Error obteniendo datos del chat:', chatResponse.status)
-        return
+        return []
       }
 
       const chatData = await chatResponse.json()
@@ -1977,7 +1981,7 @@ const getCurrentUserId = () => {
       if (!firstProposal?.intercambioId) {
         console.log('ℹ️ [loadUserValidations] No hay intercambio asociado a este chat')
         setUserValidations([])
-        return
+        return []
       }
 
       const intercambioId = firstProposal.intercambioId
@@ -2001,14 +2005,21 @@ const getCurrentUserId = () => {
         
         if (forceReload) {
           console.log('🔄 [loadUserValidations] Re-render forzado completado')
+          // Forzar re-render del banner
+          setBannerKey(prev => prev + 1)
         }
+        
+        return validationData
       } else {
         console.error('❌ [ChatModule] Error consultando validaciones:', validationResponse.status)
         // Fallback a datos del chat si la consulta directa falla
-        setUserValidations([...(chatData.userValidations || [])])
+        const fallbackValidations = [...(chatData.userValidations || [])]
+        setUserValidations(fallbackValidations)
+        return fallbackValidations
       }
     } catch (error) {
       console.error('❌ [ChatModule] Error cargando validaciones:', error)
+      return []
     }
   }
 
@@ -4243,6 +4254,7 @@ const getCurrentUserId = () => {
             {/* Seguimiento de Intercambios Activos eliminado */}
 
             {/* Banner fijo: Pendiente de Validación */}
+            <div key={bannerKey}>
             {(() => {
               const hasAccepted = proposals.some(p => p.status === 'aceptada')
               const hasPendingValidation = proposals.some(p => p.status === 'pendiente_validacion')
@@ -4404,6 +4416,7 @@ const getCurrentUserId = () => {
                 </div>
               )
             })()}
+            </div>
 
             {/* MENSAJES - ÁREA MÁS GRANDE CON SCROLL */}
             <div 
