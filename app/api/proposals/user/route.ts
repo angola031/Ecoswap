@@ -65,26 +65,7 @@ export async function GET(request: NextRequest) {
         nota_intercambio,
         chat!inner(
           chat_id,
-          intercambio_id,
-          intercambio!inner(
-            intercambio_id,
-            producto_ofrecido_id,
-            producto_ofrecido:producto!intercambio_producto_ofrecido_id_fkey(
-              producto_id,
-              titulo,
-              precio,
-              tipo_transaccion,
-              precio_negociable,
-              condiciones_intercambio,
-              que_busco_cambio,
-              usuario!inner(
-                user_id,
-                nombre,
-                apellido,
-                foto_perfil
-              )
-            )
-          )
+          intercambio_id
         )
       `)
       .or(`usuario_propone_id.eq.${userId},usuario_recibe_id.eq.${userId}`)
@@ -106,9 +87,6 @@ export async function GET(request: NextRequest) {
         ? { id: proposal.usuario_recibe_id, name: 'Usuario', lastName: 'Destinatario', avatar: null }
         : { id: proposal.usuario_propone_id, name: 'Usuario', lastName: 'Proponente', avatar: null }
 
-      // Obtener información del producto desde la estructura correcta
-      const product = proposal.chat?.intercambio?.producto_ofrecido
-
       return {
         id: proposal.propuesta_id,
         type: proposal.tipo_propuesta,
@@ -126,21 +104,21 @@ export async function GET(request: NextRequest) {
         receiver: isProposer 
           ? otherUser
           : { id: userId, name: 'Tú', lastName: '', avatar: null },
-        product: product ? {
-          id: product.producto_id,
-          title: product.titulo,
-          price: product.precio,
-          type: product.tipo_transaccion,
-          negotiable: product.precio_negociable,
-          exchangeConditions: product.condiciones_intercambio,
-          exchangeSeeking: product.que_busco_cambio,
+        product: {
+          id: 0,
+          title: 'Producto asociado',
+          price: null,
+          type: 'intercambio',
+          negotiable: false,
+          exchangeConditions: null,
+          exchangeSeeking: null,
           owner: {
-            id: product.usuario.user_id,
-            name: product.usuario.nombre,
-            lastName: product.usuario.apellido,
-            avatar: product.usuario.foto_perfil
+            id: 0,
+            name: 'Usuario',
+            lastName: 'Producto',
+            avatar: null
           }
-        } : null,
+        },
         chatId: proposal.chat_id
       }
     }) || []

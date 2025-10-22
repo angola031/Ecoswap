@@ -1,5 +1,5 @@
 import React from 'react'
-import { Proposal } from './ChatModule'
+import { Proposal } from './types'
 
 interface ChatValidationBannerProps {
   proposals: Proposal[]

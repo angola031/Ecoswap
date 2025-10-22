@@ -76,6 +76,22 @@ export interface Proposal {
     lastName: string
     avatar?: string
   }
+  product?: {
+    id: number
+    title: string
+    price?: number
+    type?: string
+    negotiable?: boolean
+    exchangeConditions?: string
+    exchangeSeeking?: string
+    owner: {
+      id: number
+      name: string
+      lastName: string
+      avatar?: string
+    }
+  } | null
+  chatId: number
 }
 
 export interface ValidationData {
