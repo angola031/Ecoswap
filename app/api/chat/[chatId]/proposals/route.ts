@@ -260,8 +260,7 @@ export async function POST(
         condiciones: conditions || null,
         fecha_encuentro: meetingDate || null,
         lugar_encuentro: meetingPlace || null,
-        // Guardar notas del encuentro en condiciones si aplica o usar campo dedicado si existe
-        respuesta: meetingNotes || null,
+        nota_intercambio: meetingNotes || null,
         archivo_url: archivo_url || null,
         estado: 'pendiente'
       })
@@ -276,7 +275,7 @@ export async function POST(
         fecha_encuentro,
         lugar_encuentro,
         archivo_url,
-        respuesta,
+        nota_intercambio,
         usuario_propone_id
       `)
       .single()

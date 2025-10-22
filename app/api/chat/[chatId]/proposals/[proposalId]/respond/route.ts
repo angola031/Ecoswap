@@ -80,6 +80,7 @@ export async function PATCH(
         descripcion,
         precio_propuesto,
         condiciones,
+        nota_intercambio,
         chat:chat (
           intercambio (
             intercambio_id,
@@ -179,9 +180,9 @@ export async function PATCH(
           
           if (meetingDetails.notes) {
             intercambioUpdateData.notas_encuentro = meetingDetails.notes
-          } else if (propuesta.respuesta) {
+          } else if (propuesta.nota_intercambio) {
             // Copiar notas del encuentro desde la propuesta si existen
-            intercambioUpdateData.notas_encuentro = propuesta.respuesta
+            intercambioUpdateData.notas_encuentro = propuesta.nota_intercambio
           }
         }
 
@@ -229,8 +230,8 @@ export async function PATCH(
           
           if (meetingDetails.notes) {
             nuevoIntercambioData.notas_encuentro = meetingDetails.notes
-          } else if (propuesta.respuesta) {
-            nuevoIntercambioData.notas_encuentro = propuesta.respuesta
+          } else if (propuesta.nota_intercambio) {
+            nuevoIntercambioData.notas_encuentro = propuesta.nota_intercambio
           }
         }
 
