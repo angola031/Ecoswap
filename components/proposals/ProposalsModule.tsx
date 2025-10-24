@@ -156,23 +156,23 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 space-y-4 md:space-y-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mis Propuestas</h1>
-          <p className="text-gray-600">Gestiona todas tus propuestas de intercambio</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Mis Propuestas</h1>
+          <p className="text-sm md:text-base text-gray-600">Gestiona todas tus propuestas de intercambio</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          className="w-full md:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm md:text-base"
         >
           ➕ Nueva Propuesta
         </button>
       </div>
 
       {/* Filtros */}
-      <div className="flex space-x-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         {[
           { key: 'all', label: 'Todas' },
           { key: 'pendiente', label: 'Pendientes' },
@@ -182,7 +182,7 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
           <button
             key={key}
             onClick={() => setFilter(key as any)}
-            className={`px-3 py-1 rounded-full text-sm transition-colors ${
+            className={`px-3 py-1 rounded-full text-xs md:text-sm transition-colors ${
               filter === key
                 ? 'bg-green-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -220,10 +220,10 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
           filteredProposals.map((proposal) => (
             <div
               key={proposal.id}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-white border border-gray-200 rounded-lg p-3 md:p-4 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => setSelectedProposal(proposal)}
             >
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between space-y-3 md:space-y-0">
                 <div className="flex-1">
                   {/* Información del producto */}
                   {proposal.product && (
@@ -242,16 +242,16 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
                   )}
 
                   <div className="flex items-center space-x-3 mb-2">
-                    <span className="text-2xl">{getTypeIcon(proposal.type)}</span>
-                    <div>
-                      <h3 className="font-medium text-gray-900">
+                    <span className="text-xl md:text-2xl">{getTypeIcon(proposal.type)}</span>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900 text-sm md:text-base">
                         {proposal.type === 'precio' && 'Propuesta de Precio'}
                         {proposal.type === 'intercambio' && 'Propuesta de Intercambio'}
                         {proposal.type === 'encuentro' && 'Propuesta de Encuentro'}
                         {proposal.type === 'condiciones' && 'Propuesta de Condiciones'}
                         {proposal.type === 'otro' && 'Otra Propuesta'}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs md:text-sm text-gray-600">
                         {proposal.proposer.id === currentUser?.user_id 
                           ? `Para: ${proposal.receiver.name} ${proposal.receiver.lastName}`
                           : `De: ${proposal.proposer.name} ${proposal.proposer.lastName}`
@@ -260,9 +260,9 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
                     </div>
                   </div>
                   
-                  <p className="text-gray-700 mb-3 line-clamp-2">{proposal.description}</p>
+                  <p className="text-gray-700 mb-3 text-sm md:text-base line-clamp-2">{proposal.description}</p>
                   
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <div className="flex flex-wrap gap-2 text-xs md:text-sm text-gray-500">
                     <span>📅 {new Date(proposal.createdAt).toLocaleDateString('es-CO')}</span>
                     {proposal.proposedPrice && (
                       <span>💰 ${proposal.proposedPrice.toLocaleString('es-CO')}</span>
@@ -271,15 +271,15 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
                       <span>🤝 {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}</span>
                     )}
                     {proposal.meetingPlace && (
-                      <span>📍 {proposal.meetingPlace}</span>
+                      <span className="hidden md:inline">📍 {proposal.meetingPlace}</span>
                     )}
                     {proposal.nota_intercambio && (
-                      <span>📝 {proposal.nota_intercambio}</span>
+                      <span className="hidden md:inline">📝 {proposal.nota_intercambio}</span>
                     )}
                   </div>
                 </div>
                 
-                <div className="flex flex-col items-end space-y-2">
+                <div className="flex flex-col md:items-end space-y-2">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(proposal.status)}`}>
                     {proposal.status === 'aceptada' && '✅ Aceptada'}
                     {proposal.status === 'pendiente' && '⏳ Pendiente'}
@@ -319,7 +319,7 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
                       e.stopPropagation()
                       handleProposalClick(proposal)
                     }}
-                    className="text-green-600 hover:text-green-800 text-sm"
+                    className="text-green-600 hover:text-green-800 text-xs md:text-sm"
                   >
                     Ver detalles →
                   </button>
@@ -411,11 +411,11 @@ const ProposalDetailModal = ({ proposal, onClose, onUpdate }: any) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg p-4 md:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Detalle de Propuesta</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h2 className="text-lg md:text-xl font-bold">Detalle de Propuesta</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">
             ✕
           </button>
         </div>
@@ -464,14 +464,14 @@ const ProposalDetailModal = ({ proposal, onClose, onUpdate }: any) => {
         {/* Información de usuarios */}
         <div className="mb-4">
           <h3 className="font-medium text-gray-900 mb-2">👥 Participantes</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600">Proponente</p>
-              <p className="font-medium">{proposal.proposer.name} {proposal.proposer.lastName}</p>
+              <p className="font-medium text-sm md:text-base">{proposal.proposer.name} {proposal.proposer.lastName}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Receptor</p>
-              <p className="font-medium">{proposal.receiver.name} {proposal.receiver.lastName}</p>
+              <p className="font-medium text-sm md:text-base">{proposal.receiver.name} {proposal.receiver.lastName}</p>
             </div>
           </div>
         </div>
@@ -484,16 +484,16 @@ const ProposalDetailModal = ({ proposal, onClose, onUpdate }: any) => {
 
         {/* Botones de acción */}
         {proposal.status === 'pendiente' && (
-          <div className="flex space-x-3">
+          <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-3">
             <button
               onClick={() => handleRespondToProposal('aceptar')}
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm md:text-base"
             >
               ✅ Aceptar Propuesta
             </button>
             <button
               onClick={() => handleRespondToProposal('rechazar')}
-              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm md:text-base"
             >
               ❌ Rechazar Propuesta
             </button>
@@ -506,16 +506,16 @@ const ProposalDetailModal = ({ proposal, onClose, onUpdate }: any) => {
 
 const CreateProposalModal = ({ onClose, onSuccess }: any) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg p-4 md:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Crear Nueva Propuesta</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h2 className="text-lg md:text-xl font-bold">Crear Nueva Propuesta</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">
             ✕
           </button>
         </div>
         {/* Contenido del modal */}
-        <p>Modal de creación en desarrollo...</p>
+        <p className="text-sm md:text-base">Modal de creación en desarrollo...</p>
       </div>
     </div>
   )
