@@ -270,12 +270,16 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
                       {group.product?.price ? `$${group.product.price.toLocaleString('es-CO')}` : 
                        group.product?.type === 'donacion' ? 'donación' : 'precio o donación'}
                     </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {group.proposals.length} propuesta{group.proposals.length !== 1 ? 's' : ''}
+                      {group.proposals.length > 3 && ' (scroll para ver más)'}
+                    </p>
                   </div>
                 </div>
               </div>
               
               {/* Lista de propuestas del producto - Estilo de cajas como en la imagen */}
-              <div className="space-y-3">
+              <div className={`space-y-3 ${group.proposals.length > 3 ? 'max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100' : ''}`}>
                 {group.proposals.map((proposal) => (
                   <div
                     key={proposal.id}
@@ -342,6 +346,16 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
                     </div>
                   </div>
                 ))}
+                
+                {/* Indicador de scroll cuando hay más de 3 propuestas */}
+                {group.proposals.length > 3 && (
+                  <div className="text-center py-2">
+                    <div className="inline-flex items-center space-x-2 text-xs text-gray-500 bg-gray-50 px-3 py-1 rounded-full">
+                      <span>📜</span>
+                      <span>Desplázate para ver más propuestas</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))
