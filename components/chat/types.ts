@@ -84,6 +84,8 @@ export interface Proposal {
     negotiable?: boolean
     exchangeConditions?: string
     exchangeSeeking?: string
+    image?: string
+    category?: string
     owner: {
       id: number
       name: string
