@@ -25,7 +25,15 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
       const supabase = getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
-      if (!token) return
+      
+      console.log('🔄 [ProposalsModule] Iniciando carga de propuestas')
+      console.log('🔄 [ProposalsModule] Session:', session ? 'Existe' : 'No existe')
+      console.log('🔄 [ProposalsModule] Token:', token ? 'Existe' : 'No existe')
+      
+      if (!token) {
+        console.error('❌ [ProposalsModule] No hay token de autenticación')
+        return
+      }
 
       console.log('🔄 [ProposalsModule] Cargando todas las propuestas del usuario')
 
@@ -37,10 +45,13 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
         }
       })
 
+      console.log('🔄 [ProposalsModule] Respuesta HTTP:', response.status, response.statusText)
+
       if (response.ok) {
         const data = await response.json()
         console.log('✅ [ProposalsModule] Respuesta del servidor:', data)
         console.log('✅ [ProposalsModule] Propuestas cargadas:', data.proposals?.length || 0)
+        console.log('✅ [ProposalsModule] Propuestas detalle:', data.proposals)
         setProposals(data.proposals || [])
       } else {
         const errorData = await response.text()
