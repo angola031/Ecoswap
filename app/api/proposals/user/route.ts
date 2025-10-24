@@ -65,7 +65,26 @@ export async function GET(request: NextRequest) {
         fecha_encuentro,
         lugar_encuentro,
         archivo_url,
-        nota_intercambio
+        nota_intercambio,
+        chat(
+          chat_id,
+          intercambio_id,
+          intercambio(
+            intercambio_id,
+            producto_id,
+            producto(
+              producto_id,
+              titulo,
+              precio,
+              tipo_transaccion,
+              precio_negociable,
+              condiciones_intercambio,
+              que_busco_cambio,
+              imagen_principal,
+              categoria
+            )
+          )
+        )
       `)
       .or(`usuario_propone_id.eq.${userId},usuario_recibe_id.eq.${userId}`)
       .order('fecha_creacion', { ascending: false })
@@ -86,10 +105,30 @@ export async function GET(request: NextRequest) {
         ? { id: proposal.usuario_recibe_id, name: 'Usuario', lastName: 'Destinatario', avatar: null }
         : { id: proposal.usuario_propone_id, name: 'Usuario', lastName: 'Proponente', avatar: null }
 
-      // Información básica del producto (sin relaciones complejas por ahora)
-      const productInfo = {
+      // Obtener información del producto desde la relación
+      const chat = proposal.chat
+      const intercambio = chat?.intercambio
+      const product = intercambio?.producto
+      
+      const productInfo = product ? {
+        id: product.producto_id,
+        title: product.titulo,
+        price: product.precio,
+        type: product.tipo_transaccion,
+        negotiable: product.precio_negociable,
+        exchangeConditions: product.condiciones_intercambio,
+        exchangeSeeking: product.que_busco_cambio,
+        image: product.imagen_principal,
+        category: product.categoria,
+        owner: {
+          id: 0,
+          name: 'Usuario',
+          lastName: 'Producto',
+          avatar: null
+        }
+      } : {
         id: 0,
-        title: 'Producto asociado',
+        title: 'Producto no disponible',
         price: null,
         type: 'intercambio',
         negotiable: false,

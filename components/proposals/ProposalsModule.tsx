@@ -69,6 +69,19 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
     return proposal.status === filter
   })
 
+  // Agrupar propuestas por producto
+  const groupedProposals = filteredProposals.reduce((groups, proposal) => {
+    const productId = proposal.product?.id || 'sin-producto'
+    if (!groups[productId]) {
+      groups[productId] = {
+        product: proposal.product,
+        proposals: []
+      }
+    }
+    groups[productId].proposals.push(proposal)
+    return groups
+  }, {} as Record<string, { product: any, proposals: Proposal[] }>)
+
   const handleProposalClick = (proposal: Proposal) => {
     setSelectedProposal(proposal)
   }
@@ -204,9 +217,9 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
         ))}
       </div>
 
-      {/* Lista de Propuestas */}
-      <div className="space-y-4">
-        {filteredProposals.length === 0 ? (
+      {/* Lista de Propuestas Agrupadas por Producto */}
+      <div className="space-y-6">
+        {Object.keys(groupedProposals).length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 text-6xl mb-4">📋</div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -228,63 +241,63 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
             )}
           </div>
         ) : (
-          filteredProposals.map((proposal) => (
+          Object.entries(groupedProposals).map(([productId, group]) => (
+            <div key={productId} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              {/* Header del Producto */}
+              <div className="bg-gray-50 p-4 border-b border-gray-200">
+                <div className="flex items-start space-x-4">
+                  {/* Imagen del producto */}
+                  <div className="flex-shrink-0">
+                    {group.product?.image ? (
+                      <img
+                        src={group.product.image}
+                        alt={group.product.title}
+                        className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <span className="text-gray-400 text-2xl">📦</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Información del producto */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h3 className="font-semibold text-gray-900 text-lg">
+                        {group.product?.title || 'Producto no disponible'}
+                      </h3>
+                      {group.product?.category && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                          {group.product.category}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {group.product?.price ? `$${group.product.price.toLocaleString('es-CO')}` : 'Precio no especificado'}
+                      {group.product?.type === 'donacion' && (
+                        <span className="ml-2 inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                          🎁 Donación
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {group.proposals.length} propuesta{group.proposals.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Lista de propuestas del producto */}
+              <div className="divide-y divide-gray-200">
+                {group.proposals.map((proposal) => (
             <div
               key={proposal.id}
-              className="bg-white border border-gray-200 rounded-lg p-3 md:p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
               onClick={() => setSelectedProposal(proposal)}
             >
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between space-y-3 md:space-y-0">
-                <div className="flex-1">
-                  {/* Información del producto */}
-                  {proposal.product && (
-                    <div className="mb-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-start space-x-3">
-                        {/* Imagen del producto */}
-                        <div className="flex-shrink-0">
-                          {proposal.product.image ? (
-                            <img
-                              src={proposal.product.image}
-                              alt={proposal.product.title}
-                              className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg"
-                            />
-                          ) : (
-                            <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-                              <span className="text-gray-400 text-2xl">📦</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Información del producto */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <h4 className="font-medium text-gray-900 text-sm md:text-base truncate">
-                              {proposal.product.title}
-                            </h4>
-                            {proposal.product.category && (
-                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                {proposal.product.category}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs md:text-sm text-gray-600 mb-1">
-                            {formatPrice(
-                              proposal.product.price,
-                              proposal.product.type,
-                              proposal.product.exchangeConditions,
-                              proposal.product.exchangeSeeking,
-                              proposal.product.negotiable
-                            )}
-                          </p>
-                          {proposal.product.type === 'donacion' && (
-                            <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                              🎁 Donación
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between space-y-3 md:space-y-0">
+                      <div className="flex-1">
 
                   <div className="flex items-center space-x-3 mb-2">
                     <span className="text-xl md:text-2xl">{getTypeIcon(proposal.type)}</span>
@@ -368,7 +381,10 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
                   >
                     Ver detalles →
                   </button>
-                </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))
@@ -498,14 +514,14 @@ const ProposalDetailModal = ({ proposal, onClose, onUpdate }: any) => {
                   )}
                 </div>
                 <p className="text-sm md:text-base text-gray-600 mb-2">
-                  {formatPrice(
-                    proposal.product.price,
-                    proposal.product.type,
-                    proposal.product.exchangeConditions,
-                    proposal.product.exchangeSeeking,
-                    proposal.product.negotiable
-                  )}
-                </p>
+              {formatPrice(
+                proposal.product.price,
+                proposal.product.type,
+                proposal.product.exchangeConditions,
+                proposal.product.exchangeSeeking,
+                proposal.product.negotiable
+              )}
+            </p>
                 {proposal.product.type === 'donacion' && (
                   <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                     🎁 Donación
