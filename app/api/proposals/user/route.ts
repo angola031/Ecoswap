@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdminClient } from '@/lib/supabase-client'
 
-// Forzar renderizado dinámico para esta ruta
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
@@ -47,7 +46,7 @@ export async function GET(request: NextRequest) {
     const userId = userData.user_id
     console.log('✅ [API] User ID obtenido:', userId)
 
-    // Obtener todas las propuestas donde el usuario es el que propone o el que recibe
+    // ⚠️ CONSULTA CORREGIDA - Sin !inner en todos los niveles
     const { data: proposals, error: proposalsError } = await supabase
       .from('propuesta')
       .select(`
@@ -69,10 +68,10 @@ export async function GET(request: NextRequest) {
         chat!inner(
           chat_id,
           intercambio_id,
-          intercambio!inner(
+          intercambio(
             intercambio_id,
             producto_ofrecido_id,
-            producto!inner(
+            producto:producto_ofrecido_id(
               producto_id,
               titulo,
               precio,
@@ -81,11 +80,11 @@ export async function GET(request: NextRequest) {
               condiciones_intercambio,
               que_busco_cambio,
               categoria_id,
-              categoria!inner(
+              categoria(
                 categoria_id,
                 nombre
               ),
-              imagen_producto!inner(
+              imagen_producto(
                 imagen_id,
                 url_imagen,
                 es_principal
@@ -99,25 +98,30 @@ export async function GET(request: NextRequest) {
 
     if (proposalsError) {
       console.error('❌ [API] Error obteniendo propuestas:', proposalsError)
-      return NextResponse.json({ error: 'Error obteniendo propuestas' }, { status: 500 })
+      console.error('❌ [API] Detalles del error:', JSON.stringify(proposalsError, null, 2))
+      return NextResponse.json({ 
+        error: 'Error obteniendo propuestas', 
+        details: proposalsError.message 
+      }, { status: 500 })
     }
+    
     console.log('✅ [API] Propuestas obtenidas:', proposals?.length || 0)
     if (proposals && proposals.length > 0) {
       console.log('🔍 [API] Estructura de la primera propuesta:', JSON.stringify(proposals[0], null, 2))
     }
 
-    // Transformar los datos para que coincidan con la interfaz del frontend
+    // Transformar los datos - CORREGIDO: Sin acceder a [0]
     const transformedProposals = proposals?.map(proposal => {
       const isProposer = proposal.usuario_propone_id === userId
       const otherUser = isProposer 
         ? { id: proposal.usuario_recibe_id, name: 'Usuario', lastName: 'Destinatario', avatar: null }
         : { id: proposal.usuario_propone_id, name: 'Usuario', lastName: 'Proponente', avatar: null }
 
-      // Obtener información del producto desde la relación
-      const chat = proposal.chat?.[0] // Acceder al primer elemento del array
-      const intercambio = chat?.intercambio?.[0] // Acceder al primer elemento del array
-      const product = intercambio?.producto?.[0] // Acceder al primer elemento del array
-      const categoria = product?.categoria?.[0] // Acceder al primer elemento del array
+      // ⚠️ ACCESO CORREGIDO - chat ahora es un objeto, no un array
+      const chat = proposal.chat // Objeto directo
+      const intercambio = chat?.intercambio // Objeto directo
+      const product = intercambio?.producto // Objeto directo (porque usamos producto:producto_ofrecido_id)
+      const categoria = product?.categoria // Objeto directo
       const imagenPrincipal = product?.imagen_producto?.find(img => img.es_principal) || product?.imagen_producto?.[0]
       
       const productInfo = product ? {
@@ -183,7 +187,10 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error en /api/proposals/user:', error)
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+    console.error('❌ [API] Error en /api/proposals/user:', error)
+    return NextResponse.json({ 
+      error: 'Error interno del servidor',
+      details: error instanceof Error ? error.message : 'Error desconocido'
+    }, { status: 500 })
   }
 }
