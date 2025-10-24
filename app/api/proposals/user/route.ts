@@ -117,11 +117,11 @@ export async function GET(request: NextRequest) {
         ? { id: proposal.usuario_recibe_id, name: 'Usuario', lastName: 'Destinatario', avatar: null }
         : { id: proposal.usuario_propone_id, name: 'Usuario', lastName: 'Proponente', avatar: null }
 
-      // ⚠️ ACCESO CORREGIDO - chat ahora es un objeto, no un array
+      // ⚠️ ACCESO CORREGIDO - chat es un objeto, pero intercambio sigue siendo array
       const chat = proposal.chat // Objeto directo
-      const intercambio = chat?.intercambio // Objeto directo
-      const product = intercambio?.producto // Objeto directo (porque usamos producto:producto_ofrecido_id)
-      const categoria = product?.categoria // Objeto directo
+      const intercambio = chat?.intercambio?.[0] // Acceder al primer elemento del array
+      const product = intercambio?.producto?.[0] // Acceder al primer elemento del array
+      const categoria = product?.categoria?.[0] // Acceder al primer elemento del array
       const imagenPrincipal = product?.imagen_producto?.find(img => img.es_principal) || product?.imagen_producto?.[0]
       
       const productInfo = product ? {
