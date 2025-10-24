@@ -505,7 +505,7 @@ export default function HomePage() {
                                             }`}
                                     >
                                         <ArrowsRightLeftIcon className="w-5 h-5" />
-                                        <span>Interacciones</span>
+                                        <span>Trueque</span>
                                     </button>
 
                                     <button
@@ -539,23 +539,12 @@ export default function HomePage() {
                                         }`}
                                     >
                                         <BellIcon className={`w-5 h-5 ${unreadCount > 0 ? 'animate-bounce' : ''}`} />
-                                        <span>Notificaciones</span>
+                                        <span>Avisos</span>
                                         {unreadCount > 0 && (
                                             <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold shadow-lg animate-pulse">
                                                 {unreadCount > 9 ? '9+' : unreadCount}
                                             </span>
                                         )}
-                                    </button>
-
-                                    <button
-                                        onClick={() => navigateToModule('profile')}
-                                        className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'profile'
-                                            ? 'bg-primary-100 text-primary-700'
-                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                                            }`}
-                                    >
-                                        <UserIcon className="w-5 h-5" />
-                                        <span>Perfil</span>
                                     </button>
                                 </>
                             )}
@@ -626,6 +615,21 @@ export default function HomePage() {
                             
                             {isAuthenticated && currentUser ? (
                                 <div className="flex items-center space-x-3">
+                                    {/* Botón de perfil */}
+                                    <button
+                                        onClick={() => {
+                                            console.log('👤 Navegando al perfil desde el header')
+                                            navigateToModule('profile')
+                                        }}
+                                        className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'profile'
+                                            ? 'bg-primary-100 text-primary-700'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                            }`}
+                                        title="Ver perfil"
+                                    >
+                                        <UserIcon className="w-5 h-5" />
+                                        <span className="hidden sm:inline">Perfil</span>
+                                    </button>
                                 </div>
                             ) : (
                                 <div className="flex space-x-2">
@@ -699,7 +703,7 @@ export default function HomePage() {
                                     }`}
                             >
                                 <ArrowsRightLeftIcon className="w-6 h-6" />
-                                <span className="text-xs">Interacciones</span>
+                                <span className="text-xs">Trueque</span>
                             </button>
 
                             <button
@@ -729,21 +733,12 @@ export default function HomePage() {
                                 }`}
                             >
                                 <BellIcon className={`w-6 h-6 ${unreadCount > 0 ? 'animate-bounce' : ''}`} />
-                                <span className="text-xs">Notificaciones</span>
+                                <span className="text-xs">Avisos</span>
                                 {unreadCount > 0 && (
                                     <span className="absolute top-0 right-0 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg animate-pulse">
                                         {unreadCount > 9 ? '9+' : unreadCount}
                                     </span>
                                 )}
-                            </button>
-
-                            <button
-                                onClick={() => setCurrentModule('profile')}
-                                className={`flex flex-col items-center space-y-1 p-2 ${currentModule === 'profile' ? 'text-primary-600' : 'text-gray-500'
-                                    }`}
-                            >
-                                <UserIcon className="w-6 h-6" />
-                                <span className="text-xs">Perfil</span>
                             </button>
                         </>
                     ) : (
