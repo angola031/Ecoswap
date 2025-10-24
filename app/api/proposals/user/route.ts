@@ -106,8 +106,8 @@ export async function GET(request: NextRequest) {
         : { id: proposal.usuario_propone_id, name: 'Usuario', lastName: 'Proponente', avatar: null }
 
       // Obtener información del producto desde la relación
-      const chat = proposal.chat
-      const intercambio = chat?.intercambio
+      const chat = proposal.chat?.[0] // Acceder al primer elemento del array
+      const intercambio = chat?.intercambio?.[0] // Acceder al primer elemento del array
       const product = intercambio?.producto
       
       const productInfo = product ? {
