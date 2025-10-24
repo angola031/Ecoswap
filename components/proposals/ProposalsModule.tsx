@@ -227,17 +227,51 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
                 <div className="flex-1">
                   {/* Información del producto */}
                   {proposal.product && (
-                    <div className="mb-3 p-2 bg-gray-50 rounded-lg">
-                      <h4 className="font-medium text-gray-900 text-sm mb-1">{proposal.product.title}</h4>
-                      <p className="text-xs text-gray-600">
-                        {formatPrice(
-                          proposal.product.price,
-                          proposal.product.type,
-                          proposal.product.exchangeConditions,
-                          proposal.product.exchangeSeeking,
-                          proposal.product.negotiable
-                        )}
-                      </p>
+                    <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-start space-x-3">
+                        {/* Imagen del producto */}
+                        <div className="flex-shrink-0">
+                          {proposal.product.image ? (
+                            <img
+                              src={proposal.product.image}
+                              alt={proposal.product.title}
+                              className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                              <span className="text-gray-400 text-2xl">📦</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Información del producto */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h4 className="font-medium text-gray-900 text-sm md:text-base truncate">
+                              {proposal.product.title}
+                            </h4>
+                            {proposal.product.category && (
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                {proposal.product.category}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs md:text-sm text-gray-600 mb-1">
+                            {formatPrice(
+                              proposal.product.price,
+                              proposal.product.type,
+                              proposal.product.exchangeConditions,
+                              proposal.product.exchangeSeeking,
+                              proposal.product.negotiable
+                            )}
+                          </p>
+                          {proposal.product.type === 'donacion' && (
+                            <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                              🎁 Donación
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -423,17 +457,56 @@ const ProposalDetailModal = ({ proposal, onClose, onUpdate }: any) => {
         {/* Información del producto */}
         {proposal.product && (
           <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-medium text-gray-900 mb-2">📦 Producto</h3>
-            <h4 className="font-medium text-gray-900">{proposal.product.title}</h4>
-            <p className="text-sm text-gray-600">
-              {formatPrice(
-                proposal.product.price,
-                proposal.product.type,
-                proposal.product.exchangeConditions,
-                proposal.product.exchangeSeeking,
-                proposal.product.negotiable
-              )}
-            </p>
+            <h3 className="font-medium text-gray-900 mb-3">📦 Producto</h3>
+            <div className="flex items-start space-x-4">
+              {/* Imagen del producto */}
+              <div className="flex-shrink-0">
+                {proposal.product.image ? (
+                  <img
+                    src={proposal.product.image}
+                    alt={proposal.product.title}
+                    className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-lg"
+                  />
+                ) : (
+                  <div className="w-20 h-20 md:w-24 md:h-24 bg-gray-200 rounded-lg flex items-center justify-center">
+                    <span className="text-gray-400 text-3xl">📦</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Información del producto */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 mb-2">
+                  <h4 className="font-medium text-gray-900 text-base md:text-lg">
+                    {proposal.product.title}
+                  </h4>
+                  {proposal.product.category && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                      {proposal.product.category}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm md:text-base text-gray-600 mb-2">
+                  {formatPrice(
+                    proposal.product.price,
+                    proposal.product.type,
+                    proposal.product.exchangeConditions,
+                    proposal.product.exchangeSeeking,
+                    proposal.product.negotiable
+                  )}
+                </p>
+                {proposal.product.type === 'donacion' && (
+                  <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                    🎁 Donación
+                  </span>
+                )}
+                {proposal.product.negotiable && (
+                  <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full ml-2">
+                    💰 Negociable
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
