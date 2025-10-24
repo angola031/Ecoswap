@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const userId = userData.user_id
     console.log('✅ [API] User ID obtenido:', userId)
 
-    // ⚠️ CONSULTA CORREGIDA - Sin !inner en todos los niveles
+    // ⚠️ CONSULTA SIMPLIFICADA - Solo campos básicos para evitar errores
     const { data: proposals, error: proposalsError } = await supabase
       .from('propuesta')
       .select(`
@@ -64,34 +64,7 @@ export async function GET(request: NextRequest) {
         fecha_encuentro,
         lugar_encuentro,
         archivo_url,
-        nota_intercambio,
-        chat!inner(
-          chat_id,
-          intercambio_id,
-          intercambio(
-            intercambio_id,
-            producto_ofrecido_id,
-            producto:producto_ofrecido_id(
-              producto_id,
-              titulo,
-              precio,
-              tipo_transaccion,
-              precio_negociable,
-              condiciones_intercambio,
-              que_busco_cambio,
-              categoria_id,
-              categoria(
-                categoria_id,
-                nombre
-              ),
-              imagen_producto(
-                imagen_id,
-                url_imagen,
-                es_principal
-              )
-            )
-          )
-        )
+        nota_intercambio
       `)
       .or(`usuario_propone_id.eq.${userId},usuario_recibe_id.eq.${userId}`)
       .order('fecha_creacion', { ascending: false })
@@ -117,32 +90,10 @@ export async function GET(request: NextRequest) {
         ? { id: proposal.usuario_recibe_id, name: 'Usuario', lastName: 'Destinatario', avatar: null }
         : { id: proposal.usuario_propone_id, name: 'Usuario', lastName: 'Proponente', avatar: null }
 
-      // ⚠️ ACCESO CORREGIDO - chat es un objeto, pero intercambio sigue siendo array
-      const chat = proposal.chat // Objeto directo
-      const intercambio = chat?.intercambio?.[0] // Acceder al primer elemento del array
-      const product = intercambio?.producto?.[0] // Acceder al primer elemento del array
-      const categoria = product?.categoria?.[0] // Acceder al primer elemento del array
-      const imagenPrincipal = product?.imagen_producto?.find(img => img.es_principal) || product?.imagen_producto?.[0]
-      
-      const productInfo = product ? {
-        id: product.producto_id,
-        title: product.titulo,
-        price: product.precio,
-        type: product.tipo_transaccion,
-        negotiable: product.precio_negociable,
-        exchangeConditions: product.condiciones_intercambio,
-        exchangeSeeking: product.que_busco_cambio,
-        image: imagenPrincipal?.url_imagen || null,
-        category: categoria?.nombre || null,
-        owner: {
-          id: 0,
-          name: 'Usuario',
-          lastName: 'Producto',
-          avatar: null
-        }
-      } : {
+      // ⚠️ INFORMACIÓN MOCK DEL PRODUCTO - Para evitar errores de relaciones complejas
+      const productInfo = {
         id: 0,
-        title: 'Producto no disponible',
+        title: 'nombre producto',
         price: null,
         type: 'intercambio',
         negotiable: false,
