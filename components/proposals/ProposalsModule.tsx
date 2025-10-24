@@ -242,145 +242,101 @@ export const ProposalsModule: React.FC<ProposalsModuleProps> = ({ currentUser })
           </div>
         ) : (
           Object.entries(groupedProposals).map(([productId, group]) => (
-            <div key={productId} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              {/* Header del Producto */}
-              <div className="bg-gray-50 p-4 border-b border-gray-200">
-                <div className="flex items-start space-x-4">
+            <div key={productId} className="space-y-4">
+              {/* Header del Producto - Estilo similar a la imagen */}
+              <div className="bg-white border-2 border-gray-300 rounded-lg p-4">
+                <div className="flex items-center space-x-4">
                   {/* Imagen del producto */}
                   <div className="flex-shrink-0">
                     {group.product?.image ? (
                       <img
                         src={group.product.image}
                         alt={group.product.title}
-                        className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg"
+                        className="w-16 h-16 object-cover rounded border border-gray-300"
                       />
                     ) : (
-                      <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-                        <span className="text-gray-400 text-2xl">📦</span>
+                      <div className="w-16 h-16 bg-gray-100 border-2 border-gray-300 rounded flex items-center justify-center">
+                        <span className="text-gray-400 text-xl">📦</span>
                       </div>
                     )}
                   </div>
                   
                   {/* Información del producto */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <h3 className="font-semibold text-gray-900 text-lg">
-                        {group.product?.title || 'Producto no disponible'}
-                      </h3>
-                      {group.product?.category && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                          {group.product.category}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2">
-                      {group.product?.price ? `$${group.product.price.toLocaleString('es-CO')}` : 'Precio no especificado'}
-                      {group.product?.type === 'donacion' && (
-                        <span className="ml-2 inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                          🎁 Donación
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {group.proposals.length} propuesta{group.proposals.length !== 1 ? 's' : ''}
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 text-lg mb-1">
+                      {group.product?.title || 'nombre producto'}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {group.product?.price ? `$${group.product.price.toLocaleString('es-CO')}` : 
+                       group.product?.type === 'donacion' ? 'donación' : 'precio o donación'}
                     </p>
                   </div>
                 </div>
               </div>
               
-              {/* Lista de propuestas del producto */}
-              <div className="divide-y divide-gray-200">
+              {/* Lista de propuestas del producto - Estilo de cajas como en la imagen */}
+              <div className="space-y-3">
                 {group.proposals.map((proposal) => (
-            <div
-              key={proposal.id}
-                    className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-              onClick={() => setSelectedProposal(proposal)}
-            >
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between space-y-3 md:space-y-0">
-                      <div className="flex-1">
-
-                  <div className="flex items-center space-x-3 mb-2">
-                    <span className="text-xl md:text-2xl">{getTypeIcon(proposal.type)}</span>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900 text-sm md:text-base">
-                        {proposal.type === 'precio' && 'Propuesta de Precio'}
-                        {proposal.type === 'intercambio' && 'Propuesta de Intercambio'}
-                        {proposal.type === 'encuentro' && 'Propuesta de Encuentro'}
-                        {proposal.type === 'condiciones' && 'Propuesta de Condiciones'}
-                        {proposal.type === 'otro' && 'Otra Propuesta'}
-                      </h3>
-                      <p className="text-xs md:text-sm text-gray-600">
-                        {proposal.proposer.id === currentUser?.user_id 
-                          ? `Para: ${proposal.receiver.name} ${proposal.receiver.lastName}`
-                          : `De: ${proposal.proposer.name} ${proposal.proposer.lastName}`
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <p className="text-gray-700 mb-3 text-sm md:text-base line-clamp-2">{proposal.description}</p>
-                  
-                  <div className="flex flex-wrap gap-2 text-xs md:text-sm text-gray-500">
-                    <span>📅 {new Date(proposal.createdAt).toLocaleDateString('es-CO')}</span>
-                    {proposal.proposedPrice && (
-                      <span>💰 ${proposal.proposedPrice.toLocaleString('es-CO')}</span>
-                    )}
-                    {proposal.meetingDate && (
-                      <span>🤝 {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}</span>
-                    )}
-                    {proposal.meetingPlace && (
-                      <span className="hidden md:inline">📍 {proposal.meetingPlace}</span>
-                    )}
-                    {proposal.nota_intercambio && (
-                      <span className="hidden md:inline">📝 {proposal.nota_intercambio}</span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex flex-col md:items-end space-y-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(proposal.status)}`}>
-                    {proposal.status === 'aceptada' && '✅ Aceptada'}
-                    {proposal.status === 'pendiente' && '⏳ Pendiente'}
-                    {proposal.status === 'pendiente_validacion' && '🔍 En Validación'}
-                    {proposal.status === 'rechazada' && '❌ Rechazada'}
-                    {!['aceptada', 'pendiente', 'pendiente_validacion', 'rechazada'].includes(proposal.status) && proposal.status}
-                  </span>
-                  
-                  {/* Mostrar botones de acción solo si el usuario es el receptor y está pendiente */}
-                  {proposal.receiver.id === currentUser?.user_id && proposal.status === 'pendiente' && (
-                    <div className="flex space-x-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRespondToProposal(proposal, 'aceptar')
-                        }}
-                        className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                        title="Aceptar propuesta"
-                      >
-                        ✅ Aceptar
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRespondToProposal(proposal, 'rechazar')
-                        }}
-                        className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                        title="Rechazar propuesta"
-                      >
-                        ❌ Rechazar
-                      </button>
-                    </div>
-                  )}
-                  
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleProposalClick(proposal)
-                    }}
-                    className="text-green-600 hover:text-green-800 text-xs md:text-sm"
+                  <div
+                    key={proposal.id}
+                    className="bg-white border-2 border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors cursor-pointer"
+                    onClick={() => setSelectedProposal(proposal)}
                   >
-                    Ver detalles →
-                  </button>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-xl">{getTypeIcon(proposal.type)}</span>
+                          <div>
+                            <h4 className="font-medium text-gray-900">
+                              {proposal.type === 'precio' && 'Propuesta de Precio'}
+                              {proposal.type === 'intercambio' && 'Propuesta de Intercambio'}
+                              {proposal.type === 'encuentro' && 'Propuesta de Encuentro'}
+                              {proposal.type === 'condiciones' && 'Propuesta de Condiciones'}
+                              {proposal.type === 'otro' && 'Otra Propuesta'}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {proposal.proposer.id === currentUser?.user_id 
+                                ? `Para: ${proposal.receiver.name} ${proposal.receiver.lastName}`
+                                : `De: ${proposal.proposer.name} ${proposal.proposer.lastName}`
+                              }
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(proposal.status)}`}>
+                          {proposal.status === 'aceptada' && '✅ Aceptada'}
+                          {proposal.status === 'pendiente' && '⏳ Pendiente'}
+                          {proposal.status === 'pendiente_validacion' && '🔍 En Validación'}
+                          {proposal.status === 'rechazada' && '❌ Rechazada'}
+                          {!['aceptada', 'pendiente', 'pendiente_validacion', 'rechazada'].includes(proposal.status) && proposal.status}
+                        </span>
+                        
+                        {/* Botones de acción */}
+                        {proposal.receiver.id === currentUser?.user_id && proposal.status === 'pendiente' && (
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRespondToProposal(proposal, 'aceptar')
+                              }}
+                              className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                              title="Aceptar propuesta"
+                            >
+                              ✅
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRespondToProposal(proposal, 'rechazar')
+                              }}
+                              className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                              title="Rechazar propuesta"
+                            >
+                              ❌
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
