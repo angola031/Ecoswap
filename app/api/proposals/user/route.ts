@@ -65,7 +65,34 @@ export async function GET(request: NextRequest) {
         fecha_encuentro,
         lugar_encuentro,
         archivo_url,
-        nota_intercambio
+        nota_intercambio,
+        chat!inner(
+          chat_id,
+          intercambio_id,
+          intercambio!inner(
+            intercambio_id,
+            producto_ofrecido_id,
+            producto!inner(
+              producto_id,
+              titulo,
+              precio,
+              tipo_transaccion,
+              precio_negociable,
+              condiciones_intercambio,
+              que_busco_cambio,
+              categoria_id,
+              categoria!inner(
+                categoria_id,
+                nombre
+              ),
+              imagen_producto!inner(
+                imagen_id,
+                url_imagen,
+                es_principal
+              )
+            )
+          )
+        )
       `)
       .or(`usuario_propone_id.eq.${userId},usuario_recibe_id.eq.${userId}`)
       .order('fecha_creacion', { ascending: false })
@@ -86,10 +113,32 @@ export async function GET(request: NextRequest) {
         ? { id: proposal.usuario_recibe_id, name: 'Usuario', lastName: 'Destinatario', avatar: null }
         : { id: proposal.usuario_propone_id, name: 'Usuario', lastName: 'Proponente', avatar: null }
 
-      // Información básica del producto (sin relaciones complejas por ahora)
-      const productInfo = {
+      // Obtener información del producto desde la relación
+      const chat = proposal.chat?.[0] // Acceder al primer elemento del array
+      const intercambio = chat?.intercambio?.[0] // Acceder al primer elemento del array
+      const product = intercambio?.producto?.[0] // Acceder al primer elemento del array
+      const categoria = product?.categoria?.[0] // Acceder al primer elemento del array
+      const imagenPrincipal = product?.imagen_producto?.find(img => img.es_principal) || product?.imagen_producto?.[0]
+      
+      const productInfo = product ? {
+        id: product.producto_id,
+        title: product.titulo,
+        price: product.precio,
+        type: product.tipo_transaccion,
+        negotiable: product.precio_negociable,
+        exchangeConditions: product.condiciones_intercambio,
+        exchangeSeeking: product.que_busco_cambio,
+        image: imagenPrincipal?.url_imagen || null,
+        category: categoria?.nombre || null,
+        owner: {
+          id: 0,
+          name: 'Usuario',
+          lastName: 'Producto',
+          avatar: null
+        }
+      } : {
         id: 0,
-        title: 'nombre producto',
+        title: 'Producto no disponible',
         price: null,
         type: 'intercambio',
         negotiable: false,
