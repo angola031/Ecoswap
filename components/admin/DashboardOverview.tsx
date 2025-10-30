@@ -7,6 +7,7 @@ interface DashboardOverviewProps {
     onViewUsers: () => void
     onViewVerifications: () => void
     onViewNotifications: () => void
+    onViewProducts?: () => void
 }
 
 interface OverviewStats {
@@ -22,7 +23,8 @@ interface OverviewStats {
 export default function DashboardOverview({ 
     onViewUsers, 
     onViewVerifications, 
-    onViewNotifications 
+    onViewNotifications,
+    onViewProducts
 }: DashboardOverviewProps) {
     const [stats, setStats] = useState<OverviewStats>({
         totalClients: 0,
@@ -303,6 +305,7 @@ export default function DashboardOverview({
                     subtitle="Productos en el sistema"
                     icon="📦"
                     color="bg-indigo-500"
+                    onClick={onViewProducts}
                 />
 
                 <StatCard
@@ -311,6 +314,7 @@ export default function DashboardOverview({
                     subtitle={`${stats.totalProducts > 0 ? ((stats.activeProducts / stats.totalProducts) * 100).toFixed(1) : 0}% del total`}
                     icon="🟢"
                     color="bg-emerald-500"
+                    onClick={onViewProducts}
                 />
 
                 {/* Estadísticas de Crecimiento */}

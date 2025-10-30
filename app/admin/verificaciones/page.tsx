@@ -172,6 +172,7 @@ export default function VerificacionesPage() {
                             onViewUsers={() => setActiveSection('users')}
                             onViewVerifications={() => setActiveSection('identity-verification')}
                             onViewNotifications={() => setActiveSection('notifications')}
+                            onViewProducts={() => setActiveSection('products')}
                         />
                         
                         {/* Resumen de Verificaciones */}
