@@ -7,8 +7,8 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
     try {
-        const MAX_BYTES = 2 * 1024 * 1024 // 2MB
-        const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png']
+        const MAX_BYTES = 10 * 1024 * 1024 // 10MB
+        const ALLOWED_TYPES = ['image/webp']
 
         const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
         if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
@@ -44,10 +44,10 @@ export async function POST(req: NextRequest) {
 
         // Validaciones de archivo
         if (!ALLOWED_TYPES.includes(file.type)) {
-            return NextResponse.json({ error: 'Tipo de archivo no permitido (usa JPG o PNG)' }, { status: 400 })
+            return NextResponse.json({ error: 'Solo se permite formato WebP' }, { status: 400 })
         }
         if (file.size > MAX_BYTES) {
-            return NextResponse.json({ error: 'El archivo supera 2MB. Reduce o comprime la imagen.' }, { status: 400 })
+            return NextResponse.json({ error: 'Archivo demasiado grande (máx 10MB)' }, { status: 400 })
         }
 
         // Verificar que el userId pertenezca al auth.uid() del token (cumple RLS típica)
@@ -69,9 +69,8 @@ export async function POST(req: NextRequest) {
         
         console.log('🔧 Usando cliente:', isUsingAdmin ? 'Admin (Vercel)' : 'Autenticado (Localhost)')
         
-        // Usar estructura simple compatible con RLS: usuarios/{auth.uid}/foto_perfil.ext
-        const ext = (file.type === 'image/png') ? 'png' : 'jpg'
-        const path = `usuarios/${authUid}/foto_perfil.${ext}`
+        // Estructura solicitada: usuarios/{user_id}/perfil.webp
+        const path = `usuarios/${userId}/perfil.webp`
         const arrayBuffer = await file.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
 
@@ -79,8 +78,8 @@ export async function POST(req: NextRequest) {
         const { error: uploadError } = await storageClient.storage
             .from('Ecoswap')
             .upload(path, buffer, { 
-                upsert: true, // Permitir sobrescribir
-                contentType: file.type || 'image/jpeg', 
+                upsert: true,
+                contentType: 'image/webp', 
                 cacheControl: '3600' 
             })
 

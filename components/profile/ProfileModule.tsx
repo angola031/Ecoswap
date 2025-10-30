@@ -587,17 +587,55 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                 type="file"
                                 accept="image/*"
                                 className="hidden"
-                                onChange={(e) => {
+                                onChange={async (e) => {
                                     const file = e.target.files?.[0] || null
-                                    setSelectedFile(file || null)
                                     setUploadError(null)
                                     setUploadSuccess(null)
-                                    if (file) {
+                                    if (!file) { setSelectedFile(null); setPreviewUrl(''); return }
+                                    // Convertir a WebP (max 400px, calidad 0.82)
+                                    const convertToWebP = async (f: File): Promise<File> => {
+                                        return new Promise((resolve, reject) => {
+                                            const canvas = document.createElement('canvas')
+                                            const ctx = canvas.getContext('2d')
+                                            if (!ctx) { reject(new Error('Canvas no disponible')); return }
+                                            const img = new Image()
+                                            const url = URL.createObjectURL(f)
+                                            img.onload = () => {
+                                                try {
+                                                    let w = img.width
+                                                    let h = img.height
+                                                    const max = 400
+                                                    if (w > max || h > max) {
+                                                        if (w > h) { h = (h / w) * max; w = max } else { w = (w / h) * max; h = max }
+                                                    }
+                                                    canvas.width = w
+                                                    canvas.height = h
+                                                    ctx.clearRect(0, 0, w, h)
+                                                    ctx.drawImage(img, 0, 0, w, h)
+                                                    URL.revokeObjectURL(url)
+                                                    canvas.toBlob((blob) => {
+                                                        if (!blob) { reject(new Error('No se pudo convertir a WebP')); return }
+                                                        const webp = new File([blob], f.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' })
+                                                        resolve(webp)
+                                                    }, 'image/webp', 0.82)
+                                                } catch (err) {
+                                                    URL.revokeObjectURL(url)
+                                                    reject(err as any)
+                                                }
+                                            }
+                                            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Error al cargar imagen')) }
+                                            img.src = url
+                                        })
+                                    }
+                                    try {
+                                        const webp = await convertToWebP(file)
+                                        setSelectedFile(webp)
+                                        setPreviewUrl(URL.createObjectURL(webp))
+                                    } catch (_) {
+                                        setSelectedFile(file)
                                         const reader = new FileReader()
                                         reader.onload = () => setPreviewUrl(reader.result as string)
                                         reader.readAsDataURL(file)
-                                    } else {
-                                        setPreviewUrl('')
                                     }
                                 }}
                             />
