@@ -1703,7 +1703,7 @@ export default function InteraccionDetailPage() {
                                                 if (!token) return
                                                 // Determinar a quién vas a calificar: el otro usuario de la interacción
                                                 const otherName = interaction?.otherUser?.name || 'Usuario'
-                                                const otherAvatar = interaction?.otherUser?.avatar || '/default-avatar.png'
+                                                const otherAvatar = interaction?.otherUser?.avatar || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'
                                                 const result = await (window as any).Swal.fire({
                                                     title: '¿El encuentro fue exitoso?',
                                                     allowOutsideClick: false,

@@ -334,10 +334,11 @@ export default function EditProductPage() {
                 if (!session?.access_token) throw new Error('Sesión no válida para subir imágenes')
 
                 const uploaded: any[] = []
+                const startIndex = existingImages.length || 0
                 for (let i = 0; i < images.length; i++) {
                     const file = images[i]
                     // Asegurar nombre y extensión .webp en ruta consistente
-                    const fileName = `${productId}_${i + 1}.webp`
+                    const fileName = `${productId}_${startIndex + i + 1}.webp`
                     const filePath = `productos/user_${ownerUserId ?? ''}/${productId}/${fileName}`
 
                     const { error: uploadError } = await supabase.storage
