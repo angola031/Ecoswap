@@ -32,6 +32,7 @@ export default function EditProductPage() {
     const [images, setImages] = useState<File[]>([])
     const [imagePreviews, setImagePreviews] = useState<string[]>([])
     const [existingImages, setExistingImages] = useState<Array<{ id: number, url: string, es_principal: boolean, orden: number }>>([])
+    const [ownerUserId, setOwnerUserId] = useState<number | null>(null)
     // Nuevos campos de edición
     const categories = [
         'Electrónicos',
@@ -118,6 +119,7 @@ export default function EditProductPage() {
                     tipo_transaccion: (data.tipo_transaccion || 'venta') as any
                 })
                 setCondition((data.estado === 'para_repuestos' ? 'parts' : 'used'))
+                setOwnerUserId(data.user_id || null)
 
                 // Categoría: si hay categoria_id, intenta resolver nombre; si no, queda vacío
                 if ((data as any)?.categoria_id) {
@@ -336,7 +338,7 @@ export default function EditProductPage() {
                     const file = images[i]
                     // Asegurar nombre y extensión .webp en ruta consistente
                     const fileName = `${productId}_${i + 1}.webp`
-                    const filePath = `productos/user_${session.user?.id}/${productId}/${fileName}`
+                    const filePath = `productos/user_${ownerUserId ?? ''}/${productId}/${fileName}`
 
                     const { error: uploadError } = await supabase.storage
                         .from('Ecoswap')
