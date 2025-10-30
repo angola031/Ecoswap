@@ -334,13 +334,13 @@ export default function EditProductPage() {
                 const uploaded: any[] = []
                 for (let i = 0; i < images.length; i++) {
                     const file = images[i]
-                    const fileExt = file.name.split('.').pop()
-                    const fileName = `${productId}_${Date.now()}_${i + 1}.${fileExt}`
+                    // Asegurar nombre y extensión .webp en ruta consistente
+                    const fileName = `${productId}_${i + 1}.webp`
                     const filePath = `productos/user_${session.user?.id}/${productId}/${fileName}`
 
                     const { error: uploadError } = await supabase.storage
                         .from('Ecoswap')
-                        .upload(filePath, file, { cacheControl: '3600', upsert: false })
+                        .upload(filePath, file, { cacheControl: '3600', upsert: false, contentType: 'image/webp' })
                     if (uploadError) throw uploadError
 
                     const { data: urlData } = supabase.storage
@@ -445,10 +445,52 @@ export default function EditProductPage() {
         loadMunis()
     }, [selectedDepId, localColData])
 
-    const onPickImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Convertir imagen a WebP (máx 1600px, calidad 0.8)
+    const convertToWebP = async (file: File): Promise<File> => {
+        return new Promise((resolve, reject) => {
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
+            if (!ctx) { reject(new Error('Canvas no disponible')); return }
+            const img = new Image()
+            const objectUrl = URL.createObjectURL(file)
+            img.onload = () => {
+                try {
+                    let width = img.width
+                    let height = img.height
+                    const maxDimension = 1600
+                    if (width > maxDimension || height > maxDimension) {
+                        if (width > height) { height = (height / width) * maxDimension; width = maxDimension }
+                        else { width = (width / height) * maxDimension; height = maxDimension }
+                    }
+                    canvas.width = width
+                    canvas.height = height
+                    ctx.clearRect(0, 0, width, height)
+                    ctx.drawImage(img, 0, 0, width, height)
+                    URL.revokeObjectURL(objectUrl)
+                    canvas.toBlob((blob) => {
+                        if (!blob) { reject(new Error('No se pudo convertir a WebP')); return }
+                        const webp = new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' })
+                        resolve(webp)
+                    }, 'image/webp', 0.8)
+                } catch (err) {
+                    URL.revokeObjectURL(objectUrl)
+                    reject(err as any)
+                }
+            }
+            img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Error al cargar imagen')) }
+            img.src = objectUrl
+        })
+    }
+
+    const onPickImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || [])
-        setImages(prev => [...prev, ...files])
-        setImagePreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))])
+        if (files.length === 0) return
+        const processed: File[] = []
+        for (const f of files) {
+            try { processed.push(await convertToWebP(f)) } catch { processed.push(f) }
+        }
+        setImages(prev => [...prev, ...processed])
+        setImagePreviews(prev => [...prev, ...processed.map(f => URL.createObjectURL(f))])
     }
 
     const removeNewImage = (index: number) => {
