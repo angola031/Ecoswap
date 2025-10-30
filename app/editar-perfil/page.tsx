@@ -202,14 +202,51 @@ export default function EditarPerfilPage() {
         }
     }
 
-    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
-        if (file) {
+        if (!file) return
+        const convertToWebP = async (f: File): Promise<File> => {
+            return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas')
+                const ctx = canvas.getContext('2d')
+                if (!ctx) { reject(new Error('Canvas no disponible')); return }
+                const img = new Image()
+                const url = URL.createObjectURL(f)
+                img.onload = () => {
+                    try {
+                        let w = img.width
+                        let h = img.height
+                        const max = 400
+                        if (w > max || h > max) {
+                            if (w > h) { h = (h / w) * max; w = max } else { w = (w / h) * max; h = max }
+                        }
+                        canvas.width = w
+                        canvas.height = h
+                        ctx.clearRect(0, 0, w, h)
+                        ctx.drawImage(img, 0, 0, w, h)
+                        URL.revokeObjectURL(url)
+                        canvas.toBlob((blob) => {
+                            if (!blob) { reject(new Error('No se pudo convertir a WebP')); return }
+                            const webp = new File([blob], f.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' })
+                            resolve(webp)
+                        }, 'image/webp', 0.82)
+                    } catch (err) {
+                        URL.revokeObjectURL(url)
+                        reject(err as any)
+                    }
+                }
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Error al cargar imagen')) }
+                img.src = url
+            })
+        }
+        try {
+            const webp = await convertToWebP(file)
+            setAvatarFile(webp)
+            setAvatarPreview(URL.createObjectURL(webp))
+        } catch (_) {
             setAvatarFile(file)
             const reader = new FileReader()
-            reader.onload = (e) => {
-                setAvatarPreview(e.target?.result as string)
-            }
+            reader.onload = (ev) => setAvatarPreview(ev.target?.result as string)
             reader.readAsDataURL(file)
         }
     }
@@ -280,10 +317,17 @@ export default function EditarPerfilPage() {
 
             let newAvatarUrl: string | undefined
             if (avatarFile) {
-                // Subir avatar con permisos del usuario
-                const upload = await uploadUserProfileImage(session.user.id, avatarFile)
-                if (upload.error) throw new Error(upload.error)
-                newAvatarUrl = upload.url || undefined
+                const form = new FormData()
+                form.append('file', avatarFile)
+                form.append('userId', String(formData.user_id))
+                const respUpload = await fetch('/api/upload/profile', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                    body: form
+                })
+                const json = await respUpload.json().catch(() => ({}))
+                if (!respUpload.ok) throw new Error(json?.error || 'Error subiendo avatar')
+                newAvatarUrl = json.publicUrl ? `${json.publicUrl}?t=${Date.now()}` : undefined
             }
 
             const resp = await fetch('/api/users/profile', {
@@ -463,7 +507,7 @@ export default function EditarPerfilPage() {
                                     Foto de Perfil
                                 </h3>
                                 <p className="text-sm text-gray-600 mb-3">
-                                    Sube una nueva imagen para tu perfil. Formatos soportados: JPG, PNG, GIF.
+                                    Sube una nueva imagen para tu perfil. Formato requerido: WebP (se convierte automáticamente).
                                 </p>
                                 <div className="flex space-x-3">
                                     <button
