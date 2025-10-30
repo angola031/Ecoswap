@@ -366,7 +366,15 @@ export default function EditProductPage() {
                 }
             }
 
-            alert('Cambios guardados. Tu producto fue enviado nuevamente a validación.')
+            try {
+                await (window as any).Swal.fire({
+                    title: '¡Producto actualizado!',
+                    text: 'Tus cambios se guardaron y el producto fue reenviado a validación.',
+                    icon: 'success',
+                    confirmButtonText: 'Continuar',
+                    confirmButtonColor: '#10B981'
+                })
+            } catch {}
             router.push('/')
         } catch (e: any) {
             setError(e.message || 'Error guardando cambios')
