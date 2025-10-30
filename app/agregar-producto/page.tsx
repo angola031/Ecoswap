@@ -534,6 +534,7 @@ export default function AgregarProductoPage() {
           const formDataUpload = new FormData()
           formDataUpload.append('image', file)
           formDataUpload.append('ownerUserId', String(result.producto.user_id))
+          formDataUpload.append('index', String(i + 1))
           const uploadResp = await fetch(`/api/products/${result.producto.producto_id}/storage`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${finalToken}` },

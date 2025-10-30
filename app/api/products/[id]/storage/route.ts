@@ -24,6 +24,7 @@ export async function POST(
     const form = await req.formData()
     const file = form.get('image') as File | null
     const ownerUserIdStr = form.get('ownerUserId') as string | null
+    const indexStr = form.get('index') as string | null
     if (!file || !ownerUserIdStr) {
       return NextResponse.json({ error: 'image y ownerUserId son requeridos' }, { status: 400 })
     }
@@ -55,11 +56,16 @@ export async function POST(
     }
 
     // Calcular índice siguiente leyendo cantidad existente
-    const { count } = await admin
-      .from('imagen_producto')
-      .select('*', { count: 'exact', head: true })
-      .eq('producto_id', Number(productoId))
-    const nextIndex = (count || 0) + 1
+    let nextIndex: number
+    if (indexStr && !Number.isNaN(Number(indexStr))) {
+      nextIndex = Number(indexStr)
+    } else {
+      const { count } = await admin
+        .from('imagen_producto')
+        .select('*', { count: 'exact', head: true })
+        .eq('producto_id', Number(productoId))
+      nextIndex = (count || 0) + 1
+    }
 
     const fileName = `${productoId}_${nextIndex}.webp`
     const storagePath = `productos/user_${ownerUserId}/${productoId}/${fileName}`

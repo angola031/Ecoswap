@@ -339,6 +339,9 @@ export default function EditProductPage() {
                     const formData = new FormData()
                     formData.append('image', file)
                     formData.append('ownerUserId', String(ownerUserId || ''))
+                    // índice deseado basado en imágenes existentes + posición local
+                    const desiredIndex = (existingImages.length || 0) + i + 1
+                    formData.append('index', String(desiredIndex))
                     const uploadResp = await fetch(`/api/products/${productId}/storage`, {
                         method: 'POST',
                         headers: { 'Authorization': `Bearer ${session.access_token}` },
