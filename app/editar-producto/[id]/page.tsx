@@ -334,27 +334,26 @@ export default function EditProductPage() {
                 if (!session?.access_token) throw new Error('Sesión no válida para subir imágenes')
 
                 const uploaded: any[] = []
-                const startIndex = existingImages.length || 0
                 for (let i = 0; i < images.length; i++) {
                     const file = images[i]
-                    // Asegurar nombre y extensión .webp en ruta consistente
-                    const fileName = `${productId}_${startIndex + i + 1}.webp`
-                    const filePath = `productos/user_${ownerUserId ?? ''}/${productId}/${fileName}`
-
-                    const { error: uploadError } = await supabase.storage
-                        .from('Ecoswap')
-                        .upload(filePath, file, { cacheControl: '3600', upsert: true, contentType: 'image/webp' })
-                    if (uploadError) throw uploadError
-
-                    const { data: urlData } = supabase.storage
-                        .from('Ecoswap')
-                        .getPublicUrl(filePath)
-
+                    const formData = new FormData()
+                    formData.append('image', file)
+                    formData.append('ownerUserId', String(ownerUserId || ''))
+                    const uploadResp = await fetch(`/api/products/${productId}/storage`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${session.access_token}` },
+                        body: formData
+                    })
+                    if (!uploadResp.ok) {
+                        const msg = await uploadResp.text()
+                        throw new Error(msg || 'Error subiendo imagen')
+                    }
+                    const { url, index } = await uploadResp.json()
                     uploaded.push({
                         producto_id: Number(productId),
-                        url_imagen: urlData.publicUrl,
-                        es_principal: existingImages.length === 0 && i === 0, // si no hay, primera nueva es principal
-                        orden: (existingImages.length || 0) + i + 1
+                        url_imagen: url,
+                        es_principal: existingImages.length === 0 && i === 0,
+                        orden: index
                     })
                 }
 
