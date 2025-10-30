@@ -563,6 +563,9 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
         )
     }
 
+    // Helper para evitar caché en imágenes de perfil
+    const bust = (url: string) => url ? `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}` : url
+
     return (
         <div className="space-y-6">
             {/* Header del perfil */}
@@ -571,7 +574,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     {/* Avatar y foto */}
                     <div className="relative">
                         <Avatar
-                            src={previewUrl || profileData.avatar}
+                            src={previewUrl || bust(profileData.avatar)}
                             alt={profileData.name}
                             size="xl"
                             className="w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32"
@@ -738,15 +741,21 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                                         headers: { Authorization: `Bearer ${token}` },
                                                         body: form
                                                     })
-                                                    const json = await resp.json()
+                                                    let json: any = null
+                                                    try { json = await resp.json() } catch {}
                                                     if (!resp.ok) {
-                                                        setUploadError(json?.error || 'Error al subir')
+                                                        const msg = json?.error || `Error ${resp.status}`
+                                                        setUploadError(msg)
+                                                        ;(window as any).Swal?.fire({ title: 'Error', text: msg, icon: 'error', confirmButtonText: 'Ok' })
                                                     } else {
                                                         const newUrl = json.publicUrl || ''
-                                                        setProfileData({ ...profileData, avatar: newUrl })
+                                                        // cache busting para evitar CDN stale
+                                                        const busted = newUrl ? `${newUrl}?t=${Date.now()}` : ''
+                                                        setProfileData({ ...profileData, avatar: busted })
                                                         setUploadSuccess('Foto actualizada')
                                                         setSelectedFile(null)
                                                         setPreviewUrl('')
+                                                        ;(window as any).Swal?.fire({ title: '¡Listo!', text: 'Tu foto de perfil fue actualizada.', icon: 'success', confirmButtonText: 'Aceptar', confirmButtonColor: '#10B981' })
                                                     }
                                                 } catch (e: any) {
                                                     setUploadError(e.message || 'Error al subir')
