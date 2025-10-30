@@ -127,13 +127,54 @@ export default function AgregarProductoPage() {
     }
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    const newImages = [...images, ...files]
-    setImages(newImages)
+  // Convertir a WebP (máx 1600px, calidad 0.8)
+  const convertToWebP = async (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { reject(new Error('Canvas no disponible')); return }
+      const img = new Image()
+      const objectUrl = URL.createObjectURL(file)
+      img.onload = () => {
+        try {
+          let width = img.width
+          let height = img.height
+          const maxDimension = 1600
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) { height = (height / width) * maxDimension; width = maxDimension }
+            else { width = (width / height) * maxDimension; height = maxDimension }
+          }
+          canvas.width = width
+          canvas.height = height
+          ctx.clearRect(0, 0, width, height)
+          ctx.drawImage(img, 0, 0, width, height)
+          URL.revokeObjectURL(objectUrl)
+          canvas.toBlob((blob) => {
+            if (!blob) { reject(new Error('No se pudo convertir a WebP')); return }
+            const webp = new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' })
+            resolve(webp)
+          }, 'image/webp', 0.8)
+        } catch (err) {
+          URL.revokeObjectURL(objectUrl)
+          reject(err as any)
+        }
+      }
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Error al cargar imagen')) }
+      img.src = objectUrl
+    })
+  }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    const processed: File[] = []
+    for (const f of files) {
+      try { processed.push(await convertToWebP(f)) } catch { processed.push(f) }
+    }
+    const newImages = [...images, ...processed]
+    setImages(newImages)
     // Crear previews
-    const newPreviews = files.map(file => URL.createObjectURL(file))
+    const newPreviews = processed.map(file => URL.createObjectURL(file))
     setImagePreviews(prev => [...prev, ...newPreviews])
   }
 
@@ -485,86 +526,39 @@ export default function AgregarProductoPage() {
         fullResponse: result
       })
 
-      // Subir imágenes al bucket de Supabase Storage
-      
+      // Subir imágenes vía endpoint con Service Role y registrar en BD
       if (images.length > 0 && result.producto?.producto_id) {
-        const uploadedImages = []
-        
+        const uploadedImages = [] as Array<{ producto_id: number, url_imagen: string, es_principal: boolean, orden: number }>
         for (let i = 0; i < images.length; i++) {
           const file = images[i]
-          const fileExt = file.name.split('.').pop()
-          const fileName = `${result.producto.producto_id}_${i + 1}.${fileExt}`
-          
-          // Crear estructura: productos/user_{user_id}/{id_producto}/
-          const filePath = `productos/user_${result.producto.user_id}/${result.producto.producto_id}/${fileName}`
-
-
-          try {
-            const supabase = getSupabaseClient()
-            if (!supabase) {
-              console.log('❌ Subida de imagen: Supabase no está configurado')
-              continue
-            }
-            
-            // Subir imagen al bucket
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('Ecoswap')
-              .upload(filePath, file, {
-                cacheControl: '3600',
-                upsert: false
-              })
-
-            if (uploadError) {
-              console.error('❌ Formulario: Error subiendo imagen:', uploadError)
-              throw new Error(`Error subiendo imagen ${i + 1}: ${uploadError.message}`)
-            }
-
-
-            // Obtener URL pública de la imagen
-            const { data: urlData } = supabase.storage
-              .from('Ecoswap')
-              .getPublicUrl(filePath)
-
-            uploadedImages.push({
-              producto_id: result.producto.producto_id,
-              url_imagen: urlData.publicUrl,
-              es_principal: i === 0, // La primera imagen es principal
-              orden: i + 1
-            })
-
-          } catch (imageError) {
-            console.error(`❌ Formulario: Error con imagen ${i + 1}:`, imageError)
-            throw imageError
+          const formDataUpload = new FormData()
+          formDataUpload.append('image', file)
+          formDataUpload.append('ownerUserId', String(result.producto.user_id))
+          const uploadResp = await fetch(`/api/products/${result.producto.producto_id}/storage`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${finalToken}` },
+            body: formDataUpload
+          })
+          if (!uploadResp.ok) {
+            const msg = await uploadResp.text()
+            console.error('❌ Error subiendo imagen:', msg)
+            continue
           }
+          const { url, index } = await uploadResp.json()
+          uploadedImages.push({
+            producto_id: result.producto.producto_id,
+            url_imagen: url,
+            es_principal: i === 0,
+            orden: index
+          })
         }
-
-        // Guardar referencias de imágenes en la base de datos
         if (uploadedImages.length > 0) {
-          
           const imagesResponse = await fetch('/api/products/images', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${finalToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              producto_id: result.producto.producto_id,
-              imagenes: uploadedImages
-            })
+            headers: { 'Authorization': `Bearer ${finalToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ producto_id: result.producto.producto_id, imagenes: uploadedImages })
           })
-
-          console.log('📡 Formulario: Respuesta de la API de imágenes:', {
-            status: imagesResponse.status,
-            ok: imagesResponse.ok
-          })
-
-          if (!imagesResponse.ok) {
-            const errorData = await imagesResponse.json()
-            console.error('❌ Formulario: Error guardando referencias de imágenes:', errorData)
-            // No lanzamos error aquí porque el producto ya se creó
-          } else {
-            const successData = await imagesResponse.json()
-          }
+          console.log('📡 Formulario: Respuesta de la API de imágenes:', { status: imagesResponse.status, ok: imagesResponse.ok })
         }
       }
 
