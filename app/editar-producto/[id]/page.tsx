@@ -343,7 +343,7 @@ export default function EditProductPage() {
 
                     const { error: uploadError } = await supabase.storage
                         .from('Ecoswap')
-                        .upload(filePath, file, { cacheControl: '3600', upsert: false, contentType: 'image/webp' })
+                        .upload(filePath, file, { cacheControl: '3600', upsert: true, contentType: 'image/webp' })
                     if (uploadError) throw uploadError
 
                     const { data: urlData } = supabase.storage
