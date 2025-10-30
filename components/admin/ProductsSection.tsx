@@ -359,16 +359,16 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                 </div>
                 <div className="divide-y divide-gray-200">
                     {filteredProducts.map((product) => (
-                        <div key={product.producto_id} className="px-6 py-4 hover:bg-gray-50">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-4">
+                        <div key={product.producto_id} className="px-4 sm:px-6 py-4 hover:bg-gray-50">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div className="flex items-start sm:items-center space-x-3 sm:space-x-4">
                                     <div className="flex-shrink-0">
-                                        <div className="w-16 h-16 bg-gray-300 rounded flex items-center justify-center">
+                                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gray-300 rounded flex items-center justify-center">
                                             <span className="text-gray-500 text-sm">📦</span>
                                         </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center space-x-2">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center space-x-2 flex-wrap">
                                             <h4 className="text-sm font-medium text-gray-900">
                                                 {product.titulo}
                                             </h4>
@@ -388,10 +388,10 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                                                  product.tipo_transaccion === 'donacion' ? 'Donación' : 'Mixto'}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-gray-500 line-clamp-2">
+                                        <p className="text-sm text-gray-500 line-clamp-2 mt-1">
                                             {product.descripcion}
                                         </p>
-                                        <div className="flex items-center space-x-4 mt-1">
+                                        <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-2">
                                             {product.precio && (
                                                 <p className="text-sm text-gray-600">
                                                     <span className="font-medium">${product.precio.toLocaleString()}</span>
@@ -419,7 +419,7 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                                         )}
                                     </div>
                                 </div>
-                                <div className="flex items-center space-x-2">
+                                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:space-x-2 w-full sm:w-auto">
                                     <button
                                         onClick={() => openPreviewModal(product)}
                                         className="px-3 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium hover:bg-purple-200 flex items-center"
@@ -490,7 +490,7 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                                 {/* Imágenes del Producto */}
                                 <div className="relative">
                                     {selectedProductForPreview.imagenes && selectedProductForPreview.imagenes.length > 0 ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                                             {selectedProductForPreview.imagenes
                                                 .sort((a, b) => a.orden - b.orden)
                                                 .map((imagen, index) => (
@@ -617,11 +617,11 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-center justify-between p-4 border-t bg-gray-50">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-t bg-gray-50">
                             <div className="text-sm text-gray-600">
                                 Preview de cómo se verá la publicación en la plataforma
                             </div>
-                            <div className="flex space-x-2">
+                            <div className="grid grid-cols-2 sm:flex sm:space-x-2 gap-2">
                                 {selectedProductForPreview.estado_validacion === 'pending' && (
                                     <>
                                         <button
