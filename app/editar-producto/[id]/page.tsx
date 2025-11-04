@@ -461,27 +461,51 @@ export default function EditProductPage() {
     // Convertir imagen a WebP (máx 1600px, calidad 0.8)
     const convertToWebP = async (file: File): Promise<File> => {
         return new Promise((resolve, reject) => {
+            // Verificar si el archivo ya es WebP y es pequeño, no necesita compresión
+            if (file.type === 'image/webp' && file.size < 500000) {
+                console.log('ℹ️ [Editar Producto] Archivo ya es WebP y pequeño, omitiendo compresión')
+                resolve(file)
+                return
+            }
+
             const canvas = document.createElement('canvas')
             const ctx = canvas.getContext('2d')
-            if (!ctx) { reject(new Error('Canvas no disponible')); return }
+            if (!ctx) { 
+                reject(new Error('Canvas no disponible')); 
+                return 
+            }
+            
             const img = new Image()
             const objectUrl = URL.createObjectURL(file)
+            
             img.onload = () => {
                 try {
                     let width = img.width
                     let height = img.height
                     const maxDimension = 1600
+                    
                     if (width > maxDimension || height > maxDimension) {
-                        if (width > height) { height = (height / width) * maxDimension; width = maxDimension }
-                        else { width = (width / height) * maxDimension; height = maxDimension }
+                        if (width > height) { 
+                            height = (height / width) * maxDimension
+                            width = maxDimension 
+                        } else { 
+                            width = (width / height) * maxDimension
+                            height = maxDimension 
+                        }
                     }
+                    
                     canvas.width = width
                     canvas.height = height
                     ctx.clearRect(0, 0, width, height)
                     ctx.drawImage(img, 0, 0, width, height)
-                    URL.revokeObjectURL(objectUrl)
+                    
+                    // Intentar convertir a WebP, si falla usar JPEG como fallback
                     canvas.toBlob((blob) => {
-                        if (!blob) { reject(new Error('No se pudo convertir a WebP')); return }
+                        URL.revokeObjectURL(objectUrl)
+                        if (!blob) { 
+                            reject(new Error('No se pudo convertir la imagen'))
+                            return 
+                        }
                         const webp = new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' })
                         resolve(webp)
                     }, 'image/webp', 0.8)
@@ -490,7 +514,12 @@ export default function EditProductPage() {
                     reject(err as any)
                 }
             }
-            img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Error al cargar imagen')) }
+            
+            img.onerror = () => { 
+                URL.revokeObjectURL(objectUrl)
+                reject(new Error('Error al cargar la imagen'))
+            }
+            
             img.src = objectUrl
         })
     }
@@ -500,10 +529,20 @@ export default function EditProductPage() {
         if (files.length === 0) return
         const processed: File[] = []
         for (const f of files) {
-            try { processed.push(await convertToWebP(f)) } catch { processed.push(f) }
+            try {
+                console.log('🔄 [Editar Producto] Comprimiendo imagen:', f.name)
+                const compressed = await convertToWebP(f)
+                console.log('✅ [Editar Producto] Imagen comprimida:', compressed.name, 'Tamaño original:', (f.size / 1024).toFixed(2), 'KB → Comprimido:', (compressed.size / 1024).toFixed(2), 'KB')
+                processed.push(compressed)
+            } catch (error) {
+                console.error('❌ [Editar Producto] Error comprimiendo imagen:', error, 'Usando archivo original')
+                processed.push(f)
+            }
         }
         setImages(prev => [...prev, ...processed])
         setImagePreviews(prev => [...prev, ...processed.map(f => URL.createObjectURL(f))])
+        // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
+        e.target.value = ''
     }
 
     const removeNewImage = (index: number) => {
