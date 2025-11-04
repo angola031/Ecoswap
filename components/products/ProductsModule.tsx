@@ -66,6 +66,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
     const [selectedCategory, setSelectedCategory] = useState<string>('all')
     const [searchQuery, setSearchQuery] = useState('')
     const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high' | 'popular'>('newest')
+    const [availableCategories, setAvailableCategories] = useState<string[]>([])
 
     const handlePublishProduct = async () => {
         // Verificar si el usuario está autenticado
@@ -104,6 +105,25 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
         // Si está verificado, redirigir a agregar producto
         router.push('/agregar-producto')
     }
+
+    // Cargar categorías desde la API
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const response = await fetch('/api/categorias')
+                if (response.ok) {
+                    const data = await response.json()
+                    const categorias = data.categorias || []
+                    // Extraer solo los nombres de las categorías
+                    const categoryNames = categorias.map((cat: any) => cat.nombre).filter(Boolean)
+                    setAvailableCategories(categoryNames)
+                }
+            } catch (error) {
+                console.error('Error cargando categorías:', error)
+            }
+        }
+        loadCategories()
+    }, [])
 
     // Cargar productos desde la API
     useEffect(() => {
@@ -177,6 +197,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                 // No necesitamos cargarlas por separado
 
                 setProducts(transformedProducts)
+
             } catch (error) {
                 console.error('Error cargando productos:', error)
                 // Mostrar estado vacío si hay error
@@ -190,21 +211,28 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
         loadProducts()
     }, [])
 
-    // Filtrar y ordenar productos
+        // Filtrar y ordenar productos
     useEffect(() => {
         let filtered = products
 
         // Filtro por categoría
         if (selectedCategory !== 'all') {
-            filtered = filtered.filter(product => product.category === selectedCategory)
+            filtered = filtered.filter(product => {
+                const productCategory = product.category?.toLowerCase().trim() || ''
+                const selectedCategoryLower = selectedCategory.toLowerCase().trim()
+                return productCategory === selectedCategoryLower
+            })
         }
 
         // Filtro por búsqueda
-        if (searchQuery) {
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim()
             filtered = filtered.filter(product =>
-                product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                product.location.toLowerCase().includes(searchQuery.toLowerCase())
+                (product.title?.toLowerCase() || '').includes(query) ||
+                (product.description?.toLowerCase() || '').includes(query) ||                                                                        
+                (product.location?.toLowerCase() || '').includes(query) ||
+                (product.owner?.name?.toLowerCase() || '').includes(query) ||
+                (product.category?.toLowerCase() || '').includes(query)
             )
         }
 
@@ -316,14 +344,9 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                             className="input-field w-full"
                         >
                             <option value="all">Todas las categorías</option>
-                            <option value="electronics">Electrónicos</option>
-                            <option value="sports">Deportes</option>
-                            <option value="music">Música</option>
-                            <option value="books">Libros</option>
-                            <option value="furniture">Muebles</option>
-                            <option value="clothing">Ropa</option>
-                            <option value="home">Hogar</option>
-                            <option value="other">Otros</option>
+                            {availableCategories.map(category => (
+                                <option key={category} value={category}>{category}</option>
+                            ))}
                         </select>
                     </div>
 

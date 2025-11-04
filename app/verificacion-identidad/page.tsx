@@ -36,9 +36,9 @@ export default function VerificacionIdentidadPage() {
                 const ctx = canvas.getContext('2d')
                 if (!ctx) return file
                 ctx.drawImage(bitmap, 0, 0)
-                const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92))
+                const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.82))
                 if (!blob) return file
-                return new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' })
+                return new File([blob], file.name.replace(/\.(heic|heif|jpg|jpeg|png)$/i, '.webp'), { type: 'image/webp' })
             }
         } catch (_) {
             // fallback abajo
@@ -60,9 +60,9 @@ export default function VerificacionIdentidadPage() {
             if (!ctx) return file
             ctx.drawImage(img, 0, 0)
             URL.revokeObjectURL(imgUrl)
-            const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92))
+            const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.82))
             if (!blob) return file
-            return new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' })
+            return new File([blob], file.name.replace(/\.(heic|heif|jpg|jpeg|png)$/i, '.webp'), { type: 'image/webp' })
         } catch {
             return file
         }
@@ -233,12 +233,12 @@ export default function VerificacionIdentidadPage() {
 
             // Convertir a blob
             const blob = await new Promise<Blob | null>((resolve) => {
-                canvas.toBlob(resolve, 'image/jpeg', 0.95)
+                canvas.toBlob(resolve, 'image/webp', 0.82)
             })
 
             if (blob) {
-                const fileName = `${type}_${Date.now()}.jpg`
-                const file = new File([blob], fileName, { type: 'image/jpeg' })
+                const fileName = `${type}_${Date.now()}.webp`
+                const file = new File([blob], fileName, { type: 'image/webp' })
                 
                 // Asignar el archivo según el tipo
                 switch (type) {

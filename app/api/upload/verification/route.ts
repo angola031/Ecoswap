@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
                     .from('Ecoswap')
                     .upload(path, buffer, { 
                         upsert: true, 
-                        contentType: file.type || 'image/jpeg',
+                        contentType: file.type || 'image/webp',
                         cacheControl: '3600'
                     })
                     
@@ -97,9 +97,9 @@ export async function POST(req: NextRequest) {
         }
 
         const paths: Record<string, string> = {}
-        paths.cedula_frente = await uploadOne(cedulaFrente, 'cedula_frente.jpg')
-        paths.cedula_reverso = await uploadOne(cedulaReverso, 'cedula_reverso.jpg')
-        paths.selfie_validacion = await uploadOne(selfie, 'selfie_validacion.jpg')
+        paths.cedula_frente = await uploadOne(cedulaFrente, 'cedula_frente.webp')
+        paths.cedula_reverso = await uploadOne(cedulaReverso, 'cedula_reverso.webp')
+        paths.selfie_validacion = await uploadOne(selfie, 'selfie_validacion.webp')
 
         // Verificar si ya existe una validación para este usuario usando cliente administrativo
         const { data: existingValidation, error: validationCheckError } = await supabaseAdmin
