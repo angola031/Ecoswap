@@ -38,21 +38,38 @@ export default function CoreModule({ currentUser, onLogout }: CoreModuleProps) {
     activeUsers: 0
   })
 
-  // Simular carga de estadísticas
+  // Cargar estadísticas reales de la base de datos
   useEffect(() => {
     let isMounted = true
 
     const loadStats = async () => {
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      try {
+        const res = await fetch('/api/home/stats')
+        const json = await res.json()
 
-      if (isMounted) {
-        setStats({
-          totalUsers: 15420,
-          totalProducts: 8930,
-          totalExchanges: 5670,
-          activeUsers: 2340
-        })
+        if (!res.ok) {
+          throw new Error(json?.error || 'Error cargando estadísticas')
+        }
+
+        if (isMounted && json.stats) {
+          setStats({
+            totalUsers: json.stats.totalUsers || 0,
+            totalProducts: json.stats.totalProducts || 0,
+            totalExchanges: json.stats.totalExchanges || 0,
+            activeUsers: json.stats.activeUsers || 0
+          })
+        }
+      } catch (error) {
+        console.error('❌ [CoreModule] Error cargando estadísticas:', error)
+        // En caso de error, mantener los valores en 0
+        if (isMounted) {
+          setStats({
+            totalUsers: 0,
+            totalProducts: 0,
+            totalExchanges: 0,
+            activeUsers: 0
+          })
+        }
       }
     }
 
