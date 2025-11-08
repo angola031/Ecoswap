@@ -395,6 +395,15 @@ export default function InteraccionDetailPage() {
                     
                     setInteraction(transformedInteraction)
                     
+                    // Debug: Verificar datos cargados
+                    console.log('🔍 [Carga Interacción] Datos cargados:', {
+                        proposerId: transformedInteraction.proposerId,
+                        receiverId: transformedInteraction.receiverId,
+                        offeredProduct: transformedInteraction.offeredProduct?.title,
+                        requestedProduct: transformedInteraction.requestedProduct?.title,
+                        proposalsCount: transformedInteraction.proposals?.length || 0
+                    })
+                    
                     // Verificar si el intercambio está en revisión administrativa
                     if (interactionData.estado === 'pendiente_revision') {
                         setIsUnderAdminReview(true)
@@ -468,8 +477,18 @@ export default function InteraccionDetailPage() {
                     meetingDate: p.meetingDate,
                     meetingPlace: p.meetingPlace,
                     response: p.response,
-                    proposerId: p.proposer?.id ? String(p.proposer.id) : undefined,
-                    receiverId: p.receiver?.id ? String(p.receiver.id) : undefined
+                    proposer: p.proposer ? {
+                        id: p.proposer.id,
+                        name: p.proposer.name || '',
+                        lastName: p.proposer.lastName || '',
+                        avatar: p.proposer.avatar
+                    } : undefined,
+                    receiver: p.receiver ? {
+                        id: p.receiver.id,
+                        name: p.receiver.name || '',
+                        lastName: p.receiver.lastName || '',
+                        avatar: p.receiver.avatar
+                    } : undefined
                 }))
                 setInteraction(prev => prev ? { ...prev, proposals } : prev)
             } catch (e: any) {
@@ -2199,27 +2218,67 @@ export default function InteraccionDetailPage() {
                                                ) : (() => {
                                                    // Agrupar propuestas por producto
                                                    const groupedProposals: { [key: string]: Proposal[] } = {}
-                                                   const offeredProductId = (interaction as any)?.offeredProduct?.id
-                                                   const requestedProductId = (interaction as any)?.requestedProduct?.id
-                                                   const proposerId = (interaction as any)?.proposerId ? Number((interaction as any).proposerId) : null
+                                                   const offeredProduct = (interaction as any)?.offeredProduct
+                                                   const requestedProduct = (interaction as any)?.requestedProduct
+                                                   const proposerId = (interaction as any)?.proposerId ? Number(String((interaction as any).proposerId)) : null
+                                                   const receiverId = (interaction as any)?.receiverId ? Number(String((interaction as any).receiverId)) : null
+                                                   
+                                                   // Debug logs
+                                                   console.log('🔍 [Agrupación] Datos del intercambio:', {
+                                                       proposerId,
+                                                       receiverId,
+                                                       offeredProduct: offeredProduct?.title,
+                                                       requestedProduct: requestedProduct?.title,
+                                                       totalProposals: interaction.proposals.length
+                                                   })
                                                    
                                                    interaction.proposals.forEach((proposal) => {
-                                                       const proposalProposerId = proposal.proposer?.id ? Number(proposal.proposer.id) : null
+                                                       const proposalProposerId = proposal.proposer?.id ? Number(String(proposal.proposer.id)) : null
+                                                       const proposalReceiverId = proposal.receiver?.id ? Number(String(proposal.receiver.id)) : null
                                                        
                                                        // Determinar a qué producto pertenece la propuesta
-                                                       // Si el proposer es el mismo que el proposer del intercambio, pertenece al producto ofrecido
-                                                       // Si el proposer es el receptor, pertenece al producto solicitado
+                                                       // Lógica:
+                                                       // - Si el proposer de la propuesta = proposer del intercambio → producto ofrecido
+                                                       // - Si el proposer de la propuesta = receptor del intercambio → producto solicitado
+                                                       // - Si no coincide con ninguno → general
                                                        let productKey = 'general'
-                                                       if (offeredProductId && proposalProposerId === proposerId) {
-                                                           productKey = 'offered'
-                                                       } else if (requestedProductId && proposalProposerId !== proposerId) {
-                                                           productKey = 'requested'
+                                                       
+                                                       // Normalizar IDs para comparación
+                                                       const normalizedProposerId = proposerId !== null && proposerId !== undefined ? Number(proposerId) : null
+                                                       const normalizedReceiverId = receiverId !== null && receiverId !== undefined ? Number(receiverId) : null
+                                                       const normalizedProposalProposerId = proposalProposerId !== null && proposalProposerId !== undefined ? Number(proposalProposerId) : null
+                                                       
+                                                       if (normalizedProposalProposerId !== null) {
+                                                           if (normalizedProposerId !== null && normalizedProposalProposerId === normalizedProposerId && offeredProduct) {
+                                                               // El que propone la propuesta es el mismo que propone el intercambio → producto ofrecido
+                                                               productKey = 'offered'
+                                                           } else if (normalizedReceiverId !== null && normalizedProposalProposerId === normalizedReceiverId && requestedProduct) {
+                                                               // El que propone la propuesta es el receptor del intercambio → producto solicitado
+                                                               productKey = 'requested'
+                                                           } else if (normalizedProposerId !== null && normalizedProposalProposerId !== normalizedProposerId && requestedProduct) {
+                                                               // El que propone la propuesta NO es el proposer del intercambio → producto solicitado (si existe)
+                                                               productKey = 'requested'
+                                                           }
                                                        }
+                                                       
+                                                       console.log('🔍 [Agrupación] Propuesta:', {
+                                                           id: proposal.id,
+                                                           proposalProposerId,
+                                                           proposalReceiverId,
+                                                           productKey,
+                                                           description: proposal.description?.substring(0, 30)
+                                                       })
                                                        
                                                        if (!groupedProposals[productKey]) {
                                                            groupedProposals[productKey] = []
                                                        }
                                                        groupedProposals[productKey].push(proposal)
+                                                   })
+                                                   
+                                                   console.log('🔍 [Agrupación] Resultado:', {
+                                                       offered: groupedProposals['offered']?.length || 0,
+                                                       requested: groupedProposals['requested']?.length || 0,
+                                                       general: groupedProposals['general']?.length || 0
                                                    })
                                                    
                                                    return (
