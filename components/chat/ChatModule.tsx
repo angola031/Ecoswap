@@ -636,6 +636,32 @@ const renderProductInfo = (product: any, label: string) => {
   )
 }
 
+// Función para normalizar avatares: convierte valores no válidos en undefined
+// para que el UI muestre el icono verde por defecto
+const normalizeAvatar = (avatar: string | null | undefined): string | undefined => {
+  if (!avatar) return undefined
+
+  if (typeof avatar === 'string') {
+    const trimmed = avatar.trim()
+    if (!trimmed) return undefined
+
+    // Casos comunes que llegan como texto
+    const lower = trimmed.toLowerCase()
+    if (['null', 'undefined', 'none', 'default', 'n/a'].includes(lower)) return undefined
+
+    // Evitar placeholders conocidos o imágenes de ejemplo
+    if (trimmed.includes('images.unsplash.com')) return undefined
+
+    // Aceptar solo rutas claramente válidas
+    const isLikelyUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:')
+    if (!isLikelyUrl) return undefined
+
+    return trimmed
+  }
+
+  return undefined
+}
+
 export default function ChatModule({ currentUser }: ChatModuleProps) {
   const router = useRouter()
   
@@ -768,7 +794,11 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
       // Obtener información del usuario de la conversación
       const otherUser = selectedConversation?.user
       const otherUserName = otherUser ? otherUser.name : 'el otro usuario'
-      const otherUserAvatar = otherUser?.avatar || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'
+      const normalizedAvatar = normalizeAvatar(otherUser?.avatar)
+      const fallbackBase64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+'
+      const avatarHtml = normalizedAvatar
+        ? `<img src="${normalizedAvatar}" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-blue-200" onerror="this.onerror=null;this.src='${fallbackBase64}'" />`
+        : `<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-blue-200 bg-emerald-500" />`
       
       const validationResult = await (window as any).Swal.fire({
         title: '¿El encuentro fue exitoso?',
@@ -776,17 +806,12 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
           <div class="text-left space-y-4">
             <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
               <div class="flex items-center space-x-3">
-                <img 
-                  src="${otherUserAvatar}" 
-                  alt="${otherUserName}" 
-                  class="w-10 h-10 rounded-full object-cover border-2 border-blue-200"
-                  onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"%3E%3Ccircle fill=\"%2310B981\" cx=\"12\" cy=\"12\" r=\"12\"/%3E%3Cpath fill=\"white\" d=\"M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\"/%3E%3C/svg%3E'"
-                />
-                <div>
-                  <p class="text-sm text-blue-800">
+                ${avatarHtml}
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-blue-800 break-words overflow-wrap-anywhere">
                     <strong>📋 Vas a calificar a ${otherUserName}</strong>
                   </p>
-                  <p class="text-xs text-blue-600">Confirma si el intercambio se realizó correctamente según lo acordado.</p>
+                  <p class="text-xs text-blue-600 mt-1">Confirma si el intercambio se realizó correctamente según lo acordado.</p>
                 </div>
               </div>
             </div>
@@ -1522,14 +1547,19 @@ const getCurrentUserId = () => {
         const res = await fetch('/api/chat/conversations', { headers: { Authorization: `Bearer ${token}` } })
         const json = await res.json()
         
-        if (!res.ok) throw new Error(json?.error || 'Error cargando chats')
-        const list: ChatConversation[] = (json.items || []).map((c: any) => {
-          
+                if (!res.ok) throw new Error(json?.error || 'Error cargando chats')     
+        const list: ChatConversation[] = (json.items || []).map((c: any) => {   
+          // Normalizar avatar del usuario: si es null, undefined, cadena vacía o URL de Unsplash, usar undefined para mostrar icono verde
+          const normalizedAvatar = normalizeAvatar(c.user?.avatar)
+
           return {
           id: String(c.id),
-          user: c.user,
+          user: {
+            ...c.user,
+            avatar: normalizedAvatar
+          },
           lastMessage: c.lastMessage || '',
-          lastMessageTime: c.lastMessageTime ? new Date(c.lastMessageTime).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '',
+          lastMessageTime: c.lastMessageTime ? new Date(c.lastMessageTime).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '',            
           unreadCount: c.unreadCount || 0,
             messages: [],
             product: c.product || c.offered || null
@@ -1634,11 +1664,11 @@ const getCurrentUserId = () => {
               // Priorizar archivo_url para tipo imagen
               type: m.archivo_url ? 'image' : (m.tipo === 'imagen' ? 'image' : m.tipo === 'ubicacion' ? 'location' : 'text'),
               metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
-              sender: {
-                id: isSystemProposal ? 'system' : String(m.usuario?.user_id || m.usuario_id),
-                name: isSystemProposal ? 'Sistema' : (m.usuario?.nombre || 'Usuario'),
-                lastName: isSystemProposal ? '' : (m.usuario?.apellido || ''),
-                avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : (m.usuario?.foto_perfil || undefined)
+                            sender: {                                                         
+                id: isSystemProposal ? 'system' : String(m.usuario?.user_id || m.usuario_id),                                                                   
+                name: isSystemProposal ? 'Sistema' : (m.usuario?.nombre || 'Usuario'),                                                                          
+                lastName: isSystemProposal ? '' : (m.usuario?.apellido || ''),  
+                avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : normalizeAvatar(m.usuario?.foto_perfil)
               }
             }
           })
@@ -2241,7 +2271,7 @@ const getCurrentUserId = () => {
                   id: String(m.usuario?.user_id || m.usuario_id),
                   name: m.usuario?.nombre || 'Usuario',
                   lastName: m.usuario?.apellido || '',
-                  avatar: m.usuario?.foto_perfil || undefined
+                  avatar: normalizeAvatar(m.usuario?.foto_perfil)
                 }
               }))
 
@@ -3770,7 +3800,7 @@ const getCurrentUserId = () => {
                 <div className="flex items-center space-x-3">
                   <div className="relative">
                     <Avatar
-                      src={conversation.user.avatar}
+                      src={normalizeAvatar(conversation.user.avatar)}
                       alt={conversation.user.name}
                       size="lg"
                     />
@@ -3831,7 +3861,7 @@ const getCurrentUserId = () => {
 
                   <div className="relative">
                     <Avatar
-                      src={selectedConversation.user.avatar}
+                      src={normalizeAvatar(selectedConversation.user.avatar)}
                       alt={selectedConversation.user.name}
                       size="md"
                     />
@@ -4473,22 +4503,22 @@ const getCurrentUserId = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex ${isOwnMsg ? 'justify-end' : 'justify-start'} mb-4`}
                 >
-                  <div className={`flex items-end space-x-2 max-w-md ${isOwnMessage(message) ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                                    <div className={`flex items-end space-x-2 max-w-md ${isOwnMessage(message) ? 'flex-row-reverse space-x-reverse ml-auto' : ''}`}>                      
                     {!isOwnMessage(message) && (
                       <Avatar
-                        src={message.sender?.avatar || selectedConversation.user.avatar}
-                        alt={message.sender?.name || selectedConversation.user.name}
+                        src={normalizeAvatar(message.sender?.avatar || selectedConversation.user.avatar)}                                                                        
+                        alt={message.sender?.name || selectedConversation.user.name}                                                                            
                         size="sm"
-                        className="border border-gray-200 flex-shrink-0"
+                        className="border border-gray-200 flex-shrink-0"        
                       />
                     )}
 
-                    <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isOwnMessage(message)
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-white text-gray-900 border border-gray-200'
+                                        <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isOwnMessage(message)                                                      
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-100 text-gray-900 border border-gray-200'      
                       }`}>
                       {message.replyToId && (
-                        <div className={`text-xs mb-2 px-3 py-1.5 rounded-lg ${isOwnMessage(message) ? 'bg-primary-700/40' : 'bg-gray-100'}`}>
+                        <div className={`text-xs mb-2 px-3 py-1.5 rounded-lg ${isOwnMessage(message) ? 'bg-green-600/40' : 'bg-gray-200'}`}>
                           <span className="opacity-80">Respuesta a:</span>
                           <span className="ml-1 font-medium">
                             {findMessageById(message.replyToId)?.content?.slice(0, 60) || 'mensaje'}
@@ -4564,12 +4594,12 @@ const getCurrentUserId = () => {
                       )}
 
               {/* Fecha integrada dentro del mensaje */}
-              <div className={`flex items-center justify-between ${isOwnMessage(message) ? '' : ''}`}>
+                            <div className={`flex items-center justify-between ${isOwnMessage(message) ? '' : ''}`}>                                                          
                         <div className="flex items-center space-x-1">
-                          <span className={`text-xs ${isOwnMessage(message) ? 'text-primary-100' : 'text-gray-500'}`}>
+                          <span className={`text-xs ${isOwnMessage(message) ? 'text-green-100' : 'text-gray-500'}`}>                                          
                         {formatTime(message.timestamp)}
                       </span>
-                          <span className={`text-xs ${isOwnMessage(message) ? 'text-primary-200' : 'text-gray-400'}`}>
+                          <span className={`text-xs ${isOwnMessage(message) ? 'text-green-200' : 'text-gray-400'}`}>                                          
                             • {message.sender?.name || selectedConversation.user.name}
                           </span>
                         </div>
@@ -4584,10 +4614,10 @@ const getCurrentUserId = () => {
                           )}
                         </div>
                       )}
-                      {message.reactions && (
+                                            {message.reactions && (
                             <div className="flex space-x-1">
-                          {Object.entries(message.reactions).map(([emoji, count]) => (
-                                <span key={emoji} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${isOwnMessage(message) ? 'border-primary-400/40' : 'border-gray-300'}`}>
+                          {Object.entries(message.reactions).map(([emoji, count]) => (                                                                          
+                                <span key={emoji} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${isOwnMessage(message) ? 'border-green-400/40' : 'border-gray-300'}`}>
                               {emoji} {count}
                             </span>
                               ))}
@@ -4620,7 +4650,7 @@ const getCurrentUserId = () => {
                 <div className="flex justify-start">
                   <div className="max-w-xs order-1">
                     <Avatar
-                      src={selectedConversation.user.avatar}
+                      src={normalizeAvatar(selectedConversation.user.avatar)}
                       alt={selectedConversation.user.name}
                       size="sm"
                       className="mb-2"
@@ -4855,8 +4885,8 @@ const getCurrentUserId = () => {
             <button onClick={() => setShowProfile(false)} className="text-gray-500 hover:text-gray-700">✕</button>
           </div>
           
-          <div className="p-4 space-y-3">
-            <Avatar src={selectedConversation.user.avatar} alt={selectedConversation.user.name} size="xl" />
+                    <div className="p-4 space-y-3">
+            <Avatar src={normalizeAvatar(selectedConversation.user.avatar)} alt={selectedConversation.user.name} size="xl" />                                                    
             <div>
               <p className="font-medium text-gray-900">{selectedConversation.user.name}</p>
               <p className="text-sm text-gray-500 flex items-center space-x-1"><MapPinIcon className="w-4 h-4" /><span>{selectedConversation.user.location}</span></p>
