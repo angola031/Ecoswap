@@ -352,7 +352,7 @@ export default function InteraccionDetailPage() {
                     }
                     
                     // Transformar los datos de la API al formato esperado por el componente
-                    const transformedInteraction: Interaction & { chatId?: string; proposerId?: string; receiverId?: string } = {
+                    const transformedInteraction: Interaction & { chatId?: string; proposerId?: string; receiverId?: string; offeredProduct?: any; requestedProduct?: any } = {
                         id: interactionData.id,
                         type: interactionData.type,
                         status: interactionData.status,
@@ -388,6 +388,8 @@ export default function InteraccionDetailPage() {
                         chatId: interactionData.chatId || '',
                         proposerId: interactionData.proposer?.user_id ? String(interactionData.proposer.user_id) : undefined,
                         receiverId: interactionData.receiver?.user_id ? String(interactionData.receiver.user_id) : undefined,
+                        offeredProduct: interactionData.offeredProduct,
+                        requestedProduct: interactionData.requestedProduct,
                         isUrgent: false
                     }
                     
@@ -2194,23 +2196,57 @@ export default function InteraccionDetailPage() {
                                                    <div className="text-center py-8 text-gray-500">
                                                        <p className="text-sm">No hay propuestas en esta interacción</p>
                                                    </div>
-                                               ) : (
-                                                   <div className="space-y-3 max-h-60 overflow-y-auto">
-                                                       {/* Indicador de intercambio aceptado */}
-                                                       {hasAcceptedExchange() && (
-                                                           <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                                                               <div className="flex items-center space-x-2">
-                                                                   <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                   </svg>
-                                                                   <p className="text-sm font-medium text-green-800">
-                                                                       Intercambio ya aceptado - Las nuevas propuestas están deshabilitadas
-                                                                   </p>
-                                                               </div>
-                                                           </div>
-                                                       )}
+                                               ) : (() => {
+                                                   // Agrupar propuestas por producto
+                                                   const groupedProposals: { [key: string]: Proposal[] } = {}
+                                                   const offeredProductId = (interaction as any)?.offeredProduct?.id
+                                                   const requestedProductId = (interaction as any)?.requestedProduct?.id
+                                                   const proposerId = (interaction as any)?.proposerId ? Number((interaction as any).proposerId) : null
+                                                   
+                                                   interaction.proposals.forEach((proposal) => {
+                                                       const proposalProposerId = proposal.proposer?.id ? Number(proposal.proposer.id) : null
                                                        
-                                                       {interaction.proposals.map((proposal) => (
+                                                       // Determinar a qué producto pertenece la propuesta
+                                                       // Si el proposer es el mismo que el proposer del intercambio, pertenece al producto ofrecido
+                                                       // Si el proposer es el receptor, pertenece al producto solicitado
+                                                       let productKey = 'general'
+                                                       if (offeredProductId && proposalProposerId === proposerId) {
+                                                           productKey = 'offered'
+                                                       } else if (requestedProductId && proposalProposerId !== proposerId) {
+                                                           productKey = 'requested'
+                                                       }
+                                                       
+                                                       if (!groupedProposals[productKey]) {
+                                                           groupedProposals[productKey] = []
+                                                       }
+                                                       groupedProposals[productKey].push(proposal)
+                                                   })
+                                                   
+                                                   return (
+                                                       <div className="space-y-6 max-h-96 overflow-y-auto">
+                                                           {/* Indicador de intercambio aceptado */}
+                                                           {hasAcceptedExchange() && (
+                                                               <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                                                                   <div className="flex items-center space-x-2">
+                                                                       <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                       </svg>
+                                                                       <p className="text-sm font-medium text-green-800">
+                                                                           Intercambio ya aceptado - Las nuevas propuestas están deshabilitadas
+                                                                       </p>
+                                                                   </div>
+                                                               </div>
+                                                           )}
+                                                           
+                                                           {/* Producto Ofrecido */}
+                                                           {groupedProposals['offered'] && groupedProposals['offered'].length > 0 && (interaction as any)?.offeredProduct && (
+                                                               <div className="space-y-3">
+                                                                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                                                       <h4 className="font-medium text-blue-900 mb-1">📦 Producto Ofrecido</h4>
+                                                                       <p className="text-sm text-blue-700">{(interaction as any).offeredProduct.title}</p>
+                                                                   </div>
+                                                                   <div className="space-y-3 pl-4 border-l-2 border-blue-200">
+                                                                       {groupedProposals['offered'].map((proposal) => (
                                                            <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
                                                                <div className="flex items-start justify-between mb-2">
                                                                    <div className="flex items-center space-x-2">
@@ -2334,9 +2370,282 @@ export default function InteraccionDetailPage() {
                                                                    </div>
                                                                )}
                                                            </div>
-                                                       ))}
-                                                   </div>
-                                               )}
+                                                                       ))}
+                                                                   </div>
+                                                               </div>
+                                                           )}
+                                                           
+                                                           {/* Producto Solicitado */}
+                                                           {groupedProposals['requested'] && groupedProposals['requested'].length > 0 && (interaction as any)?.requestedProduct && (
+                                                               <div className="space-y-3">
+                                                                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                                                       <h4 className="font-medium text-green-900 mb-1">🎯 Producto Solicitado</h4>
+                                                                       <p className="text-sm text-green-700">{(interaction as any).requestedProduct.title}</p>
+                                                                   </div>
+                                                                   <div className="space-y-3 pl-4 border-l-2 border-green-200">
+                                                                       {groupedProposals['requested'].map((proposal) => (
+                                                                           <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
+                                                                               <div className="flex items-start justify-between mb-2">
+                                                                                   <div className="flex items-center space-x-2">
+                                                                                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                                                           proposal.type === 'precio' ? 'bg-blue-100 text-blue-800' :
+                                                                                           proposal.type === 'intercambio' ? 'bg-green-100 text-green-800' :
+                                                                                           proposal.type === 'encuentro' ? 'bg-purple-100 text-purple-800' :
+                                                                                           proposal.type === 'condiciones' ? 'bg-yellow-100 text-yellow-800' :
+                                                                                           'bg-gray-100 text-gray-800'
+                                                                                       }`}>
+                                                                                           {proposal.type}
+                                                                                       </span>
+                                                                                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                                                           proposal.status === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :
+                                                                                           proposal.status === 'aceptada' ? 'bg-green-100 text-green-800' :
+                                                                                           proposal.status === 'rechazada' ? 'bg-red-100 text-red-800' :
+                                                                                           'bg-blue-100 text-blue-800'
+                                                                                       }`}>
+                                                                                           {proposal.status}
+                                                                                       </span>
+                                                                                   </div>
+                                                                                   <span className="text-xs text-gray-500">
+                                                                                       {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
+                                                                                   </span>
+                                                                               </div>
+                                                                               
+                                                                               <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                                                                               
+                                                                               {proposal.proposedPrice && (
+                                                                                   <p className="text-sm font-medium text-green-600 mb-2">
+                                                                                       Precio propuesto: ${proposal.proposedPrice.toLocaleString('es-CO')}
+                                                                                   </p>
+                                                                               )}
+                                                                               
+                                                                               {proposal.meetingDate && (
+                                                                                   <p className="text-sm text-gray-600 mb-2">
+                                                                                       📅 Encuentro: {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}
+                                                                                       {proposal.meetingPlace && ` en ${proposal.meetingPlace}`}
+                                                                                   </p>
+                                                                               )}
+                                                                               
+                                                                               {proposal.response && (
+                                                                                   <div className="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
+                                                                                       <p className="text-sm text-gray-700">
+                                                                                           <strong>Respuesta:</strong> {proposal.response}
+                                                                                       </p>
+                                                                                   </div>
+                                                                               )}
+                                                                               
+                                                                               {/* Botones de acción para propuestas pendientes */}
+                                                                               {proposal.status === 'pendiente' && (() => {
+                                                                                   const anyAccepted = interaction?.proposals?.some(p => p.status === 'aceptada')
+                                                                                   if (anyAccepted) return false
+                                                                                   
+                                                                                   const currentUserIdNum = currentUserId ? parseInt(currentUserId) : null
+                                                                                   const proposerId = proposal.proposer?.id
+                                                                                   
+                                                                                   if (currentUserIdNum && proposerId && proposerId !== currentUserIdNum) {
+                                                                                       return true
+                                                                                   }
+                                                                                   
+                                                                                   return false
+                                                                               })() && (
+                                                                                   <div className="flex space-x-2 mt-3">
+                                                                                       {(() => {
+                                                                                           const isExchangeSuccessful = interaction.status === 'completed' || 
+                                                                                               (interaction.userValidations && interaction.userValidations.some(validation => validation.es_exitoso === true));
+                                                                                           
+                                                                                           if (isExchangeSuccessful) {
+                                                                                               return (
+                                                                                                   <>
+                                                                                                       <button
+                                                                                                           disabled
+                                                                                                           className="px-3 py-1 text-xs rounded bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                                                           title="Intercambio completado exitosamente"
+                                                                                                       >
+                                                                                                           Aceptar (Completado)
+                                                                                                       </button>
+                                                                                                       <button
+                                                                                                           disabled
+                                                                                                           className="px-3 py-1 text-xs rounded bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                                                           title="Intercambio completado exitosamente"
+                                                                                                       >
+                                                                                                           Rechazar (Completado)
+                                                                                                       </button>
+                                                                                                   </>
+                                                                                               );
+                                                                                           }
+                                                                                           
+                                                                                           return (
+                                                                                               <>
+                                                                                                   <button
+                                                                                                       onClick={() => handleRespondProposal(proposal.id, 'aceptar')}
+                                                                                                       disabled={hasAcceptedExchange()}
+                                                                                                       className={`px-3 py-1 text-xs rounded ${
+                                                                                                           hasAcceptedExchange() 
+                                                                                                               ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                                                                                               : 'bg-green-600 text-white hover:bg-green-700'
+                                                                                                       }`}
+                                                                                                       title={hasAcceptedExchange() ? 'Ya hay un intercambio aceptado' : ''}
+                                                                                                   >
+                                                                                                       Aceptar
+                                                                                                   </button>
+                                                                                                   <button
+                                                                                                        onClick={() => { setSelectedProposalId(proposal.id); setShowRejectProposalModal(true) }}
+                                                                                                        disabled={hasAcceptedExchange()}
+                                                                                                        className={`px-3 py-1 text-xs rounded ${
+                                                                                                            hasAcceptedExchange() 
+                                                                                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                                                                                                : 'bg-red-600 text-white hover:bg-red-700'
+                                                                                                        }`}
+                                                                                                        title={hasAcceptedExchange() ? 'Ya hay un intercambio aceptado' : ''}
+                                                                                                   >
+                                                                                                       Rechazar
+                                                                                                   </button>
+                                                                                               </>
+                                                                                           );
+                                                                                       })()}
+                                                                                   </div>
+                                                                               )}
+                                                                           </div>
+                                                                       ))}
+                                                                   </div>
+                                                               </div>
+                                                           )}
+                                                           
+                                                           {/* Propuestas Generales (si no se pueden asignar a un producto específico) */}
+                                                           {groupedProposals['general'] && groupedProposals['general'].length > 0 && (
+                                                               <div className="space-y-3">
+                                                                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                                                       <h4 className="font-medium text-gray-900 mb-1">📝 Propuestas Generales</h4>
+                                                                   </div>
+                                                                   <div className="space-y-3 pl-4 border-l-2 border-gray-200">
+                                                                       {groupedProposals['general'].map((proposal) => (
+                                                                           <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
+                                                                               <div className="flex items-start justify-between mb-2">
+                                                                                   <div className="flex items-center space-x-2">
+                                                                                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                                                           proposal.type === 'precio' ? 'bg-blue-100 text-blue-800' :
+                                                                                           proposal.type === 'intercambio' ? 'bg-green-100 text-green-800' :
+                                                                                           proposal.type === 'encuentro' ? 'bg-purple-100 text-purple-800' :
+                                                                                           proposal.type === 'condiciones' ? 'bg-yellow-100 text-yellow-800' :
+                                                                                           'bg-gray-100 text-gray-800'
+                                                                                       }`}>
+                                                                                           {proposal.type}
+                                                                                       </span>
+                                                                                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                                                           proposal.status === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :
+                                                                                           proposal.status === 'aceptada' ? 'bg-green-100 text-green-800' :
+                                                                                           proposal.status === 'rechazada' ? 'bg-red-100 text-red-800' :
+                                                                                           'bg-blue-100 text-blue-800'
+                                                                                       }`}>
+                                                                                           {proposal.status}
+                                                                                       </span>
+                                                                                   </div>
+                                                                                   <span className="text-xs text-gray-500">
+                                                                                       {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
+                                                                                   </span>
+                                                                               </div>
+                                                                               
+                                                                               <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                                                                               
+                                                                               {proposal.proposedPrice && (
+                                                                                   <p className="text-sm font-medium text-green-600 mb-2">
+                                                                                       Precio propuesto: ${proposal.proposedPrice.toLocaleString('es-CO')}
+                                                                                   </p>
+                                                                               )}
+                                                                               
+                                                                               {proposal.meetingDate && (
+                                                                                   <p className="text-sm text-gray-600 mb-2">
+                                                                                       📅 Encuentro: {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}
+                                                                                       {proposal.meetingPlace && ` en ${proposal.meetingPlace}`}
+                                                                                   </p>
+                                                                               )}
+                                                                               
+                                                                               {proposal.response && (
+                                                                                   <div className="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
+                                                                                       <p className="text-sm text-gray-700">
+                                                                                           <strong>Respuesta:</strong> {proposal.response}
+                                                                                       </p>
+                                                                                   </div>
+                                                                               )}
+                                                                               
+                                                                               {/* Botones de acción para propuestas pendientes */}
+                                                                               {proposal.status === 'pendiente' && (() => {
+                                                                                   const anyAccepted = interaction?.proposals?.some(p => p.status === 'aceptada')
+                                                                                   if (anyAccepted) return false
+                                                                                   
+                                                                                   const currentUserIdNum = currentUserId ? parseInt(currentUserId) : null
+                                                                                   const proposerId = proposal.proposer?.id
+                                                                                   
+                                                                                   if (currentUserIdNum && proposerId && proposerId !== currentUserIdNum) {
+                                                                                       return true
+                                                                                   }
+                                                                                   
+                                                                                   return false
+                                                                               })() && (
+                                                                                   <div className="flex space-x-2 mt-3">
+                                                                                       {(() => {
+                                                                                           const isExchangeSuccessful = interaction.status === 'completed' || 
+                                                                                               (interaction.userValidations && interaction.userValidations.some(validation => validation.es_exitoso === true));
+                                                                                           
+                                                                                           if (isExchangeSuccessful) {
+                                                                                               return (
+                                                                                                   <>
+                                                                                                       <button
+                                                                                                           disabled
+                                                                                                           className="px-3 py-1 text-xs rounded bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                                                           title="Intercambio completado exitosamente"
+                                                                                                       >
+                                                                                                           Aceptar (Completado)
+                                                                                                       </button>
+                                                                                                       <button
+                                                                                                           disabled
+                                                                                                           className="px-3 py-1 text-xs rounded bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                                                           title="Intercambio completado exitosamente"
+                                                                                                       >
+                                                                                                           Rechazar (Completado)
+                                                                                                       </button>
+                                                                                                   </>
+                                                                                               );
+                                                                                           }
+                                                                                           
+                                                                                           return (
+                                                                                               <>
+                                                                                                   <button
+                                                                                                       onClick={() => handleRespondProposal(proposal.id, 'aceptar')}
+                                                                                                       disabled={hasAcceptedExchange()}
+                                                                                                       className={`px-3 py-1 text-xs rounded ${
+                                                                                                           hasAcceptedExchange() 
+                                                                                                               ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                                                                                               : 'bg-green-600 text-white hover:bg-green-700'
+                                                                                                       }`}
+                                                                                                       title={hasAcceptedExchange() ? 'Ya hay un intercambio aceptado' : ''}
+                                                                                                   >
+                                                                                                       Aceptar
+                                                                                                   </button>
+                                                                                                   <button
+                                                                                                        onClick={() => { setSelectedProposalId(proposal.id); setShowRejectProposalModal(true) }}
+                                                                                                        disabled={hasAcceptedExchange()}
+                                                                                                        className={`px-3 py-1 text-xs rounded ${
+                                                                                                            hasAcceptedExchange() 
+                                                                                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                                                                                                : 'bg-red-600 text-white hover:bg-red-700'
+                                                                                                        }`}
+                                                                                                        title={hasAcceptedExchange() ? 'Ya hay un intercambio aceptado' : ''}
+                                                                                                   >
+                                                                                                       Rechazar
+                                                                                                   </button>
+                                                                                               </>
+                                                                                           );
+                                                                                       })()}
+                                                                                   </div>
+                                                                               )}
+                                                                           </div>
+                                                                       ))}
+                                                                   </div>
+                                                               </div>
+                                                           )}
+                                                       </div>
+                                                   )
+                                               })()}
                                            </div>
                                        )}
 
