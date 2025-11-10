@@ -557,8 +557,8 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
         return (
             <div className="text-center py-20">
                 <UserIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Perfil no encontrado</h3>
-                <p className="text-gray-600">No se pudieron cargar los datos del perfil</p>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Perfil no encontrado</h3>
+                <p className="text-gray-600 dark:text-gray-400">No se pudieron cargar los datos del perfil</p>
             </div>
         )
     }
@@ -649,15 +649,15 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     <div className="flex-1">
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                             <div>
-                                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 flex items-center flex-wrap gap-2">
+                                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center flex-wrap gap-2">
                                     {profileData.name}
                                     {profileData.badges?.includes('Verificado') && (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
                                             <ShieldCheckIcon className="w-4 h-4 mr-1" /> Verificado
                                         </span>
                                     )}
                                 </h1>
-                                <div className="flex items-center space-x-3 sm:space-x-4 text-xs sm:text-sm text-gray-600 mb-3">
+                                <div className="flex items-center space-x-3 sm:space-x-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3">
                                     <div className="flex items-center space-x-1">
                                         <MapPinIcon className="w-4 h-4" />
                                         <span>{profileData.location}</span>
@@ -667,7 +667,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         <span>Miembro desde {profileData.joinDate}</span>
                                     </div>
                                 </div>
-                                <p className="text-gray-700 mb-4 max-w-2xl text-sm sm:text-base">
+                                <p className="text-gray-700 dark:text-gray-300 mb-4 max-w-2xl text-sm sm:text-base">
                                     {profileData.bio}
                                 </p>
                             </div>
@@ -793,15 +793,15 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         {/* Estadísticas */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                             <div className="text-center">
-                                <div className="text-2xl font-bold text-primary-600">{profileData.rating}</div>
-                                <div className="text-sm text-gray-600">Calificación</div>
+                                <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">{profileData.rating}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">Calificación</div>
                                 <div className="flex items-center justify-center space-x-1 mt-1">
                                     {[...Array(5)].map((_, i) => (
                                         <StarIcon
                                             key={i}
                                             className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${i < Math.floor(profileData.rating)
                                                 ? 'text-yellow-400 fill-current'
-                                                : 'text-gray-300'
+                                                : 'text-gray-300 dark:text-gray-600'
                                                 }`}
                                         />
                                     ))}
@@ -809,18 +809,18 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                             </div>
 
                             <div className="text-center">
-                                <div className="text-2xl font-bold text-secondary-600">{profileData.totalProducts}</div>
-                                <div className="text-sm text-gray-600">Productos</div>
+                                <div className="text-2xl font-bold text-secondary-600 dark:text-secondary-400">{profileData.totalProducts}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">Productos</div>
                             </div>
 
                             <div className="text-center">
-                                <div className="text-2xl font-bold text-accent-600">{profileData.totalExchanges}</div>
-                                <div className="text-sm text-gray-600">Intercambios</div>
+                                <div className="text-2xl font-bold text-accent-600 dark:text-accent-400">{profileData.totalExchanges}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">Intercambios</div>
                             </div>
 
                             <div className="text-center">
-                                <div className="text-2xl font-bold text-green-600">{profileData.totalViews}</div>
-                                <div className="text-sm text-gray-600">Visualizaciones</div>
+                                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{profileData.totalViews}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">Visualizaciones</div>
                             </div>
                         </div>
                     </div>
@@ -829,7 +829,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
             {/* Badges */}
             <div className="card">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Insignias y Logros</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Insignias y Logros</h3>
                 <div className="flex flex-wrap gap-2">
                     {(badgesDetail.length > 0 ? badgesDetail : profileData.badges.map((n) => ({ nombre: n }))).map((b: any, index: number) => {
                         const bg = b.color ? `${b.color}` : '#E5F0FF'
@@ -849,7 +849,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
             </div>
 
             {/* Navegación de pestañas */}
-            <div className="border-b border-gray-200">
+            <div className="border-b border-gray-200 dark:border-gray-700">
                 <nav className="flex space-x-6 md:space-x-8 overflow-x-auto no-scrollbar -mx-4 px-4 whitespace-nowrap">
                     {[
                         { id: 'overview', name: 'Resumen', icon: UserIcon },
@@ -864,8 +864,8 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
                                 className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm md:text-base transition-colors ${activeTab === tab.id
-                                    ? 'border-primary-500 text-primary-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-primary-500 dark:border-primary-400 text-primary-600 dark:text-primary-400'
+                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                                     }`}
                             >
                                 <Icon className="w-4 h-4 md:w-5 md:h-5" />
@@ -888,28 +888,28 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Información de contacto */}
                         <div className="card">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Información de Contacto</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Información de Contacto</h3>
                             <div className="space-y-3">
                                 <div className="flex items-center space-x-3">
-                                    <EnvelopeIcon className="w-5 h-5 text-gray-400" />
-                                    <span className="text-gray-700">{profileData.email}</span>
+                                    <EnvelopeIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                    <span className="text-gray-700 dark:text-gray-300">{profileData.email}</span>
                                 </div>
                                 <div className="flex items-center space-x-3">
-                                    <PhoneIcon className="w-5 h-5 text-gray-400" />
-                                    <span className="text-gray-700">{profileData.phone}</span>
+                                    <PhoneIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                    <span className="text-gray-700 dark:text-gray-300">{profileData.phone}</span>
                                 </div>
                                 <div className="flex items-center space-x-3">
-                                    <MapPinIcon className="w-5 h-5 text-gray-400" />
-                                    <span className="text-gray-700">{profileData.location}</span>
+                                    <MapPinIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                    <span className="text-gray-700 dark:text-gray-300">{profileData.location}</span>
                                 </div>
                                 {profileData.socialLinks.website && (
                                     <div className="flex items-center space-x-3">
-                                        <GlobeAltIcon className="w-5 h-5 text-gray-400" />
+                                        <GlobeAltIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                                         <a
                                             href={profileData.socialLinks.website}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-primary-600 hover:text-primary-700"
+                                            className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
                                         >
                                             {profileData.socialLinks.website}
                                         </a>
@@ -920,24 +920,24 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
                         {/* Enlaces sociales */}
                         <div className="card">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Redes Sociales</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Redes Sociales</h3>
                             <div className="space-y-3">
                                 {profileData.socialLinks.instagram && (
                                     <div className="flex items-center space-x-3">
-                                        <span className="text-pink-600 text-lg">📷</span>
-                                        <span className="text-gray-700">{profileData.socialLinks.instagram}</span>
+                                        <span className="text-pink-600 dark:text-pink-400 text-lg">📷</span>
+                                        <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.instagram}</span>
                                     </div>
                                 )}
                                 {profileData.socialLinks.facebook && (
                                     <div className="flex items-center space-x-3">
-                                        <span className="text-blue-600 text-lg">📘</span>
-                                        <span className="text-gray-700">{profileData.socialLinks.facebook}</span>
+                                        <span className="text-blue-600 dark:text-blue-400 text-lg">📘</span>
+                                        <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.facebook}</span>
                                     </div>
                                 )}
                                 {profileData.socialLinks.twitter && (
                                     <div className="flex items-center space-x-3">
-                                        <span className="text-blue-400 text-lg">🐦</span>
-                                        <span className="text-gray-700">{profileData.socialLinks.twitter}</span>
+                                        <span className="text-blue-400 dark:text-blue-300 text-lg">🐦</span>
+                                        <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.twitter}</span>
                                     </div>
                                 )}
                             </div>
@@ -949,7 +949,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 {activeTab === 'products' && (
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-semibold text-gray-900">Mis Productos</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Mis Productos</h3>
                             <button 
                                 className="btn-primary"
                                 onClick={handlePublishProduct}
@@ -973,12 +973,12 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         className="w-full h-48 object-cover rounded-lg mb-4"
                                     />
 
-                                    <h4 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
                                         {product.title}
                                     </h4>
 
                                     <div className="flex items-center justify-between mb-3">
-                                        <span className="text-xl font-bold text-primary-600">
+                                        <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
                                             {formatPrice(product.price, product.currency)}
                                         </span>
                                         <div className="flex items-center gap-2">
@@ -1126,9 +1126,9 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 {activeTab === 'reviews' && (
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-semibold text-gray-900">Reseñas Recibidas</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Reseñas Recibidas</h3>
                             <div className="flex items-center space-x-2">
-                                <span className="text-sm text-gray-600">Calificación promedio:</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Calificación promedio:</span>
                                 <div className="flex items-center space-x-1">
                                     <StarIcon className="w-5 h-5 text-yellow-400 fill-current" />
                                     <span className="font-semibold">{profileData.rating}</span>
@@ -1140,8 +1140,8 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                             {userReviews.length === 0 ? (
                                 <div className="text-center py-12">
                                     <StarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay reseñas aún</h3>
-                                    <p className="text-gray-500">Las reseñas aparecerán aquí cuando otros usuarios te califiquen.</p>
+                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay reseñas aún</h3>
+                                    <p className="text-gray-500 dark:text-gray-400">Las reseñas aparecerán aquí cuando otros usuarios te califiquen.</p>
                                 </div>
                             ) : (
                                 userReviews.map((review) => (
@@ -1160,7 +1160,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
                                             <div className="flex-1">
                                                 <div className="flex items-center justify-between mb-2">
-                                                    <h4 className="font-semibold text-gray-900">{review.reviewerName}</h4>
+                                                    <h4 className="font-semibold text-gray-900 dark:text-white">{review.reviewerName}</h4>
                                                     <div className="flex items-center space-x-2">
                                                         <div className="flex items-center space-x-1">
                                                             {[...Array(5)].map((_, i) => (
@@ -1168,13 +1168,13 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                                                     key={i}
                                                                     className={`w-4 h-4 ${i < review.rating
                                                                         ? 'text-yellow-400 fill-current'
-                                                                        : 'text-gray-300'
+                                                                        : 'text-gray-300 dark:text-gray-600'
                                                                         }`}
                                                                 />
                                                             ))}
                                                         </div>
                                                         {review.recommend && (
-                                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
                                                                 Recomendado
                                                             </span>
                                                         )}
@@ -1182,17 +1182,17 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                                 </div>
 
                                                 {review.comment && (
-                                                    <p className="text-gray-700 mb-3">{review.comment}</p>
+                                                    <p className="text-gray-700 dark:text-gray-300 mb-3">{review.comment}</p>
                                                 )}
 
                                                 {review.aspects && (
                                                     <div className="mb-3">
-                                                        <h5 className="text-sm font-medium text-gray-900 mb-1">Aspectos destacados:</h5>
-                                                        <p className="text-sm text-gray-600">{review.aspects}</p>
+                                                        <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Aspectos destacados:</h5>
+                                                        <p className="text-sm text-gray-600 dark:text-gray-400">{review.aspects}</p>
                                                     </div>
                                                 )}
 
-                                                <div className="flex items-center justify-between text-sm text-gray-500">
+                                                <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                                                     <span>Intercambio: {review.productTitle}</span>
                                                     <span>{review.date}</span>
                                                 </div>
@@ -1208,7 +1208,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 {/* Pestaña Actividad */}
                 {activeTab === 'activities' && (
                     <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-gray-900">Productos Vistos Recientemente</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Productos Vistos Recientemente</h3>
 
                         <div className="space-y-4">
                             {userActivities.length > 0 ? (
@@ -1243,15 +1243,15 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             </div>
 
                                             <div className="flex-1 min-w-0">
-                                                <h4 className="font-medium text-gray-900 hover:text-blue-600 transition-colors truncate">
+                                                <h4 className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate">
                                                     {activity.title}
                                                 </h4>
-                                                <p className="text-gray-600 text-sm truncate">{activity.description}</p>
+                                                <p className="text-gray-600 dark:text-gray-400 text-sm truncate">{activity.description}</p>
                                             </div>
 
                                             <div className="flex flex-col items-end space-y-1 flex-shrink-0">
-                                                <span className="text-sm text-gray-500">{activity.date}</span>
-                                                <span className="text-xs text-blue-600 hover:text-blue-800 transition-colors">
+                                                <span className="text-sm text-gray-500 dark:text-gray-400">{activity.date}</span>
+                                                <span className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors">
                                                     Ver producto →
                                                 </span>
                                             </div>
@@ -1260,11 +1260,11 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                 })
                             ) : (
                                 <div className="text-center py-12">
-                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <EyeIcon className="w-8 h-8 text-gray-400" />
+                                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <EyeIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                                     </div>
-                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay actividad reciente</h3>
-                                    <p className="text-gray-600">
+                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay actividad reciente</h3>
+                                    <p className="text-gray-600 dark:text-gray-400">
                                         Cuando veas productos, aparecerán aquí para que puedas acceder fácilmente a ellos.
                                     </p>
                                 </div>
@@ -1276,21 +1276,21 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 {/* Pestaña Configuración */}
                 {activeTab === 'settings' && (
                     <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-gray-900">Configuración de la Cuenta</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Configuración de la Cuenta</h3>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div className="card">
-                                <h4 className="font-semibold text-gray-900 mb-4">Privacidad</h4>
+                                <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Privacidad</h4>
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-700">Perfil público</span>
+                                        <span className="text-gray-700 dark:text-gray-300">Perfil público</span>
                                         <button className="w-12 h-6 bg-primary-600 rounded-full relative">
                                             <div className="w-4 h-4 bg-white rounded-full absolute right-1 top-1"></div>
                                         </button>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-700">Mostrar ubicación</span>
-                                        <button className="w-12 h-6 bg-gray-300 rounded-full relative">
+                                        <span className="text-gray-700 dark:text-gray-300">Mostrar ubicación</span>
+                                        <button className="w-12 h-6 bg-gray-300 dark:bg-gray-600 rounded-full relative">
                                             <div className="w-4 h-4 bg-white rounded-full absolute left-1 top-1"></div>
                                         </button>
                                     </div>
@@ -1298,16 +1298,16 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                             </div>
 
                             <div className="card">
-                                <h4 className="font-semibold text-gray-900 mb-4">Notificaciones</h4>
+                                <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Notificaciones</h4>
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-700">Mensajes nuevos</span>
-                                        <button className="w-12 h-6 bg-primary-600 rounded-full relative">
+                                        <span className="text-gray-700 dark:text-gray-300">Mensajes nuevos</span>
+                                        <button className="w-12 h-6 bg-primary-600 dark:bg-primary-500 rounded-full relative">
                                             <div className="w-4 h-4 bg-white rounded-full absolute right-1 top-1"></div>
                                         </button>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-700">Intercambios</span>
+                                        <span className="text-gray-700 dark:text-gray-300">Intercambios</span>
                                         <button className="w-12 h-6 bg-primary-600 rounded-full relative">
                                             <div className="w-4 h-4 bg-white rounded-full absolute right-1 top-1"></div>
                                         </button>

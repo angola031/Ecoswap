@@ -97,12 +97,12 @@ export default function CoreModule({ currentUser, onLogout }: CoreModuleProps) {
       {/* Header del módulo */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             {currentScreen === 'home' && 'Bienvenido a EcoSwap Colombia'}
             {currentScreen === 'help' && 'Ayuda y Soporte'}
             {currentScreen === 'about' && 'Acerca de EcoSwap'}
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
             {currentScreen === 'home' && 'Tu plataforma de intercambio sostenible'}
             {currentScreen === 'help' && 'Encuentra respuestas a tus preguntas'}
             {currentScreen === 'about' && 'Conoce más sobre nuestra misión'}
@@ -217,35 +217,35 @@ function HomeScreen({ stats, currentUser }: { stats: any, currentUser: User | nu
       {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="card text-center">
-          <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <UserGroupIcon className="w-6 h-6 text-primary-600" />
+          <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <UserGroupIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">{stats.totalUsers.toLocaleString()}</h3>
-          <p className="text-gray-600">Usuarios Registrados</p>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{stats.totalUsers.toLocaleString()}</h3>
+          <p className="text-gray-600 dark:text-gray-400">Usuarios Registrados</p>
         </div>
 
         <div className="card text-center">
-          <div className="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <HeartIcon className="w-6 h-6 text-secondary-600" />
+          <div className="w-12 h-12 bg-secondary-100 dark:bg-secondary-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <HeartIcon className="w-6 h-6 text-secondary-600 dark:text-secondary-400" />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">{stats.totalProducts.toLocaleString()}</h3>
-          <p className="text-gray-600">Productos Disponibles</p>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{stats.totalProducts.toLocaleString()}</h3>
+          <p className="text-gray-600 dark:text-gray-400">Productos Disponibles</p>
         </div>
 
         <div className="card text-center">
-          <div className="w-12 h-12 bg-accent-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <ChatBubbleLeftRightIcon className="w-6 h-6 text-accent-600" />
+          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <ChatBubbleLeftRightIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">{stats.totalExchanges.toLocaleString()}</h3>
-          <p className="text-gray-600">Intercambios Completados</p>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{stats.totalExchanges.toLocaleString()}</h3>
+          <p className="text-gray-600 dark:text-gray-400">Intercambios Completados</p>
         </div>
 
         <div className="card text-center">
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <GlobeAltIcon className="w-6 h-6 text-green-600" />
+          <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <GlobeAltIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">{stats.activeUsers.toLocaleString()}</h3>
-          <p className="text-gray-600">Usuarios Activos</p>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{stats.activeUsers.toLocaleString()}</h3>
+          <p className="text-gray-600 dark:text-gray-400">Usuarios Activos</p>
         </div>
       </div>
 
@@ -269,31 +269,31 @@ function HomeScreen({ stats, currentUser }: { stats: any, currentUser: User | nu
       {/* Características */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card text-center">
-          <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <SparklesIcon className="w-8 h-8 text-primary-600" />
+          <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center mx-auto mb-4">
+            <SparklesIcon className="w-8 h-8 text-primary-600 dark:text-primary-400" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Sostenible</h3>
-          <p className="text-gray-600">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Sostenible</h3>
+          <p className="text-gray-600 dark:text-gray-400">
             Promovemos la economía circular y reducimos el impacto ambiental.
           </p>
         </div>
 
         <div className="card text-center">
-          <div className="w-16 h-16 bg-secondary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <ShieldCheckIcon className="w-8 h-8 text-secondary-600" />
+          <div className="w-16 h-16 bg-secondary-100 dark:bg-secondary-900 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ShieldCheckIcon className="w-8 h-8 text-secondary-600 dark:text-secondary-400" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Seguro</h3>
-          <p className="text-gray-600">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Seguro</h3>
+          <p className="text-gray-600 dark:text-gray-400">
             Sistema de verificación y calificaciones para intercambios seguros.
           </p>
         </div>
 
         <div className="card text-center">
-          <div className="w-16 h-16 bg-accent-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UserGroupIcon className="w-8 h-8 text-accent-600" />
+          <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UserGroupIcon className="w-8 h-8 text-purple-600 dark:text-purple-400" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Comunitario</h3>
-          <p className="text-gray-600">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Comunitario</h3>
+          <p className="text-gray-600 dark:text-gray-400">
             Conecta con personas que comparten tus valores de sostenibilidad.
           </p>
         </div>
@@ -307,25 +307,25 @@ function HelpScreen() {
   return (
     <div className="space-y-6">
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Preguntas Frecuentes</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Preguntas Frecuentes</h3>
         <div className="space-y-4">
-          <div className="border-b border-gray-200 pb-4">
-            <h4 className="font-medium text-gray-900 mb-2">¿Cómo funciona EcoSwap?</h4>
-            <p className="text-gray-600">
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+            <h4 className="font-medium text-gray-900 dark:text-white mb-2">¿Cómo funciona EcoSwap?</h4>
+            <p className="text-gray-600 dark:text-gray-400">
               EcoSwap es una plataforma donde puedes intercambiar productos en lugar de comprarlos nuevos.
               Publica lo que tienes y encuentra lo que necesitas.
             </p>
           </div>
-          <div className="border-b border-gray-200 pb-4">
-            <h4 className="font-medium text-gray-900 mb-2">¿Es seguro intercambiar?</h4>
-            <p className="text-gray-600">
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+            <h4 className="font-medium text-gray-900 dark:text-white mb-2">¿Es seguro intercambiar?</h4>
+            <p className="text-gray-600 dark:text-gray-400">
               Sí, tenemos un sistema de verificación de usuarios y calificaciones para garantizar
               intercambios seguros y confiables.
             </p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">¿Cómo me registro?</h4>
-            <p className="text-gray-600">
+            <h4 className="font-medium text-gray-900 dark:text-white mb-2">¿Cómo me registro?</h4>
+            <p className="text-gray-600 dark:text-gray-400">
               El registro es gratuito y rápido. Solo necesitas tu email, nombre y ubicación para comenzar.
             </p>
           </div>
@@ -340,20 +340,20 @@ function AboutScreen() {
   return (
     <div className="space-y-6">
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Nuestra Misión</h3>
-        <p className="text-gray-600 mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Nuestra Misión</h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           EcoSwap nació de la visión de tres estudiantes universitarios de Pereira, Colombia,
           que querían crear una plataforma que promoviera la economía circular y el consumo sostenible.
         </p>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-400">
           Creemos que cada intercambio es un paso hacia un futuro más sostenible, donde los productos
           tengan múltiples vidas y las personas se conecten a través de valores compartidos.
         </p>
       </div>
 
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Contacto</h3>
-        <div className="space-y-2 text-gray-600">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Contacto</h3>
+        <div className="space-y-2 text-gray-600 dark:text-gray-400">
           <p>📍 Pereira, Risaralda, Colombia</p>
           <p>📧 info@ecoswap.co</p>
           <p>📱 +57 6 123 4567</p>

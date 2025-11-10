@@ -306,8 +306,8 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Productos</h1>
-                    <p className="text-gray-600 mt-2">Encuentra y publica productos para intercambiar</p>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Productos</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">Encuentra y publica productos para intercambiar</p>
                 </div>
 
                 <button
@@ -320,7 +320,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
             </div>
 
             {/* Filtros y búsqueda */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="bg-white dark:bg-product-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 transition-colors">
                 <div className="flex flex-col lg:flex-row gap-4">
                     {/* Búsqueda */}
                     <div className="flex-1">
@@ -373,7 +373,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                         key={product.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                        className="bg-white dark:bg-product-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
                         onClick={() => openProductDetail(product)}
                         title={currentUser && product.owner?.id === currentUser.id ? 'Tu publicación (interacciones deshabilitadas en el detalle)' : undefined}
                     >
@@ -404,10 +404,10 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
 
                         {/* Información del producto */}
                         <div className="p-4">
-                            <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                            <h3 className="font-semibold text-gray-900 dark:text-product-text mb-2 line-clamp-2">
                                 {product.title}
                             </h3>
-                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                            <p className="text-gray-600 dark:text-product-text text-sm mb-3 line-clamp-2">
                                 {product.description}
                             </p>
 
@@ -442,7 +442,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                             </div>
 
                             {/* Ubicación */}
-                            <div className="flex items-center text-sm text-gray-500 mb-3">
+                            <div className="flex items-center text-sm text-gray-500 dark:text-product-text mb-3">
                                 <MapPinIcon className="w-4 h-4 mr-1" />
                                 <span>{product.location}</span>
                             </div>
@@ -455,16 +455,16 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                                         alt={product.owner.name}
                                         size="xs"
                                     />
-                                    <span className="text-sm text-gray-700">{product.owner.name}</span>
+                                    <span className="text-sm text-gray-700 dark:text-product-text">{product.owner.name}</span>
                                 </div>
                                 <div className="flex items-center space-x-1">
                                     <StarIcon className="w-4 h-4 text-yellow-400" />
-                                    <span className="text-sm text-gray-600">{product.owner.rating}</span>
+                                    <span className="text-sm text-gray-600 dark:text-product-text">{product.owner.rating}</span>
                                 </div>
                             </div>
 
                             {/* Estadísticas */}
-                            <div className={`flex items-center justify-between text-sm ${currentUser && product.owner?.id === currentUser.id ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <div className={`flex items-center justify-between text-sm ${currentUser && product.owner?.id === currentUser.id ? 'text-gray-400 dark:text-product-text/70' : 'text-gray-500 dark:text-product-text'}`}>
                                 <div className="flex items-center space-x-1">
                                     <EyeIcon className="w-4 h-4" />
                                     <span>{product.views}</span>
@@ -478,7 +478,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                                 <div className="mt-3">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); router.push(`/editar-producto/${product.id}`) }}
-                                        className="w-full px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                        className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors"
                                     >
                                         Editar publicación
                                     </button>
@@ -492,11 +492,11 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
             {/* Sin productos */}
             {filteredProducts.length === 0 && (
                 <div className="text-center py-20">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <HeartIcon className="w-8 h-8 text-gray-400" />
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <HeartIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron productos</h3>
-                    <p className="text-gray-600">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No se encontraron productos</h3>
+                    <p className="text-gray-600 dark:text-gray-400">
                         {searchQuery || selectedCategory !== 'all'
                             ? 'Intenta ajustar los filtros de búsqueda'
                             : 'Sé el primero en publicar un producto'

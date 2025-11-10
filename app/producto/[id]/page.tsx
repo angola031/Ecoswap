@@ -749,13 +749,13 @@ export default function ProductDetailPage() {
 
   const getConditionColor = (condition: string) => {
     const colors: Record<string, string> = {
-      new: 'bg-green-100 text-green-800',
-      'like-new': 'bg-blue-100 text-blue-800',
-      good: 'bg-yellow-100 text-yellow-800',
-      fair: 'bg-orange-100 text-orange-800',
-      poor: 'bg-red-100 text-red-800'
+      new: 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300',
+      'like-new': 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300',
+      good: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300',
+      fair: 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300',
+      poor: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300'
     }
-    return colors[condition] || 'bg-gray-100 text-gray-800'
+    return colors[condition] || 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300'
   }
 
   const getCategoryLabel = (category: string) => {
@@ -776,21 +776,21 @@ export default function ProductDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50 dark:bg-dark flex items-center justify-center transition-colors">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark flex items-center justify-center transition-colors">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Error</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
           <button
             onClick={() => router.back()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-6 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
           >
             Volver
           </button>
@@ -801,13 +801,13 @@ export default function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark flex items-center justify-center transition-colors">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Producto no encontrado</h1>
-          <p className="text-gray-600 mb-6">El producto que buscas no existe o ha sido removido.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Producto no encontrado</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">El producto que buscas no existe o ha sido removido.</p>
           <button
             onClick={() => router.back()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-6 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
           >
             Volver
           </button>
@@ -817,14 +817,14 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark transition-colors">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white dark:bg-product-dark shadow-sm border-b dark:border-gray-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <button
               onClick={() => router.push('/?m=products')}
-              className="flex items-center text-gray-600 hover:text-gray-900"
+              className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <ArrowLeftIcon className="h-5 w-5 mr-2" />
               Volver
@@ -832,14 +832,14 @@ export default function ProductDetailPage() {
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleShare}
-                className="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100"
+                className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 title="Compartir"
               >
                 <ShareIcon className="h-5 w-5" />
               </button>
               <button
                 onClick={handleReport}
-                className="p-2 text-gray-600 hover:text-red-600 rounded-full hover:bg-gray-100"
+                className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 title="Reportar"
               >
                 <FlagIcon className="h-5 w-5" />
@@ -855,7 +855,7 @@ export default function ProductDetailPage() {
           {/* Galería de Imágenes */}
           <div className="space-y-4">
             {/* Imagen Principal */}
-              <div className="relative bg-white rounded-lg overflow-hidden shadow-sm">
+              <div className="relative bg-white dark:bg-product-dark rounded-lg overflow-hidden shadow-sm transition-colors">
               {product.imagenes.length > 0 ? (
                 <img
                   src={product.imagenes[currentImageIndex]}
@@ -870,7 +870,7 @@ export default function ProductDetailPage() {
                   }}
                 />
               ) : (
-                <div className="w-full h-72 sm:h-80 md:h-96 bg-gray-200 flex items-center justify-center rounded-lg">
+                <div className="w-full h-72 sm:h-80 md:h-96 bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded-lg transition-colors">
                   <img
                     src="/default-product.png"
                     alt="Sin imagen"
@@ -899,17 +899,17 @@ export default function ProductDetailPage() {
                 <>
                   <button
                     onClick={prevImage}
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg"
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 p-2 rounded-full shadow-lg transition-colors"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
                   <button
                     onClick={nextImage}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-800 p-2 rounded-full shadow-lg transition-colors"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
@@ -924,7 +924,7 @@ export default function ProductDetailPage() {
                   <button
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
-                    className={`relative overflow-hidden rounded-lg border-2 ${index === currentImageIndex ? 'border-blue-500' : 'border-gray-200'
+                    className={`relative overflow-hidden rounded-lg border-2 transition-colors ${index === currentImageIndex ? 'border-blue-500 dark:border-blue-400' : 'border-gray-200 dark:border-gray-700'
                       }`}
                   >
                     <img
@@ -941,24 +941,24 @@ export default function ProductDetailPage() {
           {/* Información del Producto */}
           <div className="space-y-4 md:space-y-6">
             {/* Header del producto */}
-            <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm">
+            <div className="bg-white dark:bg-product-dark rounded-lg p-4 md:p-6 shadow-sm transition-colors">
               <div className="flex items-start justify-between mb-3 md:mb-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getConditionColor(product.estado)}`}>
                       {getConditionLabel(product.estado)}
                     </span>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       {product.categoria_nombre}
                     </span>
-                    <span className="text-sm text-blue-600 font-medium">
+                    <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
                       {product.tipo_transaccion === 'venta' ? 'Venta' :
                        product.tipo_transaccion === 'intercambio' ? 'Intercambio' :
                        product.tipo_transaccion === 'donacion' ? 'Donación' : 'Mixto'}
                     </span>
                   </div>
-                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">{product.titulo}</h1>
-                  <div className="flex items-center space-x-3 md:space-x-4 text-xs md:text-sm text-gray-500">
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-2">{product.titulo}</h1>
+                  <div className="flex items-center space-x-3 md:space-x-4 text-xs md:text-sm text-gray-500 dark:text-gray-400">
                     <span>Publicado el {new Date(product.fecha_creacion).toLocaleDateString('es-CO')}</span>
                     <div className="flex items-center space-x-1">
                       <EyeIcon className="w-4 h-4" />
@@ -974,31 +974,31 @@ export default function ProductDetailPage() {
 
               {/* Precio */}
               {product.precio && (
-                <div className="text-2xl md:text-3xl font-bold text-blue-600 mb-3 md:mb-4">
+                <div className="text-2xl md:text-3xl font-bold text-blue-600 dark:text-blue-400 mb-3 md:mb-4">
                   {formatPrice(product.precio)}
                 </div>
               )}
 
               {/* Ubicación */}
-              <div className="flex items-center text-gray-600 mb-3 md:mb-4 text-sm">
+              <div className="flex items-center text-gray-600 dark:text-gray-400 mb-3 md:mb-4 text-sm">
                 <MapPinIcon className="w-5 h-5 mr-2" />
                 <span>{product.ubicacion.ciudad}, {product.ubicacion.departamento}</span>
               </div>
 
               {/* Indicador de intercambio activo */}
               {isInActiveExchange && (
-                <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="mb-4 p-4 bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-lg transition-colors">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <svg className="w-5 h-5 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-5 h-5 text-orange-400 dark:text-orange-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
                     </div>
                     <div className="ml-3">
-                      <h3 className="text-sm font-medium text-orange-800">
+                      <h3 className="text-sm font-medium text-orange-800 dark:text-orange-300">
                         Producto en proceso de intercambio
                       </h3>
-                      <p className="text-sm text-orange-700 mt-1">
+                      <p className="text-sm text-orange-700 dark:text-orange-400 mt-1">
                         Este producto no está disponible por el momento ya que se encuentra en un intercambio activo.
                       </p>
                     </div>
@@ -1014,14 +1014,14 @@ export default function ProductDetailPage() {
                   disabled={isOwner || isInActiveExchange}
                   aria-disabled={isOwner || isInActiveExchange}
                   className={`flex-1 py-2.5 md:py-3 px-4 rounded-lg font-medium transition-colors ${isOwner || isInActiveExchange
-                      ? 'bg-gray-400 text-white cursor-not-allowed pointer-events-none'
+                      ? 'bg-gray-400 dark:bg-gray-600 text-white cursor-not-allowed pointer-events-none'
                       : product.tipo_transaccion === 'donacion'
                         ? isInterested
-                          ? 'bg-green-600 text-white hover:bg-green-700'
-                          : 'bg-purple-600 text-white hover:bg-purple-700'
+                          ? 'bg-green-600 dark:bg-green-500 text-white hover:bg-green-700 dark:hover:bg-green-600'
+                          : 'bg-purple-600 dark:bg-purple-500 text-white hover:bg-purple-700 dark:hover:bg-purple-600'
                         : isInterested
-                          ? 'bg-green-600 text-white hover:bg-green-700'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                          ? 'bg-green-600 dark:bg-green-500 text-white hover:bg-green-700 dark:hover:bg-green-600'
+                          : 'bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600'
                     }`}
                 >
                   {isOwner ? 'Tu publicación' : 
@@ -1035,15 +1035,15 @@ export default function ProductDetailPage() {
                   disabled={isOwner}
                   aria-disabled={isOwner}
                   className={`p-2.5 md:p-3 rounded-lg border transition-colors flex flex-col items-center space-y-1 min-w-[56px] md:min-w-[60px] ${isOwner
-                      ? 'border-gray-400 text-gray-300 bg-gray-100 cursor-not-allowed pointer-events-none'
+                      ? 'border-gray-400 dark:border-gray-600 text-gray-300 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 cursor-not-allowed pointer-events-none'
                       : isLiked
-                        ? 'border-red-500 text-red-600 bg-red-50 hover:bg-red-100'
-                        : 'border-gray-300 text-gray-600 hover:border-red-500 hover:text-red-600 hover:bg-red-50'
+                        ? 'border-red-500 dark:border-red-400 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-red-500 dark:hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30'
                     }`}
                   title={isOwner ? 'No puedes dar me gusta a tu propia publicación' : (isLiked ? 'Quitar me gusta' : 'Dar me gusta')}
                 >
                   {isLiked ? <HeartIconSolid className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
-                  <span className={`text-xs font-medium ${isLiked ? 'text-red-600' : 'text-gray-600'}`}>
+                  <span className={`text-xs font-medium ${isLiked ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
                     {stats.likes}
                   </span>
                 </button>
@@ -1052,8 +1052,8 @@ export default function ProductDetailPage() {
                   disabled={isOwner || isInActiveExchange}
                   aria-disabled={isOwner || isInActiveExchange}
                   className={`p-3 rounded-lg border transition-colors ${isOwner || isInActiveExchange
-                    ? 'border-gray-400 text-gray-300 bg-gray-100 cursor-not-allowed pointer-events-none'
-                    : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600'
+                    ? 'border-gray-400 dark:border-gray-600 text-gray-300 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 cursor-not-allowed pointer-events-none'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400'
                   }`}
                   title={isOwner ? 'No puedes enviarte mensajes a ti mismo' : 
                         isInActiveExchange ? 'Producto no disponible - en proceso de intercambio' : 
@@ -1068,7 +1068,7 @@ export default function ProductDetailPage() {
                 <div className="mt-4">
                   <button
                     onClick={handleAcceptDonation}
-                    className="w-full py-3 px-4 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
+                    className="w-full py-3 px-4 bg-purple-600 dark:bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors flex items-center justify-center space-x-2"
                   >
                     <span>🎁</span>
                     <span>Gestionar Solicitudes de Donación</span>
@@ -1078,9 +1078,9 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Tabs de información */}
-            <div className="bg-white rounded-lg shadow-sm">
+            <div className="bg-white dark:bg-product-dark rounded-lg shadow-sm transition-colors">
               {/* Navegación de tabs */}
-              <div className="border-b border-gray-200">
+              <div className="border-b border-gray-200 dark:border-gray-700">
                 <nav className="flex space-x-6 md:space-x-8 px-4 md:px-6 overflow-x-auto no-scrollbar whitespace-nowrap">
                   {[
                     { id: 'details', label: 'Detalles', icon: EyeIcon },
@@ -1090,9 +1090,9 @@ export default function ProductDetailPage() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id as any)}
-                      className={`py-3 md:py-4 px-1 border-b-2 font-medium text-sm md:text-base flex items-center space-x-2 ${activeTab === tab.id
-                          ? 'border-blue-500 text-blue-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      className={`py-3 md:py-4 px-1 border-b-2 font-medium text-sm md:text-base flex items-center space-x-2 transition-colors ${activeTab === tab.id
+                          ? 'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'
+                          : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                         }`}
                     >
                       <tab.icon className="w-4 h-4" />
@@ -1106,27 +1106,27 @@ export default function ProductDetailPage() {
               <div className="p-4 md:p-6">
                 {activeTab === 'details' && (
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Descripción</h3>
-                    <p className="text-gray-700 leading-relaxed">{product.descripcion}</p>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Descripción</h3>
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{product.descripcion}</p>
 
                     {/* Información de intercambio */}
                     {product.condiciones_intercambio && (
                       <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Condiciones de Intercambio</h4>
-                        <p className="text-gray-700">{product.condiciones_intercambio}</p>
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">Condiciones de Intercambio</h4>
+                        <p className="text-gray-700 dark:text-gray-300">{product.condiciones_intercambio}</p>
                       </div>
                     )}
 
                     {product.que_busco_cambio && (
                       <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Qué busco a cambio</h4>
-                        <p className="text-gray-700">{product.que_busco_cambio}</p>
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">Qué busco a cambio</h4>
+                        <p className="text-gray-700 dark:text-gray-300">{product.que_busco_cambio}</p>
                       </div>
                     )}
 
                     {product.precio_negociable && (
-                      <div className="p-3 bg-blue-50 rounded-lg">
-                        <p className="text-blue-800 text-sm">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg transition-colors">
+                        <p className="text-blue-800 dark:text-blue-300 text-sm">
                           💡 El precio es negociable. ¡Ponte en contacto para acordar!
                         </p>
                       </div>
@@ -1136,47 +1136,47 @@ export default function ProductDetailPage() {
 
                 {activeTab === 'specifications' && (
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Información del Producto</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Información del Producto</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="border-b border-gray-100 pb-2">
-                        <dt className="text-sm font-medium text-gray-500">Estado</dt>
-                        <dd className="text-sm text-gray-900">{getConditionLabel(product.estado)}</dd>
+                      <div className="border-b border-gray-100 dark:border-gray-700 pb-2">
+                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Estado</dt>
+                        <dd className="text-sm text-gray-900 dark:text-white">{getConditionLabel(product.estado)}</dd>
                       </div>
-                      <div className="border-b border-gray-100 pb-2">
-                        <dt className="text-sm font-medium text-gray-500">Tipo de Transacción</dt>
-                        <dd className="text-sm text-gray-900">
+                      <div className="border-b border-gray-100 dark:border-gray-700 pb-2">
+                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Tipo de Transacción</dt>
+                        <dd className="text-sm text-gray-900 dark:text-white">
                           {product.tipo_transaccion === 'venta' ? 'Venta' :
                            product.tipo_transaccion === 'intercambio' ? 'Intercambio' :
                            product.tipo_transaccion === 'donacion' ? 'Donación' : 'Mixto'}
                         </dd>
                       </div>
-                      <div className="border-b border-gray-100 pb-2">
-                        <dt className="text-sm font-medium text-gray-500">Categoría</dt>
-                        <dd className="text-sm text-gray-900">{product.categoria_nombre}</dd>
+                      <div className="border-b border-gray-100 dark:border-gray-700 pb-2">
+                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Categoría</dt>
+                        <dd className="text-sm text-gray-900 dark:text-white">{product.categoria_nombre}</dd>
                       </div>
-                      <div className="border-b border-gray-100 pb-2">
-                        <dt className="text-sm font-medium text-gray-500">Ubicación</dt>
-                        <dd className="text-sm text-gray-900">{product.ubicacion.ciudad}, {product.ubicacion.departamento}</dd>
+                      <div className="border-b border-gray-100 dark:border-gray-700 pb-2">
+                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Ubicación</dt>
+                        <dd className="text-sm text-gray-900 dark:text-white">{product.ubicacion.ciudad}, {product.ubicacion.departamento}</dd>
                       </div>
                       {product.precio && (
-                        <div className="border-b border-gray-100 pb-2">
-                          <dt className="text-sm font-medium text-gray-500">Precio</dt>
-                          <dd className="text-sm text-gray-900">{formatPrice(product.precio)}</dd>
+                        <div className="border-b border-gray-100 dark:border-gray-700 pb-2">
+                          <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Precio</dt>
+                          <dd className="text-sm text-gray-900 dark:text-white">{formatPrice(product.precio)}</dd>
                         </div>
                       )}
-                      <div className="border-b border-gray-100 pb-2">
-                        <dt className="text-sm font-medium text-gray-500">Precio Negociable</dt>
-                        <dd className="text-sm text-gray-900">{product.precio_negociable ? 'Sí' : 'No'}</dd>
+                      <div className="border-b border-gray-100 dark:border-gray-700 pb-2">
+                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Precio Negociable</dt>
+                        <dd className="text-sm text-gray-900 dark:text-white">{product.precio_negociable ? 'Sí' : 'No'}</dd>
                       </div>
                       {/* Especificaciones técnicas si existen */}
                       {product.especificaciones && Object.keys(product.especificaciones).length > 0 && (
                         <div className="md:col-span-2 mt-2">
-                          <h4 className="font-medium text-gray-900 mb-2">Especificaciones Técnicas</h4>
-                          <div className="grid grid-cols-1 gap-0 border border-gray-200 rounded-md divide-y divide-gray-200">
+                          <h4 className="font-medium text-gray-900 dark:text-white mb-2">Especificaciones Técnicas</h4>
+                          <div className="grid grid-cols-1 gap-0 border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-200 dark:divide-gray-700">
                             {Object.entries(product.especificaciones).map(([k, v]) => (
-                              <div key={k} className="grid grid-cols-2 gap-4 p-3 bg-white">
-                                <span className="text-sm text-gray-600">{k}</span>
-                                <span className="text-sm text-gray-900 font-medium">{v as string}</span>
+                              <div key={k} className="grid grid-cols-2 gap-4 p-3 bg-white dark:bg-product-dark transition-colors">
+                                <span className="text-sm text-gray-600 dark:text-gray-400">{k}</span>
+                                <span className="text-sm text-gray-900 dark:text-white font-medium">{v as string}</span>
                               </div>
                             ))}
                           </div>
@@ -1188,25 +1188,25 @@ export default function ProductDetailPage() {
 
                 {activeTab === 'seller' && (
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Información del Vendedor</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Información del Vendedor</h3>
 
-                    <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-dark rounded-lg transition-colors">
                       <img
                         src={product.usuario.foto_perfil || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'}
                         alt={`${product.usuario.nombre} ${product.usuario.apellido}`}
                         className="w-16 h-16 rounded-full object-cover"
                       />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">
+                        <h4 className="font-semibold text-gray-900 dark:text-white">
                           {product.usuario.nombre} {product.usuario.apellido}
                         </h4>
-                        <div className="flex items-center space-x-2 text-sm text-gray-600 mb-2">
-                          <StarIcon className="w-4 h-4 text-yellow-400" />
+                        <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          <StarIcon className="w-4 h-4 text-yellow-400 dark:text-yellow-500" />
                           <span>{product.usuario.calificacion_promedio.toFixed(1)}</span>
                           <span>•</span>
                           <span>{product.usuario.total_intercambios} intercambios</span>
                         </div>
-                        <div className="flex space-x-4 text-sm text-gray-600">
+                        <div className="flex space-x-4 text-sm text-gray-600 dark:text-gray-400">
                           <span>{product.total_productos_usuario} productos</span>
                           <span>Miembro verificado</span>
                         </div>
@@ -1215,24 +1215,24 @@ export default function ProductDetailPage() {
 
                     {/* Información de contacto */}
                     <div className="space-y-3">
-                      <h5 className="font-medium text-gray-900">Información de Contacto</h5>
+                      <h5 className="font-medium text-gray-900 dark:text-white">Información de Contacto</h5>
 
                       {!showContactInfo ? (
                         <button
                           onClick={() => setShowContactInfo(true)}
-                          className="w-full py-3 px-4 border border-gray-300 rounded-lg text-gray-700 hover:border-blue-500 hover:text-blue-600 transition-colors"
+                          className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:border-blue-500 dark:hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                         >
                           Mostrar información de contacto
                         </button>
                       ) : (
-                        <div className="space-y-3 p-4 bg-blue-50 rounded-lg">
+                        <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg transition-colors">
                           <div className="flex items-center space-x-3">
-                            <EnvelopeIcon className="w-5 h-5 text-blue-600" />
-                            <span className="text-gray-900">{product.usuario.email}</span>
+                            <EnvelopeIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            <span className="text-gray-900 dark:text-white">{product.usuario.email}</span>
                           </div>
                           <div className="flex items-center space-x-3">
-                            <MapPinIcon className="w-5 h-5 text-blue-600" />
-                            <span className="text-gray-900">{product.ubicacion.ciudad}, {product.ubicacion.departamento}</span>
+                            <MapPinIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            <span className="text-gray-900 dark:text-white">{product.ubicacion.ciudad}, {product.ubicacion.departamento}</span>
                           </div>
                         </div>
                       )}

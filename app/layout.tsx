@@ -6,6 +6,7 @@ import AuthProvider from '@/components/auth/AuthProvider'
 import NoSSR from '@/components/NoSSR'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import DevMode from '@/components/DevMode'
+import { ThemeProvider } from '@/contexts/ThemeContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -78,24 +79,26 @@ export default function RootLayout({
                 <script src="/hydration-fix.js" async></script>
                 <script src="/data/sweetalert2.all.min.js" async></script>
             </head>
-                <body className={`${inter.className} h-full`} suppressHydrationWarning>
-                    <DevMode>
-                        <ErrorBoundary fallback={
-                            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                                <div className="text-center">
-                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-                                    <p className="text-gray-600">Cargando EcoSwap...</p>
+                <body className={`${inter.className} h-full bg-white dark:bg-dark transition-colors`} suppressHydrationWarning>
+                    <ThemeProvider>
+                        <DevMode>
+                            <ErrorBoundary fallback={
+                                <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-dark">
+                                    <div className="text-center">
+                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+                                        <p className="text-gray-600 dark:text-gray-300">Cargando EcoSwap...</p>
+                                    </div>
                                 </div>
-                            </div>
-                        }>
-                            <AuthProvider>
-                                {children}
-                            </AuthProvider>
-                        </ErrorBoundary>
-                    </DevMode>
+                            }>
+                                <AuthProvider>
+                                    {children}
+                                </AuthProvider>
+                            </ErrorBoundary>
+                        </DevMode>
+                    </ThemeProvider>
 
                 {/* Footer Global */}
-                <footer className="bg-gray-900 text-white py-12">
+                <footer className="bg-gray-900 dark:bg-gray-950 text-white dark:text-gray-200 py-12 transition-colors">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                             {/* Logo y descripción */}

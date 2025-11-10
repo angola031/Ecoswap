@@ -28,6 +28,7 @@ import ProfileModule from '@/components/profile/ProfileModule'
 import InteractionsModule from '@/components/interactions/InteractionsModule'
 import { ProposalsModule } from '@/components/proposals/ProposalsModule'
 import NotificationToast from '@/components/NotificationToast'
+import ThemeToggle from '@/components/ThemeToggle'
 
 // Tipos
 import { type User } from '@/lib/types'
@@ -522,10 +523,10 @@ export default function HomePage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-dark transition-colors">
             {/* Mensaje de timeout */}
             {timeoutMessage && (
-                <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4">
+                <div className="bg-orange-100 dark:bg-orange-900 border-l-4 border-orange-500 dark:border-orange-400 text-orange-700 dark:text-orange-200 p-4">
                     <div className="flex">
                         <div className="flex-shrink-0">
                             <svg className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
@@ -555,15 +556,15 @@ export default function HomePage() {
             )}
 
             {/* Header */}
-            <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+            <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 transition-colors">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         {/* Logo */}
                         <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                            <div className="w-8 h-8 bg-primary-600 dark:bg-primary-500 rounded-lg flex items-center justify-center">
                                 <span className="text-white text-xl">🌱</span>
                             </div>
-                            <span className="text-xl font-bold text-gray-900">EcoSwap Colombia</span>
+                            <span className="text-xl font-bold text-gray-900 dark:text-white">EcoSwap Colombia</span>
                         </div>
 
                         {/* Navegación */}
@@ -571,8 +572,8 @@ export default function HomePage() {
                             <button
                                 onClick={() => navigateToModule('home')}
                                 className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'home'
-                                    ? 'bg-primary-100 text-primary-700'
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                    ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
                             >
                                 <HomeIcon className="w-5 h-5" />
@@ -582,8 +583,8 @@ export default function HomePage() {
                             <button
                                 onClick={() => navigateToModule('products')}
                                 className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'products'
-                                    ? 'bg-primary-100 text-primary-700'
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                    ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
                             >
                                 <ShoppingBagIcon className="w-5 h-5" />
@@ -595,8 +596,8 @@ export default function HomePage() {
                                     <button
                                         onClick={() => navigateToModule('interactions')}
                                         className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'interactions'
-                                            ? 'bg-primary-100 text-primary-700'
-                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                            ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                             }`}
                                     >
                                         <ArrowsRightLeftIcon className="w-5 h-5" />
@@ -605,7 +606,7 @@ export default function HomePage() {
 
                                     <Link
                                         href="/propuestas"
-                                        className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-green-700 hover:bg-green-50 transition-colors"
+                                        className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
                                     >
                                         <DocumentTextIcon className="w-5 h-5" />
                                         <span>Propuestas</span>
@@ -614,8 +615,8 @@ export default function HomePage() {
                                     <button
                                         onClick={() => navigateToModule('chat')}
                                         className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'chat'
-                                            ? 'bg-primary-100 text-primary-700'
-                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                            ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                             }`}
                                     >
                                         <ChatBubbleLeftRightIcon className="w-5 h-5" />
@@ -644,6 +645,9 @@ export default function HomePage() {
 
                         {/* Usuario o botón de login */}
                         <div className="flex items-center space-x-4">
+                            {/* Toggle de tema */}
+                            <ThemeToggle />
+                            
                             {/* Botón para validar sesión (oculto) */}
                             {/* <button
                                 onClick={() => {
@@ -714,8 +718,8 @@ export default function HomePage() {
                                             navigateToModule('profile')
                                         }}
                                         className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'profile'
-                                            ? 'bg-primary-100 text-primary-700'
-                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                            ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                             }`}
                                         title="Ver perfil"
                                     >
@@ -733,7 +737,7 @@ export default function HomePage() {
                                     </button>
                                     <button
                                         onClick={() => window.location.href = '/login'}
-                                        className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                                        className="bg-gray-600 dark:bg-gray-700 hover:bg-gray-700 dark:hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                                     >
                                         Login Admin
                                     </button>
@@ -743,7 +747,7 @@ export default function HomePage() {
                             {isAuthenticated && (
                                 <button
                                     onClick={handleLogout}
-                                    className="text-gray-500 hover:text-red-600 transition-colors"
+                                    className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                                     title="Cerrar Sesión"
                                 >
                                     <ArrowRightOnRectangleIcon className="w-6 h-6" />
@@ -767,11 +771,11 @@ export default function HomePage() {
             </main>
 
             {/* Navegación Móvil */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 w-screen overflow-hidden bg-white border-t border-gray-200 p-3 pb-[env(safe-area-inset-bottom)] z-50">
+            <div className="md:hidden fixed bottom-0 left-0 right-0 w-screen overflow-hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 pb-[env(safe-area-inset-bottom)] z-50 transition-colors">
                 <div className="flex justify-around">
                     <button
                         onClick={() => setCurrentModule('home')}
-                        className={`flex flex-col items-center space-y-1 p-2 ${currentModule === 'home' ? 'text-primary-600' : 'text-gray-500'
+                        className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'home' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                             }`}
                     >
                         <HomeIcon className="w-6 h-6" />
@@ -780,7 +784,7 @@ export default function HomePage() {
 
                     <button
                         onClick={() => setCurrentModule('products')}
-                        className={`flex flex-col items-center space-y-1 p-2 ${currentModule === 'products' ? 'text-primary-600' : 'text-gray-500'
+                        className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'products' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                             }`}
                     >
                         <ShoppingBagIcon className="w-6 h-6" />
@@ -791,7 +795,7 @@ export default function HomePage() {
                         <>
                             <button
                                 onClick={() => setCurrentModule('interactions')}
-                                className={`flex flex-col items-center space-y-1 p-2 ${currentModule === 'interactions' ? 'text-primary-600' : 'text-gray-500'
+                                className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'interactions' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                                     }`}
                             >
                                 <ArrowsRightLeftIcon className="w-6 h-6" />
@@ -800,7 +804,7 @@ export default function HomePage() {
 
                             <Link
                                 href="/propuestas"
-                                className="flex flex-col items-center space-y-1 p-2 text-gray-500 hover:text-green-700"
+                                className="flex flex-col items-center space-y-1 p-2 text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 transition-colors"
                             >
                                 <DocumentTextIcon className="w-6 h-6" />
                                 <span className="text-xs">Propuestas</span>
@@ -808,7 +812,7 @@ export default function HomePage() {
 
                             <button
                                 onClick={() => setCurrentModule('chat')}
-                                className={`flex flex-col items-center space-y-1 p-2 ${currentModule === 'chat' ? 'text-primary-600' : 'text-gray-500'
+                                className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'chat' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                                     }`}
                             >
                                 <ChatBubbleLeftRightIcon className="w-6 h-6" />
@@ -819,14 +823,14 @@ export default function HomePage() {
                                 onClick={() => window.location.href = '/notificaciones'}
                                 className={`relative flex flex-col items-center space-y-1 p-2 transition-all duration-200 ${
                                     unreadCount > 0 
-                                        ? 'text-green-600 animate-pulse' 
-                                        : 'text-gray-500'
+                                        ? 'text-green-600 dark:text-green-400 animate-pulse' 
+                                        : 'text-gray-500 dark:text-gray-400'
                                 }`}
                             >
                                 <BellIcon className={`w-6 h-6 ${unreadCount > 0 ? 'animate-bounce' : ''}`} />
                                 <span className="text-xs">Avisos</span>
                                 {unreadCount > 0 && (
-                                    <span className="absolute top-0 right-0 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg animate-pulse">
+                                    <span className="absolute top-0 right-0 bg-green-500 dark:bg-green-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg animate-pulse">
                                         {unreadCount > 9 ? '9+' : unreadCount}
                                     </span>
                                 )}
@@ -835,7 +839,7 @@ export default function HomePage() {
                     ) : (
                         <button
                             onClick={() => setCurrentScreen('auth')}
-                            className="flex flex-col items-center space-y-1 p-2 text-gray-500"
+                            className="flex flex-col items-center space-y-1 p-2 text-gray-500 dark:text-gray-400 transition-colors"
                         >
                             <UserIcon className="w-6 h-6" />
                             <span className="text-xs">Login</span>

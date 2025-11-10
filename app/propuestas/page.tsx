@@ -171,17 +171,17 @@ export default function PropuestasPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'aceptada':
-        return 'bg-green-100 text-green-800'
+        return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300'
       case 'rechazada':
-        return 'bg-red-100 text-red-800'
+        return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300'
       case 'pendiente':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300'
       case 'contrapropuesta':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300'
       case 'cancelada':
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300'
     }
   }
 
@@ -230,28 +230,28 @@ export default function PropuestasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark transition-colors">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
         {/* Header */}
-        <div className="mb-8 space-y-4">
+        <div className="mb-4 sm:mb-8 space-y-3 sm:space-y-4">
           <div className="flex items-center">
             <button
               onClick={() => router.back()}
-              className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-green-600 transition-colors"
+              className="inline-flex items-center text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors p-2 -ml-2"
             >
-              <ArrowLeftIcon className="w-5 h-5 mr-2" />
-              Volver
+              <ArrowLeftIcon className="w-5 h-5 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Volver</span>
             </button>
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Propuestas</h1>
-            <p className="mt-2 text-gray-600">Gestiona todas tus propuestas de intercambio</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Propuestas</h1>
+            <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">Gestiona todas tus propuestas de intercambio</p>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-6 border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+        {/* Tabs - Scrollable en móvil */}
+        <div className="mb-4 sm:mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto overflow-y-hidden">
+          <nav className="-mb-px flex space-x-4 sm:space-x-8 min-w-max sm:min-w-0">
             {[
               { id: 'todas', label: 'Todas' },
               { id: 'pendiente', label: 'Pendientes' },
@@ -262,10 +262,10 @@ export default function PropuestasPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`
-                  py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                  py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap
                   ${activeTab === tab.id
-                    ? 'border-green-500 text-green-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-green-500 dark:border-green-400 text-green-600 dark:text-green-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                   }
                 `}
               >
@@ -289,109 +289,119 @@ export default function PropuestasPage() {
             <p className="text-gray-500">No hay propuestas {activeTab !== 'todas' ? `con estado "${activeTab}"` : ''}</p>
           </div>
         ) : (
-          <div className={`space-y-8 ${shouldEnableScroll ? 'max-h-[65vh] overflow-y-auto pr-2 proposals-scroll-container' : ''}`}>
+          <div className={`space-y-4 sm:space-y-8 ${shouldEnableScroll ? 'max-h-[65vh] overflow-y-auto pr-1 sm:pr-2 proposals-scroll-container' : ''}`}>
             {proposalsByProduct.map((group, groupIndex) => (
-              <div key={groupIndex} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div key={groupIndex} className="bg-white dark:bg-product-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
                 {/* Product Header */}
                 {group.product ? (
-                  <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                    <div className="flex items-center space-x-4">
+                  <div className="bg-gray-50 dark:bg-product-dark/80 px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-start sm:items-center space-x-3 sm:space-x-4">
                       {group.product.image && (
                         <img
                           src={group.product.image}
                           alt={group.product.title}
-                          className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                          className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-cover border border-gray-200 flex-shrink-0"
                         />
                       )}
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900">{group.product.title}</h3>
-                        <div className="flex items-center space-x-4 mt-1">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white break-words">{group.product.title}</h3>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1">
                           {group.product.price && (
-                            <span className="text-sm font-medium text-green-600">
+                            <span className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400">
                               {formatPrice(group.product.price)}
                             </span>
                           )}
                           {group.product.category && (
-                            <span className="text-sm text-gray-500">{group.product.category}</span>
+                            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{group.product.category}</span>
                           )}
                           {group.product.location && (
-                            <span className="text-sm text-gray-500">📍 {group.product.location}</span>
+                            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">📍 {group.product.location}</span>
                           )}
                         </div>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900">Propuestas sin producto asociado</h3>
+                  <div className="bg-gray-50 dark:bg-product-dark/80 px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Propuestas sin producto asociado</h3>
                   </div>
                 )}
 
                 {/* Proposals List */}
-                <div className="divide-y divide-gray-200">
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   {group.proposals.map((proposal) => (
-                    <div key={proposal.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
+                    <div key={proposal.id} className="px-3 sm:px-6 py-3 sm:py-4 hover:bg-gray-50 dark:hover:bg-product-dark/60 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
                             <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(proposal.status)}`}>
                               <span className="flex items-center space-x-1">
                                 {getStatusIcon(proposal.status)}
-                                <span>{proposal.status}</span>
+                                <span className="hidden sm:inline">{proposal.status}</span>
+                                <span className="sm:hidden">{proposal.status.substring(0, 3)}</span>
                               </span>
                             </span>
-                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-yellow-900/50 text-blue-800 dark:text-yellow-300">
                               {getTypeLabel(proposal.type)}
                             </span>
                             {proposal.isMyProposal && (
-                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200">
                                 Mi propuesta
                               </span>
                             )}
                           </div>
 
-                          <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 break-words">{proposal.description}</p>
 
-                          <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4 text-xs text-gray-500 dark:text-gray-400">
                             {proposal.proposedPrice && (
                               <span>💰 {formatPrice(proposal.proposedPrice)}</span>
                             )}
                             {proposal.meetingDate && (
-                              <span>📅 {formatDate(proposal.meetingDate)}</span>
+                              <span className="flex items-center gap-1">
+                                <span>📅</span>
+                                <span className="break-words">{formatDate(proposal.meetingDate)}</span>
+                              </span>
                             )}
                             {proposal.meetingPlace && (
-                              <span>📍 {proposal.meetingPlace}</span>
+                              <span className="flex items-center gap-1">
+                                <span>📍</span>
+                                <span className="break-words">{proposal.meetingPlace}</span>
+                              </span>
                             )}
-                            <span>🕐 {formatDate(proposal.createdAt)}</span>
+                            <span className="flex items-center gap-1">
+                              <span>🕐</span>
+                              <span className="break-words">{formatDate(proposal.createdAt)}</span>
+                            </span>
                           </div>
 
                           {proposal.response && (
-                            <div className="mt-3 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-                              <p className="text-sm text-gray-700">
+                            <div className="mt-3 p-2 sm:p-3 bg-blue-50 dark:bg-gray-700/40 border-l-4 border-blue-500 dark:border-blue-600 rounded">
+                              <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-200 break-words">
                                 <strong>Respuesta:</strong> {proposal.response}
                               </p>
                             </div>
                           )}
 
-                          <div className="mt-3 flex items-center space-x-4 text-xs text-gray-500">
-                            <span>
+                          <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0 sm:space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                            <span className="break-words">
                               De: {proposal.proposer.name} {proposal.proposer.lastName}
                             </span>
-                            <span>•</span>
-                            <span>
+                            <span className="hidden sm:inline">•</span>
+                            <span className="break-words">
                               Para: {proposal.receiver.name} {proposal.receiver.lastName}
                             </span>
                           </div>
                         </div>
 
-                        <div className="ml-4">
+                        <div className="flex sm:flex-col sm:ml-4 sm:flex-shrink-0">
                           <button
                             onClick={() => {
                               // Guardar la ruta actual para poder volver después
                               sessionStorage.setItem('lastPageBeforeChat', '/propuestas')
                               router.push(`/chat/${proposal.chatId}`)
                             }}
-                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                            className="w-full sm:w-auto px-4 py-2 text-xs sm:text-sm bg-blue-600 dark:bg-blue-800 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-900 transition-colors whitespace-nowrap"
                           >
                             Ver Chat
                           </button>
@@ -406,18 +416,18 @@ export default function PropuestasPage() {
         )}
 
         {/* Donaciones Section */}
-        <div className="mt-12">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <GiftIcon className="w-6 h-6 text-purple-600" />
+        <div className="mt-8 sm:mt-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+            <div className="flex-1">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <GiftIcon className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" />
                 Mis Donaciones
               </h2>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Consulta y gestiona los productos que ofreces como donación.
               </p>
             </div>
-            <span className="inline-flex items-center text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+            <span className="inline-flex items-center text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full self-start sm:self-auto">
               {donations.length} donación{donations.length !== 1 ? 'es' : ''}
             </span>
           </div>
@@ -431,46 +441,46 @@ export default function PropuestasPage() {
               <p className="text-purple-800">{donationsError}</p>
             </div>
           ) : donations.length === 0 ? (
-            <div className="bg-white border-2 border-dashed border-purple-200 rounded-xl p-8 text-center">
+            <div className="bg-white dark:bg-product-dark border-2 border-dashed border-purple-200 dark:border-purple-800 rounded-xl p-8 text-center">
               <div className="text-4xl mb-3">🎁</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                 No tienes donaciones activas
               </h3>
-              <p className="text-gray-600 text-sm max-w-md mx-auto">
+              <p className="text-gray-600 dark:text-gray-400 text-sm max-w-md mx-auto">
                 Publica un producto como donación desde la sección de publicaciones para que aparezca aquí y puedas gestionarlo fácilmente.
               </p>
             </div>
           ) : (
-            <div className={`${donations.length > 3 ? 'max-h-[65vh] overflow-y-auto pr-3 space-y-4' : 'space-y-4'}`}>
+            <div className={`${donations.length > 3 ? 'max-h-[65vh] overflow-y-auto pr-1 sm:pr-3 space-y-3 sm:space-y-4' : 'space-y-3 sm:space-y-4'}`}>
               {donations.map((donation) => (
-                <div key={donation.id} className="bg-white border border-purple-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="sm:w-32 sm:h-32 flex-shrink-0">
+                <div key={donation.id} className="bg-white dark:bg-product-dark border border-purple-200 dark:border-purple-800 rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <div className="w-full sm:w-32 sm:h-32 flex-shrink-0">
                       {donation.image ? (
                         <img
                           src={donation.image}
                           alt={donation.title}
-                          className="w-full h-full object-cover rounded-lg border border-purple-100"
+                          className="w-full h-48 sm:h-full object-cover rounded-lg border border-purple-100"
                         />
                       ) : (
-                        <div className="w-full h-full bg-purple-50 border border-dashed border-purple-200 rounded-lg flex items-center justify-center text-3xl text-purple-300">
+                        <div className="w-full h-48 sm:h-full bg-purple-50 border border-dashed border-purple-200 rounded-lg flex items-center justify-center text-3xl text-purple-300">
                           🎁
                         </div>
                       )}
                     </div>
 
-                    <div className="flex-1 space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">{donation.title}</h3>
-                          <p className="text-sm text-gray-600 line-clamp-2">{donation.description}</p>
+                    <div className="flex-1 space-y-2 sm:space-y-3 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white break-words">{donation.title}</h3>
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2 break-words">{donation.description}</p>
                         </div>
-                        <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${
+                        <span className={`inline-flex items-center px-2 sm:px-3 py-1 text-xs font-medium rounded-full flex-shrink-0 ${
                           donation.status === 'activo'
-                            ? 'bg-green-100 text-green-700'
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                             : donation.status === 'pausado'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-gray-100 text-gray-600'
+                              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                         }`}>
                           {donation.status === 'activo' && 'Activo'}
                           {donation.status === 'pausado' && 'Pausado'}
@@ -478,20 +488,20 @@ export default function PropuestasPage() {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <MapPinIcon className="w-4 h-4 text-purple-500" />
-                          <span>{donation.location || 'Ubicación no especificada'}</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex items-start gap-2">
+                          <MapPinIcon className="w-4 h-4 text-purple-500 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                          <span className="break-words">{donation.location || 'Ubicación no especificada'}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <CalendarIcon className="w-4 h-4 text-purple-500" />
-                          <span>
+                        <div className="flex items-start gap-2">
+                          <CalendarIcon className="w-4 h-4 text-purple-500 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                          <span className="break-words">
                             Publicado: {donation.createdAt ? formatDate(donation.createdAt) : 'No disponible'}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <GiftIcon className="w-4 h-4 text-purple-500" />
-                          <span>Estado del artículo: {donation.condition || 'No especificado'}</span>
+                        <div className="flex items-start gap-2">
+                          <GiftIcon className="w-4 h-4 text-purple-500 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                          <span className="break-words">Estado: {donation.condition || 'No especificado'}</span>
                         </div>
                       </div>
                     </div>

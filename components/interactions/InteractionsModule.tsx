@@ -262,13 +262,13 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Interacciones</h1>
-                    <p className="text-gray-600 mt-2">Gestiona tus intercambios, compras y actividades</p>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Interacciones</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">Gestiona tus intercambios, compras y actividades</p>
                 </div>
             </div>
 
             {/* Navegación de pestañas */}
-            <div className="border-b border-gray-200">
+            <div className="border-b border-gray-200 dark:border-gray-700">
                 <nav className="flex space-x-8">
                     {[
                         { id: 'interactions', name: 'Interacciones', icon: UserGroupIcon },
@@ -281,8 +281,8 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as 'interactions' | 'activities' | 'events')}
                                 className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                                    ? 'border-primary-500 text-primary-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-primary-500 dark:border-primary-400 text-primary-600 dark:text-primary-400'
+                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                                     }`}
                             >
                                 <Icon className="w-4 h-4" />
@@ -310,8 +310,8 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                     onClick={() => setFilterStatus(status)}
                                     className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                                         filterStatus === status
-                                            ? 'bg-primary-600 text-white'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            ? 'bg-primary-600 dark:bg-primary-500 text-white'
+                                            : 'bg-gray-100 dark:bg-input-dark text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-input-dark/90'
                                     }`}
                                 >
                                     {status === 'all' ? 'Todas' : getStatusLabel(status)}
@@ -327,7 +327,7 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.3 }}
-                                    className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                                    className="bg-white dark:bg-product-dark rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow"
                                 >
                                     <div className="p-6">
                                         <div className="flex flex-col lg:flex-row gap-6">
@@ -343,9 +343,9 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                                         <span className="ml-1">{getStatusLabel(interaction.status)}</span>
                                                     </span>
                                                 </div>
-                                                <h3 className="text-lg font-semibold text-gray-900 mb-2">{interaction.title}</h3>
-                                                <p className="text-gray-600 mb-4">{interaction.description}</p>
-                                                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{interaction.title}</h3>
+                                                <p className="text-gray-600 dark:text-gray-300 mb-4">{interaction.description}</p>
+                                                <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
                                                     <span className="flex items-center">
                                                         <CalendarIcon className="w-4 h-4 mr-1" />
                                                         {new Date(interaction.createdAt).toLocaleDateString('es-CO')}
@@ -359,7 +359,7 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
                                             {/* Información del producto y usuario */}
                                             <div className="lg:w-80">
-                                                <div className="bg-gray-50 rounded-lg p-4">
+                                                <div className="bg-gray-50 dark:bg-input-dark rounded-lg p-4">
                                                     <div className="flex items-center space-x-3 mb-3">
                                                         <img
                                                             src={interaction.offeredProduct.image}
@@ -367,19 +367,19 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                                             className="w-16 h-16 rounded-lg object-cover"
                                                         />
                                                         <div>
-                                                            <p className="font-medium text-gray-900">{interaction.offeredProduct.title}</p>
-                                                            <p className="text-sm text-gray-600">{interaction.offeredProduct.category}</p>
+                                                            <p className="font-medium text-gray-900 dark:text-white">{interaction.offeredProduct.title}</p>
+                                                            <p className="text-sm text-gray-600 dark:text-gray-400">{interaction.offeredProduct.category}</p>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center justify-between mb-3">
-                                                        <span className="text-lg font-semibold text-green-600">
+                                                        <span className="text-lg font-semibold text-green-600 dark:text-green-400">
                                                             {formatPrice(interaction.offeredProduct.price)}
                                                         </span>
-                                                        <span className="text-xs text-gray-500">
+                                                        <span className="text-xs text-gray-500 dark:text-gray-400">
                                                             {interaction.offeredProduct.condition}
                                                         </span>
                                                     </div>
-                                                    <div className="border-t border-gray-200 pt-3">
+                                                    <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
                                                         <div className="flex items-center space-x-2 mb-2">
                                                             <Avatar
                                                                 src={interaction.otherUser.avatar}
@@ -387,8 +387,8 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                                                 size="sm"
                                                             />
                                                             <div>
-                                                                <p className="font-medium text-gray-900">{interaction.otherUser.name} {interaction.otherUser.lastName}</p>
-                                                                <p className="text-xs text-gray-500 flex items-center">
+                                                                <p className="font-medium text-gray-900 dark:text-white">{interaction.otherUser.name} {interaction.otherUser.lastName}</p>
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
                                                                     <MapPinIcon className="w-3 h-3 mr-1" />
                                                                     {interaction.otherUser.location}
                                                                 </p>
@@ -396,7 +396,7 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                                         </div>
                                                         <div className="flex items-center">
                                                             <StarIcon className="w-4 h-4 text-yellow-500 mr-1" />
-                                                            <span className="text-sm font-medium">{interaction.otherUser.rating}</span>
+                                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{interaction.otherUser.rating}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -404,10 +404,10 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                         </div>
 
                                         {/* Acciones */}
-                                        <div className="flex space-x-2 mt-4 pt-4 border-t border-gray-200">
+                                        <div className="flex space-x-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                                             <button
                                                 onClick={() => openInteractionDetail(interaction)}
-                                                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center"
+                                                className="bg-gray-100 dark:bg-input-dark text-gray-700 dark:text-white px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-input-dark/90 transition-colors flex items-center"
                                             >
                                                 <EyeIcon className="w-4 h-4 mr-2" />
                                                 Ver Detalles
@@ -415,7 +415,7 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                             {interaction.status === 'completado' && (
                                                 <button
                                                     onClick={() => router.push(`/interaccion/${interaction.id}/calificar?user=${interaction.otherUser.id}`)}
-                                                    className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg hover:bg-yellow-200 transition-colors flex items-center"
+                                                    className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 px-4 py-2 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-900/40 transition-colors flex items-center"
                                                 >
                                                     <StarIcon className="w-4 h-4 mr-2 text-yellow-500" />
                                                     Calificar
@@ -424,7 +424,7 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                             {interaction.status === 'pendiente' && (
                                                 <button
                                                     onClick={() => router.push(`/interaccion/${interaction.id}/aceptar`)}
-                                                    className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center"
+                                                    className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-4 py-2 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/40 transition-colors flex items-center"
                                                 >
                                                     <CheckCircleIcon className="w-4 h-4 mr-2" />
                                                     Aceptar
@@ -439,9 +439,9 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                         {/* Sin interacciones */}
                         {filteredInteractions.length === 0 && (
                             <div className="text-center py-20">
-                                <UserGroupIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">No hay interacciones</h3>
-                                <p className="text-gray-600">
+                                <UserGroupIcon className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay interacciones</h3>
+                                <p className="text-gray-600 dark:text-gray-400">
                                     {filterStatus === 'all'
                                         ? 'Aún no tienes interacciones. ¡Comienza a intercambiar productos!'
                                         : `No hay interacciones con estado "${getStatusLabel(filterStatus)}"`
@@ -454,17 +454,17 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
 
                 {activeTab === 'activities' && (
                     <div className="text-center py-20">
-                        <EyeIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Actividad</h3>
-                        <p className="text-gray-600">Próximamente podrás ver tu historial de actividades</p>
+                        <EyeIcon className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Actividad</h3>
+                        <p className="text-gray-600 dark:text-gray-400">Próximamente podrás ver tu historial de actividades</p>
                     </div>
                 )}
 
                 {activeTab === 'events' && (
                     <div className="text-center py-20">
-                        <CalendarIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Eventos</h3>
-                        <p className="text-gray-600">Próximamente podrás ver eventos y actividades de la comunidad</p>
+                        <CalendarIcon className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Eventos</h3>
+                        <p className="text-gray-600 dark:text-gray-400">Próximamente podrás ver eventos y actividades de la comunidad</p>
                     </div>
                 )}
             </motion.div>
