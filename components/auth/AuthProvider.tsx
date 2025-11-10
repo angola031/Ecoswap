@@ -5,6 +5,7 @@ import { initializeAuth, handleGlobalAuthError } from '@/lib/init-auth'
 import RateLimitIndicator from './RateLimitIndicator'
 import AuthErrorHandler from './AuthErrorHandler'
 import ErrorBoundary from '../ErrorBoundary'
+import CookieConsentModal from '../CookieConsentModal'
 
 interface AuthProviderProps {
     children: React.ReactNode
@@ -86,6 +87,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     return (
         <ErrorBoundary>
             {children}
+            <CookieConsentModal />
             <RateLimitIndicator />
             <AuthErrorHandler 
                 error={initError} 
