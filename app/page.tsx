@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -508,16 +509,13 @@ export default function HomePage() {
                                         <span>Trueque</span>
                                     </button>
 
-                                    <button
-                                        onClick={() => navigateToModule('proposals')}
-                                        className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'proposals'
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'text-gray-500 hover:text-green-700 hover:bg-green-50'
-                                            }`}
+                                    <Link
+                                        href="/propuestas"
+                                        className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-green-700 hover:bg-green-50 transition-colors"
                                     >
                                         <DocumentTextIcon className="w-5 h-5" />
                                         <span>Propuestas</span>
-                                    </button>
+                                    </Link>
 
                                     <button
                                         onClick={() => navigateToModule('chat')}
@@ -706,14 +704,13 @@ export default function HomePage() {
                                 <span className="text-xs">Trueque</span>
                             </button>
 
-                            <button
-                                onClick={() => setCurrentModule('proposals')}
-                                className={`flex flex-col items-center space-y-1 p-2 ${currentModule === 'proposals' ? 'text-green-600' : 'text-gray-500'
-                                    }`}
+                            <Link
+                                href="/propuestas"
+                                className="flex flex-col items-center space-y-1 p-2 text-gray-500 hover:text-green-700"
                             >
                                 <DocumentTextIcon className="w-6 h-6" />
                                 <span className="text-xs">Propuestas</span>
-                            </button>
+                            </Link>
 
                             <button
                                 onClick={() => setCurrentModule('chat')}
