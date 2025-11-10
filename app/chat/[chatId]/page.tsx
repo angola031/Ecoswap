@@ -20,6 +20,7 @@ function ChatPageContent() {
   const [proposals, setProposals] = useState<ChatProposal[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [showSidebar, setShowSidebar] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
   const [isUnderAdminReview, setIsUnderAdminReview] = useState(false)
   const [reviewTicketId, setReviewTicketId] = useState<number | null>(null)
   const [showProposalModal, setShowProposalModal] = useState(false)
@@ -67,6 +68,20 @@ function ChatPageContent() {
   const getCurrentUserId = () => {
     return currentUserId
   }
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    setShowSidebar(!isMobile)
+  }, [isMobile])
 
   // Modal de validación de encuentro con calificación
   const handleValidateMeeting = async (intercambioId: number) => {
@@ -426,299 +441,40 @@ function ChatPageContent() {
                 id: isSystemProposal ? 'system' : String(msg.usuario?.user_id || msg.usuario_id),
                 name: isSystemProposal ? 'Sistema' : (msg.usuario?.nombre || 'Usuario'),
                 lastName: isSystemProposal ? '' : (msg.usuario?.apellido || ''),
-                avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTgtMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : (msg.usuario?.foto_perfil || undefined)
-              }
-            }
-          })
-          
-          // Ordenar mensajes por ID (del más antiguo al más reciente)
-          const sortedMessages = transformedMessages.sort((a, b) => Number(a.id) - Number(b.id))
-          
-          
-          setMessages(sortedMessages)
-        } else {
-          const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }))
-          console.error('❌ [ChatPage] Error cargando mensajes:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorData
-          })
-          if (isMounted) {
-            setError(errorData.error || 'Error cargando mensajes')
-          }
-        }
-      } catch (error) {
-        console.error('❌ [ChatPage] Error cargando mensajes:', error)
-        if (isMounted) {
-          setError(error instanceof Error ? error.message : 'Error cargando mensajes')
-        }
-      }
-    }
-    
-    loadMessages()
-    
-    return () => {
-      isMounted = false
-    }
-  }, [chatId, currentUserId])
-
-  // Cargar propuestas del chat
-  useEffect(() => {
-    let isMounted = true
-    
-    const loadProposals = async () => {
-      if (!chatId || !currentUserId) return
-      
-      const supabase = getSupabaseClient()
-      try {
-        // Obtener token de sesión
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) {
-          throw new Error('No hay sesión activa')
-        }
-        
-        const response = await fetch(`/api/chat/${chatId}/proposals`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        })
-        const data = await response.json()
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Error cargando propuestas')
-        }
-        
-        if (isMounted) {
-          setProposals(data.data || [])
-        }
-      } catch (error) {
-        console.error('Error cargando propuestas:', error)
-        // No establecemos error aquí porque las propuestas son opcionales
-      }
-    }
-    
-    loadProposals()
-    
-    return () => {
-      isMounted = false
-    }
-  }, [chatId, currentUserId])
-
-  // Sistema de realtime para mensajes instantáneos
-  useEffect(() => {
-    const supabase = getSupabaseClient()
-    
-    // Limpiar canal anterior
-    if (realtimeChannel) {
-      supabase.removeChannel(realtimeChannel)
-      setRealtimeChannel(null)
-    }
-
-    const chatIdNum = Number(chatId)
-    if (!chatIdNum || !currentUserId) {
-      return
-    }
-
-
-    // Crear canal más simple y directo
-    const channel = supabase
-      .channel(`chat_${chatIdNum}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'mensaje',
-        filter: `chat_id=eq.${chatIdNum}`
-      }, (payload: any) => {
-        
-        const m = payload.new
-        if (!m) return
-
-        const messageId = String(m.mensaje_id)
-        const currentUserIdStr = getCurrentUserId()
-        
-        // No procesar nuestros propios mensajes
-        if (String(m.usuario_id) === currentUserIdStr) {
-          return
-        }
-
-        // Verificar si el mensaje ya existe
-        const messageExists = messages.some(msg => msg.id === messageId)
-        if (messageExists) {
-          return
-        }
-
-        // Verificar si el mensaje es muy reciente (menos de 5 segundos) para evitar duplicados con polling
-        const messageTime = new Date(m.fecha_envio).getTime()
-        const now = Date.now()
-        if (now - messageTime < 5000) {
-          return
-        }
-
-        // Crear mensaje con información básica (sin hacer fetch adicional)
-        let contentRaw = m.contenido || ''
-        const isSystemProposal = typeof contentRaw === 'string' && contentRaw.startsWith('[system_proposal]')
-        if (isSystemProposal) {
-          contentRaw = contentRaw.replace('[system_proposal]', '📝').trim()
-        }
-
-        const incoming: ChatMessage = {
-          id: messageId,
-          senderId: isSystemProposal ? 'system' : String(m.usuario_id),
-          content: contentRaw,
-          timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            day: '2-digit',
-            month: '2-digit'
-          }),
-          isRead: m.leido,
-          type: m.tipo === 'imagen' ? 'imagen' : m.tipo === 'ubicacion' ? 'ubicacion' : 'texto',
-          metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
-          sender: {
-            id: isSystemProposal ? 'system' : String(m.usuario_id),
-            name: isSystemProposal ? 'Sistema' : 'Usuario',
-            lastName: '',
-            avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : undefined
-          }
-        }
-
-
-        // Actualizar mensajes usando función helper para evitar duplicados
-        setMessages(prev => addMessageIfNotExists(prev, incoming))
-
-        // Scroll automático al final
-        setTimeout(() => {
-          if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'end' 
-            })
-          }
-        }, 100)
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [ChatPage] Error en canal realtime para chat:', chatIdNum)
-        } else if (status === 'TIMED_OUT') {
-          console.error('❌ [ChatPage] Timeout en canal realtime para chat:', chatIdNum)
-        } else if (status === 'CLOSED') {
-        }
-      })
-
-    setRealtimeChannel(channel)
-
-    return () => {
-      if (channel) {
-        supabase.removeChannel(channel)
-      }
-      setRealtimeChannel(null)
-    }
-  }, [chatId, currentUserId])
-
-  // Sistema de polling como respaldo para mensajes
-  useEffect(() => {
-    if (!chatId || !currentUserId) return
-
-    const supabase = getSupabaseClient()
-    const chatIdNum = Number(chatId)
-    let lastMessageId = messages.length > 0 
-      ? Number(messages[messages.length - 1].id)
-      : 0
-
-    const pollForNewMessages = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) return
-
-        const response = await fetch(`/api/chat/${chatIdNum}/messages?since=${lastMessageId}`, {
-          headers: { Authorization: `Bearer ${session.access_token}` }
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          const newMessages = data.items || []
-          
-          if (newMessages.length > 0) {
-            
-            const transformedMessages = newMessages
-              .filter((m: any) => {
-                const messageId = Number(m.mensaje_id)
-                const currentUserIdStr = getCurrentUserId()
-                
-                // No procesar nuestros propios mensajes
-                if (String(m.usuario_id) === currentUserIdStr) {
-                  return false
-                }
-                
-                // Solo mensajes más nuevos que el último
-                if (messageId <= lastMessageId) {
-                  return false
-                }
-                
-                // Verificar si el mensaje ya existe en el estado actual
-                const messageExists = messages.some(msg => msg.id === String(messageId))
-                if (messageExists) {
-                  return false
-                }
-                
-                return true
-              })
-              .map((m: any) => {
-                // Detectar mensajes del sistema de propuestas
-                let contentRaw = m.contenido || ''
-                const isSystemProposal = typeof contentRaw === 'string' && contentRaw.startsWith('[system_proposal]')
-                if (isSystemProposal) {
-                  contentRaw = contentRaw.replace('[system_proposal]', '📝').trim()
-                }
-
-                return {
-                  id: String(m.mensaje_id),
-                  senderId: isSystemProposal ? 'system' : String(m.usuario_id),
-                  content: contentRaw,
-                  timestamp: new Date(m.fecha_envio).toLocaleString('es-CO', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    day: '2-digit',
-                    month: '2-digit'
-                  }),
-                  isRead: m.leido,
-                  type: m.tipo === 'imagen' ? 'imagen' : m.tipo === 'ubicacion' ? 'ubicacion' : 'texto',
-                  metadata: m.archivo_url ? { imageUrl: m.archivo_url } : undefined,
-                  sender: {
-                    id: isSystemProposal ? 'system' : String(m.usuario?.user_id || m.usuario_id),
-                    name: isSystemProposal ? 'Sistema' : (m.usuario?.nombre || 'Usuario'),
-                    lastName: isSystemProposal ? '' : (m.usuario?.apellido || ''),
-                    avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : (m.usuario?.foto_perfil || undefined)
+                avatar: isSystemProposal ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJjMS4xIDAgMiAuOSAyIDJzLS45IDItMiAyLTIgMC0yLTIgLjktMiAyLTJ6bTkgN3YtMmw2LS41VjlIMjF6bS0xOCAwaDZWNi41TDMgN1Y5em05IDEuNWMxLjY2IDAgMyAxLjM0IDMgM3YxLjVIOXYtMS41YzAtMS42NiAxLjM0LTMgMy0zem0tNC41IDZjMCAuODMuNjcgMS41IDEuNSAxLjVoOWMuODMgMCAxLjUtLjY3IDEuNS0xLjV2LTIuNUg3LjV2Mi41em0xMiAwYzAgLjgzLjY3IDEuNSAxLjUgMS41djJoLTJ2LTJoLTZ2MkgxNHYtMmgyem0tMTggMHYtMmgyVjE1SDNWMTMuNXptMTggMGMwLS44My0uNjctMS41LTEuNS0xLjVINmMtLjgzIDAtMS41LjY3LTEuNSAxLjV2Mi41SDN2LTJjMC0uODMuNjctMS41IDEuNS0xLjVoMTJjLjgzIDAgMS41LjY3IDEuNSAxLjV2MkgxOHptLTYtM2g2djJoLTZ2LTJ6IiBmaWxsPSIjMzMzIi8+PC9zdmc+' : (msg.usuario?.foto_perfil || undefined)
                   }
                 }
               })
 
-            if (transformedMessages.length > 0) {
-              
-              setMessages(prev => {
-                let updatedMessages = prev
-                // Agregar cada mensaje individualmente para evitar duplicados
-                transformedMessages.forEach(msg => {
-                  updatedMessages = addMessageIfNotExists(updatedMessages, msg)
-                })
-                return updatedMessages
+          if (transformedMessages.length > 0) {
+            
+            setMessages(prev => {
+              let updatedMessages = prev
+              // Agregar cada mensaje individualmente para evitar duplicados
+              transformedMessages.forEach(msg => {
+                updatedMessages = addMessageIfNotExists(updatedMessages, msg)
               })
+              return updatedMessages
+            })
 
-              // Actualizar último mensaje ID
-              lastMessageId = Math.max(...transformedMessages.map(m => Number(m.id)))
-            }
+            // Actualizar último mensaje ID
+            lastMessageId = Math.max(...transformedMessages.map(m => Number(m.id)))
           }
         }
       } catch (error) {
+        console.error('Error cargando mensajes:', error)
       }
     }
+    
+    // Cargar mensajes inicialmente
+    loadMessages()
 
     // Polling cada 3 segundos como respaldo
-    const pollInterval = setInterval(pollForNewMessages, 3000)
+    const pollInterval = setInterval(loadMessages, 3000)
 
     return () => {
       clearInterval(pollInterval)
+      isMounted = false
     }
   }, [chatId, currentUserId])
 
@@ -1865,7 +1621,18 @@ function ChatPageContent() {
         <div className="text-center">
           <p className="text-gray-600">No se pudo cargar la información del chat</p>
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              // Verificar si hay una ruta guardada desde donde se vino
+              const lastPage = sessionStorage.getItem('lastPageBeforeChat')
+              
+              if (lastPage) {
+                // Limpiar la ruta guardada y navegar a ella
+                sessionStorage.removeItem('lastPageBeforeChat')
+                router.push(lastPage)
+              } else {
+                router.back()
+              }
+            }}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Volver
@@ -1875,13 +1642,56 @@ function ChatPageContent() {
     )
   }
 
+  const exchangeStatusNormalized = chatInfo?.exchangeInfo?.status ? chatInfo.exchangeInfo.status.toLowerCase() : null
+  const productPublicationStatus = chatInfo?.offeredProduct?.estado_publicacion ? chatInfo.offeredProduct.estado_publicacion.toLowerCase() : null
+  const productStateStatus = chatInfo?.offeredProduct?.estado ? chatInfo.offeredProduct.estado.toLowerCase() : null
+  const isExchangeCompleted = [exchangeStatusNormalized, productPublicationStatus, productStateStatus].some(status => status === 'completado' || status === 'intercambiado')
+  const isExchangeAccepted = !isExchangeCompleted && exchangeStatusNormalized === 'aceptado'
+  const isExchangeUnavailable = exchangeStatusNormalized === 'cancelado' || exchangeStatusNormalized === 'rechazado'
+
+  const exchangeStatusConfig = (() => {
+    if (isExchangeCompleted) {
+      return {
+        containerClass: 'bg-green-50 border border-green-200',
+        dotClass: 'bg-green-500',
+        title: 'Intercambio completado',
+        description: 'Este producto ya se intercambió con éxito. Te recomendamos explorar otras publicaciones disponibles.'
+      }
+    }
+
+    if (isExchangeAccepted) {
+      return {
+        containerClass: 'bg-blue-50 border border-blue-200',
+        dotClass: 'bg-blue-500',
+        title: 'Propuesta aceptada',
+        description: 'Ya se aceptó una propuesta para este producto. El intercambio está en proceso de coordinación.'
+      }
+    }
+
+    if (isExchangeUnavailable) {
+      return {
+        containerClass: 'bg-red-50 border border-red-200',
+        dotClass: 'bg-red-500',
+        title: 'Intercambio no disponible',
+        description: 'Esta propuesta fue cancelada o rechazada. Puedes seguir conversando, pero considera explorar otras opciones.'
+      }
+    }
+
+    return {
+      containerClass: 'bg-yellow-50 border border-yellow-200',
+      dotClass: 'bg-yellow-500',
+      title: 'En negociación',
+      description: 'Continúa conversando para coordinar los detalles del intercambio y concretarlo exitosamente.'
+    }
+  })()
+
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
       {/* HEADER - Producto + Vendedor */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <div className="px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center space-x-3 sm:space-x-4 w-full sm:w-auto">
               <button 
                 onClick={() => {
                   // Verificar si hay una ruta guardada desde donde se vino
@@ -1979,14 +1789,21 @@ function ChatPageContent() {
       </div>
 
       {/* CONTENEDOR PRINCIPAL - Sidebar + Chat */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {isMobile && showSidebar && (
+          <div
+            className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowSidebar(false)}
+          />
+        )}
+
         {/* SIDEBAR (Opcional) */}
         {showSidebar && (
           <motion.div 
-            initial={{ x: -320, opacity: 0 }}
+            initial={{ x: isMobile ? -320 : -320, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -320, opacity: 0 }}
-            className="w-80 bg-white border-r border-gray-200 flex flex-col"
+            className={`${isMobile ? 'fixed inset-y-0 left-0 z-40 w-full max-w-xs shadow-2xl' : 'w-80'} bg-white border-r border-gray-200 flex flex-col`}
           >
             <div className="p-4 border-b border-gray-200">
               <h3 className="font-semibold text-gray-900">Detalles del Intercambio</h3>
@@ -2068,9 +1885,12 @@ function ChatPageContent() {
               {/* Estado del intercambio */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="font-medium text-gray-900 mb-2">Estado</h4>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">En negociación</span>
+                <div className={`flex items-start space-x-3 rounded-lg px-3 py-3 ${exchangeStatusConfig.containerClass}`}>
+                  <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ${exchangeStatusConfig.dotClass}`}></div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{exchangeStatusConfig.title}</p>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{exchangeStatusConfig.description}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2078,442 +1898,472 @@ function ChatPageContent() {
         )}
 
         {/* CHAT (Centrado y Limitado) */}
-        <div className="flex-1 flex flex-col bg-gray-50">
-          <div className="flex-1 flex justify-center overflow-hidden">
-            <div className="w-full max-w-4xl flex flex-col">
-              {(() => {
-                const hasAccepted = proposals.some(p => p.status === 'aceptada')
-                const hasPendingValidation = proposals.some(p => (p as any).status === 'pendiente_validacion')
-                if (!hasAccepted && !hasPendingValidation) return null
-                const first = proposals.find(p => (p as any).status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
-                const intercambioId = (first as any)?.intercambioId || first?.id
-                return (
-                  <div className="sticky top-0 z-10 bg-yellow-50 border-b border-yellow-200">
-                    <div className="px-4 py-2 flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-yellow-700 text-sm font-medium">⏳ Pendiente de Validación</span>
-                        <span className="text-xs text-yellow-700 hidden sm:inline">Confirma si el encuentro fue exitoso para cerrar el intercambio</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={async () => {
-                            const supabase = getSupabaseClient()
-                            
-                            try {
-                              const { data: { session } } = await supabase.auth.getSession()
-                              if (!session?.access_token) return
-                              await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                                body: JSON.stringify({ isValid: true })
-                              })
-                              window.location.reload()
-                            } catch {}
-                          }}
-                          className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-                        >
-                          Validar Encuentro
-                        </button>
-                      </div>
+        <div className="flex-1 flex justify-center overflow-hidden px-4 sm:px-0">
+          <div className="w-full max-w-4xl flex flex-col gap-4 px-0 sm:px-6">
+            {/* Banners de estado del intercambio - Prioridad: Completado > Aceptado > No disponible */}
+            {isExchangeCompleted && (
+              <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 text-sm flex items-start gap-2 rounded-lg">
+                <span className="text-lg">✅</span>
+                <div>
+                  <p className="font-semibold">Este intercambio ya se completó con éxito.</p>
+                  <p className="text-xs mt-1 text-green-700">Puedes revisar el historial en tu panel o explorar otros productos disponibles en EcoSwap.</p>
+                </div>
+              </div>
+            )}
+
+            {!isExchangeCompleted && isExchangeAccepted && (
+              <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 text-sm flex items-start gap-2 rounded-lg">
+                <span className="text-lg">ℹ️</span>
+                <div>
+                  <p className="font-semibold">Ya hay una propuesta aceptada para este producto.</p>
+                  <p className="text-xs mt-1 text-blue-700">El intercambio está en proceso de coordinación. Si estabas interesado, permanece atento por si se libera nuevamente.</p>
+                </div>
+              </div>
+            )}
+
+            {!isExchangeCompleted && !isExchangeAccepted && isExchangeUnavailable && (
+              <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm flex items-start gap-2 rounded-lg">
+                <span className="text-lg">⚠️</span>
+                <div>
+                  <p className="font-semibold">Este intercambio ya no está disponible.</p>
+                  <p className="text-xs mt-1 text-red-700">La propuesta fue cancelada o rechazada. Puedes seguir conversando o explorar otras opciones de trueque.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Banner de validación pendiente - Solo si NO está completado */}
+            {!isExchangeCompleted && (() => {
+              const hasAccepted = proposals.some(p => p.status === 'aceptada')
+              const hasPendingValidation = proposals.some(p => (p as any).status === 'pendiente_validacion')
+              if (!hasAccepted && !hasPendingValidation) return null
+              const first = proposals.find(p => (p as any).status === 'pendiente_validacion') || proposals.find(p => p.status === 'aceptada')
+              const intercambioId = (first as any)?.intercambioId || first?.id
+              return (
+                <div className="sticky top-0 z-10 bg-yellow-50 border-b border-yellow-200">
+                  <div className="px-4 py-2 flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-yellow-700 text-sm font-medium">⏳ Pendiente de Validación</span>
+                      <span className="text-xs text-yellow-700 hidden sm:inline">Confirma si el encuentro fue exitoso para cerrar el intercambio</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={async () => {
+                          const supabase = getSupabaseClient()
+                          
+                          try {
+                            const { data: { session } } = await supabase.auth.getSession()
+                            if (!session?.access_token) return
+                            await fetch(`/api/intercambios/${Number(intercambioId)}/validate`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                              body: JSON.stringify({ isValid: true })
+                            })
+                            window.location.reload()
+                          } catch {}
+                        }}
+                        className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                      >
+                        Validar Encuentro
+                      </button>
                     </div>
                   </div>
-                )
-              })()}
-               {/* Sección de Propuestas - Arriba */}
-              {proposals.length > 0 && (
-                <div className="bg-white border-b border-gray-200">
-                  <button
-                    onClick={() => setShowProposals(!showProposals)}
-                    className={`w-full flex items-center justify-between px-6 py-3 text-left transition-colors ${
-                      showProposals 
-                        ? 'text-primary-600 bg-primary-50' 
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span className="font-medium">Propuestas</span>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        showProposals 
-                          ? 'bg-primary-200 text-primary-800' 
-                          : 'bg-gray-200 text-gray-600'
-                      }`}>
-                        {proposals.length}
-                      </span>
-                    </div>
-                    <svg 
-                      className={`w-5 h-5 transition-transform ${showProposals ? 'rotate-180' : ''}`} 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </div>
+              )
+            })()}
+             {/* Sección de Propuestas - Arriba */}
+            {proposals.length > 0 && (
+              <div className="bg-white border-b border-gray-200">
+                <button
+                  onClick={() => setShowProposals(!showProposals)}
+                  className={`w-full flex items-center justify-between px-4 sm:px-6 py-3 text-left transition-colors ${
+                    showProposals 
+                      ? 'text-primary-600 bg-primary-50' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                  </button>
-                  
-                  {showProposals && (
-                    <div className="border-t border-gray-200">
-                      <div className="max-h-64 overflow-y-auto">
-                        <div className="p-4 space-y-3">
-                          {proposals.map((proposal) => (
-                            <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center space-x-2">
-                                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                    proposal.type === 'precio' ? 'bg-blue-100 text-blue-800' :
-                                    proposal.type === 'intercambio' ? 'bg-green-100 text-green-800' :
-                                    proposal.type === 'encuentro' ? 'bg-purple-100 text-purple-800' :
-                                    proposal.type === 'condiciones' ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    {proposal.type}
-                                  </span>
-                                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                    proposal.status === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :
-                                    proposal.status === 'aceptada' ? 'bg-green-100 text-green-800' :
-                                    proposal.status === 'rechazada' ? 'bg-red-100 text-red-800' :
-                                    'bg-blue-100 text-blue-800'
-                                  }`}>
-                                    {proposal.status}
-                                  </span>
-                                </div>
-                                <span className="text-xs text-gray-500">
-                                  {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
+                    <span className="font-medium">Propuestas</span>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      showProposals 
+                        ? 'bg-primary-200 text-primary-800' 
+                        : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {proposals.length}
+                    </span>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 transition-transform ${showProposals ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {showProposals && (
+                  <div className="border-t border-gray-200">
+                    <div className="max-h-64 overflow-y-auto">
+                      <div className="p-4 space-y-3">
+                        {proposals.map((proposal) => (
+                          <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  proposal.type === 'precio' ? 'bg-blue-100 text-blue-800' :
+                                  proposal.type === 'intercambio' ? 'bg-green-100 text-green-800' :
+                                  proposal.type === 'encuentro' ? 'bg-purple-100 text-purple-800' :
+                                  proposal.type === 'condiciones' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {proposal.type}
+                                </span>
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  proposal.status === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :
+                                  proposal.status === 'aceptada' ? 'bg-green-100 text-green-800' :
+                                  proposal.status === 'rechazada' ? 'bg-red-100 text-red-800' :
+                                  'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {proposal.status}
                                 </span>
                               </div>
-                              
-                              <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
-                              
-                              {proposal.proposedPrice && (
-                                <p className="text-sm font-medium text-green-600 mb-2">
-                                  Precio propuesto: ${proposal.proposedPrice.toLocaleString('es-CO')}
-                                </p>
-                              )}
-                              
-                              {proposal.meetingDate && (
-                                <p className="text-sm text-gray-600 mb-2">
-                                  📅 Encuentro: {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}
-                                  {proposal.meetingPlace && ` en ${proposal.meetingPlace}`}
-                                </p>
-                              )}
-                              
-                              {proposal.response && (
-                                <div className="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
-                                  <p className="text-sm text-gray-700">
-                                    <strong>Respuesta:</strong> {proposal.response}
-                                  </p>
-                                </div>
-                              )}
-                              
-                              <div className="mt-3 flex space-x-2">
-                                <button
-                                  onClick={() => handleViewProposal(proposal)}
-                                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-1"
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                  <span>Ver</span>
-                                </button>
-                                
-                                {proposal.status === 'pendiente' && (() => {
-                                  const anyAccepted = proposals.some(p => p.status === 'aceptada')
-                                  if (anyAccepted) return false
-                                  const role = getUserRole()
-                                  const currentUserIdNum = parseInt(currentUserId || '0')
-                                  const proposerId = (proposal as any)?.proposer?.id ? Number((proposal as any).proposer.id) : null
-                                  
-                                  // Si soy el vendedor y la propuesta la envió el comprador, puedo aceptar
-                                  if (role === 'vendedor' && proposerId && proposerId !== currentUserIdNum) {
-                                    return true
-                                  }
-                                  
-                                  // Si soy el comprador y la propuesta la envió el vendedor, puedo aceptar
-                                  if (role === 'comprador' && proposerId && proposerId !== currentUserIdNum) {
-                                    return true
-                                  }
-                                  
-                                  return false
-                                })() && (
-                                  <>
-                                    <button
-                                      disabled={proposals.some(p => p.status === 'aceptada')}
-                                      onClick={() => handleRespondToProposal(proposal.id, 'aceptar')}
-                                      className={`px-3 py-1 text-xs rounded ${proposals.some(p => p.status === 'aceptada') ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
-                                    >
-                                      Aceptar
-                                    </button>
-                                    <button
-                                      disabled={proposals.some(p => p.status === 'aceptada')}
-                                      onClick={() => {
-                                        if ((window as any).Swal) {
-                                          (window as any).Swal.fire({
-                                            title: 'Rechazar Propuesta',
-                                            input: 'textarea',
-                                            inputLabel: 'Motivo del rechazo (opcional)',
-                                            inputPlaceholder: 'Explica por qué rechazas esta propuesta...',
-                                            showCancelButton: true,
-                                            confirmButtonText: 'Rechazar',
-                                            cancelButtonText: 'Cancelar',
-                                            confirmButtonColor: '#EF4444',
-                                            cancelButtonColor: '#6B7280'
-                                          }).then((result: any) => {
-                                            if (result.isConfirmed) {
-                                              handleRespondToProposal(proposal.id, 'rechazar', result.value)
-                                            }
-                                          })
-                                        }
-                                      }}
-                                      className={`px-3 py-1 text-xs rounded ${proposals.some(p => p.status === 'aceptada') ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
-                                    >
-                                      Rechazar
-                                    </button>
-                                  </>
-                                )}
-                              </div>
+                              <span className="text-xs text-gray-500">
+                                {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
+                              </span>
                             </div>
-                          ))}
-                        </div>
+                            
+                            <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                            
+                            {proposal.proposedPrice && (
+                              <p className="text-sm font-medium text-green-600 mb-2">
+                                Precio propuesto: ${proposal.proposedPrice.toLocaleString('es-CO')}
+                              </p>
+                            )}
+                            
+                            {proposal.meetingDate && (
+                              <p className="text-sm text-gray-600 mb-2">
+                                📅 Encuentro: {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}
+                                {proposal.meetingPlace && ` en ${proposal.meetingPlace}`}
+                              </p>
+                            )}
+                            
+                            {proposal.response && (
+                              <div className="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
+                                <p className="text-sm text-gray-700">
+                                  <strong>Respuesta:</strong> {proposal.response}
+                                </p>
+                              </div>
+                            )}
+                            
+                            <div className="mt-3 flex space-x-2">
+                              <button
+                                onClick={() => handleViewProposal(proposal)}
+                                className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-1"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <span>Ver</span>
+                              </button>
+                              
+                              {proposal.status === 'pendiente' && (() => {
+                                const anyAccepted = proposals.some(p => p.status === 'aceptada')
+                                if (anyAccepted) return false
+                                const role = getUserRole()
+                                const currentUserIdNum = parseInt(currentUserId || '0')
+                                const proposerId = (proposal as any)?.proposer?.id ? Number((proposal as any).proposer.id) : null
+                                
+                                // Si soy el vendedor y la propuesta la envió el comprador, puedo aceptar
+                                if (role === 'vendedor' && proposerId && proposerId !== currentUserIdNum) {
+                                  return true
+                                }
+                                
+                                // Si soy el comprador y la propuesta la envió el vendedor, puedo aceptar
+                                if (role === 'comprador' && proposerId && proposerId !== currentUserIdNum) {
+                                  return true
+                                }
+                                
+                                return false
+                              })() && (
+                                <>
+                                  <button
+                                    disabled={proposals.some(p => p.status === 'aceptada')}
+                                    onClick={() => handleRespondToProposal(proposal.id, 'aceptar')}
+                                    className={`px-3 py-1 text-xs rounded ${proposals.some(p => p.status === 'aceptada') ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                                  >
+                                    Aceptar
+                                  </button>
+                                  <button
+                                    disabled={proposals.some(p => p.status === 'aceptada')}
+                                    onClick={() => {
+                                      if ((window as any).Swal) {
+                                        (window as any).Swal.fire({
+                                          title: 'Rechazar Propuesta',
+                                          input: 'textarea',
+                                          inputLabel: 'Motivo del rechazo (opcional)',
+                                          inputPlaceholder: 'Explica por qué rechazas esta propuesta...',
+                                          showCancelButton: true,
+                                          confirmButtonText: 'Rechazar',
+                                          cancelButtonText: 'Cancelar',
+                                          confirmButtonColor: '#EF4444',
+                                          cancelButtonColor: '#6B7280'
+                                        }).then((result: any) => {
+                                          if (result.isConfirmed) {
+                                            handleRespondToProposal(proposal.id, 'rechazar', result.value)
+                                          }
+                                        })
+                                      }
+                                    }}
+                                    className={`px-3 py-1 text-xs rounded ${proposals.some(p => p.status === 'aceptada') ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
+                                  >
+                                    Rechazar
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
+            )}
 
-               {/* Banner de revisión dentro del flujo de interacción */}
-               {isUnderAdminReview && (
-                 <div className="sticky top-0 z-10 bg-yellow-50 border-b border-yellow-200">
-                   <div className="px-4 py-2 flex items-center justify-between">
-                     <div className="flex items-center space-x-2">
-                       <span className="text-yellow-700 text-sm font-medium">⚠️ En revisión por administración</span>
-                       <span className="text-xs text-yellow-700 hidden sm:inline">Ticket #{reviewTicketId ?? '—'} — Este proceso puede afectar las calificaciones</span>
-                     </div>
+             {/* Banner de revisión dentro del flujo de interacción */}
+             {isUnderAdminReview && (
+               <div className="sticky top-0 z-10 bg-yellow-50 border-b border-yellow-200">
+                 <div className="px-4 py-2 flex items-center justify-between">
+                   <div className="flex items-center space-x-2">
+                     <span className="text-yellow-700 text-sm font-medium">⚠️ En revisión por administración</span>
+                     <span className="text-xs text-yellow-700 hidden sm:inline">Ticket #{reviewTicketId ?? '—'} — Este proceso puede afectar las calificaciones</span>
                    </div>
                  </div>
-               )}
+               </div>
+             )}
 
-               {/* Chat Box - Mensajes */}
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                {messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center text-gray-500">
-                      <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      <p>No hay mensajes aún</p>
-                      <p className="text-sm">¡Inicia la conversación!</p>
-                    </div>
+             {/* Chat Box - Mensajes */}
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+              {messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-gray-500">
+                    <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <p>No hay mensajes aún</p>
+                    <p className="text-sm">¡Inicia la conversación!</p>
                   </div>
-                ) : (
-                  messages.map((message) => {
-                    const isOwnMessage = message.senderId === currentUserId
-                    const isSystemMessage = message.senderId === 'system'
-                    
-                    console.log('💬 [ChatPage] Renderizando mensaje:', {
-                      messageId: message.id,
-                      senderId: message.senderId,
-                      currentUserId: currentUserId,
-                      isOwnMessage: isOwnMessage,
-                      isSystemMessage: isSystemMessage
-                    })
-                    
-                    // Renderizar mensaje del sistema como mensaje normal pero con estilo especial
-                    if (isSystemMessage) {
-                      return (
-                        <motion.div
-                          key={message.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="flex justify-start my-2"
-                        >
-                          <div className="flex items-end space-x-2 max-w-xs lg:max-w-md">
-                            <div className="w-8 h-8 rounded-full border border-gray-200 bg-blue-100 flex items-center justify-center">
-                              <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V9H21ZM3 9H9V6.5L3 7V9ZM12 7.5C13.66 7.5 15 8.84 15 10.5V12H9V10.5C9 8.84 10.34 7.5 12 7.5ZM7.5 13.5C7.5 12.67 8.17 12 9 12H15C15.83 12 16.5 12.67 16.5 13.5V16H7.5V13.5ZM18 10.5C18.83 10.5 19.5 11.17 19.5 12V15H21V17H19.5V20H17.5V17H6.5V20H4.5V17H3V15H4.5V12C4.5 11.17 5.17 10.5 6 10.5H18Z"/>
-                              </svg>
-                            </div>
-                            <div className="bg-blue-50 border border-blue-200 text-gray-900 px-4 py-2 rounded-2xl">
-                              <div className="flex items-center space-x-1 mb-1">
-                                <span className="text-xs font-medium text-blue-600">🔔</span>
-                                <span className="text-xs font-medium text-blue-600">Sistema</span>
-                              </div>
-                              <p className="text-sm">{message.content}</p>
-                              <p className="text-xs text-gray-500 mt-1">{message.timestamp}</p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )
-                    }
-                    
+                </div>
+              ) : (
+                messages.map((message) => {
+                  const isOwnMessage = message.senderId === currentUserId
+                  const isSystemMessage = message.senderId === 'system'
+                  
+                  console.log('💬 [ChatPage] Renderizando mensaje:', {
+                    messageId: message.id,
+                    senderId: message.senderId,
+                    currentUserId: currentUserId,
+                    isOwnMessage: isOwnMessage,
+                    isSystemMessage: isSystemMessage
+                  })
+                  
+                  // Renderizar mensaje del sistema como mensaje normal pero con estilo especial
+                  if (isSystemMessage) {
                     return (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                        <img
-                          src={message.sender.avatar || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'}
-                          alt={`${message.sender.name} ${message.sender.lastName}`}
-                          className="w-8 h-8 rounded-full object-cover border border-gray-200"
-                          onError={(e) => {
-                            console.log('❌ [ChatPage] Error cargando imagen:', {
-                              src: e.currentTarget.src,
-                              messageId: message.id,
-                              senderId: message.senderId,
-                              avatar: message.sender.avatar
-                            })
-                            e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'
-                          }}
-                          onLoad={() => {
-                            console.log('✅ [ChatPage] Imagen cargada exitosamente:', {
-                              src: message.sender.avatar,
-                              messageId: message.id
-                            })
-                          }}
-                        />
-                        <div className={`px-4 py-2 rounded-2xl ${isOwnMessage 
-                          ? 'bg-green-600 text-white' 
-                          : 'bg-white text-gray-900 border border-gray-200'
-                        }`}>
-                          {/* Contenido del mensaje */}
-                          {message.type === 'imagen' && message.metadata?.imageUrl ? (
-                            <div className="space-y-2">
-                              {/* Comentario si existe */}
-                              {message.content && message.content.trim() && message.content !== 'Subiendo imagen...' && (
-                                <p className="text-sm">{message.content}</p>
-                              )}
-                              
-                              {/* Imagen pequeña */}
-                              <div className="relative group">
-                                <img
-                                  src={message.metadata.imageUrl}
-                                  alt="Imagen del chat"
-                                  className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200"
-                                  onClick={() => {
-                                    openImageModal(message.metadata?.imageUrl!, 'Imagen del chat')
-                                  }}
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    target.style.display = 'none'
-                                    const fallback = document.createElement('div')
-                                    fallback.className = 'w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400'
-                                    fallback.textContent = 'Error al cargar'
-                                    target.parentNode?.insertBefore(fallback, target.nextSibling)
-                                  }}
-                                />
-                              </div>
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex justify-start my-2"
+                      >
+                        <div className="flex items-end space-x-2 max-w-xs lg:max-w-md">
+                          <div className="w-8 h-8 rounded-full border border-gray-200 bg-blue-100 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V9H21ZM3 9H9V6.5L3 7V9ZM12 7.5C13.66 7.5 15 8.84 15 10.5V12H9V10.5C9 8.84 10.34 7.5 12 7.5ZM7.5 13.5C7.5 12.67 8.17 12 9 12H15C15.83 12 16.5 12.67 16.5 13.5V16H7.5V13.5ZM18 10.5C18.83 10.5 19.5 11.17 19.5 12V15H21V17H19.5V20H17.5V17H6.5V20H4.5V17H3V15H4.5V12C4.5 11.17 5.17 10.5 6 10.5H18Z"/>
+                            </svg>
+                          </div>
+                          <div className="bg-blue-50 border border-blue-200 text-gray-900 px-4 py-2 rounded-2xl">
+                            <div className="flex items-center space-x-1 mb-1">
+                              <span className="text-xs font-medium text-blue-600">🔔</span>
+                              <span className="text-xs font-medium text-blue-600">Sistema</span>
                             </div>
-                          ) : (
                             <p className="text-sm">{message.content}</p>
-                          )}
-                          
-                          <div className="flex items-center justify-between mt-1">
-                            <p className={`text-xs ${isOwnMessage ? 'text-green-100' : 'text-gray-500'}`}>
-                              {message.timestamp}
-                            </p>
-                            {isOwnMessage && (
-                              <div className={`w-2 h-2 rounded-full ${message.isRead ? 'bg-green-300' : 'bg-gray-400'}`}></div>
-                            )}
+                            <p className="text-xs text-gray-500 mt-1">{message.timestamp}</p>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
+                      </motion.div>
                     )
-                  })
-                )}
-                <div ref={messagesEndRef} />
-              </div>
+                  }
+                  
+                  return (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                      <img
+                        src={message.sender.avatar || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'}
+                        alt={`${message.sender.name} ${message.sender.lastName}`}
+                        className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                        onError={(e) => {
+                          console.log('❌ [ChatPage] Error cargando imagen:', {
+                            src: e.currentTarget.src,
+                            messageId: message.id,
+                            senderId: message.senderId,
+                            avatar: message.sender.avatar
+                          })
+                          e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'
+                        }}
+                        onLoad={() => {
+                          console.log('✅ [ChatPage] Imagen cargada exitosamente:', {
+                            src: message.sender.avatar,
+                            messageId: message.id
+                          })
+                        }}
+                      />
+                      <div className={`px-4 py-2 rounded-2xl ${isOwnMessage 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-white text-gray-900 border border-gray-200'
+                      }`}>
+                        {/* Contenido del mensaje */}
+                        {message.type === 'imagen' && message.metadata?.imageUrl ? (
+                          <div className="space-y-2">
+                            {/* Comentario si existe */}
+                            {message.content && message.content.trim() && message.content !== 'Subiendo imagen...' && (
+                              <p className="text-sm">{message.content}</p>
+                            )}
+                            
+                            {/* Imagen pequeña */}
+                            <div className="relative group">
+                              <img
+                                src={message.metadata.imageUrl}
+                                alt="Imagen del chat"
+                                className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200"
+                                onClick={() => {
+                                  openImageModal(message.metadata?.imageUrl!, 'Imagen del chat')
+                                }}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.style.display = 'none'
+                                  const fallback = document.createElement('div')
+                                  fallback.className = 'w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400'
+                                  fallback.textContent = 'Error al cargar'
+                                  target.parentNode?.insertBefore(fallback, target.nextSibling)
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm">{message.content}</p>
+                        )}
+                        
+                        <div className="flex items-center justify-between mt-1">
+                          <p className={`text-xs ${isOwnMessage ? 'text-green-100' : 'text-gray-500'}`}>
+                            {message.timestamp}
+                          </p>
+                          {isOwnMessage && (
+                            <div className={`w-2 h-2 rounded-full ${message.isRead ? 'bg-green-300' : 'bg-gray-400'}`}></div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                  )
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
 
-              {/* SECCIÓN DE PROPUESTA */}
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-t-2 border-green-200 px-6 py-6">
-                <div className="text-center mb-4">
-                  <h3 className="text-lg font-bold text-gray-800 mb-1">💰 Sesión de Propuesta</h3>
-                  <p className="text-sm text-gray-600">Gestiona las propuestas del intercambio</p>
+            {/* SECCIÓN DE PROPUESTA */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-t-2 border-green-200 px-4 sm:px-6 py-6">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-bold text-gray-800 mb-1">💰 Sesión de Propuesta</h3>
+                <p className="text-sm text-gray-600">Gestiona las propuestas del intercambio</p>
+              </div>
+              
+              <div className="flex items-center justify-center flex-wrap gap-4">
+                <button
+                  onClick={() => setShowProposalModal(true)}
+                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  <span className="text-xl">💰</span>
+                  <span className="font-semibold">Enviar Propuesta</span>
+                </button>
+                
+                <button
+                  onClick={() => handleNegotiate()}
+                  className="flex items-center space-x-2 px-4 sm:px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  <span className="text-xl">🔄</span>
+                  <span className="font-semibold">Negociar</span>
+                </button>
+                
+                <button
+                  onClick={() => handleAccept()}
+                  className="flex items-center space-x-2 px-4 sm:px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  <span className="text-xl">✅</span>
+                  <span className="font-semibold">Aceptar</span>
+                </button>
+              </div>
+            </div>
+
+
+            {/* Input de mensaje */}
+            <div className="bg-white border-t border-gray-200 px-4 sm:px-6 py-4">
+              <div className="flex items-end space-x-3">
+                <button 
+                  onClick={() => imageInputRef.current?.click()}
+                  className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                  title="Subir imagen"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9zM15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+                
+                <div className="flex-1">
+                  <textarea
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSendMessage()
+                      }
+                    }}
+                    placeholder="Escribe tu mensaje..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={1}
+                    style={{ minHeight: '48px', maxHeight: '120px' }}
+                  />
                 </div>
                 
-                <div className="flex items-center justify-center flex-wrap gap-4">
-                  <button
-                    onClick={() => setShowProposalModal(true)}
-                    className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                  >
-                    <span className="text-xl">💰</span>
-                    <span className="font-semibold">Enviar Propuesta</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => handleNegotiate()}
-                    className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                  >
-                    <span className="text-xl">🔄</span>
-                    <span className="font-semibold">Negociar</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => handleAccept()}
-                    className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                  >
-                    <span className="text-xl">✅</span>
-                    <span className="font-semibold">Aceptar</span>
-                  </button>
-                </div>
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!newMessage.trim()}
+                  className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </button>
               </div>
-
-
-              {/* Input de mensaje */}
-              <div className="bg-white border-t border-gray-200 px-6 py-4">
-                <div className="flex items-end space-x-3">
-                  <button 
-                    onClick={() => imageInputRef.current?.click()}
-                    className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                    title="Subir imagen"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9zM15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </button>
-                  
-                  <div className="flex-1">
-                    <textarea
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault()
-                          handleSendMessage()
-                        }
-                      }}
-                      placeholder="Escribe tu mensaje..."
-                      className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      rows={1}
-                      style={{ minHeight: '48px', maxHeight: '120px' }}
-                    />
-                  </div>
-                  
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={!newMessage.trim()}
-                    className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </button>
-                </div>
-                
-                {/* Input oculto para imágenes */}
-                <input 
-                  ref={imageInputRef} 
-                  type="file" 
-                  accept="image/*" 
-                  className="hidden" 
-                  onChange={onImageSelected} 
-                />
-              </div>
+              
+              {/* Input oculto para imágenes */}
+              <input 
+                ref={imageInputRef} 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={onImageSelected} 
+              />
             </div>
           </div>
         </div>
@@ -2596,7 +2446,7 @@ function ChatPageContent() {
                 {imagePreview.file && (
                   <button
                     onClick={uploadImageWithComment}
-                    className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors flex items-center space-x-2"
+                    className="px-4 sm:px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors flex items-center space-x-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -2765,6 +2615,8 @@ function ChatPageContent() {
           </div>
         </div>
       )}
+
+
 
     </div>
   )

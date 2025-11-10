@@ -25,6 +25,8 @@ export interface ChatInfo {
     condiciones_intercambio?: string
     que_busco_cambio?: string
     precio_negociable?: boolean
+    estado?: string
+    estado_publicacion?: string
   }
   requestedProduct?: {
     id: number
@@ -37,6 +39,15 @@ export interface ChatInfo {
     condiciones_intercambio?: string
     que_busco_cambio?: string
     precio_negociable?: boolean
+    estado?: string
+    estado_publicacion?: string
+  }
+  exchangeInfo?: {
+    usuarioProponeId: number
+    usuarioRecibeId: number
+    status?: string | null
+    acceptedAt?: string | null
+    completedAt?: string | null
   }
   createdAt: string
 }

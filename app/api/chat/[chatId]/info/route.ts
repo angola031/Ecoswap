@@ -93,6 +93,9 @@ export async function GET(
         intercambio (
           usuario_propone_id,
           usuario_recibe_id,
+          estado,
+          fecha_respuesta,
+          fecha_completado,
           producto_ofrecido_id,
           producto_solicitado_id,
           producto_ofrecido:producto!intercambio_producto_ofrecido_id_fkey (
@@ -305,7 +308,10 @@ export async function GET(
         },
         exchangeInfo: {
           usuarioProponeId: intercambioData.usuario_propone_id,
-          usuarioRecibeId: intercambioData.usuario_recibe_id
+          usuarioRecibeId: intercambioData.usuario_recibe_id,
+          status: intercambioData.estado || null,
+          acceptedAt: intercambioData.fecha_respuesta || null,
+          completedAt: intercambioData.fecha_completado || null
         },
         offeredProduct: {
           id: productoOfrecido.producto_id,

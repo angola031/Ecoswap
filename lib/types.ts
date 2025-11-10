@@ -362,10 +362,52 @@ export interface ChatConversation {
 }
 
 export interface ChatInfo {
-  chatId: string
-  seller: User
-  offeredProduct: Product
-  requestedProduct?: Product
+  chatId: number
+  seller: {
+    id: number
+    name: string
+    lastName: string
+    avatar?: string
+    location?: string
+    rating: number
+    totalExchanges: number
+    memberSince: string
+  }
+  offeredProduct: {
+    id: number
+    title: string
+    price?: number
+    type: string
+    category?: string
+    mainImage?: string
+    imageUrl?: string
+    condiciones_intercambio?: string
+    que_busco_cambio?: string
+    precio_negociable?: boolean
+    estado?: string
+    estado_publicacion?: string
+  }
+  requestedProduct?: {
+    id: number
+    title: string
+    price?: number
+    type: string
+    category?: string
+    mainImage?: string
+    imageUrl?: string
+    condiciones_intercambio?: string
+    que_busco_cambio?: string
+    precio_negociable?: boolean
+    estado?: string
+    estado_publicacion?: string
+  }
+  exchangeInfo?: {
+    usuarioProponeId: number
+    usuarioRecibeId: number
+    status?: string | null
+    acceptedAt?: string | null
+    completedAt?: string | null
+  }
   createdAt: string
 }
 
