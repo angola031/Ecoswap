@@ -509,6 +509,29 @@ export async function loginUser(data: LoginData): Promise<{ user: User | null; e
             return { user: null, error: 'Sistema de autenticación no disponible en modo estático' }
         }
 
+        // Limpiar sesiones expiradas o inválidas antes de intentar login
+        try {
+            const { data: { session: existingSession } } = await supabase.auth.getSession()
+            if (existingSession) {
+                // Verificar si la sesión es válida
+                const now = Math.floor(Date.now() / 1000)
+                const expiresAt = existingSession.expires_at || 0
+                
+                // Si la sesión está expirada, cerrarla
+                if (expiresAt < now) {
+                    await supabase.auth.signOut()
+                }
+            }
+        } catch (sessionError) {
+            // Si hay error al verificar sesión, intentar limpiar
+            console.warn('⚠️ Error verificando sesión existente, limpiando:', sessionError)
+            try {
+                await supabase.auth.signOut()
+            } catch (signOutError) {
+                // Ignorar errores al cerrar sesión
+            }
+        }
+
         // Autenticar con Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: data.email,

@@ -55,12 +55,41 @@ export default function CookieConsentModal() {
     const [decision, setDecision] = useState<ConsentStatus | null>(null)
 
     useEffect(() => {
-        const status = getStoredConsent()
-        if (!status) {
-            setIsVisible(true)
-        } else {
-            setDecision(status)
+        // Verificar si hay un proceso de login en curso antes de mostrar el modal
+        const checkLoginInProgress = () => {
+            // Verificar si hay un formulario de login activo
+            const loginButton = document.querySelector('button[type="submit"]:not([disabled])')
+            const isLoading = loginButton?.textContent?.includes('Iniciando sesión')
+            
+            // Si hay un proceso de login activo, no mostrar el modal
+            if (isLoading) {
+                return false
+            }
+            
+            // Verificar si hay sesión activa
+            const hasActiveSession = document.cookie.includes('sb-') || 
+                                    localStorage.getItem('ecoswap_user')
+            
+            if (hasActiveSession) {
+                return false
+            }
+            
+            return true
         }
+
+        // Esperar un momento antes de verificar para evitar interferir con el login
+        const timer = setTimeout(() => {
+            if (checkLoginInProgress()) {
+                const status = getStoredConsent()
+                if (!status) {
+                    setIsVisible(true)
+                } else {
+                    setDecision(status)
+                }
+            }
+        }, 1000) // Esperar 1 segundo antes de mostrar el modal
+
+        return () => clearTimeout(timer)
     }, [])
 
     const handleAccept = useCallback(() => {

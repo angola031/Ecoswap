@@ -103,13 +103,30 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
     setError(null)
     setSuccess(null)
 
+    // Timeout para evitar que el proceso se quede colgado
+    let timeoutTriggered = false
+    const timeoutId = setTimeout(() => {
+      timeoutTriggered = true
+      setIsLoading(false)
+      setError('El proceso de inicio de sesión está tardando demasiado. Por favor, intenta nuevamente.')
+      console.error('⏱️ Timeout en proceso de login')
+    }, 30000) // 30 segundos de timeout
+
     try {
       const loginData: LoginData = {
         email: loginForm.email,
         password: loginForm.password
       }
 
+
       const { user, error: loginError } = await loginUser(loginData)
+
+      clearTimeout(timeoutId)
+      
+      // Si el timeout ya se activó, no procesar la respuesta
+      if (timeoutTriggered) {
+        return
+      }
 
       if (loginError) {
         setError(loginError)
@@ -120,11 +137,14 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
       if (user) {
         setSuccess('¡Inicio de sesión exitoso!')
         onLogin(user)
+      } else {
+        setError('No se pudo completar el inicio de sesión. Inténtalo nuevamente.')
+        setIsLoading(false)
       }
     } catch (error) {
+      clearTimeout(timeoutId)
       console.error('Error en login:', error)
-      setError('Error interno del servidor. Inténtalo de nuevo.')
-    } finally {
+      setError(error instanceof Error ? error.message : 'Error interno del servidor. Inténtalo de nuevo.')
       setIsLoading(false)
     }
   }
