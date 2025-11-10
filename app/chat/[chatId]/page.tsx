@@ -456,9 +456,6 @@ function ChatPageContent() {
               })
               return updatedMessages
             })
-
-            // Actualizar último mensaje ID
-            lastMessageId = Math.max(...transformedMessages.map(m => Number(m.id)))
           }
         }
       } catch (error) {
