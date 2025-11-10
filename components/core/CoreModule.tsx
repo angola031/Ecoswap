@@ -11,8 +11,7 @@ import {
   UserGroupIcon,
   GlobeAltIcon,
   ShieldCheckIcon,
-  SparklesIcon,
-  ArrowRightOnRectangleIcon
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 
 interface User {
@@ -29,7 +28,7 @@ interface CoreModuleProps {
 }
 
 export default function CoreModule({ currentUser, onLogout }: CoreModuleProps) {
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'settings' | 'help' | 'about'>('home')
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'help' | 'about'>('home')
   const [searchQuery, setSearchQuery] = useState('')
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -84,8 +83,6 @@ export default function CoreModule({ currentUser, onLogout }: CoreModuleProps) {
     switch (currentScreen) {
       case 'home':
         return <HomeScreen stats={stats} currentUser={currentUser} />
-      case 'settings':
-        return <SettingsScreen currentUser={currentUser} onLogout={onLogout} />
       case 'help':
         return <HelpScreen />
       case 'about':
@@ -102,13 +99,11 @@ export default function CoreModule({ currentUser, onLogout }: CoreModuleProps) {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
             {currentScreen === 'home' && 'Bienvenido a EcoSwap Colombia'}
-            {currentScreen === 'settings' && 'Configuración'}
             {currentScreen === 'help' && 'Ayuda y Soporte'}
             {currentScreen === 'about' && 'Acerca de EcoSwap'}
           </h1>
           <p className="text-gray-600 mt-2">
             {currentScreen === 'home' && 'Tu plataforma de intercambio sostenible'}
-            {currentScreen === 'settings' && 'Personaliza tu experiencia'}
             {currentScreen === 'help' && 'Encuentra respuestas a tus preguntas'}
             {currentScreen === 'about' && 'Conoce más sobre nuestra misión'}
           </p>
@@ -140,15 +135,6 @@ export default function CoreModule({ currentUser, onLogout }: CoreModuleProps) {
               }`}
           >
             Inicio
-          </button>
-          <button
-            onClick={() => setCurrentScreen('settings')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${currentScreen === 'settings'
-              ? 'border-primary-500 text-primary-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-          >
-            Configuración
           </button>
           <button
             onClick={() => setCurrentScreen('help')}
@@ -311,57 +297,6 @@ function HomeScreen({ stats, currentUser }: { stats: any, currentUser: User | nu
             Conecta con personas que comparten tus valores de sostenibilidad.
           </p>
         </div>
-      </div>
-    </div>
-  )
-}
-
-// Componente de configuración
-function SettingsScreen({ currentUser, onLogout }: { currentUser: User | null, onLogout: () => void }) {
-  return (
-    <div className="space-y-6">
-      <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Configuración de la Cuenta</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
-            <input
-              type="text"
-              value={currentUser?.name || ''}
-              className="input-field"
-              readOnly
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <input
-              type="email"
-              value={currentUser?.email || ''}
-              className="input-field"
-              readOnly
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Ubicación</label>
-            <input
-              type="text"
-              value={currentUser?.location || ''}
-              className="input-field"
-              readOnly
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones de la Cuenta</h3>
-        <button
-          onClick={onLogout}
-          className="btn-secondary flex items-center space-x-2"
-        >
-          <ArrowRightOnRectangleIcon className="w-5 h-5" />
-          <span>Cerrar Sesión</span>
-        </button>
       </div>
     </div>
   )
