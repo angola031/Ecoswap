@@ -80,12 +80,29 @@ export default function HomePage() {
     const navigateToModule = async (module: string) => {
         console.log(`🔍 [navigateToModule] Intentando navegar a: ${module}`)
         try {
+            // Verificar y refrescar sesión antes de navegar
+            const supabase = getSupabaseClient()
+            if (supabase) {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    // Verificar si el token está próximo a expirar
+                    const now = Math.floor(Date.now() / 1000)
+                    const expiresAt = session.expires_at || 0
+                    const timeUntilExpiry = expiresAt - now
+
+                    // Si el token expira en menos de 5 minutos, refrescarlo
+                    if (timeUntilExpiry < 300 && timeUntilExpiry > 0) {
+                        console.log('🔄 Refrescando sesión antes de navegar...')
+                        await supabase.auth.refreshSession()
+                    }
+                }
+            }
+
             // Si el módulo requiere autenticación, verificar sesión
             const protectedModules = ['interactions', 'chat', 'profile', 'notifications']
             if (protectedModules.includes(module)) {
                 console.log(`🔐 [navigateToModule] Módulo protegido: ${module}`)
                 
-                const supabase = getSupabaseClient()
                 if (!supabase) {
                     console.error('❌ Supabase no está configurado')
                     return
@@ -271,6 +288,83 @@ export default function HomePage() {
 
         return () => subscription.unsubscribe()
     }, [])
+
+    // Verificar y refrescar sesión periódicamente (cada 10 segundos)
+    useEffect(() => {
+        const supabase = getSupabaseClient()
+        if (!supabase) return
+
+        const checkAndRefreshSession = async () => {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession()
+                
+                if (error) {
+                    console.error('❌ Error verificando sesión:', error)
+                    return
+                }
+
+                if (!session) {
+                    // No hay sesión, limpiar estado
+                    if (isAuthenticated) {
+                        setIsAuthenticated(false)
+                        setCurrentUser(null)
+                    }
+                    return
+                }
+
+                // Verificar si el token está próximo a expirar (menos de 5 minutos)
+                const now = Math.floor(Date.now() / 1000)
+                const expiresAt = session.expires_at || 0
+                const timeUntilExpiry = expiresAt - now
+
+                // Si el token expira en menos de 5 minutos, refrescarlo
+                if (timeUntilExpiry < 300 && timeUntilExpiry > 0) {
+                    console.log('🔄 Token próximo a expirar, refrescando automáticamente...')
+                    const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+                    
+                    if (refreshError) {
+                        console.error('❌ Error refrescando sesión:', refreshError)
+                        // Si no se puede refrescar, limpiar estado
+                        setIsAuthenticated(false)
+                        setCurrentUser(null)
+                        return
+                    }
+
+                    if (refreshedSession) {
+                        console.log('✅ Sesión refrescada automáticamente')
+                        // Actualizar usuario después del refresh
+                        const user = await getCurrentUser()
+                        if (user) {
+                            setCurrentUser(user)
+                            setIsAuthenticated(true)
+                        }
+                    }
+                } else if (timeUntilExpiry <= 0) {
+                    // Token ya expiró
+                    console.warn('⚠️ Token expirado, limpiando sesión')
+                    setIsAuthenticated(false)
+                    setCurrentUser(null)
+                } else if (isAuthenticated && !currentUser) {
+                    // Hay sesión pero no hay usuario en estado, restaurarlo
+                    const user = await getCurrentUser()
+                    if (user) {
+                        setCurrentUser(user)
+                        setIsAuthenticated(true)
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error en checkAndRefreshSession:', error)
+            }
+        }
+
+        // Verificar inmediatamente
+        checkAndRefreshSession()
+
+        // Verificar cada 10 segundos
+        const interval = setInterval(checkAndRefreshSession, 10000)
+
+        return () => clearInterval(interval)
+    }, [isAuthenticated, currentUser])
 
     // Verificación de autenticación real
     useEffect(() => {
