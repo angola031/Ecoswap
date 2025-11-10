@@ -1837,7 +1837,18 @@ function ChatPageContent() {
           <p className="text-red-600 font-medium mb-2">Error</p>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              // Verificar si hay una ruta guardada desde donde se vino
+              const lastPage = sessionStorage.getItem('lastPageBeforeChat')
+              
+              if (lastPage) {
+                // Limpiar la ruta guardada y navegar a ella
+                sessionStorage.removeItem('lastPageBeforeChat')
+                router.push(lastPage)
+              } else {
+                router.back()
+              }
+            }}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Volver
@@ -1873,26 +1884,33 @@ function ChatPageContent() {
             <div className="flex items-center space-x-4">
               <button 
                 onClick={() => {
+                  // Verificar si hay una ruta guardada desde donde se vino
+                  const lastPage = sessionStorage.getItem('lastPageBeforeChat')
                   
-                  // Intentar obtener el ID del producto de diferentes maneras
-                  let productId = null
-                  
-                  if (chatInfo?.offeredProduct?.id) {
-                    productId = chatInfo.offeredProduct.id
-                  } else if (chatInfo?.offeredProduct?.id) {
-                    productId = chatInfo.offeredProduct.id
-                  }
-                  
-                  
-                  if (productId) {
-                    router.push(`/producto/${productId}`)
+                  if (lastPage) {
+                    // Limpiar la ruta guardada y navegar a ella
+                    sessionStorage.removeItem('lastPageBeforeChat')
+                    router.push(lastPage)
                   } else {
-                    // En lugar de router.back(), redirigir a la página principal con módulo de productos
-                    router.push('/?m=products')
+                    // Intentar obtener el ID del producto de diferentes maneras
+                    let productId = null
+                    
+                    if (chatInfo?.offeredProduct?.id) {
+                      productId = chatInfo.offeredProduct.id
+                    } else if (chatInfo?.offeredProduct?.id) {
+                      productId = chatInfo.offeredProduct.id
+                    }
+                    
+                    if (productId) {
+                      router.push(`/producto/${productId}`)
+                    } else {
+                      // En lugar de router.back(), redirigir a la página principal con módulo de productos
+                      router.push('/?m=products')
+                    }
                   }
                 }}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                title="Volver al producto"
+                title="Volver"
               >
                 <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />

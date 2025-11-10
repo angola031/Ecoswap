@@ -8,7 +8,10 @@ import {
   XCircleIcon,
   ClockIcon,
   TagIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  GiftIcon,
+  MapPinIcon,
+  CalendarIcon
 } from '@heroicons/react/24/outline'
 
 interface Product {
@@ -63,14 +66,32 @@ interface ProposalGroup {
   proposals: Proposal[]
 }
 
+interface Donation {
+  id: number
+  title: string
+  description: string
+  status: string
+  condition: string
+  location: string | null
+  createdAt: string | null
+  updatedAt: string | null
+  image: string | null
+  price: number | null
+  negotiable: boolean | null
+}
+
 export default function PropuestasPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'todas' | 'pendiente' | 'aceptada' | 'rechazada'>('todas')
   const [proposalsByProduct, setProposalsByProduct] = useState<ProposalGroup[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [donations, setDonations] = useState<Donation[]>([])
+  const [donationsError, setDonationsError] = useState<string | null>(null)
 
-  const shouldEnableScroll = proposalsByProduct.length > 3
+  // Calcular el total de propuestas (sumando todas las propuestas de todos los grupos)
+  const totalProposals = proposalsByProduct.reduce((total, group) => total + group.proposals.length, 0)
+  const shouldEnableScroll = totalProposals > 3
 
   useEffect(() => {
     loadProposals()
@@ -80,6 +101,7 @@ export default function PropuestasPage() {
     try {
       setIsLoading(true)
       setError(null)
+      setDonationsError(null)
 
       const supabase = getSupabaseClient()
       if (!supabase) {
@@ -91,6 +113,7 @@ export default function PropuestasPage() {
       if (!session?.access_token) {
         setError('No autenticado')
         router.push('/login')
+        setDonations([])
         return
       }
 
@@ -99,22 +122,47 @@ export default function PropuestasPage() {
         ? `/api/proposals/user?status=${statusParam}`
         : '/api/proposals/user'
 
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      })
+      const headers = {
+        'Authorization': `Bearer ${session.access_token}`
+      }
 
-      if (!response.ok) {
-        const errorData = await response.json()
+      const [proposalsOutcome, donationsOutcome] = await Promise.allSettled([
+        fetch(url, { headers }),
+        fetch('/api/donations/user', { headers })
+      ])
+
+      if (proposalsOutcome.status === 'rejected') {
+        throw proposalsOutcome.reason instanceof Error
+          ? proposalsOutcome.reason
+          : new Error('Error cargando propuestas')
+      }
+
+      const proposalsResponse = proposalsOutcome.value
+      if (!proposalsResponse.ok) {
+        const errorData = await proposalsResponse.json().catch(() => ({}))
         throw new Error(errorData.error || 'Error cargando propuestas')
       }
 
-      const data = await response.json()
-      setProposalsByProduct(data.proposalsByProduct || [])
+      const proposalsData = await proposalsResponse.json()
+      setProposalsByProduct(proposalsData.proposalsByProduct || [])
+
+      if (donationsOutcome.status === 'fulfilled') {
+        if (donationsOutcome.value.ok) {
+          const donationsData = await donationsOutcome.value.json()
+          setDonations(donationsData.donations || [])
+        } else {
+          const donationErrorData = await donationsOutcome.value.json().catch(() => ({}))
+          setDonationsError(donationErrorData.error || 'No se pudieron cargar las donaciones')
+          setDonations([])
+        }
+      } else {
+        setDonationsError('No se pudieron cargar las donaciones')
+        setDonations([])
+      }
     } catch (err) {
       console.error('Error cargando propuestas:', err)
       setError(err instanceof Error ? err.message : 'Error desconocido')
+      setDonationsError((prev) => prev ?? (err instanceof Error ? err.message : 'Error desconocido'))
     } finally {
       setIsLoading(false)
     }
@@ -156,7 +204,8 @@ export default function PropuestasPage() {
       'intercambio': '🔄 Intercambio',
       'encuentro': '📅 Encuentro',
       'condiciones': '📋 Condiciones',
-      'otro': '📝 Otro'
+      'otro': '📝 Otro',
+      'donacion': '🎁 Donación'
     }
     return labels[type] || type
   }
@@ -231,8 +280,8 @@ export default function PropuestasPage() {
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
           </div>
-        ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        ) : (error && proposalsByProduct.length === 0) ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-red-800">{error}</p>
           </div>
         ) : proposalsByProduct.length === 0 ? (
@@ -240,7 +289,7 @@ export default function PropuestasPage() {
             <p className="text-gray-500">No hay propuestas {activeTab !== 'todas' ? `con estado "${activeTab}"` : ''}</p>
           </div>
         ) : (
-          <div className={`space-y-8 ${shouldEnableScroll ? 'max-h-[65vh] overflow-y-auto pr-2' : ''}`}>
+          <div className={`space-y-8 ${shouldEnableScroll ? 'max-h-[65vh] overflow-y-auto pr-2 proposals-scroll-container' : ''}`}>
             {proposalsByProduct.map((group, groupIndex) => (
               <div key={groupIndex} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 {/* Product Header */}
@@ -337,7 +386,11 @@ export default function PropuestasPage() {
 
                         <div className="ml-4">
                           <button
-                            onClick={() => router.push(`/chat/${proposal.chatId}`)}
+                            onClick={() => {
+                              // Guardar la ruta actual para poder volver después
+                              sessionStorage.setItem('lastPageBeforeChat', '/propuestas')
+                              router.push(`/chat/${proposal.chatId}`)
+                            }}
                             className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                           >
                             Ver Chat
@@ -351,6 +404,103 @@ export default function PropuestasPage() {
             ))}
           </div>
         )}
+
+        {/* Donaciones Section */}
+        <div className="mt-12">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <GiftIcon className="w-6 h-6 text-purple-600" />
+                Mis Donaciones
+              </h2>
+              <p className="text-sm text-gray-600">
+                Consulta y gestiona los productos que ofreces como donación.
+              </p>
+            </div>
+            <span className="inline-flex items-center text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+              {donations.length} donación{donations.length !== 1 ? 'es' : ''}
+            </span>
+          </div>
+
+          {isLoading && donations.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            </div>
+          ) : donationsError && donations.length === 0 ? (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <p className="text-purple-800">{donationsError}</p>
+            </div>
+          ) : donations.length === 0 ? (
+            <div className="bg-white border-2 border-dashed border-purple-200 rounded-xl p-8 text-center">
+              <div className="text-4xl mb-3">🎁</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No tienes donaciones activas
+              </h3>
+              <p className="text-gray-600 text-sm max-w-md mx-auto">
+                Publica un producto como donación desde la sección de publicaciones para que aparezca aquí y puedas gestionarlo fácilmente.
+              </p>
+            </div>
+          ) : (
+            <div className={`${donations.length > 3 ? 'max-h-[65vh] overflow-y-auto pr-3 space-y-4' : 'space-y-4'}`}>
+              {donations.map((donation) => (
+                <div key={donation.id} className="bg-white border border-purple-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="sm:w-32 sm:h-32 flex-shrink-0">
+                      {donation.image ? (
+                        <img
+                          src={donation.image}
+                          alt={donation.title}
+                          className="w-full h-full object-cover rounded-lg border border-purple-100"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-purple-50 border border-dashed border-purple-200 rounded-lg flex items-center justify-center text-3xl text-purple-300">
+                          🎁
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{donation.title}</h3>
+                          <p className="text-sm text-gray-600 line-clamp-2">{donation.description}</p>
+                        </div>
+                        <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${
+                          donation.status === 'activo'
+                            ? 'bg-green-100 text-green-700'
+                            : donation.status === 'pausado'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {donation.status === 'activo' && 'Activo'}
+                          {donation.status === 'pausado' && 'Pausado'}
+                          {!['activo', 'pausado'].includes(donation.status) && donation.status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <MapPinIcon className="w-4 h-4 text-purple-500" />
+                          <span>{donation.location || 'Ubicación no especificada'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon className="w-4 h-4 text-purple-500" />
+                          <span>
+                            Publicado: {donation.createdAt ? formatDate(donation.createdAt) : 'No disponible'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <GiftIcon className="w-4 h-4 text-purple-500" />
+                          <span>Estado del artículo: {donation.condition || 'No especificado'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
