@@ -1501,10 +1501,10 @@ export default function InteraccionDetailPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 dark:bg-[#181A1B] flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Cargando detalles de la interacción...</p>
+                    <p className="text-gray-600 dark:text-gray-400">Cargando detalles de la interacción...</p>
                 </div>
             </div>
         )
@@ -1512,11 +1512,11 @@ export default function InteraccionDetailPage() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 dark:bg-[#181A1B] flex items-center justify-center">
                 <div className="text-center">
                     <ExclamationTriangleIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                    <h2 className="text-xl font-semibold text-gray-900 mb-2">Error al cargar</h2>
-                    <p className="text-gray-600 mb-4">{error}</p>
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Error al cargar</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
                     <button
                         onClick={() => router.push('/?m=interactions')}
                         className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
@@ -1530,10 +1530,10 @@ export default function InteraccionDetailPage() {
 
     if (!interaction) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 dark:bg-[#181A1B] flex items-center justify-center">
                 <div className="text-center">
-                    <h2 className="text-xl font-semibold text-gray-900 mb-2">Interacción no encontrada</h2>
-                    <p className="text-gray-600 mb-4">La interacción que buscas no existe o ha sido eliminada.</p>
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Interacción no encontrada</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">La interacción que buscas no existe o ha sido eliminada.</p>
                     <button
                         onClick={() => router.push('/?m=interactions')}
                         className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
@@ -1546,20 +1546,20 @@ export default function InteraccionDetailPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-[#181A1B]">
             {/* Header */}
-            <div className="bg-white shadow-sm border-b border-gray-200">
+            <div className="bg-white dark:bg-[#181A1B] shadow-sm border-b border-gray-200 dark:border-gray-700">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center space-x-4">
                            <button
                                onClick={() => router.push('/?m=interactions')}
-                               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                            >
-                               <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
+                               <ArrowLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                            </button>
                                <div>
-                                   <h1 className="text-lg font-semibold text-gray-900">{interaction.title}</h1>
+                                   <h1 className="text-lg font-semibold text-gray-900 dark:text-white">{interaction.title}</h1>
                                </div>
                         </div>
 
@@ -1582,10 +1582,10 @@ export default function InteraccionDetailPage() {
                     {/* Columna principal */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Información general */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div className="bg-white dark:bg-[#181A1B] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                             {/* Aviso de revisión administrativa por discrepancia */}
                             {isUnderAdminReview && (
-                                <div className="mb-4 p-3 rounded-md border border-yellow-300 bg-yellow-50 text-yellow-800">
+                                        <div className="mb-4 p-3 rounded-md border border-yellow-300 bg-yellow-50 text-yellow-800 dark:border-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-300">
                                     <div className="flex items-start justify-between">
                                         <div>
                                             <p className="font-medium">Caso en revisión por administración</p>
@@ -1602,18 +1602,18 @@ export default function InteraccionDetailPage() {
                                         {getTypeIcon(interaction.type)}
                                     </div>
                                     <div>
-                                        <h2 className="text-xl font-semibold text-gray-900">
+                                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                                             {getTypeLabel(interaction.type)}
                                         </h2>
-                                        <p className="text-gray-600">{interaction.description}</p>
+                                        <p className="text-gray-600 dark:text-gray-400">{interaction.description}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Producto */}
-                            <div className="border-t border-gray-200 pt-4">
+                            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="font-medium text-gray-900">Producto</h3>
+                                    <h3 className="font-medium text-gray-900 dark:text-white">Producto</h3>
                                     {(() => {
                                         // Verificar si el intercambio fue exitoso
                                         const isExchangeSuccessful = interaction.status === 'completed' || 
@@ -1643,9 +1643,9 @@ export default function InteraccionDetailPage() {
                                         className="w-20 h-20 object-cover rounded-lg"
                                     />
                                     <div className="flex-1">
-                                        <h4 className="font-medium text-gray-900">{interaction.product.title}</h4>
-                                        <p className="text-sm text-gray-600 mb-2">{interaction.product.description}</p>
-                                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                        <h4 className="font-medium text-gray-900 dark:text-white">{interaction.product.title}</h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{interaction.product.description}</p>
+                                        <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
                                             <span className="flex items-center space-x-1">
                                                 <TagIcon className="w-4 h-4" />
                                                 <span>{interaction.product.category}</span>
@@ -1665,8 +1665,8 @@ export default function InteraccionDetailPage() {
                         </div>
 
                         {/* Navegación de pestañas */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                            <div className="border-b border-gray-200">
+                        <div className="bg-white dark:bg-[#181A1B] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                            <div className="border-b border-gray-200 dark:border-gray-700">
                                 <nav className="flex space-x-8 px-6">
                                     {[
                                         { id: 'overview', name: 'Resumen', icon: EyeIcon },
@@ -1681,7 +1681,7 @@ export default function InteraccionDetailPage() {
                                                 onClick={() => setActiveTab(tab.id as any)}
                                                 className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
                                                         ? 'border-primary-500 text-primary-600'
-                                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-300 dark:hover:text-gray-200 dark:hover:border-gray-600'
                                                     }`}
                                             >
                                                 <Icon className="w-4 h-4" />
@@ -1709,11 +1709,11 @@ export default function InteraccionDetailPage() {
                                     const first = (interaction?.proposals || []).find(p => p.status === 'pendiente_validacion') || (interaction?.proposals || []).find(p => p.status === 'aceptada')
                                     const intercambioId = interactionId
                                     return (
-                                        <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                                        <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-md dark:bg-yellow-900/20 dark:border-yellow-700">
                                             <div className="px-4 py-3 flex items-center justify-between">
                                                 <div className="flex items-center space-x-2">
-                                                    <span className="text-yellow-700 text-sm font-medium">⏳ Pendiente de Validación</span>
-                                                    <span className="text-xs text-yellow-700 hidden sm:inline">Confirma si el encuentro fue exitoso para cerrar el intercambio</span>
+                                                    <span className="text-yellow-700 dark:text-yellow-300 text-sm font-medium">⏳ Pendiente de Validación</span>
+                                                    <span className="text-xs text-yellow-700 dark:text-yellow-300 hidden sm:inline">Confirma si el encuentro fue exitoso para cerrar el intercambio</span>
                                                 </div>
                                                 <div className="flex items-center space-x-2">
                                     <button
@@ -1920,51 +1920,51 @@ export default function InteraccionDetailPage() {
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-4">
-                                                <h3 className="font-medium text-gray-900">Información de la Interacción</h3>
+                                                <h3 className="font-medium text-gray-900 dark:text-white">Información de la Interacción</h3>
                                                 <div className="space-y-3 text-sm">
                                                     <div className="flex justify-between">
-                                                        <span className="text-gray-500">Tipo:</span>
-                                                        <span className="font-medium">{getTypeLabel(interaction.type)}</span>
+                                                        <span className="text-gray-500 dark:text-gray-400">Tipo:</span>
+                                                        <span className="font-medium dark:text-gray-200">{getTypeLabel(interaction.type)}</span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span className="text-gray-500">Estado:</span>
+                                                        <span className="text-gray-500 dark:text-gray-400">Estado:</span>
                                                         <span className={`font-medium ${getStatusColor(interaction.status)} px-2 py-1 rounded-full text-xs`}>
                                                             {getStatusLabel(interaction.status)}
                                                         </span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span className="text-gray-500">Creada:</span>
-                                                        <span className="font-medium">{new Date(interaction.createdAt).toLocaleDateString()}</span>
+                                                        <span className="text-gray-500 dark:text-gray-400">Creada:</span>
+                                                        <span className="font-medium dark:text-gray-200">{new Date(interaction.createdAt).toLocaleDateString()}</span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span className="text-gray-500">Actualizada:</span>
-                                                        <span className="font-medium">{new Date(interaction.updatedAt).toLocaleDateString()}</span>
+                                                        <span className="text-gray-500 dark:text-gray-400">Actualizada:</span>
+                                                        <span className="font-medium dark:text-gray-200">{new Date(interaction.updatedAt).toLocaleDateString()}</span>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div className="space-y-4">
-                                                <h3 className="font-medium text-gray-900">Estadísticas</h3>
+                                                <h3 className="font-medium text-gray-900 dark:text-white">Estadísticas</h3>
                                                 <div className="space-y-3 text-sm">
                                                     <div className="flex justify-between">
-                                                        <span className="text-gray-500">Mensajes:</span>
-                                                        <span className="font-medium">{interaction.messages.length}</span>
+                                                        <span className="text-gray-500 dark:text-gray-400">Mensajes:</span>
+                                                        <span className="font-medium dark:text-gray-200">{interaction.messages.length}</span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span className="text-gray-500">Propuestas:</span>
-                                                        <span className="font-medium">{interaction.proposals.length}</span>
+                                                        <span className="text-gray-500 dark:text-gray-400">Propuestas:</span>
+                                                        <span className="font-medium dark:text-gray-200">{interaction.proposals.length}</span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span className="text-gray-500">Entregas:</span>
-                                                        <span className="font-medium">{interaction.deliveries.length}</span>
+                                                        <span className="text-gray-500 dark:text-gray-400">Entregas:</span>
+                                                        <span className="font-medium dark:text-gray-200">{interaction.deliveries.length}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Acciones rápidas */}
-                                        <div className="border-t border-gray-200 pt-6">
-                                            <h3 className="font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
+                                        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                                            <h3 className="font-medium text-gray-900 dark:text-white mb-4">Acciones Rápidas</h3>
                                             <div className="flex flex-wrap gap-3">
                                                 {(() => {
                                                     // Verificar si el intercambio fue exitoso
@@ -1980,7 +1980,7 @@ export default function InteraccionDetailPage() {
                                                                     </svg>
                                                                     <span className="font-medium">¡Intercambio concretado con éxito!</span>
                                                                 </div>
-                                                                <p className="text-sm text-gray-600">Este intercambio ha sido completado exitosamente.</p>
+                                                                <p className="text-sm text-gray-600 dark:text-gray-400">Este intercambio ha sido completado exitosamente.</p>
                                                             </div>
                                                         );
                                                     }
@@ -2000,7 +2000,7 @@ export default function InteraccionDetailPage() {
                                                 </button>
                                                 <button
                                                     onClick={() => setShowCancelModal(true)}
-                                                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2"
+                                                    className="bg-gray-100 text-gray-700 dark:bg-[#181A1B] dark:text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center space-x-2"
                                                 >
                                                     <XCircleIcon className="w-4 h-4" />
                                                     <span>Cancelar</span>
@@ -2017,8 +2017,8 @@ export default function InteraccionDetailPage() {
                                 {activeTab === 'messages' && (
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <h3 className="font-medium text-gray-900">Mensajes</h3>
-                                            <span className="text-sm text-gray-500">{interaction.messages.length} mensajes</span>
+                                            <h3 className="font-medium text-gray-900 dark:text-white">Mensajes</h3>
+                                            <span className="text-sm text-gray-500 dark:text-gray-400">{interaction.messages.length} mensajes</span>
                                         </div>
 
                                         <div className="space-y-4 max-h-96 overflow-y-auto messages-container">
@@ -2098,7 +2098,7 @@ export default function InteraccionDetailPage() {
 
                                                             <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isCurrentUser
                                                                 ? 'bg-primary-600 text-white'
-                                                                : 'bg-white text-gray-900 border border-gray-200'
+                                                                : 'bg-white text-gray-900 border border-gray-200 dark:bg-[#181A1B] dark:text-gray-200 dark:border-gray-700'
                                                             }`}>
                                                                 {/* Contenido del mensaje */}
                                                                 {message.type === 'text' && (
@@ -2113,7 +2113,7 @@ export default function InteraccionDetailPage() {
                                                                         <img
                                                                             src={message.metadata.imageUrl}
                                                                             alt="Imagen del chat"
-                                                                            className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200"
+                                                                            className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200 dark:border-gray-700"
                                                                             onClick={() => {
                                                                                 // Aquí podrías abrir un modal de imagen si lo implementas
                                                                             }}
@@ -2176,7 +2176,7 @@ export default function InteraccionDetailPage() {
                                        {activeTab === 'proposals' && (
                                            <div className="space-y-4">
                                                <div className="flex items-center justify-between">
-                                                   <h3 className="font-medium text-gray-900">Propuestas</h3>
+                                                   <h3 className="font-medium text-gray-900 dark:text-white">Propuestas</h3>
                                                    {(() => {
                                                        // Verificar si el intercambio fue exitoso
                                                        const isExchangeSuccessful = interaction.status === 'completed' || 
@@ -2205,14 +2205,14 @@ export default function InteraccionDetailPage() {
                                                </div>
 
                                                {proposalsLoading && (
-                                                   <div className="text-sm text-gray-500">Cargando propuestas...</div>
+                                                   <div className="text-sm text-gray-500 dark:text-gray-400">Cargando propuestas...</div>
                                                )}
                                                {proposalsError && (
                                                    <div className="text-sm text-red-600">{proposalsError}</div>
                                                )}
 
                                                {interaction.proposals.length === 0 ? (
-                                                   <div className="text-center py-8 text-gray-500">
+                                                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                                                        <p className="text-sm">No hay propuestas en esta interacción</p>
                                                    </div>
                                                ) : (() => {
@@ -2306,7 +2306,7 @@ export default function InteraccionDetailPage() {
                                                                    </div>
                                                                    <div className="space-y-3 pl-4 border-l-2 border-blue-200">
                                                                        {groupedProposals['offered'].map((proposal) => (
-                                                           <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
+                                                           <div key={proposal.id} className="bg-gray-50 dark:bg-[#181A1B] rounded-lg p-3">
                                                                <div className="flex items-start justify-between mb-2">
                                                                    <div className="flex items-center space-x-2">
                                                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -2327,12 +2327,12 @@ export default function InteraccionDetailPage() {
                                                                            {proposal.status}
                                                                        </span>
                                                                    </div>
-                                                                   <span className="text-xs text-gray-500">
+                                                                   <span className="text-xs text-gray-500 dark:text-gray-400">
                                                                        {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
                                                                    </span>
                                                                </div>
                                                                
-                                                               <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                                                               <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{proposal.description}</p>
                                                                
                                                                {proposal.proposedPrice && (
                                                                    <p className="text-sm font-medium text-green-600 mb-2">
@@ -2341,15 +2341,15 @@ export default function InteraccionDetailPage() {
                                                                )}
                                                                
                                                                {proposal.meetingDate && (
-                                                                   <p className="text-sm text-gray-600 mb-2">
+                                                                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                                                                        📅 Encuentro: {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}
                                                                        {proposal.meetingPlace && ` en ${proposal.meetingPlace}`}
                                                                    </p>
                                                                )}
                                                                
                                                                {proposal.response && (
-                                                                   <div className="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
-                                                                       <p className="text-sm text-gray-700">
+                                                                   <div className="mt-2 p-2 bg-white dark:bg-[#181A1B] rounded border-l-4 border-primary-500">
+                                                                       <p className="text-sm text-gray-700 dark:text-gray-300">
                                                                            <strong>Respuesta:</strong> {proposal.response}
                                                                        </p>
                                                                    </div>
@@ -2443,7 +2443,7 @@ export default function InteraccionDetailPage() {
                                                                    </div>
                                                                    <div className="space-y-3 pl-4 border-l-2 border-green-200">
                                                                        {groupedProposals['requested'].map((proposal) => (
-                                                                           <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
+                                                                           <div key={proposal.id} className="bg-gray-50 dark:bg-[#181A1B] rounded-lg p-3">
                                                                                <div className="flex items-start justify-between mb-2">
                                                                                    <div className="flex items-center space-x-2">
                                                                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -2464,12 +2464,12 @@ export default function InteraccionDetailPage() {
                                                                                            {proposal.status}
                                                                                        </span>
                                                                                    </div>
-                                                                                   <span className="text-xs text-gray-500">
+                                                                                   <span className="text-xs text-gray-500 dark:text-gray-400">
                                                                                        {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
                                                                                    </span>
                                                                                </div>
                                                                                
-                                                                               <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                                                                               <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{proposal.description}</p>
                                                                                
                                                                                {proposal.proposedPrice && (
                                                                                    <p className="text-sm font-medium text-green-600 mb-2">
@@ -2478,15 +2478,15 @@ export default function InteraccionDetailPage() {
                                                                                )}
                                                                                
                                                                                {proposal.meetingDate && (
-                                                                                   <p className="text-sm text-gray-600 mb-2">
+                                                                                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                                                                                        📅 Encuentro: {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}
                                                                                        {proposal.meetingPlace && ` en ${proposal.meetingPlace}`}
                                                                                    </p>
                                                                                )}
                                                                                
                                                                                {proposal.response && (
-                                                                                   <div className="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
-                                                                                       <p className="text-sm text-gray-700">
+                                                                                   <div className="mt-2 p-2 bg-white dark:bg-[#181A1B] rounded border-l-4 border-primary-500">
+                                                                                       <p className="text-sm text-gray-700 dark:text-gray-300">
                                                                                            <strong>Respuesta:</strong> {proposal.response}
                                                                                        </p>
                                                                                    </div>
@@ -2572,12 +2572,12 @@ export default function InteraccionDetailPage() {
                                                            {/* Propuestas Generales (si no se pueden asignar a un producto específico) */}
                                                            {groupedProposals['general'] && groupedProposals['general'].length > 0 && (
                                                                <div className="space-y-3">
-                                                                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                                                                       <h4 className="font-medium text-gray-900 mb-1">📝 Propuestas Generales</h4>
+                                                                   <div className="bg-gray-50 dark:bg-[#181A1B] border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                                                                       <h4 className="font-medium text-gray-900 dark:text-white mb-1">📝 Propuestas Generales</h4>
                                                                    </div>
-                                                                   <div className="space-y-3 pl-4 border-l-2 border-gray-200">
+                                                                   <div className="space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
                                                                        {groupedProposals['general'].map((proposal) => (
-                                                                           <div key={proposal.id} className="bg-gray-50 rounded-lg p-3">
+                                                                           <div key={proposal.id} className="bg-gray-50 dark:bg-[#181A1B] rounded-lg p-3">
                                                                                <div className="flex items-start justify-between mb-2">
                                                                                    <div className="flex items-center space-x-2">
                                                                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -2598,12 +2598,12 @@ export default function InteraccionDetailPage() {
                                                                                            {proposal.status}
                                                                                        </span>
                                                                                    </div>
-                                                                                   <span className="text-xs text-gray-500">
+                                                                                   <span className="text-xs text-gray-500 dark:text-gray-400">
                                                                                        {new Date(proposal.createdAt).toLocaleDateString('es-CO')}
                                                                                    </span>
                                                                                </div>
                                                                                
-                                                                               <p className="text-sm text-gray-700 mb-2">{proposal.description}</p>
+                                                                               <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{proposal.description}</p>
                                                                                
                                                                                {proposal.proposedPrice && (
                                                                                    <p className="text-sm font-medium text-green-600 mb-2">
@@ -2612,15 +2612,15 @@ export default function InteraccionDetailPage() {
                                                                                )}
                                                                                
                                                                                {proposal.meetingDate && (
-                                                                                   <p className="text-sm text-gray-600 mb-2">
+                                                                                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                                                                                        📅 Encuentro: {new Date(proposal.meetingDate).toLocaleDateString('es-CO')}
                                                                                        {proposal.meetingPlace && ` en ${proposal.meetingPlace}`}
                                                                                    </p>
                                                                                )}
                                                                                
                                                                                {proposal.response && (
-                                                                                   <div className="mt-2 p-2 bg-white rounded border-l-4 border-primary-500">
-                                                                                       <p className="text-sm text-gray-700">
+                                                                                   <div className="mt-2 p-2 bg-white dark:bg-[#181A1B] rounded border-l-4 border-primary-500">
+                                                                                       <p className="text-sm text-gray-700 dark:text-gray-300">
                                                                                            <strong>Respuesta:</strong> {proposal.response}
                                                                                        </p>
                                                                                    </div>
@@ -2711,11 +2711,11 @@ export default function InteraccionDetailPage() {
                                 {/* Pestaña Entrega */}
                                 {activeTab === 'delivery' && (
                                     <div className="space-y-4">
-                                        <h3 className="font-medium text-gray-900">Información de Entrega</h3>
+                                        <h3 className="font-medium text-gray-900 dark:text-white">Información de Entrega</h3>
 
                                         <div className="space-y-4">
                                             {interaction.deliveries.map((delivery) => (
-                                                <div key={delivery.id} className="border border-gray-200 rounded-lg p-4">
+                                                <div key={delivery.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                                                     <div className="flex items-center justify-between mb-3">
                                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDeliveryStatusColor(delivery.status)}`}>
                                                             {delivery.status === 'pending' ? 'Pendiente' :
@@ -2723,7 +2723,7 @@ export default function InteraccionDetailPage() {
                                                                     delivery.status === 'in_progress' ? 'En Progreso' :
                                                                         delivery.status === 'completed' ? 'Completada' : delivery.status}
                                                         </span>
-                                                        <div className="flex items-center space-x-2 text-sm text-gray-500">
+                                                        <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
                                                             <CalendarIcon className="w-4 h-4" />
                                                             <span>{delivery.date} - {delivery.time}</span>
                                                         </div>
@@ -2732,18 +2732,18 @@ export default function InteraccionDetailPage() {
                                                     <div className="space-y-3">
                                                         <div className="flex items-center space-x-2">
                                                             <MapPinIcon className="w-4 h-4 text-gray-400" />
-                                                            <span className="text-gray-900">{delivery.location}</span>
+                                                            <span className="text-gray-900 dark:text-gray-200">{delivery.location}</span>
                                                         </div>
 
                                                         {delivery.contactPhone && (
                                                             <div className="flex items-center space-x-2">
                                                                 <PhoneIcon className="w-4 h-4 text-gray-400" />
-                                                                <span className="text-gray-900">{delivery.contactPhone}</span>
+                                                                <span className="text-gray-900 dark:text-gray-200">{delivery.contactPhone}</span>
                                                             </div>
                                                         )}
 
                                                         {delivery.notes && (
-                                                            <div className="text-sm text-gray-600">
+                                                            <div className="text-sm text-gray-600 dark:text-gray-400">
                                                                 <strong>Notas:</strong> {delivery.notes}
                                                             </div>
                                                         )}
@@ -2760,8 +2760,8 @@ export default function InteraccionDetailPage() {
                     {/* Barra lateral */}
                     <div className="space-y-6">
                         {/* Información del usuario */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <h3 className="font-medium text-gray-900 mb-4">Usuario</h3>
+                        <div className="bg-white dark:bg-[#181A1B] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                            <h3 className="font-medium text-gray-900 dark:text-white mb-4">Usuario</h3>
                             <div className="flex items-center space-x-3 mb-4">
                                 <img
                                     src={interaction.otherUser.avatar}
@@ -2769,8 +2769,8 @@ export default function InteraccionDetailPage() {
                                     className="w-12 h-12 rounded-full"
                                 />
                                 <div>
-                                    <h4 className="font-medium text-gray-900">{interaction.otherUser.name}</h4>
-                                    <div className="flex items-center space-x-1 text-sm text-gray-500">
+                                    <h4 className="font-medium text-gray-900 dark:text-white">{interaction.otherUser.name}</h4>
+                                    <div className="flex items-center space-x-1 text-sm text-gray-500 dark:text-gray-400">
                                         <StarIcon className="w-4 h-4 text-yellow-400" />
                                         <span>{interaction.otherUser.rating}</span>
                                     </div>
@@ -2780,20 +2780,20 @@ export default function InteraccionDetailPage() {
                             <div className="space-y-3 text-sm">
                                 <div className="flex items-center space-x-2">
                                     <MapPinIcon className="w-4 h-4 text-gray-400" />
-                                    <span className="text-gray-900">{interaction.otherUser.location}</span>
+                                    <span className="text-gray-900 dark:text-gray-200">{interaction.otherUser.location}</span>
                                 </div>
 
                                 {interaction.otherUser.phone && (
                                     <div className="flex items-center space-x-2">
                                         <PhoneIcon className="w-4 h-4 text-gray-400" />
-                                        <span className="text-gray-900">{interaction.otherUser.phone}</span>
+                                        <span className="text-gray-900 dark:text-gray-200">{interaction.otherUser.phone}</span>
                                     </div>
                                 )}
 
                                 {interaction.otherUser.email && (
                                     <div className="flex items-center space-x-2">
                                         <EnvelopeIcon className="w-4 h-4 text-gray-400" />
-                                        <span className="text-gray-900">{interaction.otherUser.email}</span>
+                                        <span className="text-gray-900 dark:text-gray-200">{interaction.otherUser.email}</span>
                                     </div>
                                 )}
                             </div>
@@ -2827,14 +2827,14 @@ export default function InteraccionDetailPage() {
                         </div>
 
                         {/* Timeline */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <h3 className="font-medium text-gray-900 mb-4">Timeline</h3>
+                        <div className="bg-white dark:bg-[#181A1B] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                            <h3 className="font-medium text-gray-900 dark:text-white mb-4">Timeline</h3>
                             <div className="space-y-4">
                                 <div className="flex items-start space-x-3">
                                     <div className="w-2 h-2 bg-primary-600 rounded-full mt-2"></div>
                                     <div className="flex-1">
-                                        <p className="text-sm font-medium text-gray-900">Interacción creada</p>
-                                        <p className="text-xs text-gray-500">{new Date(interaction.createdAt).toLocaleDateString()}</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white">Interacción creada</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(interaction.createdAt).toLocaleDateString()}</p>
                                     </div>
                                 </div>
 
@@ -2842,8 +2842,8 @@ export default function InteraccionDetailPage() {
                                     <div className="flex items-start space-x-3">
                                         <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                                         <div className="flex-1">
-                                            <p className="text-sm font-medium text-gray-900">Propuesta enviada</p>
-                                            <p className="text-xs text-gray-500">{new Date(interaction.proposals[0].createdAt).toLocaleDateString()}</p>
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white">Propuesta enviada</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(interaction.proposals[0].createdAt).toLocaleDateString()}</p>
                                         </div>
                                     </div>
                                 )}
@@ -2852,8 +2852,8 @@ export default function InteraccionDetailPage() {
                                     <div className="flex items-start space-x-3">
                                         <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
                                         <div className="flex-1">
-                                            <p className="text-sm font-medium text-gray-900">Entrega coordinada</p>
-                                            <p className="text-xs text-gray-500">{new Date(interaction.deliveries[0].date).toLocaleDateString()}</p>
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white">Entrega coordinada</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(interaction.deliveries[0].date).toLocaleDateString()}</p>
                                         </div>
                                     </div>
                                 )}
@@ -2861,8 +2861,8 @@ export default function InteraccionDetailPage() {
                                 <div className="flex items-start space-x-3">
                                     <div className="w-2 h-2 bg-gray-400 rounded-full mt-2"></div>
                                     <div className="flex-1">
-                                        <p className="text-sm font-medium text-gray-900">Última actualización</p>
-                                        <p className="text-xs text-gray-500">{new Date(interaction.updatedAt).toLocaleDateString()}</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white">Última actualización</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(interaction.updatedAt).toLocaleDateString()}</p>
                                     </div>
                                 </div>
                             </div>

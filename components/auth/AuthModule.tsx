@@ -643,7 +643,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-[#181A1B] dark:to-[#181A1B] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <motion.div
@@ -654,19 +654,19 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
           <div className="w-20 h-20 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <span className="text-white text-3xl">🌱</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">EcoSwap Colombia</h1>
-          <p className="text-gray-600">Plataforma de Intercambio Sostenible</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">EcoSwap Colombia</h1>
+          <p className="text-gray-600 dark:text-gray-300">Plataforma de Intercambio Sostenible</p>
         </motion.div>
 
         {/* Tabs - Solo mostrar en login y register */}
         {currentScreen !== 'forgot-password' && currentScreen !== 'reset-sent' && currentScreen !== 'email-verification' && (
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+          <div className="bg-white dark:bg-[#181A1B] rounded-2xl shadow-xl p-8 border border-transparent dark:border-gray-700">
+            <div className="flex mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
               <button
                 onClick={() => setCurrentScreen('login')}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${currentScreen === 'login'
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white text-primary-600 shadow-sm dark:bg-gray-800 dark:text-primary-400'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200'
                   }`}
               >
                 Iniciar Sesión
@@ -674,8 +674,8 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
               <button
                 onClick={() => setCurrentScreen('register')}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${currentScreen === 'register'
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white text-primary-600 shadow-sm dark:bg-gray-800 dark:text-primary-400'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-200'
                   }`}
               >
                 Registrarse
@@ -684,16 +684,16 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
 
             {/* Mensajes de error y éxito */}
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg flex items-center space-x-2">
                 <ExclamationTriangleIcon className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <span className="text-sm text-red-700">{error}</span>
+                <span className="text-sm text-red-700 dark:text-red-300">{error}</span>
               </div>
             )}
 
             {success && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
+              <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg flex items-center space-x-2">
                 <CheckCircleIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
-                <span className="text-sm text-green-700">{success}</span>
+                <span className="text-sm text-green-700 dark:text-green-300">{success}</span>
               </div>
             )}
 
@@ -706,7 +706,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                 className="space-y-4"
               >
                 <div>
-                  <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Correo Electrónico
                   </label>
                   <div className="relative">
@@ -724,7 +724,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                 </div>
 
                 <div>
-                  <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Contraseña
                   </label>
                   <div className="relative">
@@ -760,7 +760,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                   <button
                     type="button"
                     onClick={() => setCurrentScreen('forgot-password')}
-                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                    className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
                   >
                     ¿Olvidaste tu contraseña?
                   </button>
@@ -778,7 +778,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="register-firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="register-firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Nombre
                     </label>
                     <div className="relative">
@@ -796,7 +796,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                   </div>
                   
                   <div>
-                    <label htmlFor="register-lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="register-lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Apellido
                     </label>
                     <div className="relative">
@@ -815,7 +815,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                 </div>
 
                 <div>
-                  <label htmlFor="register-email" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="register-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Correo Electrónico
                   </label>
                   <div className="relative">
@@ -851,7 +851,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                 </div>
 
                 <div>
-                  <label htmlFor="register-phone" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="register-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Teléfono
                   </label>
                   <div className="relative">
@@ -887,7 +887,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                 </div>
 
                 <div>
-                  <label htmlFor="register-departamento" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="register-departamento" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Departamento
                   </label>
                   <div className="relative">
@@ -911,7 +911,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
 
                 {selectedDepartamento && (
                   <div>
-                    <label htmlFor="register-ciudad" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="register-ciudad" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Ciudad
                     </label>
                     <div className="relative">
@@ -935,7 +935,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                 )}
 
                 <div>
-                  <label htmlFor="register-password" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="register-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Contraseña
                   </label>
                   <div className="relative">
@@ -960,7 +960,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                 </div>
 
                 <div>
-                  <label htmlFor="register-confirm-password" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="register-confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Confirmar Contraseña
                   </label>
                   <div className="relative">
@@ -991,13 +991,13 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
 
             {/* Footer */}
             <div className="mt-8 text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 Al continuar, aceptas nuestros{' '}
-                <a href="/terminos" className="text-primary-600 hover:text-primary-700 font-medium">
+                <a href="/terminos" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium">
                   Términos de Servicio
                 </a>{' '}
                 y{' '}
-                <a href="/politicas" className="text-primary-600 hover:text-primary-700 font-medium">
+                <a href="/politicas" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium">
                   Política de Privacidad
                 </a>
               </p>

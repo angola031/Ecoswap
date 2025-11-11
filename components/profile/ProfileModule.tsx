@@ -1069,13 +1069,13 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             <>
                                                 <button
                                                     onClick={() => router.push(`/editar-producto/${product.id}`)}
-                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50 text-gray-700 border-gray-300 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
                                                 >
                                                     Editar
                                                 </button>
                                                 <button
                                                     onClick={() => pauseOrResumeProduct(product.id, true)}
-                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50 text-gray-700 border-gray-300 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
                                                     disabled={pausingId === product.id}
                                                 >
                                                     {pausingId === product.id ? 'Actualizando…' : 'Pausar'}
@@ -1095,13 +1095,13 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             <>
                                                 <button
                                                     onClick={() => router.push(`/editar-producto/${product.id}`)}
-                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50 text-gray-700 border-gray-300 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
                                                 >
                                                     Editar
                                                 </button>
                                                 <button
                                                     onClick={() => pauseOrResumeProduct(product.id, false)}
-                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50"
+                                                    className="px-3 py-2 text-sm border rounded-md hover:bg-gray-50 text-gray-700 border-gray-300 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
                                                     disabled={pausingId === product.id}
                                                 >
                                                     {pausingId === product.id ? 'Actualizando…' : 'Reanudar'}
@@ -1223,10 +1223,10 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: index * 0.1 }}
                                             onClick={() => router.push(`/producto/${productId}`)}
-                                            className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                                                    className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors dark:bg-[#181A1B] dark:hover:bg-[#181A1B] border border-transparent dark:border-gray-700"
                                         >
                                             <div className="flex-shrink-0">
-                                                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
+                                                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                                                     {activity.imagen_producto ? (
                                                         <img 
                                                             src={activity.imagen_producto} 
