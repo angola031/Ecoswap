@@ -29,12 +29,13 @@ import {
 import { useRouter, useParams } from 'next/navigation'
 import { InteractionDetail } from '@/lib/types/interactions'
 import { getSupabaseClient } from '@/lib/supabase-client'
+import Avatar from '@/components/ui/Avatar'
 
 interface User {
     id: string
     name: string
     email: string
-    avatar: string
+    avatar: string | null
     location: string
     rating: number
     phone?: string
@@ -372,7 +373,7 @@ export default function InteraccionDetailPage() {
                             id: interactionData.otherUser?.id || '',
                             name: interactionData.otherUser?.name || '',
                             email: '',
-                            avatar: interactionData.otherUser?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face',
+                            avatar: interactionData.otherUser?.avatar || null,
                             location: interactionData.otherUser?.location || '',
                             rating: interactionData.otherUser?.rating || 0,
                             phone: interactionData.otherUser?.phone
@@ -2763,10 +2764,10 @@ export default function InteraccionDetailPage() {
                         <div className="bg-white dark:bg-[#181A1B] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                             <h3 className="font-medium text-gray-900 dark:text-white mb-4">Usuario</h3>
                             <div className="flex items-center space-x-3 mb-4">
-                                <img
-                                    src={interaction.otherUser.avatar}
+                                <Avatar
+                                    src={interaction.otherUser.avatar || undefined}
                                     alt={interaction.otherUser.name}
-                                    className="w-12 h-12 rounded-full"
+                                    size="lg"
                                 />
                                 <div>
                                     <h4 className="font-medium text-gray-900 dark:text-white">{interaction.otherUser.name}</h4>

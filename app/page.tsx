@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
@@ -19,14 +19,14 @@ import {
     DocumentTextIcon
 } from '@heroicons/react/24/outline'
 
-// Componentes
+// Componentes - Lazy loading para componentes pesados
 import AuthModule from '@/components/auth/AuthModule'
 import CoreModule from '@/components/core/CoreModule'
 import ProductsModule from '@/components/products/ProductsModule'
-import ChatModule from '@/components/chat/ChatModule'
-import ProfileModule from '@/components/profile/ProfileModule'
-import InteractionsModule from '@/components/interactions/InteractionsModule'
-import { ProposalsModule } from '@/components/proposals/ProposalsModule'
+const ChatModule = lazy(() => import('@/components/chat/ChatModule'))
+const ProfileModule = lazy(() => import('@/components/profile/ProfileModule'))
+const InteractionsModule = lazy(() => import('@/components/interactions/InteractionsModule'))
+const ProposalsModule = lazy(() => import('@/components/proposals/ProposalsModule').then(module => ({ default: module.ProposalsModule })))
 import NotificationToast from '@/components/NotificationToast'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -498,6 +498,13 @@ export default function HomePage() {
         setCurrentModule('products') // Volver a productos después del logout
     }
 
+    // Componente de carga para lazy loading
+    const LoadingFallback = () => (
+        <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+    )
+
     const renderModule = () => {
         switch (currentModule) {
             case 'home':
@@ -505,13 +512,29 @@ export default function HomePage() {
             case 'products':
                 return <ProductsModule currentUser={currentUser} />
             case 'interactions':
-                return isAuthenticated ? <InteractionsModule currentUser={currentUser} /> : <AuthModule onLogin={handleLogin} />
+                return isAuthenticated ? (
+                    <Suspense fallback={<LoadingFallback />}>
+                        <InteractionsModule currentUser={currentUser} />
+                    </Suspense>
+                ) : <AuthModule onLogin={handleLogin} />
             case 'proposals':
-                return isAuthenticated ? <ProposalsModule currentUser={currentUser} /> : <AuthModule onLogin={handleLogin} />
+                return isAuthenticated ? (
+                    <Suspense fallback={<LoadingFallback />}>
+                        <ProposalsModule currentUser={currentUser} />
+                    </Suspense>
+                ) : <AuthModule onLogin={handleLogin} />
             case 'chat':
-                return isAuthenticated ? <ChatModule currentUser={currentUser} /> : <AuthModule onLogin={handleLogin} />
+                return isAuthenticated ? (
+                    <Suspense fallback={<LoadingFallback />}>
+                        <ChatModule currentUser={currentUser} />
+                    </Suspense>
+                ) : <AuthModule onLogin={handleLogin} />
             case 'profile':
-                return isAuthenticated ? <ProfileModule currentUser={currentUser} /> : <AuthModule onLogin={handleLogin} />
+                return isAuthenticated ? (
+                    <Suspense fallback={<LoadingFallback />}>
+                        <ProfileModule currentUser={currentUser} />
+                    </Suspense>
+                ) : <AuthModule onLogin={handleLogin} />
             default:
                 return <ProductsModule currentUser={currentUser} />
         }
@@ -627,8 +650,8 @@ export default function HomePage() {
                                         onClick={() => window.location.href = '/notificaciones'}
                                         className={`relative flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                                             unreadCount > 0 
-                                                ? 'text-green-600 hover:text-green-700 hover:bg-green-50 animate-pulse' 
-                                                : 'text-gray-500 hover:text-green-700 hover:bg-green-50'
+                                                ? 'text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 animate-pulse' 
+                                                : 'text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
                                         }`}
                                     >
                                         <BellIcon className={`w-5 h-5 ${unreadCount > 0 ? 'animate-bounce' : ''}`} />
