@@ -46,7 +46,7 @@ export default function NotificationsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 dark:bg-[#181A1B] flex items-center justify-center">
                 <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600"></div>
             </div>
         )
@@ -54,9 +54,9 @@ export default function NotificationsPage() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 dark:bg-[#181A1B] flex items-center justify-center">
                 <div className="max-w-md mx-auto text-center">
-                    <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-lg">
+                    <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200 px-4 py-3 rounded-lg">
                         <h2 className="text-lg font-semibold mb-2">⚠️ Configuración Requerida</h2>
                         <p className="text-sm">{error}</p>
                         <button
@@ -76,13 +76,13 @@ export default function NotificationsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-[#181A1B] transition-colors">
             {/* Header */}
-            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg">
+            <div className="bg-gradient-to-r from-green-600 to-green-700 dark:from-green-700 dark:to-green-800 text-white shadow-lg">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-center py-6 md:py-8 gap-4">
                         <div className="flex items-center space-x-4">
-                            <div className="bg-white bg-opacity-20 rounded-full p-3">
+                            <div className="bg-white bg-opacity-20 dark:bg-opacity-10 rounded-full p-3">
                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 19h6v-6h6v-6h6" />
@@ -91,7 +91,7 @@ export default function NotificationsPage() {
                             </div>
                             <div>
                                 <h1 className="text-2xl md:text-3xl font-bold">🔔 Notificaciones</h1>
-                                <p className="text-green-100 mt-1 text-sm md:text-lg">
+                                <p className="text-green-100 dark:text-green-200 mt-1 text-sm md:text-lg">
                                     Mantente al día con las últimas actualizaciones de tu cuenta
                                 </p>
                             </div>
@@ -99,7 +99,7 @@ export default function NotificationsPage() {
                         <div className="md:self-auto">
                             <button
                                 onClick={() => router.push('/')}
-                                className="w-full md:w-auto flex items-center justify-center px-5 md:px-6 py-2.5 md:py-3 text-sm font-medium text-green-600 bg-white rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all duration-200 shadow-lg"
+                                className="w-full md:w-auto flex items-center justify-center px-5 md:px-6 py-2.5 md:py-3 text-sm font-medium text-green-600 dark:text-green-300 bg-white dark:bg-gray-900 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white dark:focus:ring-offset-gray-900 transition-all duration-200 shadow-lg"
                             >
                                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

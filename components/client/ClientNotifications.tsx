@@ -297,13 +297,13 @@ export default function ClientNotifications() {
 
     if (loading) {
         return (
-            <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="bg-white dark:bg-[#181A1B] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                 <div className="animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-4"></div>
                     <div className="space-y-3">
-                        <div className="h-3 bg-gray-200 rounded"></div>
-                        <div className="h-3 bg-gray-200 rounded w-5/6"></div>
-                        <div className="h-3 bg-gray-200 rounded w-4/6"></div>
+                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-4/6"></div>
                     </div>
                 </div>
             </div>
@@ -312,8 +312,8 @@ export default function ClientNotifications() {
 
     if (error) {
         return (
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-                <div className="text-center text-red-600">
+            <div className="bg-white dark:bg-[#181A1B] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <div className="text-center text-red-600 dark:text-red-400">
                     <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -330,20 +330,20 @@ export default function ClientNotifications() {
     }
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border">
+        <div className="bg-white dark:bg-[#181A1B] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
             {/* Header */}
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-900">Notificaciones</h2>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Notificaciones</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             {unreadCount > 0 ? `${unreadCount} sin leer` : 'Todas leídas'}
                         </p>
                     </div>
                     {unreadCount > 0 && (
                         <button
                             onClick={markAllAsRead}
-                            className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
+                            className="px-3 py-1 text-sm bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded-full hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
                         >
                             Marcar todas como leídas
                         </button>
@@ -354,7 +354,7 @@ export default function ClientNotifications() {
             {/* Notifications List */}
             <div className="max-h-96 overflow-y-auto">
                 {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-gray-500">
+                    <div className="p-6 text-center text-gray-500 dark:text-gray-400">
                         <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h6v-6H4v6zM4 5h6V3a2 2 0 00-2-2H6a2 2 0 00-2 2v2zM14 3v2h6a2 2 0 00-2-2h-4a2 2 0 00-2 2z" />
                         </svg>
@@ -362,12 +362,12 @@ export default function ClientNotifications() {
                         <p className="text-sm">Te notificaremos cuando tengas nuevas actualizaciones</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-gray-200">
+                    <div className="divide-y divide-gray-200 dark:divide-gray-700">
                         {notifications.map((notification) => (
                             <div
                                 key={notification.notificacion_id}
-                                className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                                    !notification.leida ? 'bg-green-50 border-l-4 border-l-green-500' : ''
+                                className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800/60 cursor-pointer transition-colors ${
+                                    !notification.leida ? 'bg-green-50 dark:bg-green-900/20 border-l-4 border-l-green-500 dark:border-l-green-400' : ''
                                 }`}
                                 onClick={() => handleNotificationClick(notification)}
                             >
@@ -378,7 +378,7 @@ export default function ClientNotifications() {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between">
                                             <p className={`text-sm font-medium ${
-                                                !notification.leida ? 'text-gray-900' : 'text-gray-700'
+                                                !notification.leida ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'
                                             }`}>
                                                 {notification.titulo}
                                             </p>
@@ -387,16 +387,16 @@ export default function ClientNotifications() {
                                             )}
                                         </div>
                                         <p className={`text-sm mt-1 ${
-                                            !notification.leida ? 'text-gray-700' : 'text-gray-500'
+                                            !notification.leida ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400'
                                         }`}>
                                             {notification.mensaje}
                                         </p>
                                         
                                         {/* Mostrar motivo de rechazo si está disponible */}
                                         {notification.datos_adicionales?.motivo_rechazo && (
-                                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                                                <p className="text-xs text-red-700 font-medium">Motivo del rechazo:</p>
-                                                <p className="text-xs text-red-600 mt-1">
+                                            <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md">
+                                                <p className="text-xs text-red-700 dark:text-red-300 font-medium">Motivo del rechazo:</p>
+                                                <p className="text-xs text-red-600 dark:text-red-300 mt-1">
                                                     {notification.datos_adicionales.motivo_rechazo}
                                                 </p>
                                             </div>
@@ -422,7 +422,7 @@ export default function ClientNotifications() {
                                           notification.tipo === 'intercambio_completado' || 
                                           notification.tipo === 'intercambio_fallido' || 
                                           notification.tipo === 'validacion_pendiente') && (
-                                            <div className="mt-2 flex items-center text-xs text-blue-600">
+                                            <div className="mt-2 flex items-center text-xs text-blue-600 dark:text-blue-400">
                                                 <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                                 </svg>
@@ -435,7 +435,7 @@ export default function ClientNotifications() {
                                             </div>
                                         )}
 
-                                        <p className="text-xs text-gray-400 mt-2">
+                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                                             {formatDate(notification.fecha_creacion)}
                                         </p>
                                     </div>

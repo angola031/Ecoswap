@@ -158,7 +158,7 @@ export default function NotificationToast({ userId }: NotificationToastProps) {
         <>
             {/* Toast de notificación */}
             <div className="fixed top-4 right-4 z-50 max-w-sm w-full">
-                <div className={`${style.bgColor} text-white rounded-lg shadow-lg p-4 transform transition-all duration-300 ease-in-out`}>
+                <div className={`${style.bgColor} text-white rounded-lg shadow-lg dark:shadow-black/30 p-4 transform transition-all duration-300 ease-in-out`}>
                     <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-3">
                             <div className="text-2xl">
@@ -192,7 +192,7 @@ export default function NotificationToast({ userId }: NotificationToastProps) {
             </div>
 
             {/* Indicador de nueva notificación en el header */}
-            <div className="fixed top-0 left-0 right-0 bg-red-500 text-white text-center py-2 text-sm font-medium z-40 animate-pulse">
+            <div className="fixed top-0 left-0 right-0 bg-red-500 dark:bg-red-600 text-white text-center py-2 text-sm font-medium z-40 animate-pulse">
                 🔔 ¡Tienes una nueva notificación!
             </div>
         </>
