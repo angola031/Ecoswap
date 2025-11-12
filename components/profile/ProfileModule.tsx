@@ -48,7 +48,7 @@ interface ProfileData {
     name: string
     email: string
     phone: string
-    avatar: string
+    avatar: string | null
     location: string
     bio: string
     joinDate: string
@@ -85,7 +85,7 @@ interface UserProduct {
 interface UserReview {
     id: string
     reviewerName: string
-    reviewerAvatar: string
+    reviewerAvatar: string | null
     rating: number
     comment: string
     date: string
@@ -246,7 +246,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     name: fullName,
                     email: dbUser.email,
                     phone: dbUser.telefono || '',
-                    avatar: dbUser.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+                    avatar: dbUser.foto_perfil || null,
                     location: loc,
                     bio: dbUser.biografia || '',
                     joinDate,
@@ -372,7 +372,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 const transformedReviews: UserReview[] = reviewsData?.map((review: any) => ({
                     id: review.calificacion_id.toString(),
                     reviewerName: `${review.calificador?.nombre || ''} ${review.calificador?.apellido || ''}`.trim() || 'Usuario',
-                    reviewerAvatar: review.calificador?.foto_perfil || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+                    reviewerAvatar: review.calificador?.foto_perfil || null,
                     rating: review.puntuacion,
                     comment: review.comentario || '',
                     date: new Date(review.fecha_calificacion).toLocaleDateString('es-CO'),
@@ -564,7 +564,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     }
 
     // Helper para evitar caché en imágenes de perfil
-    const bust = (url: string) => url ? `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}` : url
+    const bust = (url: string | null) => url ? `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}` : null
 
     return (
         <div className="space-y-6">
@@ -1152,10 +1152,11 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         className="card"
                                     >
                                         <div className="flex items-start space-x-4">
-                                            <img
+                                            <Avatar
                                                 src={review.reviewerAvatar}
                                                 alt={review.reviewerName}
-                                                className="w-12 h-12 rounded-full"
+                                                size="lg"
+                                                className="w-12 h-12"
                                             />
 
                                             <div className="flex-1">

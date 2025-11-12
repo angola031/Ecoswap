@@ -8,6 +8,7 @@ import { uploadUserProfileImage } from '@/lib/storage'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import Swal from 'sweetalert2'
 import 'sweetalert2/dist/sweetalert2.min.css'
+import Avatar from '@/components/ui/Avatar'
 
 interface User {
     user_id: number
@@ -17,7 +18,7 @@ interface User {
     telefono?: string
     fecha_nacimiento?: string
     biografia?: string
-    foto_perfil?: string
+    foto_perfil?: string | null
     calificacion_promedio: number
     total_intercambios: number
     eco_puntos: number
@@ -116,7 +117,7 @@ export default function EditarPerfilPage() {
                     telefono: dbUser.telefono || '',
                     fecha_nacimiento: dbUser.fecha_nacimiento || '',
                     biografia: dbUser.biografia || '',
-                    foto_perfil: dbUser.foto_perfil || '/api/placeholder/150/150',
+                    foto_perfil: dbUser.foto_perfil || null,
                     calificacion_promedio: dbUser.calificacion_promedio || 0,
                     total_intercambios: dbUser.total_intercambios || 0,
                     eco_puntos: dbUser.eco_puntos || 0,
@@ -155,7 +156,7 @@ export default function EditarPerfilPage() {
                 }
 
                 setFormData(user)
-                setAvatarPreview(user.foto_perfil)
+                setAvatarPreview(user.foto_perfil || '')
             } catch (e) {
                 console.error('Error cargando datos del usuario:', e)
             }
@@ -253,7 +254,10 @@ export default function EditarPerfilPage() {
 
     const removeAvatar = () => {
         setAvatarFile(null)
-        setAvatarPreview('/api/placeholder/150/150')
+        setAvatarPreview('')
+        if (formData) {
+            setFormData({ ...formData, foto_perfil: null })
+        }
     }
 
     const validateForm = () => {
@@ -436,19 +440,19 @@ export default function EditarPerfilPage() {
     if (!formData) return null
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-[#181A1B]">
             {/* Header */}
-            <div className="bg-white shadow-sm border-b">
+            <div className="bg-white dark:bg-[#181A1B] shadow-sm border-b dark:border-gray-700">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         <button
                             onClick={() => router.push('/?m=profile')}
-                            className="flex items-center text-gray-600 hover:text-gray-900"
+                            className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                         >
                             <ArrowLeftIcon className="h-5 w-5 mr-2" />
                             Volver
                         </button>
-                        <h1 className="text-xl font-semibold text-gray-900">
+                        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
                             Editar Perfil
                         </h1>
                         <div className="w-20"></div>
@@ -462,18 +466,18 @@ export default function EditarPerfilPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="bg-white rounded-lg shadow-sm border"
+                    className="bg-white dark:bg-[#181A1B] rounded-lg shadow-sm border dark:border-gray-700"
                 >
                     {globalMessage && (
-                        <div className={`px-6 py-3 rounded-t-lg ${globalMessage.type === 'success' ? 'bg-green-50 text-green-700 border-b border-green-200' : 'bg-red-50 text-red-700 border-b border-red-200'}`}>
+                        <div className={`px-6 py-3 rounded-t-lg ${globalMessage.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-b border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-b border-red-200 dark:border-red-800'}`}>
                             {globalMessage.text}
                         </div>
                     )}
-                    <div className="px-6 py-4 border-b border-gray-200">
-                        <h2 className="text-lg font-medium text-gray-900">
+                    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h2 className="text-lg font-medium text-gray-900 dark:text-white">
                             Información Personal
                         </h2>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             Actualiza tu información personal y preferencias
                         </p>
                     </div>
@@ -482,15 +486,16 @@ export default function EditarPerfilPage() {
                         {/* Avatar */}
                         <div className="flex items-center space-x-6">
                             <div className="relative">
-                                <img
-                                    src={avatarPreview}
+                                <Avatar
+                                    src={avatarPreview || formData.foto_perfil || null}
                                     alt="Avatar"
-                                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                                    size="xl"
+                                    className="w-24 h-24 border-4 border-white dark:border-gray-800 shadow-lg"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => document.getElementById('avatar-upload')?.click()}
-                                    className="absolute -bottom-2 -right-2 bg-blue-600 text-white rounded-full p-2 hover:bg-blue-700 transition-colors"
+                                    className="absolute -bottom-2 -right-2 bg-blue-600 text-white rounded-full p-2 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
                                 >
                                     <PhotoIcon className="h-4 w-4" />
                                 </button>
@@ -503,25 +508,25 @@ export default function EditarPerfilPage() {
                                 />
                             </div>
                             <div className="flex-1">
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                                     Foto de Perfil
                                 </h3>
-                                <p className="text-sm text-gray-600 mb-3">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                                     Sube una nueva imagen para tu perfil. Formato requerido: WebP (se convierte automáticamente).
                                 </p>
                                 <div className="flex space-x-3">
                                     <button
                                         type="button"
                                         onClick={() => document.getElementById('avatar-upload')?.click()}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                        className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
                                     >
                                         Cambiar Foto
                                     </button>
-                                    {avatarFile && (
+                                    {(avatarFile || formData.foto_perfil) && (
                                         <button
                                             type="button"
                                             onClick={removeAvatar}
-                                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                                         >
                                             Restaurar
                                         </button>
@@ -532,93 +537,93 @@ export default function EditarPerfilPage() {
 
                         {/* Información Personal */}
                         <div className="space-y-6">
-                            <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                                 Información Básica
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Nombre *
                                     </label>
                                     <div className="relative">
-                                        <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                        <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
                                         <input
                                             type="text"
                                             value={formData.nombre}
                                             onChange={(e) => handleInputChange('nombre', e.target.value)}
-                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.nombre ? 'border-red-300' : 'border-gray-300'
+                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 ${formErrors.nombre ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                                                 }`}
                                             placeholder="Tu nombre"
                                         />
                                     </div>
                                     {formErrors.nombre && (
-                                        <p className="text-red-600 text-sm mt-1">{formErrors.nombre}</p>
+                                        <p className="text-red-600 dark:text-red-400 text-sm mt-1">{formErrors.nombre}</p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Apellido *
                                     </label>
                                     <div className="relative">
-                                        <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                        <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
                                         <input
                                             type="text"
                                             value={formData.apellido}
                                             onChange={(e) => handleInputChange('apellido', e.target.value)}
-                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.apellido ? 'border-red-300' : 'border-gray-300'
+                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 ${formErrors.apellido ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                                                 }`}
                                             placeholder="Tu apellido"
                                         />
                                     </div>
                                     {formErrors.apellido && (
-                                        <p className="text-red-600 text-sm mt-1">{formErrors.apellido}</p>
+                                        <p className="text-red-600 dark:text-red-400 text-sm mt-1">{formErrors.apellido}</p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Email *
                                     </label>
                                     <div className="relative">
-                                        <EnvelopeIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                        <EnvelopeIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
                                         <input
                                             type="email"
                                             value={formData.email}
                                             onChange={(e) => handleInputChange('email', e.target.value)}
-                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.email ? 'border-red-300' : 'border-gray-300'
+                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 ${formErrors.email ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                                                 }`}
                                             placeholder="tu@email.com"
                                         />
                                     </div>
                                     {formErrors.email && (
-                                        <p className="text-red-600 text-sm mt-1">{formErrors.email}</p>
+                                        <p className="text-red-600 dark:text-red-400 text-sm mt-1">{formErrors.email}</p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Teléfono
                                     </label>
                                     <div className="relative">
-                                        <PhoneIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                        <PhoneIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
                                         <input
                                             type="tel"
                                             value={formData.telefono || ''}
                                             onChange={(e) => handleInputChange('telefono', e.target.value)}
-                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.telefono ? 'border-red-300' : 'border-gray-300'
+                                            className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 ${formErrors.telefono ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                                                 }`}
                                             placeholder="+57 300 123 4567"
                                         />
                                     </div>
                                     {formErrors.telefono && (
-                                        <p className="text-red-600 text-sm mt-1">{formErrors.telefono}</p>
+                                        <p className="text-red-600 dark:text-red-400 text-sm mt-1">{formErrors.telefono}</p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Fecha de Nacimiento
                                     </label>
                                     <div className="relative">
@@ -627,25 +632,25 @@ export default function EditarPerfilPage() {
                                             value={formData.fecha_nacimiento || ''}
                                             onChange={(e) => handleInputChange('fecha_nacimiento', e.target.value)}
                                     max={getAdultMaxDate()}
-                                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${formErrors.fecha_nacimiento ? 'border-red-300' : 'border-gray-300'
+                                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600 ${formErrors.fecha_nacimiento ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                                                 }`}
                                         />
                                     </div>
                                     {formErrors.fecha_nacimiento && (
-                                        <p className="text-red-600 text-sm mt-1">{formErrors.fecha_nacimiento}</p>
+                                        <p className="text-red-600 dark:text-red-400 text-sm mt-1">{formErrors.fecha_nacimiento}</p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Departamento
                                     </label>
                                     <div className="relative">
-                                        <MapPinIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                        <MapPinIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
                                         <select
                                             value={formData.ubicacion?.departamento || ''}
                                             onChange={(e) => { handleInputChange('ubicacion.departamento', e.target.value); handleInputChange('ubicacion.ciudad', '') }}
-                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-white"
                                         >
                                             <option value="">Selecciona un departamento</option>
                                             {departamentos.map(dep => (
@@ -656,15 +661,15 @@ export default function EditarPerfilPage() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Ciudad
                                     </label>
                                     <div className="relative">
-                                        <MapPinIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                                        <MapPinIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
                                         <select
                                             value={formData.ubicacion?.ciudad || ''}
                                             onChange={(e) => handleInputChange('ubicacion.ciudad', e.target.value)}
-                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-white"
                                         >
                                             <option value="">Selecciona una ciudad</option>
                                             {getCiudadesForDepartamento(formData.ubicacion?.departamento).map(ci => (
@@ -676,14 +681,14 @@ export default function EditarPerfilPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Biografía
                                 </label>
                                 <textarea
                                     value={formData.biografia || ''}
                                     onChange={(e) => handleInputChange('biografia', e.target.value)}
                                     rows={4}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
                                     placeholder="Cuéntanos un poco sobre ti..."
                                 />
                             </div>
@@ -691,37 +696,37 @@ export default function EditarPerfilPage() {
 
                         {/* Estadísticas del Usuario */}
                         <div className="space-y-6">
-                            <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                                 Estadísticas de tu Cuenta
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <div className="text-2xl font-bold text-blue-600">{formData.calificacion_promedio.toFixed(1)}</div>
-                                    <div className="text-sm text-gray-600">Calificación Promedio</div>
+                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formData.calificacion_promedio.toFixed(1)}</div>
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">Calificación Promedio</div>
                                 </div>
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <div className="text-2xl font-bold text-green-600">{formData.total_intercambios}</div>
-                                    <div className="text-sm text-gray-600">Intercambios Completados</div>
+                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formData.total_intercambios}</div>
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">Intercambios Completados</div>
                                 </div>
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <div className="text-2xl font-bold text-purple-600">{formData.eco_puntos}</div>
-                                    <div className="text-sm text-gray-600">Eco Puntos</div>
+                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formData.eco_puntos}</div>
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">Eco Puntos</div>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <div className="text-sm text-gray-600">Miembro desde</div>
-                                    <div className="font-medium">{new Date(formData.fecha_registro).toLocaleDateString('es-CO')}</div>
+                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">Miembro desde</div>
+                                    <div className="font-medium dark:text-white">{new Date(formData.fecha_registro).toLocaleDateString('es-CO')}</div>
                                 </div>
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <div className="text-sm text-gray-600">Estado de Verificación</div>
-                                    <div className="font-medium flex items-center">
+                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">Estado de Verificación</div>
+                                    <div className="font-medium flex items-center dark:text-white">
                                         {formData.verificado ? (
-                                            <><CheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />Verificado</>
+                                            <><CheckCircleIcon className="h-4 w-4 text-green-500 dark:text-green-400 mr-1" />Verificado</>
                                         ) : (
-                                            <><ExclamationTriangleIcon className="h-4 w-4 text-yellow-500 mr-1" />Pendiente</>
+                                            <><ExclamationTriangleIcon className="h-4 w-4 text-yellow-500 dark:text-yellow-400 mr-1" />Pendiente</>
                                         )}
                                     </div>
                                 </div>
@@ -730,15 +735,15 @@ export default function EditarPerfilPage() {
 
                         {/* Preferencias de Privacidad */}
                         <div className="space-y-6">
-                            <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                                 Preferencias de Privacidad
                             </h3>
 
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="text-sm font-medium text-gray-900">Perfil Público</h4>
-                                        <p className="text-sm text-gray-600">Permitir que otros usuarios vean tu perfil</p>
+                                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Perfil Público</h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Permitir que otros usuarios vean tu perfil</p>
                                     </div>
                                     <button
                                         type="button"
@@ -755,8 +760,8 @@ export default function EditarPerfilPage() {
 
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="text-sm font-medium text-gray-900">Mostrar Ubicación Exacta</h4>
-                                        <p className="text-sm text-gray-600">Mostrar tu ubicación exacta en tu perfil</p>
+                                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Mostrar Ubicación Exacta</h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Mostrar tu ubicación exacta en tu perfil</p>
                                     </div>
                                     <button
                                         type="button"
@@ -773,8 +778,8 @@ export default function EditarPerfilPage() {
 
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="text-sm font-medium text-gray-900">Mostrar Teléfono</h4>
-                                        <p className="text-sm text-gray-600">Mostrar tu teléfono en tu perfil público</p>
+                                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Mostrar Teléfono</h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Mostrar tu teléfono en tu perfil público</p>
                                     </div>
                                     <button
                                         type="button"
@@ -793,8 +798,8 @@ export default function EditarPerfilPage() {
 
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="text-sm font-medium text-gray-900">Notificaciones de Nuevas Propuestas</h4>
-                                        <p className="text-sm text-gray-600">Recibir notificaciones cuando recibas nuevas propuestas</p>
+                                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Notificaciones de Nuevas Propuestas</h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Recibir notificaciones cuando recibas nuevas propuestas</p>
                                     </div>
                                     <button
                                         type="button"
@@ -811,8 +816,8 @@ export default function EditarPerfilPage() {
 
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="text-sm font-medium text-gray-900">Notificaciones de Mensajes</h4>
-                                        <p className="text-sm text-gray-600">Recibir notificaciones de nuevos mensajes</p>
+                                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Notificaciones de Mensajes</h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Recibir notificaciones de nuevos mensajes</p>
                                     </div>
                                     <button
                                         type="button"
@@ -829,8 +834,8 @@ export default function EditarPerfilPage() {
 
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="text-sm font-medium text-gray-900">Newsletter</h4>
-                                        <p className="text-sm text-gray-600">Recibir newsletter con actualizaciones de EcoSwap</p>
+                                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Newsletter</h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Recibir newsletter con actualizaciones de EcoSwap</p>
                                     </div>
                                     <button
                                         type="button"
@@ -846,7 +851,7 @@ export default function EditarPerfilPage() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Distancia Máxima (km)
                                     </label>
                                     <input
@@ -855,34 +860,34 @@ export default function EditarPerfilPage() {
                                         max="500"
                                         value={formData.configuracion?.distancia_maxima_km || 50}
                                         onChange={(e) => handleInputChange('configuracion.distancia_maxima_km', parseInt(e.target.value))}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
                                         placeholder="50"
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">Distancia máxima para mostrar productos cercanos</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Distancia máxima para mostrar productos cercanos</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Cambiar Contraseña */}
                         <div className="space-y-6">
-                            <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                                <h3 className="text-lg font-medium text-gray-900">
+                            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                                     Cambiar Contraseña
                                 </h3>
                                 <button
                                     type="button"
                                     onClick={() => setShowPasswordSection(!showPasswordSection)}
-                                    className="text-sm text-blue-600 hover:text-blue-700"
+                                    className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                                 >
                                     {showPasswordSection ? 'Ocultar' : 'Mostrar'}
                                 </button>
                             </div>
 
                             {showPasswordSection && (
-                                <div className="space-y-4 p-4 bg-gray-50 rounded-md">
+                                <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-md">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                 Contraseña Actual *
                                             </label>
                                             <div className="relative">
@@ -890,25 +895,25 @@ export default function EditarPerfilPage() {
                                                     type={showCurrentPassword ? 'text' : 'password'}
                                                     value={passwordData.currentPassword}
                                                     onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                                                    className={`w-full pr-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${passwordErrors.currentPassword ? 'border-red-300' : 'border-gray-300'
+                                                    className={`w-full pr-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${passwordErrors.currentPassword ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                                                         }`}
                                                     placeholder="Tu contraseña actual"
                                                 />
                                                 <button
                                                     type="button"
                                                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                                                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                                                    className="absolute right-3 top-2.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                                                 >
                                                     {showCurrentPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                                                 </button>
                                             </div>
                                             {passwordErrors.currentPassword && (
-                                                <p className="text-red-600 text-sm mt-1">{passwordErrors.currentPassword}</p>
+                                                <p className="text-red-600 dark:text-red-400 text-sm mt-1">{passwordErrors.currentPassword}</p>
                                             )}
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                 Nueva Contraseña *
                                             </label>
                                             <div className="relative">
@@ -916,26 +921,26 @@ export default function EditarPerfilPage() {
                                                     type={showNewPassword ? 'text' : 'password'}
                                                     value={passwordData.newPassword}
                                                     onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                                                    className={`w-full pr-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${passwordErrors.newPassword ? 'border-red-300' : 'border-gray-300'
+                                                    className={`w-full pr-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${passwordErrors.newPassword ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                                                         }`}
                                                     placeholder="Mínimo 8 caracteres"
                                                 />
                                                 <button
                                                     type="button"
                                                     onClick={() => setShowNewPassword(!showNewPassword)}
-                                                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                                                    className="absolute right-3 top-2.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                                                 >
                                                     {showNewPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                                                 </button>
                                             </div>
                                             {passwordErrors.newPassword && (
-                                                <p className="text-red-600 text-sm mt-1">{passwordErrors.newPassword}</p>
+                                                <p className="text-red-600 dark:text-red-400 text-sm mt-1">{passwordErrors.newPassword}</p>
                                             )}
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             Confirmar Nueva Contraseña *
                                         </label>
                                         <div className="relative">
@@ -943,20 +948,20 @@ export default function EditarPerfilPage() {
                                                 type={showConfirmPassword ? 'text' : 'password'}
                                                 value={passwordData.confirmPassword}
                                                 onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                                                className={`w-full pr-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${passwordErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                                                className={`w-full pr-10 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${passwordErrors.confirmPassword ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                                                     }`}
                                                 placeholder="Repite la nueva contraseña"
                                             />
                                             <button
                                                 type="button"
                                                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                                                className="absolute right-3 top-2.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                                             >
                                                 {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                                             </button>
                                         </div>
                                         {passwordErrors.confirmPassword && (
-                                            <p className="text-red-600 text-sm mt-1">{passwordErrors.confirmPassword}</p>
+                                            <p className="text-red-600 dark:text-red-400 text-sm mt-1">{passwordErrors.confirmPassword}</p>
                                         )}
                                     </div>
 
@@ -965,13 +970,13 @@ export default function EditarPerfilPage() {
                                             type="button"
                                             onClick={handlePasswordChange}
                                             disabled={isLoading}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="px-4 py-2 bg-green-600 dark:bg-green-700 text-white rounded-md hover:bg-green-700 dark:hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {isLoading ? 'Cambiando...' : 'Cambiar Contraseña'}
                                         </button>
                                     </div>
                                     {globalMessage && (
-                                        <div className={`mt-3 text-sm ${globalMessage.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+                                        <div className={`mt-3 text-sm ${globalMessage.type === 'success' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
                                             {globalMessage.text}
                                         </div>
                                     )}
@@ -980,18 +985,18 @@ export default function EditarPerfilPage() {
                         </div>
 
                         {/* Botones de Acción */}
-                        <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+                        <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                             <button
                                 type="button"
                                 onClick={() => router.back()}
-                                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 Cancelar
                             </button>
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                                className="px-6 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                             >
                                 {isLoading ? (
                                     <>
