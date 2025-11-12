@@ -789,11 +789,17 @@ function ChatPageContent() {
   }
 
   // Función para redimensionar imágenes (igual que en ChatModule)
-  const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 600, quality: number = 0.8): Promise<File> => {
-    return new Promise((resolve) => {
+  const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 600, quality: number = 0.82): Promise<File> => {
+    return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('Canvas no disponible'))
+        return
+      }
+      
       const img = new Image()
+      const url = URL.createObjectURL(file)
       
       img.onload = () => {
         // Calcular nuevas dimensiones manteniendo la proporción
@@ -815,23 +821,30 @@ function ChatPageContent() {
         canvas.height = height
         
         // Dibujar la imagen redimensionada
-        ctx?.drawImage(img, 0, 0, width, height)
+        ctx.drawImage(img, 0, 0, width, height)
         
-        // Convertir a blob y luego a File
+        URL.revokeObjectURL(url)
+        
+        // Convertir a WebP
         canvas.toBlob((blob) => {
           if (blob) {
-            const resizedFile = new File([blob], file.name, {
-              type: 'image/jpeg',
+            const resizedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), {
+              type: 'image/webp',
               lastModified: Date.now()
             })
             resolve(resizedFile)
           } else {
             resolve(file)
           }
-        }, 'image/jpeg', quality)
+        }, 'image/webp', quality)
       }
       
-      img.src = URL.createObjectURL(file)
+      img.onerror = () => {
+        URL.revokeObjectURL(url)
+        reject(new Error('Error al cargar imagen'))
+      }
+      
+      img.src = url
     })
   }
 
@@ -1313,26 +1326,105 @@ function ChatPageContent() {
   // Funciones para manejo de imágenes
   const compressImage = async (file: File): Promise<File> => {
     try {
-      // Importación dinámica solo en el cliente
-      const imageCompression = (await import('browser-image-compression')).default
-      
-      const options = {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-        fileType: 'image/jpeg' as const,
-        quality: 0.8,
-        initialQuality: 0.8,
-        alwaysKeepResolution: false
-      }
-      
-      const compressedFile = await imageCompression(file, options)
-      console.log('✅ [ChatPage] Imagen comprimida:', {
-        originalSize: file.size,
-        compressedSize: compressedFile.size,
-        reduction: Math.round((1 - compressedFile.size / file.size) * 100) + '%'
+      // Convertir a WebP usando canvas
+      return new Promise((resolve, reject) => {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('Canvas no disponible'))
+          return
+        }
+        
+        const img = new Image()
+        const url = URL.createObjectURL(file)
+        
+        img.onload = () => {
+          try {
+            let width = img.width
+            let height = img.height
+            const maxWidth = 1920
+            const maxHeight = 1920
+            const maxSizeMB = 1
+            
+            // Redimensionar si es necesario manteniendo la proporción
+            if (width > maxWidth || height > maxHeight) {
+              if (width > height) {
+                height = (height / width) * maxWidth
+                width = maxWidth
+              } else {
+                width = (width / height) * maxHeight
+                height = maxHeight
+              }
+            }
+            
+            canvas.width = width
+            canvas.height = height
+            ctx.clearRect(0, 0, width, height)
+            ctx.drawImage(img, 0, 0, width, height)
+            
+            // Función para comprimir con calidad específica
+            const compressWithQuality = (quality: number): Promise<File> => {
+              return new Promise((resolveQuality, rejectQuality) => {
+                canvas.toBlob((blob) => {
+                  if (!blob) {
+                    rejectQuality(new Error('No se pudo convertir a WebP'))
+                    return
+                  }
+                  
+                  const webp = new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' })
+                  resolveQuality(webp)
+                }, 'image/webp', quality)
+              })
+            }
+            
+            // Intentar con calidad 0.82 primero
+            compressWithQuality(0.82)
+              .then((webp) => {
+                URL.revokeObjectURL(url)
+                console.log('✅ [ChatPage] Imagen comprimida:', {
+                  originalSize: file.size,
+                  compressedSize: webp.size,
+                  reduction: Math.round((1 - webp.size / file.size) * 100) + '%',
+                  format: 'WebP'
+                })
+                // Si el archivo es menor a 1MB, usar este
+                if (webp.size <= maxSizeMB * 1024 * 1024) {
+                  resolve(webp)
+                } else {
+                  // Si es muy grande, intentar con menor calidad
+                  compressWithQuality(0.7)
+                    .then((smallerWebp) => {
+                      if (smallerWebp.size <= maxSizeMB * 1024 * 1024) {
+                        resolve(smallerWebp)
+                      } else {
+                        // Si aún es grande, intentar con calidad 0.6
+                        compressWithQuality(0.6)
+                          .then((evenSmallerWebp) => {
+                            resolve(evenSmallerWebp)
+                          })
+                          .catch(() => resolve(smallerWebp))
+                      }
+                    })
+                    .catch(() => resolve(webp))
+                }
+              })
+              .catch((err) => {
+                URL.revokeObjectURL(url)
+                reject(err)
+              })
+          } catch (err) {
+            URL.revokeObjectURL(url)
+            reject(err)
+          }
+        }
+        
+        img.onerror = () => {
+          URL.revokeObjectURL(url)
+          reject(new Error('Error al cargar imagen'))
+        }
+        
+        img.src = url
       })
-      return compressedFile
     } catch (error) {
       console.error('❌ [ChatPage] Error comprimiendo imagen:', error)
       return file // Retornar archivo original si falla la compresión
