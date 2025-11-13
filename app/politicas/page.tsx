@@ -118,7 +118,6 @@ export default function PoliticasPage() {
                     <li>Facilitar la publicación de productos</li>
                     <li>Conectar usuarios para intercambios</li>
                     <li>Proporcionar funcionalidades de chat</li>
-                    <li>Gestionar transacciones y pagos</li>
                   </ul>
                 </div>
                 
@@ -181,7 +180,6 @@ export default function PoliticasPage() {
                   <ul className="list-disc list-inside space-y-1 ml-4">
                     <li>Hosting y almacenamiento en la nube</li>
                     <li>Análisis y métricas de uso</li>
-                    <li>Procesamiento de pagos</li>
                     <li>Servicios de email y notificaciones</li>
                     <li>Soporte técnico y atención al cliente</li>
                   </ul>
@@ -417,18 +415,9 @@ export default function PoliticasPage() {
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Oficial de Protección de Datos:</h4>
                   <ul className="list-none space-y-2 ml-4">
-                    <li>📧 Email: privacidad@ecoswap.co</li>
-                    <li>📱 Teléfono: +57 6 123 4567</li>
+                    <li>📧 Email: ecoswap03@gmail.com</li>
+                    <li>📱 Teléfono: 3239163129</li>
                     <li>📍 Dirección: Pereira, Risaralda, Colombia</li>
-                  </ul>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Otros Contactos:</h4>
-                  <ul className="list-none space-y-2 ml-4">
-                    <li>📧 Soporte general: soporte@ecoswap.co</li>
-                    <li>📧 Asuntos legales: legal@ecoswap.co</li>
-                    <li>🌐 Sitio web: https://ecoswap.co</li>
                   </ul>
                 </div>
                 

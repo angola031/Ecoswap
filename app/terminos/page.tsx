@@ -252,8 +252,8 @@ export default function TerminosPage() {
               <div className="space-y-3 text-gray-700">
                 <p>Si tienes preguntas sobre estos términos, contáctanos:</p>
                 <ul className="list-none space-y-2 ml-4">
-                  <li>📧 Email: legal@ecoswap.co</li>
-                  <li>📱 Teléfono: +57 6 123 4567</li>
+                  <li>📧 Email: ecoswap03@gmail.com</li>
+                  <li>📱 Teléfono: 3239163129</li>
                   <li>📍 Dirección: Pereira, Risaralda, Colombia</li>
                   <li>🌐 Sitio web: https://ecoswap.co</li>
                 </ul>

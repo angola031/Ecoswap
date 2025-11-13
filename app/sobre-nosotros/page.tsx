@@ -48,7 +48,7 @@ export default function SobreNosotrosPage() {
               </h2>
               <div className="space-y-4 text-gray-600">
                 <p>
-                  EcoSwap nació en 2024 de la visión de tres estudiantes universitarios de Pereira, 
+                  EcoSwap nació en 2025 de la visión de tres estudiantes universitarios de Pereira, 
                   Colombia, quienes identificaron la necesidad de promover la economía circular 
                   en nuestro país.
                 </p>
@@ -150,7 +150,7 @@ export default function SobreNosotrosPage() {
                   </div>
                   <div className="flex items-center space-x-3">
                     <CalendarIcon className="w-6 h-6" />
-                    <span className="text-lg">Fundada en 2024</span>
+                    <span className="text-lg">Fundada en 2025</span>
                   </div>
                 </div>
                 <p className="mt-6 text-lg opacity-90">
@@ -187,17 +187,17 @@ export default function SobreNosotrosPage() {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
-                name: "Fundador 1",
+                name: "Carlos Andres Angola Berrio",
                 role: "CEO & Co-fundador",
                 description: "Especialista en tecnología y desarrollo de productos."
               },
               {
-                name: "Fundador 2", 
+                name: "Santiago Ayala Ruiz", 
                 role: "CTO & Co-fundador",
                 description: "Experto en arquitectura de software y sistemas escalables."
               },
               {
-                name: "Fundador 3",
+                name: "Oscar Julián González Sánchez",
                 role: "COO & Co-fundador", 
                 description: "Especialista en operaciones y experiencia de usuario."
               }
@@ -257,6 +257,9 @@ export default function SobreNosotrosPage() {
     </div>
   )
 }
+
+
+
 
 
 

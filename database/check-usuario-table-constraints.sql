@@ -62,3 +62,6 @@ AND contype = 'n'; -- 'n' = NOT NULL constraint
 
 
 
+
+
+
