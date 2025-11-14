@@ -139,6 +139,8 @@ export default function HomePage() {
             // Cambiar al módulo solicitado
             console.log(`✅ [navigateToModule] Cambiando a módulo: ${module}`)
             setCurrentModule(module)
+            // Guardar módulo actual en localStorage para persistir después de recargar
+            localStorage.setItem('ecoswap_current_module', module)
             console.log(`✅ Navegando a módulo: ${module}`)
         } catch (error) {
             console.error('❌ [navigateToModule] Error navegando a módulo:', error)
@@ -435,10 +437,16 @@ export default function HomePage() {
                     setCurrentScreen('main')
                     console.log('✅ Estado configurado: isAuthenticated=true, currentUser=', user.name)
                     
-                    // Leer query ?m= para abrir módulo específico
+                    // Restaurar módulo desde localStorage o leer query ?m= o usar por defecto
+                    const savedModule = localStorage.getItem('ecoswap_current_module')
                     const params = new URLSearchParams(window.location.search)
                     const m = params.get('m')
-                    setCurrentModule(m || 'products')
+                    const moduleToSet = m || savedModule || 'products'
+                    setCurrentModule(moduleToSet)
+                    // Guardar en localStorage si viene del query param
+                    if (m) {
+                        localStorage.setItem('ecoswap_current_module', m)
+                    }
                 } else {
                     console.log('❌ No se encontró usuario, configurando estado no autenticado')
                     
@@ -454,8 +462,13 @@ export default function HomePage() {
                     } else {
                         // Mostrar productos por defecto
                         setCurrentScreen('main')
+                        const savedModule = localStorage.getItem('ecoswap_current_module')
                         const m = params.get('m')
-                        setCurrentModule(m || 'products')
+                        const moduleToSet = m || savedModule || 'products'
+                        setCurrentModule(moduleToSet)
+                        if (m) {
+                            localStorage.setItem('ecoswap_current_module', m)
+                        }
                         setIsAuthenticated(false)
                         console.log('🏠 Mostrando pantalla principal sin autenticación')
                     }
@@ -464,7 +477,8 @@ export default function HomePage() {
                 console.error('Error verificando autenticación:', error)
                 setIsAuthenticated(false)
                 setCurrentScreen('main')
-                setCurrentModule('products')
+                const savedModule = localStorage.getItem('ecoswap_current_module')
+                setCurrentModule(savedModule || 'products')
             } finally {
                 setIsLoading(false)
             }
@@ -834,7 +848,10 @@ export default function HomePage() {
                             </Link>
 
                             <button
-                                onClick={() => setCurrentModule('chat')}
+                                onClick={() => {
+                                  setCurrentModule('chat')
+                                  localStorage.setItem('ecoswap_current_module', 'chat')
+                                }}
                                 className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'chat' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                                     }`}
                             >

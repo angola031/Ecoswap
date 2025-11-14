@@ -636,6 +636,9 @@ const renderProductInfo = (product: any, label: string) => {
   )
 }
 
+// Avatar por defecto (icono verde de usuario)
+const DEFAULT_AVATAR = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'
+
 // Función para normalizar avatares: convierte valores no válidos en undefined
 // para que el UI muestre el icono verde por defecto
 const normalizeAvatar = (avatar: string | null | undefined): string | undefined => {
@@ -1701,8 +1704,21 @@ const getCurrentUserId = () => {
         
         if (isMounted) {
         setConversations(list)
-          if (list.length > 0 && !selectedConversation) {
-            setSelectedConversation(list[0])
+          if (list.length > 0) {
+            // Intentar restaurar conversación seleccionada desde localStorage
+            const savedChatId = localStorage.getItem('ecoswap_selected_chat_id')
+            if (savedChatId) {
+              const savedConversation = list.find(c => c.id === savedChatId)
+              if (savedConversation) {
+                setSelectedConversation(savedConversation)
+              } else if (!selectedConversation) {
+                // Si la conversación guardada no existe, usar la primera
+                setSelectedConversation(list[0])
+              }
+            } else if (!selectedConversation) {
+              // Si no hay conversación guardada, usar la primera
+              setSelectedConversation(list[0])
+            }
           }
         }
       } catch (error) {
@@ -3959,7 +3975,11 @@ const getCurrentUserId = () => {
                 key={conversation.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                onClick={() => setSelectedConversation(conversation)}
+                onClick={() => {
+                  setSelectedConversation(conversation)
+                  // Guardar conversación seleccionada en localStorage
+                  localStorage.setItem('ecoswap_selected_chat_id', conversation.id)
+                }}
                 className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${selectedConversation?.id === conversation.id ? 'bg-primary-50 dark:bg-primary-900/20 border-r-2 border-primary-500 dark:border-primary-400' : ''}`}
               >
                 <div className="flex items-center space-x-3">
@@ -4682,26 +4702,37 @@ const getCurrentUserId = () => {
                       className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
                       <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                        <img
-                          src={message.sender?.avatar || selectedConversation.user.avatar || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'}
-                          alt={`${message.sender?.name || selectedConversation.user.name} ${message.sender?.lastName || ''}`}
-                          className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700"
-                          onError={(e) => {
-                            console.log('❌ [ChatModule] Error cargando imagen:', {
-                              src: e.currentTarget.src,
-                              messageId: message.id,
-                              senderId: message.senderId,
-                              avatar: message.sender?.avatar
-                            })
-                            e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'
-                          }}
-                          onLoad={() => {
-                            console.log('✅ [ChatModule] Imagen cargada exitosamente:', {
-                              src: message.sender?.avatar || selectedConversation.user.avatar,
-                              messageId: message.id
-                            })
-                          }}
-                        />
+                        {(() => {
+                          // Si es mensaje propio, usar el avatar del usuario actual
+                          // Si es mensaje del otro, usar el avatar del sender o del usuario de la conversación
+                          let avatarSrc: string | undefined
+                          
+                          if (isOwnMessage) {
+                            // Mensaje propio: usar avatar del usuario actual
+                            avatarSrc = normalizeAvatar(currentUser?.avatar) || DEFAULT_AVATAR
+                          } else {
+                            // Mensaje del otro: usar avatar del sender o del usuario de la conversación
+                            const senderAvatar = normalizeAvatar(message.sender?.avatar)
+                            const conversationUserAvatar = normalizeAvatar(selectedConversation.user.avatar)
+                            avatarSrc = senderAvatar || conversationUserAvatar || DEFAULT_AVATAR
+                          }
+                          
+                          const displayName = isOwnMessage 
+                            ? `${currentUser?.name || 'Usuario'} ${currentUser?.lastName || ''}`.trim()
+                            : `${message.sender?.name || selectedConversation.user.name} ${message.sender?.lastName || ''}`.trim()
+                          
+                          return (
+                            <img
+                              src={avatarSrc}
+                              alt={displayName}
+                              className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+                              onError={(e) => {
+                                // Si falla la carga, usar el avatar por defecto
+                                e.currentTarget.src = DEFAULT_AVATAR
+                              }}
+                            />
+                          )
+                        })()}
                         <div className={`px-4 py-2 rounded-2xl ${isOwnMessage 
                           ? 'bg-green-600 text-white' 
                           : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
