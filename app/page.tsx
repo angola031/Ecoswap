@@ -40,10 +40,18 @@ import { useNotifications } from '@/hooks/useNotifications'
 export default function HomePage() {
     const searchParams = useSearchParams()
     const [currentScreen, setCurrentScreen] = useState<'auth' | 'main'>('main')
-    const [currentModule, setCurrentModule] = useState<string>('products')
+    // Inicializar currentModule desde localStorage si está disponible
+    const [currentModule, setCurrentModule] = useState<string>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('ecoswap_current_module')
+            return saved || 'products'
+        }
+        return 'products'
+    })
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [currentUser, setCurrentUser] = useState<any>(null)
-    const [isLoading, setIsLoading] = useState(false)
+    // Inicializar isLoading como true para evitar mostrar login mientras se verifica la sesión
+    const [isLoading, setIsLoading] = useState(true)
     const [timeoutMessage, setTimeoutMessage] = useState<string>('')
     
     // Hook para notificaciones
@@ -142,6 +150,7 @@ export default function HomePage() {
             // Guardar módulo actual en localStorage para persistir después de recargar
             localStorage.setItem('ecoswap_current_module', module)
             console.log(`✅ Navegando a módulo: ${module}`)
+            console.log(`💾 [navigateToModule] Módulo guardado en localStorage: ${module}`)
         } catch (error) {
             console.error('❌ [navigateToModule] Error navegando a módulo:', error)
             console.error('❌ [navigateToModule] Stack trace:', error.stack)
@@ -157,6 +166,7 @@ export default function HomePage() {
             setIsAuthenticated(false)
             setCurrentUser(null)
             setCurrentModule('products') // Resetear a módulo por defecto
+            localStorage.setItem('ecoswap_current_module', 'products') // Limpiar módulo protegido
             setCurrentScreen('main')
             setTimeoutMessage('Tu sesión ha expirado por inactividad. Por favor, inicia sesión nuevamente.')
             // El hook ya maneja el logout automáticamente
@@ -438,14 +448,55 @@ export default function HomePage() {
                     console.log('✅ Estado configurado: isAuthenticated=true, currentUser=', user.name)
                     
                     // Restaurar módulo desde localStorage o leer query ?m= o usar por defecto
+                    // Como hay sesión activa, podemos restaurar cualquier módulo (protegido o no)
                     const savedModule = localStorage.getItem('ecoswap_current_module')
                     const params = new URLSearchParams(window.location.search)
                     const m = params.get('m')
-                    const moduleToSet = m || savedModule || 'products'
-                    setCurrentModule(moduleToSet)
-                    // Guardar en localStorage si viene del query param
-                    if (m) {
-                        localStorage.setItem('ecoswap_current_module', m)
+                    
+                    console.log('🔄 [Restauración] Módulo guardado en localStorage:', savedModule)
+                    console.log('🔄 [Restauración] Query param m:', m)
+                    console.log('🔄 [Restauración] Módulo actual en estado:', currentModule)
+                    
+                    // Si el módulo actual en estado es diferente de 'products', significa que se inicializó correctamente desde localStorage
+                    // En ese caso, mantenerlo y no sobrescribirlo con el query param (a menos que sea explícito)
+                    let moduleToSet = currentModule
+                    
+                    // Si el módulo actual es 'products' (valor por defecto) y hay un módulo guardado, usar el guardado
+                    if (currentModule === 'products' && savedModule && savedModule !== 'products') {
+                        moduleToSet = savedModule
+                        console.log('📦 [Restauración] Usando módulo guardado (no products):', savedModule)
+                    }
+                    // Si hay query param y es diferente de 'products', usarlo (navegación explícita)
+                    else if (m && m !== 'products') {
+                        moduleToSet = m
+                        console.log('🔗 [Restauración] Usando query param explícito:', m)
+                    }
+                    // Si el módulo actual ya es diferente de 'products', mantenerlo
+                    else if (currentModule !== 'products') {
+                        moduleToSet = currentModule
+                        console.log('✅ [Restauración] Manteniendo módulo actual:', currentModule)
+                    }
+                    // Si no hay nada, usar 'products' por defecto
+                    else {
+                        moduleToSet = 'products'
+                        console.log('🏠 [Restauración] Usando módulo por defecto: products')
+                    }
+                    
+                    console.log('✅ [Restauración] Módulo final a establecer:', moduleToSet)
+                    
+                    // Solo actualizar si es diferente al actual para evitar re-renders innecesarios
+                    if (moduleToSet !== currentModule) {
+                        setCurrentModule(moduleToSet)
+                    }
+                    
+                    // Guardar en localStorage el módulo final (excepto si es 'products' y no había nada guardado)
+                    if (moduleToSet && moduleToSet !== 'products') {
+                        localStorage.setItem('ecoswap_current_module', moduleToSet)
+                        console.log('💾 [Restauración] Módulo guardado en localStorage:', moduleToSet)
+                    } else if (moduleToSet === 'products' && savedModule && savedModule !== 'products') {
+                        // Si el módulo guardado no es 'products' pero estamos estableciendo 'products', 
+                        // mantener el guardado (no sobrescribir)
+                        console.log('⚠️ [Restauración] No sobrescribiendo módulo guardado:', savedModule)
                     }
                 } else {
                     console.log('❌ No se encontró usuario, configurando estado no autenticado')
@@ -464,10 +515,17 @@ export default function HomePage() {
                         setCurrentScreen('main')
                         const savedModule = localStorage.getItem('ecoswap_current_module')
                         const m = params.get('m')
-                        const moduleToSet = m || savedModule || 'products'
+                        
+                        // Si no hay sesión, no restaurar módulos protegidos
+                        const protectedModules = ['interactions', 'chat', 'profile', 'notifications']
+                        const isSavedModuleProtected = savedModule && protectedModules.includes(savedModule)
+                        
+                        // Solo usar módulo guardado si no es protegido (ya que no hay sesión)
+                        let moduleToSet = m || (!isSavedModuleProtected ? savedModule : null) || 'products'
+                        
                         setCurrentModule(moduleToSet)
-                        if (m) {
-                            localStorage.setItem('ecoswap_current_module', m)
+                        if (m || (moduleToSet && !isSavedModuleProtected)) {
+                            localStorage.setItem('ecoswap_current_module', moduleToSet)
                         }
                         setIsAuthenticated(false)
                         console.log('🏠 Mostrando pantalla principal sin autenticación')
@@ -478,7 +536,13 @@ export default function HomePage() {
                 setIsAuthenticated(false)
                 setCurrentScreen('main')
                 const savedModule = localStorage.getItem('ecoswap_current_module')
-                setCurrentModule(savedModule || 'products')
+                
+                // Si hay error, no restaurar módulos protegidos (no hay sesión confirmada)
+                const protectedModules = ['interactions', 'chat', 'profile', 'notifications']
+                const isSavedModuleProtected = savedModule && protectedModules.includes(savedModule)
+                
+                const moduleToSet = !isSavedModuleProtected ? (savedModule || 'products') : 'products'
+                setCurrentModule(moduleToSet)
             } finally {
                 setIsLoading(false)
             }
@@ -510,6 +574,7 @@ export default function HomePage() {
         setIsAuthenticated(false)
         setCurrentScreen('main')
         setCurrentModule('products') // Volver a productos después del logout
+        localStorage.setItem('ecoswap_current_module', 'products')
     }
 
     // Componente de carga para lazy loading
@@ -526,24 +591,36 @@ export default function HomePage() {
             case 'products':
                 return <ProductsModule currentUser={currentUser} />
             case 'interactions':
+                if (isLoading) {
+                    return <LoadingFallback />
+                }
                 return isAuthenticated ? (
                     <Suspense fallback={<LoadingFallback />}>
                         <InteractionsModule currentUser={currentUser} />
                     </Suspense>
                 ) : <AuthModule onLogin={handleLogin} />
             case 'proposals':
+                if (isLoading) {
+                    return <LoadingFallback />
+                }
                 return isAuthenticated ? (
                     <Suspense fallback={<LoadingFallback />}>
                         <ProposalsModule currentUser={currentUser} />
                     </Suspense>
                 ) : <AuthModule onLogin={handleLogin} />
             case 'chat':
+                if (isLoading) {
+                    return <LoadingFallback />
+                }
                 return isAuthenticated ? (
                     <Suspense fallback={<LoadingFallback />}>
                         <ChatModule currentUser={currentUser} />
                     </Suspense>
                 ) : <AuthModule onLogin={handleLogin} />
             case 'profile':
+                if (isLoading) {
+                    return <LoadingFallback />
+                }
                 return isAuthenticated ? (
                     <Suspense fallback={<LoadingFallback />}>
                         <ProfileModule currentUser={currentUser} />
@@ -557,6 +634,18 @@ export default function HomePage() {
     // Si no está autenticado y quiere acceder a módulos que requieren login
     if (currentScreen === 'auth') {
         return <AuthModule onLogin={handleLogin} />
+    }
+
+    // Mostrar loading mientras se verifica la sesión para evitar mostrar login temporalmente
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-dark flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600 dark:text-gray-400">Cargando...</p>
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -811,7 +900,10 @@ export default function HomePage() {
             <div className="md:hidden fixed bottom-0 left-0 right-0 w-screen overflow-hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 pb-[env(safe-area-inset-bottom)] z-50 transition-colors">
                 <div className="flex justify-around">
                     <button
-                        onClick={() => setCurrentModule('home')}
+                        onClick={() => {
+                          setCurrentModule('home')
+                          localStorage.setItem('ecoswap_current_module', 'home')
+                        }}
                         className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'home' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                             }`}
                     >
@@ -820,7 +912,10 @@ export default function HomePage() {
                     </button>
 
                     <button
-                        onClick={() => setCurrentModule('products')}
+                        onClick={() => {
+                          setCurrentModule('products')
+                          localStorage.setItem('ecoswap_current_module', 'products')
+                        }}
                         className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'products' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                             }`}
                     >
@@ -831,7 +926,10 @@ export default function HomePage() {
                     {isAuthenticated ? (
                         <>
                             <button
-                                onClick={() => setCurrentModule('interactions')}
+                                onClick={() => {
+                                  setCurrentModule('interactions')
+                                  localStorage.setItem('ecoswap_current_module', 'interactions')
+                                }}
                                 className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'interactions' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                                     }`}
                             >
