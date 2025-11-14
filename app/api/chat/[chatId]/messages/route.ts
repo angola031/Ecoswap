@@ -131,7 +131,10 @@ export async function GET(req: NextRequest, { params }: { params: { chatId: stri
         }))
         
         
-        return NextResponse.json({ items: transformedMessages })
+        return NextResponse.json({ 
+          items: transformedMessages,
+          currentUserId: u.user_id // Incluir el user_id del usuario actual
+        })
     } catch (e: any) {
         return NextResponse.json({ error: e?.message || 'Server error' }, { status: 500 })
     }

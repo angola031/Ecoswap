@@ -712,6 +712,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
     }
   }
   const [conversations, setConversations] = useState<ChatConversation[]>([])
+  const [currentUserIdNumeric, setCurrentUserIdNumeric] = useState<string | null>(null)
   const [selectedConversation, setSelectedConversation] = useState<ChatConversation | null>(null)
   const [newMessage, setNewMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -1603,6 +1604,63 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
 const getCurrentUserId = () => {
   return String(currentUser?.id || '')
 }
+
+  // Obtener el usuario_id numérico del usuario actual
+  useEffect(() => {
+    const loadNumericUserId = async () => {
+      if (!currentUser?.id) return
+      
+      try {
+        const session = await getSession()
+        const token = session?.access_token
+        if (!token) return
+        
+        const supabase = getSupabaseClient()
+        if (!supabase) return
+        
+        // Intentar primero con auth_user_id
+        let { data, error } = await supabase
+          .from('usuario')
+          .select('user_id, usuario_id')
+          .eq('auth_user_id', currentUser.id)
+          .single()
+        
+        // Si falla con auth_user_id, intentar con email como fallback
+        if (error && currentUser?.email) {
+          const { data: emailData, error: emailError } = await supabase
+            .from('usuario')
+            .select('user_id, usuario_id')
+            .eq('email', currentUser.email)
+            .single()
+          
+          if (!emailError && emailData) {
+            data = emailData
+            error = null
+          }
+        }
+        
+        if (error) {
+          console.error('❌ [ChatModule] Error obteniendo user_id numérico:', error)
+          console.error('❌ [ChatModule] Detalles del error:', { code: error.code, message: error.message, details: error.details })
+          return
+        }
+        
+        // Intentar con user_id primero, luego usuario_id como fallback
+        const numericId = data?.user_id || data?.usuario_id
+        if (numericId) {
+          setCurrentUserIdNumeric(String(numericId))
+          console.log('✅ [ChatModule] user_id numérico obtenido:', numericId)
+        } else {
+          console.warn('⚠️ [ChatModule] No se encontró user_id ni usuario_id en la respuesta:', data)
+        }
+      } catch (error) {
+        console.error('❌ [ChatModule] Error inesperado obteniendo usuario_id:', error)
+      }
+    }
+    
+    loadNumericUserId()
+  }, [currentUser?.id, currentUser?.email])
+
   useEffect(() => {
     let isMounted = true
     
@@ -1708,6 +1766,11 @@ const getCurrentUserId = () => {
         
         const json = await res.json()
         if (!res.ok) throw new Error(json?.error || 'Error cargando mensajes')
+        
+        // Actualizar currentUserIdNumeric desde la respuesta de la API
+        if (json.currentUserId) {
+          setCurrentUserIdNumeric(String(json.currentUserId))
+        }
         
         const messages: ChatMessage[] = (json.items || [])
           .filter((m: any) => {
@@ -2202,10 +2265,11 @@ const getCurrentUserId = () => {
         if (!m) return
 
         const messageId = String(m.mensaje_id)
-        const currentUserId = getCurrentUserId()
+        // Usar currentUserIdNumeric en lugar de getCurrentUserId (UUID)
+        const currentUserId = currentUserIdNumeric
         
-        // No procesar nuestros propios mensajes
-        if (String(m.usuario_id) === currentUserId) {
+        // No procesar nuestros propios mensajes (comparar con ID numérico)
+        if (currentUserId && String(m.usuario_id) === currentUserId) {
           return
         }
 
@@ -2315,6 +2379,12 @@ const getCurrentUserId = () => {
 
         if (response.ok) {
           const data = await response.json()
+          
+          // Actualizar currentUserIdNumeric desde la respuesta de la API
+          if (data.currentUserId) {
+            setCurrentUserIdNumeric(String(data.currentUserId))
+          }
+          
           const newMessages = data.items || []
           
           if (newMessages.length > 0) {
@@ -2322,10 +2392,11 @@ const getCurrentUserId = () => {
             const transformedMessages = newMessages
               .filter((m: any) => {
                 const messageId = Number(m.mensaje_id)
-                const currentUserId = getCurrentUserId()
+                // Usar currentUserIdNumeric en lugar de getCurrentUserId (UUID)
+                const currentUserId = currentUserIdNumeric
                 
-                // No procesar nuestros propios mensajes
-                if (String(m.usuario_id) === currentUserId) {
+                // No procesar nuestros propios mensajes (comparar con ID numérico)
+                if (currentUserId && String(m.usuario_id) === currentUserId) {
                   return false
                 }
                 
@@ -2436,7 +2507,8 @@ const getCurrentUserId = () => {
     
     const messageContent = newMessage.trim()
     const tempId = `temp-${Date.now()}-${Math.random()}`
-    const currentUserId = getCurrentUserId()
+    // Usar el ID numérico para que coincida con los mensajes de la BD
+    const currentUserId = currentUserIdNumeric || getCurrentUserId()
     
     const now = new Date()
     const optimisticMessage: ChatMessage = {
@@ -3004,8 +3076,12 @@ const getCurrentUserId = () => {
   }
 
   const isOwnMessage = (message: ChatMessage) => {
-    const currentUserId = getCurrentUserId()
-    return message.senderId === currentUserId
+    // Usar el ID numérico para comparar con senderId (que es numérico en la BD)
+    const userIdToCompare = currentUserIdNumeric
+    return userIdToCompare && 
+      userIdToCompare !== '' && 
+      userIdToCompare !== null &&
+      String(message.senderId) === String(userIdToCompare)
   }
 
   const handleInputChange = (value: string) => {
@@ -3578,7 +3654,8 @@ const getCurrentUserId = () => {
     if (!imagePreview.file || !selectedConversation || !currentUser) return
 
     const tempId = `temp-image-${Date.now()}-${Math.random()}`
-    const currentUserId = getCurrentUserId()
+    // Usar el ID numérico para que coincida con los mensajes de la BD
+    const currentUserId = currentUserIdNumeric || getCurrentUserId()
     
     // Crear mensaje temporal optimista
     const optimisticMessage: ChatMessage = {
@@ -4554,30 +4631,43 @@ const getCurrentUserId = () => {
                 </div>
               ) : (
                 selectedConversation.messages.map((message) => {
-                  const isOwnMsg = isOwnMessage(message)
-                  const isSystemMsg = message.senderId === 'system'
+                  // Usar el usuario_id numérico para comparar con senderId (que es numérico en la BD)
+                  // Los mensajes de la BD usan usuario_id (numérico), no UUID
+                  const userIdToCompare = currentUserIdNumeric
                   
-                  // Renderizar mensaje del sistema de manera especial
-                  if (isSystemMsg) {
+                  // Debug temporal para identificar el problema
+                  if (!userIdToCompare) {
+                    console.warn('⚠️ [ChatModule] currentUserIdNumeric es null/undefined. senderId:', message.senderId)
+                  }
+                  
+                  const isOwnMessage = userIdToCompare && 
+                    userIdToCompare !== '' && 
+                    userIdToCompare !== null &&
+                    String(message.senderId) === String(userIdToCompare)
+                  const isSystemMessage = message.senderId === 'system'
+                  
+                  // Renderizar mensaje del sistema como mensaje normal pero con estilo especial
+                  if (isSystemMessage) {
                     return (
                       <motion.div
                         key={message.id}
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex justify-center mb-4"
+                        className="flex justify-start my-2"
                       >
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 max-w-md">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-6 h-6 rounded-full border border-gray-200 bg-blue-100 flex items-center justify-center">
-                              <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V9H21ZM3 9H9V6.5L3 7V9ZM12 7.5C13.66 7.5 15 8.84 15 10.5V12H9V10.5C9 8.84 10.34 7.5 12 7.5ZM7.5 13.5C7.5 12.67 8.17 12 9 12H15C15.83 12 16.5 12.67 16.5 13.5V16H7.5V13.5ZM18 10.5C18.83 10.5 19.5 11.17 19.5 12V15H21V17H19.5V20H17.5V17H6.5V20H4.5V17H3V15H4.5V12C4.5 11.17 5.17 10.5 6 10.5H18Z"/>
-                              </svg>
+                        <div className="flex items-end space-x-2 max-w-xs lg:max-w-md">
+                          <div className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V9H21ZM3 9H9V6.5L3 7V9ZM12 7.5C13.66 7.5 15 8.84 15 10.5V12H9V10.5C9 8.84 10.34 7.5 12 7.5ZM7.5 13.5C7.5 12.67 8.17 12 9 12H15C15.83 12 16.5 12.67 16.5 13.5V16H7.5V13.5ZM18 10.5C18.83 10.5 19.5 11.17 19.5 12V15H21V17H19.5V20H17.5V17H6.5V20H4.5V17H3V15H4.5V12C4.5 11.17 5.17 10.5 6 10.5H18Z"/>
+                            </svg>
+                          </div>
+                          <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-gray-900 dark:text-white px-4 py-2 rounded-2xl transition-colors">
+                            <div className="flex items-center space-x-1 mb-1">
+                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">🔔</span>
+                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Sistema</span>
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-blue-800">Sistema</p>
-                              <p className="text-sm text-blue-700">{message.content}</p>
-                              <p className="text-xs text-blue-600 mt-1">{message.timestamp}</p>
-                            </div>
+                            <p className="text-sm">{message.content}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{message.timestamp}</p>
                           </div>
                         </div>
                       </motion.div>
@@ -4585,152 +4675,80 @@ const getCurrentUserId = () => {
                   }
                   
                   return (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`flex ${isOwnMsg ? 'justify-end' : 'justify-start'} mb-4`}
-                >
-                                    <div className={`flex items-end space-x-2 max-w-md ${isOwnMessage(message) ? 'flex-row-reverse space-x-reverse ml-auto' : ''}`}>                      
-                    {!isOwnMessage(message) && (
-                      <Avatar
-                        src={normalizeAvatar(message.sender?.avatar || selectedConversation.user.avatar)}                                                                        
-                        alt={message.sender?.name || selectedConversation.user.name}                                                                            
-                        size="sm"
-                        className="border border-gray-200 flex-shrink-0"        
-                      />
-                    )}
-
-                                        <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isOwnMessage(message)                                                      
-                      ? 'bg-green-500 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'      
-                      }`}>
-                      {message.replyToId && (
-                        <div className={`text-xs mb-2 px-3 py-1.5 rounded-lg ${isOwnMessage(message) ? 'bg-green-600/40' : 'bg-gray-200 dark:bg-gray-600'}`}>
-                          <span className="opacity-80">Respuesta a:</span>
-                          <span className="ml-1 font-medium">
-                            {findMessageById(message.replyToId)?.content?.slice(0, 60) || 'mensaje'}
-                          </span>
-                        </div>
-                      )}
-                      {message.type === 'text' && (
-                        <p className="text-sm leading-relaxed">{message.content}</p>
-                      )}
-
-                      {message.type === 'image' && message.metadata?.imageUrl && (
-                        <div className="space-y-2">
-                          {/* Comentario si existe */}
-                          {message.content && message.content.trim() && message.content !== 'Subiendo imagen...' && (
-                            <p className="text-sm leading-relaxed">{message.content}</p>
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                        <img
+                          src={message.sender?.avatar || selectedConversation.user.avatar || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'}
+                          alt={`${message.sender?.name || selectedConversation.user.name} ${message.sender?.lastName || ''}`}
+                          className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+                          onError={(e) => {
+                            console.log('❌ [ChatModule] Error cargando imagen:', {
+                              src: e.currentTarget.src,
+                              messageId: message.id,
+                              senderId: message.senderId,
+                              avatar: message.sender?.avatar
+                            })
+                            e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'
+                          }}
+                          onLoad={() => {
+                            console.log('✅ [ChatModule] Imagen cargada exitosamente:', {
+                              src: message.sender?.avatar || selectedConversation.user.avatar,
+                              messageId: message.id
+                            })
+                          }}
+                        />
+                        <div className={`px-4 py-2 rounded-2xl ${isOwnMessage 
+                          ? 'bg-green-600 text-white' 
+                          : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
+                        } transition-colors`}>
+                          {/* Contenido del mensaje */}
+                          {((message.type as any) === 'imagen' || message.type === 'image') && message.metadata?.imageUrl ? (
+                            <div className="space-y-2">
+                              {/* Comentario si existe */}
+                              {message.content && message.content.trim() && message.content !== 'Subiendo imagen...' && (
+                                <p className="text-sm">{message.content}</p>
+                              )}
+                              
+                              {/* Imagen pequeña */}
+                              <div className="relative group">
+                                <img
+                                  src={message.metadata.imageUrl}
+                                  alt="Imagen del chat"
+                                  className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200 dark:border-gray-700"
+                                  onClick={() => {
+                                    openImageModal(message.metadata?.imageUrl!, 'Imagen del chat')
+                                  }}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    target.style.display = 'none'
+                                    const fallback = document.createElement('div')
+                                    fallback.className = 'w-32 h-32 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-500'
+                                    fallback.textContent = 'Error al cargar'
+                                    target.parentNode?.insertBefore(fallback, target.nextSibling)
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm">{message.content}</p>
                           )}
                           
-                          {/* Imagen */}
-                          <div className="relative group">
-                        <img
-                          src={message.metadata.imageUrl}
-                              alt="Imagen del chat"
-                              className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200"
-                              onClick={() => {
-                                openImageModal(message.metadata?.imageUrl!, 'Imagen del chat')
-                              }}
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.style.display = 'none'
-                                const fallback = document.createElement('div')
-                                fallback.className = 'w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400'
-                                fallback.innerHTML = `
-                                  <div class="text-center">
-                                    <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <p class="text-xs">Error cargando imagen</p>
-                                  </div>
-                                `
-                                target.parentNode?.insertBefore(fallback, target.nextSibling)
-                              }}
-                            />
-                            {message.content === 'Subiendo imagen...' && (
-                              <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
-                                <div className="text-white text-sm flex items-center space-x-2">
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                  <span>Subiendo...</span>
-                                </div>
-                              </div>
-                            )}
-                            {message.metadata?.fileName && message.content !== 'Subiendo imagen...' && (
-                              <div className="absolute bottom-2 left-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                {message.metadata.fileName}
-                                {message.metadata.fileSize && ` (${message.metadata.fileSize})`}
-                              </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className={`text-xs ${isOwnMessage ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                              {message.timestamp}
+                            </p>
+                            {isOwnMessage && (
+                              <div className={`w-2 h-2 rounded-full ${message.isRead ? 'bg-green-300' : 'bg-gray-400 dark:bg-gray-500'}`}></div>
                             )}
                           </div>
                         </div>
-                      )}
-
-                      {message.type === 'location' && message.metadata?.coordinates && (
-                        <div className="flex items-center space-x-2">
-                          <MapPinIcon className="w-4 h-4" />
-                          <span className="text-sm">Ubicación compartida</span>
-                        </div>
-                      )}
-
-                      {message.type === 'file' && message.metadata?.fileName && (
-                        <div className="flex items-center space-x-2">
-                          <PaperClipIcon className="w-4 h-4" />
-                          <span className="text-sm">{message.metadata.fileName}</span>
-                        </div>
-                      )}
-
-              {/* Fecha integrada dentro del mensaje */}
-                            <div className={`flex items-center justify-between ${isOwnMessage(message) ? '' : ''}`}>                                                          
-                        <div className="flex items-center space-x-1">
-                          <span className={`text-xs ${isOwnMessage(message) ? 'text-green-100' : 'text-gray-500'}`}>                                          
-                        {formatTime(message.timestamp)}
-                      </span>
-                          <span className={`text-xs ${isOwnMessage(message) ? 'text-green-200' : 'text-gray-400'}`}>                                          
-                            • {message.sender?.name || selectedConversation.user.name}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center space-x-1">
-                      {isOwnMessage(message) && (
-                        <div className="flex items-center">
-                          {message.isRead ? (
-                                <CheckIcon className="w-3 h-3 text-primary-200" />
-                          ) : (
-                                <CheckIcon className="w-3 h-3 text-primary-300" />
-                          )}
-                        </div>
-                      )}
-                                            {message.reactions && (
-                            <div className="flex space-x-1">
-                          {Object.entries(message.reactions).map(([emoji, count]) => (                                                                          
-                                <span key={emoji} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${isOwnMessage(message) ? 'border-green-400/40' : 'border-gray-300'}`}>
-                              {emoji} {count}
-                            </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
                       </div>
-
-                      <div className={`absolute -top-3 ${isOwnMessage(message) ? 'right-2' : 'left-2'} opacity-0 group-hover:opacity-100 transition-opacity`}>
-                        <div className="bg-white border border-gray-200 shadow-sm rounded-lg px-1 py-0.5 flex space-x-1">
-                          <button onClick={() => setOpenReactionsFor(message.id)} className="text-xs px-2 py-1 hover:bg-gray-100 rounded">🙂</button>
-                          <button onClick={() => handleReply(message.id)} className="text-xs px-2 py-1 hover:bg-gray-100 rounded">Responder</button>
-                        </div>
-                      </div>
-
-                      {openReactionsFor === message.id && (
-                        <div className={`absolute ${isOwnMessage(message) ? 'right-0' : 'left-0'} -top-12 bg-white border border-gray-200 shadow-lg rounded-lg p-1 flex space-x-1 z-10`}>
-                          {['👍', '❤️', '🎉', '😂', '😮', '😢'].map(e => (
-                            <button key={e} className="px-1 hover:scale-110 transition" onClick={() => handleAddReaction(message.id, e)}>{e}</button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
+                    </motion.div>
                   )
                 })
               )}
