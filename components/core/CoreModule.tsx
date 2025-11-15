@@ -355,9 +355,8 @@ function AboutScreen() {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Contacto</h3>
         <div className="space-y-2 text-gray-600 dark:text-gray-400">
           <p>📍 Pereira, Risaralda, Colombia</p>
-          <p>📧 info@ecoswap.co</p>
-          <p>📱 +57 6 123 4567</p>
-          <p>🌐 https://ecoswap.co</p>
+          <p>📧 ecoswap03@gmail.com</p>
+          <p>📱 3239163129</p>
         </div>
       </div>
     </div>
