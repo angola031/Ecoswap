@@ -27,7 +27,6 @@ import {
 import Avatar from '@/components/ui/Avatar'
 import { 
     InteractionSummary, 
-    UserActivity, 
     SystemEvent
 } from '@/lib/types/interactions'
 
@@ -38,10 +37,9 @@ interface InteractionsModuleProps {
 export default function InteractionsModule({ currentUser }: InteractionsModuleProps) {
     const router = useRouter()
     const [interactions, setInteractions] = useState<InteractionSummary[]>([])
-    const [activities, setActivities] = useState<UserActivity[]>([])
     const [events, setEvents] = useState<SystemEvent[]>([])
     const [isLoading, setIsLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<'interactions' | 'activities' | 'events'>('interactions')
+    const [activeTab, setActiveTab] = useState<'interactions' | 'events'>('interactions')
     const [filterStatus, setFilterStatus] = useState<string>('all')
 
     // Cargar datos reales desde la API
@@ -96,20 +94,6 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                     const errorText = await response.text()
                     console.error('❌ ERROR: Error cargando interacciones:', response.status)
                     console.error('❌ ERROR: Error response:', errorText)
-                }
-
-                // Cargar actividades del usuario
-                const activitiesResponse = await fetch('/api/interactions/activities', {
-                    headers: {
-                        'Authorization': `Bearer ${session.access_token}`
-                    }
-                })
-
-                if (activitiesResponse.ok) {
-                    const activitiesData = await activitiesResponse.json()
-                    if (isMounted) {
-                        setActivities(activitiesData.activities || [])
-                    }
                 }
 
                 // Cargar eventos del sistema
@@ -263,7 +247,7 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Interacciones</h1>
-                    <p className="text-gray-600 dark:text-gray-400 mt-2">Gestiona tus intercambios, compras y actividades</p>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">Gestiona tus intercambios y compras</p>
                 </div>
             </div>
 
@@ -272,14 +256,13 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                 <nav className="flex space-x-8">
                     {[
                         { id: 'interactions', name: 'Interacciones', icon: UserGroupIcon },
-                        { id: 'activities', name: 'Actividad', icon: EyeIcon },
                         { id: 'events', name: 'Eventos', icon: CalendarIcon }
                     ].map((tab) => {
                         const Icon = tab.icon
                         return (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id as 'interactions' | 'activities' | 'events')}
+                                onClick={() => setActiveTab(tab.id as 'interactions' | 'events')}
                                 className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
                                     ? 'border-primary-500 dark:border-primary-400 text-primary-600 dark:text-primary-400'
                                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
@@ -412,24 +395,6 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                                 <EyeIcon className="w-4 h-4 mr-2" />
                                                 Ver Detalles
                                             </button>
-                                            {interaction.status === 'completado' && (
-                                                <button
-                                                    onClick={() => router.push(`/interaccion/${interaction.id}/calificar?user=${interaction.otherUser.id}`)}
-                                                    className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 px-4 py-2 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-900/40 transition-colors flex items-center"
-                                                >
-                                                    <StarIcon className="w-4 h-4 mr-2 text-yellow-500" />
-                                                    Calificar
-                                                </button>
-                                            )}
-                                            {interaction.status === 'pendiente' && (
-                                                <button
-                                                    onClick={() => router.push(`/interaccion/${interaction.id}/aceptar`)}
-                                                    className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-4 py-2 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/40 transition-colors flex items-center"
-                                                >
-                                                    <CheckCircleIcon className="w-4 h-4 mr-2" />
-                                                    Aceptar
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
                                 </motion.div>
@@ -449,14 +414,6 @@ export default function InteractionsModule({ currentUser }: InteractionsModulePr
                                 </p>
                             </div>
                         )}
-                    </div>
-                )}
-
-                {activeTab === 'activities' && (
-                    <div className="text-center py-20">
-                        <EyeIcon className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Actividad</h3>
-                        <p className="text-gray-600 dark:text-gray-400">Próximamente podrás ver tu historial de actividades</p>
                     </div>
                 )}
 
