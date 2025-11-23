@@ -401,7 +401,11 @@ const renderProductInfoCompact = (product: any, label: string, currentUserId?: s
   if (!product) return null
   
   // Determinar si el usuario actual es el propietario del producto
-  const isOwner = currentUserId && product.user_id && currentUserId === product.user_id.toString()
+  // currentUserId ahora es el ID numérico como string
+  const isOwner = currentUserId && product.user_id && (
+    parseInt(currentUserId) === product.user_id ||
+    currentUserId === product.user_id.toString()
+  )
   
   
   return (
@@ -568,11 +572,12 @@ const renderProductInfo = (product: any, label: string, currentUserId?: string) 
               const finalIsDonation = isDonation || hasDonationTag
               
               // Verificar si el usuario actual es el donador del producto
-              const isDonor = currentUserId && product.user_id && 
-                             (currentUserId === product.user_id.toString() ||
-                              currentUserId === product.user_id?.toString() ||
-                              parseInt(currentUserId) === product.user_id ||
-                              parseInt(currentUserId) === parseInt(product.user_id?.toString() || '0'))
+              // currentUserId ahora es el ID numérico como string
+              const isDonor = currentUserId && product.user_id && (
+                parseInt(currentUserId) === product.user_id ||
+                currentUserId === product.user_id.toString() ||
+                parseInt(currentUserId) === parseInt(product.user_id?.toString() || '0')
+              )
               
               console.log('Debug detallado ChatModule:', {
                 tipo_transaccion: product.tipo_transaccion,
@@ -4304,8 +4309,8 @@ const getCurrentUserId = () => {
                   })()}
                 </div>
                 <div className="space-y-2">
-                  {offeredProduct && renderProductInfoCompact(offeredProduct, 'Ofrecido', getCurrentUserId())}
-                  {requestedProduct && renderProductInfoCompact(requestedProduct, 'Solicitado', getCurrentUserId())}
+                  {offeredProduct && renderProductInfoCompact(offeredProduct, 'Ofrecido', currentUserIdNumeric || undefined)}
+                  {requestedProduct && renderProductInfoCompact(requestedProduct, 'Solicitado', currentUserIdNumeric || undefined)}
                   {!offeredProduct && !requestedProduct && (
                     <div className="text-center py-2 text-gray-500 dark:text-gray-400">
                       {isLoadingProducts ? (
@@ -5012,31 +5017,36 @@ const getCurrentUserId = () => {
                   
                   if (hasDonation) {
                     // Si hay una donación, determinar cuál es el producto de donación
-                    const currentUserId = getCurrentUserId()
-                    const currentUserIdNumber = parseInt(currentUserId || '0')
+                    // Usar el ID numérico correcto para comparar
+                    const currentUserNumeric = currentUserIdNumeric ? parseInt(currentUserIdNumeric) : null
                     
                     // Determinar cuál producto es la donación
                     const donationProduct = isOfferedDonation ? offeredProduct : requestedProduct
                     
                     // Verificar si el usuario actual es el dueño/donador del producto de donación
-                    const isDonor = donationProduct && currentUserId && (
-                      donationProduct.user_id?.toString() === currentUserId ||
-                      donationProduct.user_id === currentUserIdNumber ||
-                      donationProduct.user_id?.toString() === currentUserIdNumber.toString()
+                    const isDonor = donationProduct && currentUserNumeric && (
+                      donationProduct.user_id === currentUserNumeric ||
+                      parseInt(donationProduct.user_id?.toString() || '0') === currentUserNumeric ||
+                      donationProduct.user_id?.toString() === currentUserNumeric.toString()
                     )
                     
                     console.log('🔍 Donación - Verificando donador:', {
                       isOfferedDonation,
                       isRequestedDonation,
                       isDonor,
-                      currentUserId,
-                      currentUserIdNumber,
+                      currentUserNumeric,
+                      currentUserIdNumeric,
                       donationProduct: donationProduct?.titulo,
                       donationProductUserId: donationProduct?.user_id,
                       offeredProduct: offeredProduct?.titulo,
                       offeredProductUserId: offeredProduct?.user_id,
                       requestedProduct: requestedProduct?.titulo,
-                      requestedProductUserId: requestedProduct?.user_id
+                      requestedProductUserId: requestedProduct?.user_id,
+                      comparacion: {
+                        userIdEquals: donationProduct?.user_id === currentUserNumeric,
+                        userIdIntEquals: parseInt(donationProduct?.user_id?.toString() || '0') === currentUserNumeric,
+                        userIdStringEquals: donationProduct?.user_id?.toString() === currentUserNumeric?.toString()
+                      }
                     })
                     
                     // Ya determinamos donationProduct arriba, no necesitamos redefinirlo
