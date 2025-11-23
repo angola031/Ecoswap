@@ -471,7 +471,7 @@ const renderProductInfoCompact = (product: any, label: string, currentUserId?: s
 }
 
 // Función para renderizar información de producto completa (mantener para otros usos)
-const renderProductInfo = (product: any, label: string) => {
+const renderProductInfo = (product: any, label: string, currentUserId?: string) => {
   if (!product) return null
   
   return (
@@ -567,6 +567,13 @@ const renderProductInfo = (product: any, label: string) => {
               
               const finalIsDonation = isDonation || hasDonationTag
               
+              // Verificar si el usuario actual es el donador del producto
+              const isDonor = currentUserId && product.user_id && 
+                             (currentUserId === product.user_id.toString() ||
+                              currentUserId === product.user_id?.toString() ||
+                              parseInt(currentUserId) === product.user_id ||
+                              parseInt(currentUserId) === parseInt(product.user_id?.toString() || '0'))
+              
               console.log('Debug detallado ChatModule:', {
                 tipo_transaccion: product.tipo_transaccion,
                 tipo_transaccion_lower: product.tipo_transaccion?.toLowerCase(),
@@ -576,14 +583,20 @@ const renderProductInfo = (product: any, label: string) => {
                 titulo: product.titulo,
                 estado: product.estado,
                 id: product.id,
-                producto_id: product.producto_id
+                producto_id: product.producto_id,
+                currentUserId,
+                productUserId: product.user_id,
+                isDonor
               })
               
-              // TEMPORAL: Siempre mostrar botones de donación para debug
-              console.log('🔍 TEMPORAL: Forzando botones de donación para debug')
-              return true
+              // Si es una donación y el usuario NO es el donador, mostrar botón de solicitar donación
+              if (finalIsDonation && !isDonor) {
+                return true
+              }
+              
+              return false
             })() ? (
-              // Para donaciones: mostrar botón de solicitar donación
+              // Para donaciones: mostrar botón de solicitar donación (solo si NO es el donador)
               <>
                 <button
                   onClick={() => handleDonationRequest(product)}
@@ -729,6 +742,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const imageInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [offeredProduct, setOfferedProduct] = useState<any>(null)
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [imagePreview, setImagePreview] = useState<{
     file: File | null
     url: string | null
@@ -1608,7 +1622,7 @@ const getCurrentUserId = () => {
   return String(currentUser?.id || '')
 }
 
-  // Obtener el usuario_id numérico del usuario actual
+  // Obtener el usuario_id numérico del usuario actual (no bloqueante)
   useEffect(() => {
     const loadNumericUserId = async () => {
       if (!currentUser?.id) return
@@ -1621,20 +1635,29 @@ const getCurrentUserId = () => {
         const supabase = getSupabaseClient()
         if (!supabase) return
         
+        // Timeout para la consulta
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 3000)
+        )
+        
         // Intentar primero con auth_user_id
-        let { data, error } = await supabase
+        const queryPromise = supabase
           .from('usuario')
-          .select('user_id, usuario_id')
+          .select('user_id')
           .eq('auth_user_id', currentUser.id)
           .single()
         
-        // Si falla con auth_user_id, intentar con email como fallback
-        if (error && currentUser?.email) {
-          const { data: emailData, error: emailError } = await supabase
+        let { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any
+        
+        // Si falla con auth_user_id, intentar con email como fallback (solo si no fue timeout)
+        if (error && error.message !== 'Timeout' && currentUser?.email) {
+          const emailQueryPromise = supabase
             .from('usuario')
-            .select('user_id, usuario_id')
+            .select('user_id')
             .eq('email', currentUser.email)
             .single()
+          
+          const { data: emailData, error: emailError } = await Promise.race([emailQueryPromise, timeoutPromise]) as any
           
           if (!emailError && emailData) {
             data = emailData
@@ -1643,44 +1666,68 @@ const getCurrentUserId = () => {
         }
         
         if (error) {
-          console.error('❌ [ChatModule] Error obteniendo user_id numérico:', error)
-          console.error('❌ [ChatModule] Detalles del error:', { code: error.code, message: error.message, details: error.details })
+          if (error.message === 'Timeout') {
+            console.warn('⚠️ [ChatModule] Timeout obteniendo user_id numérico')
+          } else {
+            console.warn('⚠️ [ChatModule] Error obteniendo user_id numérico:', error.message)
+          }
           return
         }
         
-        // Intentar con user_id primero, luego usuario_id como fallback
-        const numericId = data?.user_id || data?.usuario_id
+        // Obtener el user_id numérico
+        const numericId = data?.user_id
         if (numericId) {
           setCurrentUserIdNumeric(String(numericId))
-          console.log('✅ [ChatModule] user_id numérico obtenido:', numericId)
-        } else {
-          console.warn('⚠️ [ChatModule] No se encontró user_id ni usuario_id en la respuesta:', data)
         }
-      } catch (error) {
-        console.error('❌ [ChatModule] Error inesperado obteniendo usuario_id:', error)
+      } catch (error: any) {
+        console.warn('⚠️ [ChatModule] Error obteniendo usuario_id:', error.message)
       }
     }
     
+    // Ejecutar en segundo plano sin bloquear
     loadNumericUserId()
   }, [currentUser?.id, currentUser?.email])
 
   useEffect(() => {
     let isMounted = true
+    let loadingTimeout: NodeJS.Timeout | null = null
     
     const loadConversations = async () => {
       if (!isMounted) return
       
       setIsLoading(true)
+      
+      // Timeout de seguridad: 15 segundos (tiempo razonable para conexiones lentas)
+      loadingTimeout = setTimeout(() => {
+        if (isMounted) {
+          console.warn('⚠️ [ChatModule] Timeout cargando conversaciones, reseteando loading state')
+          setIsLoading(false)
+        }
+      }, 15000)
+      
       try {
         const session = await getSession()
         
         const token = session?.access_token
         if (!token) {
+          if (isMounted) {
+            setIsLoading(false)
+          }
+          if (loadingTimeout) clearTimeout(loadingTimeout)
           router.push('/login')
           return
         }
         
-        const res = await fetch('/api/chat/conversations', { headers: { Authorization: `Bearer ${token}` } })
+        // Agregar timeout al fetch para evitar esperas infinitas
+        const controller = new AbortController()
+        const fetchTimeout = setTimeout(() => controller.abort(), 12000) // 12 segundos timeout
+        
+        const res = await fetch('/api/chat/conversations', { 
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal
+        })
+        clearTimeout(fetchTimeout)
+        
         const json = await res.json()
         
                 if (!res.ok) throw new Error(json?.error || 'Error cargando chats')     
@@ -1721,22 +1768,28 @@ const getCurrentUserId = () => {
             }
           }
         }
-      } catch (error) {
-        console.error('❌ [ChatModule] Error cargando conversaciones:', error)
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.warn('⚠️ [ChatModule] Timeout cargando conversaciones')
+        } else {
+          console.error('❌ [ChatModule] Error cargando conversaciones:', error)
+        }
         if (isMounted) {
-        setConversations([])
+          setConversations([])
         }
       } finally {
+        if (loadingTimeout) clearTimeout(loadingTimeout)
         if (isMounted) {
-        setIsLoading(false)
+          setIsLoading(false)
+        }
       }
-    }
     }
     
     loadConversations()
     
     return () => {
       isMounted = false
+      if (loadingTimeout) clearTimeout(loadingTimeout)
     }
   }, [])
 
@@ -1748,7 +1801,8 @@ const getCurrentUserId = () => {
       
         const chatId = Number(selectedConversation.id)
         if (!chatId) return
-        
+      
+      // Mostrar mensajes en caché primero para mejor UX, luego recargar desde servidor
       const cachedConversation = conversations.find(c => c.id === String(chatId))
       if (cachedConversation?.messages?.length > 0) {
         setSelectedConversation(prev => prev ? { ...prev, messages: cachedConversation.messages } : prev)
@@ -1760,6 +1814,7 @@ const getCurrentUserId = () => {
         }, 50)
       }
       
+      // Siempre recargar desde el servidor para tener datos actualizados
       try {
         const session = await getSession()
         const token = session?.access_token
@@ -1772,8 +1827,13 @@ const getCurrentUserId = () => {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 5000)
         
-        const res = await fetch(`/api/chat/${chatId}/messages?limit=50`, { 
-          headers: { Authorization: `Bearer ${token}` },
+        // Agregar timestamp para evitar caché
+        const res = await fetch(`/api/chat/${chatId}/messages?limit=50&t=${Date.now()}`, { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
           signal: controller.signal
         })
         clearTimeout(timeoutId)
@@ -2038,26 +2098,42 @@ const getCurrentUserId = () => {
     if (!selectedConversation?.id) {
       setOfferedProduct(null)
       setRequestedProduct(null)
+      setIsLoadingProducts(false)
       return
     }
+
+    setIsLoadingProducts(true)
 
     try {
       const session = await getSession()
       const token = session?.access_token
-      if (!token) return
+      if (!token) {
+        console.warn('⚠️ [ChatModule] No hay token para cargar productos')
+        setIsLoadingProducts(false)
+        return
+      }
 
+      // Agregar timestamp para evitar caché y timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 segundos timeout
       
-      const response = await fetch(`/api/chat/${selectedConversation.id}/info`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await fetch(`/api/chat/${selectedConversation.id}/info?t=${Date.now()}`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        signal: controller.signal
       })
       
+      clearTimeout(timeoutId)
       
       if (response.ok) {
         const responseData = await response.json()
         
         const data = responseData.data || responseData
-        setOfferedProduct(data.offeredProduct)
-        setRequestedProduct(data.requestedProduct)
+        setOfferedProduct(data.offeredProduct || null)
+        setRequestedProduct(data.requestedProduct || null)
         
         // Obtener información del intercambio desde la respuesta
         if (data.exchangeInfo) {
@@ -2066,10 +2142,19 @@ const getCurrentUserId = () => {
             usuarioRecibeId: data.exchangeInfo.usuarioRecibeId
           })
         }
-        
+      } else {
+        console.warn('⚠️ [ChatModule] Error en respuesta al cargar productos:', response.status)
+        // No resetear a null, mantener los productos anteriores o vacíos
       }
-    } catch (error) {
-      console.error('❌ [ChatModule] Error cargando información de productos:', error)
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.warn('⚠️ [ChatModule] Timeout cargando información de productos')
+      } else {
+        console.error('❌ [ChatModule] Error cargando información de productos:', error)
+      }
+      // No resetear a null en caso de error, solo dejar de mostrar loading
+    } finally {
+      setIsLoadingProducts(false)
     }
   }
 
@@ -2077,13 +2162,16 @@ const getCurrentUserId = () => {
     let isMounted = true
     
     const loadProductInfoEffect = async () => {
-      if (!selectedConversation?.id || !isMounted) {
+      if (!selectedConversation?.id) {
         if (isMounted) {
           setOfferedProduct(null)
           setRequestedProduct(null)
+          setIsLoadingProducts(false)
         }
         return
       }
+
+      if (!isMounted) return
 
       await loadProductInfo()
     }
@@ -2092,6 +2180,25 @@ const getCurrentUserId = () => {
     
     return () => {
       isMounted = false
+    }
+  }, [selectedConversation?.id])
+
+  // Detectar cuando el usuario regresa después de inactividad y recargar datos
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && selectedConversation?.id) {
+        console.log('🔄 [ChatModule] Usuario regresó, recargando datos del chat...')
+        // Forzar recarga de productos y propuestas
+        loadProductInfo()
+        loadProposals()
+        loadUserValidations()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [selectedConversation?.id])
 
@@ -2109,8 +2216,13 @@ const getCurrentUserId = () => {
       if (!token) return
 
       
-      const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
-        headers: { Authorization: `Bearer ${token}` }
+      // Agregar timestamp para evitar caché
+      const response = await fetch(`/api/chat/${selectedConversation.id}/proposals?t=${Date.now()}`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       })
       
       
@@ -2253,7 +2365,11 @@ const getCurrentUserId = () => {
     if (realtimeChannel) {
       const supabase = getSupabaseClient()
       if (supabase) {
-        supabase.removeChannel(realtimeChannel)
+        try {
+          supabase.removeChannel(realtimeChannel)
+        } catch (error) {
+          // Ignorar errores de limpieza
+        }
       }
       setRealtimeChannel(null)
     }
@@ -2263,13 +2379,17 @@ const getCurrentUserId = () => {
       return
     }
 
-
     // Crear canal más simple y directo
     const supabase = getSupabaseClient()
     if (!supabase) return
     
     const channel = supabase
-      .channel(`chat_${chatId}`)
+      .channel(`chat_${chatId}`, {
+        config: {
+          broadcast: { self: false },
+          presence: { key: String(currentUser.id) }
+        }
+      })
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -2354,11 +2474,17 @@ const getCurrentUserId = () => {
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
+          console.log('✅ [ChatModule] Canal realtime suscrito para chat:', chatId)
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [ChatModule] Error en canal realtime para chat:', chatId)
+          console.warn('⚠️ [ChatModule] Error en canal realtime para chat:', chatId, '- El sistema de polling continuará funcionando')
         } else if (status === 'TIMED_OUT') {
-          console.error('❌ [ChatModule] Timeout en canal realtime para chat:', chatId)
+          // El timeout es normal en algunos casos, el sistema de polling actúa como respaldo
+          // Solo mostrar warning si sigue siendo el chat actual
+          if (Number(selectedConversation?.id) === chatId) {
+            console.warn('⚠️ [ChatModule] Timeout en canal realtime para chat:', chatId, '- El sistema de polling continuará funcionando')
+          }
         } else if (status === 'CLOSED') {
+          console.log('ℹ️ [ChatModule] Canal realtime cerrado para chat:', chatId)
         }
       })
 
@@ -2368,7 +2494,11 @@ const getCurrentUserId = () => {
       if (channel) {
         const supabase = getSupabaseClient()
         if (supabase) {
-          supabase.removeChannel(channel)
+          try {
+            supabase.removeChannel(channel)
+          } catch (error) {
+            // Ignorar errores de limpieza
+          }
         }
       }
       setRealtimeChannel(null)
@@ -3976,7 +4106,23 @@ const getCurrentUserId = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 onClick={() => {
+                  // Limpiar estados relacionados antes de cambiar de conversación
+                  // Esto asegura que no se muestren datos del chat anterior
+                  setOfferedProduct(null)
+                  setRequestedProduct(null)
+                  setIsLoadingProducts(true) // Iniciar estado de loading
+                  setProposals([])
+                  setUserValidations([])
+                  setExchangeInfo({
+                    usuarioProponeId: null,
+                    usuarioRecibeId: null
+                  })
+                  setNewMessage('')
+                  setReplyToMessageId(null)
+                  
+                  // Establecer la nueva conversación
                   setSelectedConversation(conversation)
+                  
                   // Guardar conversación seleccionada en localStorage
                   localStorage.setItem('ecoswap_selected_chat_id', conversation.id)
                 }}
@@ -4063,7 +4209,9 @@ const getCurrentUserId = () => {
                       <MapPinIcon className="w-3 h-3" />
                       <span>{selectedConversation.user.location}</span>
                       <span>•</span>
-                      <span>En línea</span>
+                      <span className={isUserOnline(selectedConversation.user.id) ? 'text-green-600 dark:text-green-400' : ''}>
+                        {isUserOnline(selectedConversation.user.id) ? 'En línea' : 'Desconectado'}
+                      </span>
                     </div>
                   </div>
                   
@@ -4160,11 +4308,17 @@ const getCurrentUserId = () => {
                   {requestedProduct && renderProductInfoCompact(requestedProduct, 'Solicitado', getCurrentUserId())}
                   {!offeredProduct && !requestedProduct && (
                     <div className="text-center py-2 text-gray-500 dark:text-gray-400">
-                      <div className="animate-pulse">
-                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mx-auto mb-1"></div>
-                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mx-auto"></div>
-                      </div>
-                      <p className="text-xs mt-1">Cargando producto...</p>
+                      {isLoadingProducts ? (
+                        <>
+                          <div className="animate-pulse">
+                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mx-auto mb-1"></div>
+                            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mx-auto"></div>
+                          </div>
+                          <p className="text-xs mt-1">Cargando producto...</p>
+                        </>
+                      ) : (
+                        <p className="text-xs">No hay productos en negociación</p>
+                      )}
                     </div>
                   )}
               </div>
