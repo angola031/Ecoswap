@@ -2286,10 +2286,10 @@ const getCurrentUserId = () => {
         if (!m) return
 
         const messageId = String(m.mensaje_id)
-        const currentUserId = getCurrentUserId()
+        const currentUserNum = currentUserIdNumeric || '0'
         
         // No procesar nuestros propios mensajes
-        if (String(m.usuario_id) === currentUserId) {
+        if (String(m.usuario_id) === currentUserNum) {
           return
         }
 
@@ -2406,10 +2406,10 @@ const getCurrentUserId = () => {
             const transformedMessages = newMessages
               .filter((m: any) => {
                 const messageId = Number(m.mensaje_id)
-                const currentUserId = getCurrentUserId()
+                const currentUserNum = currentUserIdNumeric || '0'
                 
                 // No procesar nuestros propios mensajes
-                if (String(m.usuario_id) === currentUserId) {
+                if (String(m.usuario_id) === currentUserNum) {
                   return false
                 }
                 
@@ -2520,12 +2520,13 @@ const getCurrentUserId = () => {
     
     const messageContent = newMessage.trim()
     const tempId = `temp-${Date.now()}-${Math.random()}`
-    const currentUserId = getCurrentUserId()
+    // Usar ID numérico para el mensaje
+    const currentUserNum = currentUserIdNumeric || '0'
     
     const now = new Date()
     const optimisticMessage: ChatMessage = {
       id: tempId,
-      senderId: currentUserId,
+      senderId: currentUserNum,
       content: messageContent,
       timestamp: now.toLocaleString('es-CO', { 
         hour: '2-digit', 
@@ -2536,7 +2537,7 @@ const getCurrentUserId = () => {
       isRead: false,
       type: 'text',
       sender: {
-        id: currentUserId,
+        id: currentUserNum,
         name: currentUser?.name || 'Usuario',
         lastName: '',
         avatar: currentUser?.avatar || undefined
@@ -3088,8 +3089,19 @@ const getCurrentUserId = () => {
   }
 
   const isOwnMessage = (message: ChatMessage) => {
-    const currentUserId = getCurrentUserId()
-    return message.senderId === currentUserId
+    // Usar ID numérico para comparar con senderId
+    const currentUserNum = currentUserIdNumeric || '0'
+    const messageSenderId = String(message.senderId)
+    
+    console.log('🔍 [isOwnMessage] Comparando IDs:', {
+      messageId: message.id,
+      senderId: messageSenderId,
+      currentUserId: currentUserNum,
+      isOwnMessage: messageSenderId === currentUserNum,
+      messageType: message.type
+    })
+    
+    return messageSenderId === currentUserNum
   }
 
   const handleInputChange = (value: string) => {
@@ -3662,12 +3674,13 @@ const getCurrentUserId = () => {
     if (!imagePreview.file || !selectedConversation || !currentUser) return
 
     const tempId = `temp-image-${Date.now()}-${Math.random()}`
-    const currentUserId = getCurrentUserId()
+    // Usar ID numérico para el mensaje de imagen
+    const currentUserNum = currentUserIdNumeric || '0'
     
     // Crear mensaje temporal optimista
     const optimisticMessage: ChatMessage = {
       id: tempId,
-      senderId: currentUserId,
+      senderId: currentUserNum,
       content: imagePreview.comment || 'Imagen adjunta',
       timestamp: new Date().toLocaleString('es-CO', { 
         hour: '2-digit', 
@@ -3683,7 +3696,7 @@ const getCurrentUserId = () => {
         fileSize: `${Math.round(imagePreview.file.size / 1024)} KB`
       },
       sender: {
-        id: currentUserId,
+        id: currentUserNum,
         name: currentUser?.name || 'Usuario',
         lastName: '',
         avatar: currentUser?.avatar || undefined
@@ -3730,7 +3743,7 @@ const getCurrentUserId = () => {
       const formData = new FormData()
       formData.append('image', imagePreview.file)
       formData.append('chatId', selectedConversation.id)
-      formData.append('userId', currentUserId)
+      formData.append('userId', currentUserNum)
 
       const session = await getSession()
       const token = session?.access_token
@@ -3753,7 +3766,7 @@ const getCurrentUserId = () => {
           status: uploadResponse.status,
           error: errorData,
           chatId: selectedConversation.id,
-          userId: currentUserId
+          userId: currentUserNum
         })
         throw new Error(errorData.error || errorData.details || 'Error subiendo imagen')
       }
