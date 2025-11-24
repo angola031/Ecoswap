@@ -471,7 +471,7 @@ const renderProductInfoCompact = (product: any, label: string, currentUserId?: s
 }
 
 // Función para renderizar información de producto completa (mantener para otros usos)
-const renderProductInfo = (product: any, label: string) => {
+const renderProductInfo = (product: any, label: string, currentUserId?: string) => {
   if (!product) return null
   
   return (
@@ -553,7 +553,7 @@ const renderProductInfo = (product: any, label: string) => {
               return null
             })()}
             {(() => {
-              // Debug más detallado
+              // Verificar si es una donación
               const isDonation = product.tipo_transaccion === 'donacion' || 
                                 product.tipo_transaccion === 'donación' ||
                                 product.tipo_transaccion?.toLowerCase() === 'donacion' ||
@@ -567,23 +567,30 @@ const renderProductInfo = (product: any, label: string) => {
               
               const finalIsDonation = isDonation || hasDonationTag
               
-              console.log('Debug detallado ChatModule:', {
+              // Verificar si el usuario actual es el donador del producto
+              // currentUserId ahora es el ID numérico como string
+              const currentUserNumeric = currentUserId ? parseInt(currentUserId) : null
+              const isDonor = currentUserNumeric && product.user_id && (
+                parseInt(currentUserId) === product.user_id ||
+                currentUserId === product.user_id.toString() ||
+                parseInt(currentUserId) === parseInt(product.user_id?.toString() || '0')
+              )
+              
+              console.log('🔍 Debug renderProductInfo:', {
                 tipo_transaccion: product.tipo_transaccion,
-                tipo_transaccion_lower: product.tipo_transaccion?.toLowerCase(),
-                isDonation,
-                hasDonationTag,
                 finalIsDonation,
                 titulo: product.titulo,
-                estado: product.estado,
-                id: product.id,
-                producto_id: product.producto_id
+                productUserId: product.user_id,
+                currentUserId,
+                currentUserNumeric,
+                isDonor,
+                showButton: finalIsDonation && !isDonor
               })
               
-              // TEMPORAL: Siempre mostrar botones de donación para debug
-              console.log('🔍 TEMPORAL: Forzando botones de donación para debug')
-              return true
+              // Si es una donación y el usuario NO es el donador, mostrar botón de solicitar donación
+              return finalIsDonation && !isDonor
             })() ? (
-              // Para donaciones: mostrar botón de solicitar donación
+              // Para donaciones: mostrar botón de solicitar donación (solo si NO es el donador)
               <>
                 <button
                   onClick={() => handleDonationRequest(product)}
@@ -712,6 +719,7 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
     }
   }
   const [conversations, setConversations] = useState<ChatConversation[]>([])
+  const [currentUserIdNumeric, setCurrentUserIdNumeric] = useState<string | null>(null)
   const [selectedConversation, setSelectedConversation] = useState<ChatConversation | null>(null)
   const [newMessage, setNewMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -1603,6 +1611,61 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
 const getCurrentUserId = () => {
   return String(currentUser?.id || '')
 }
+
+  // Obtener el usuario_id numérico del usuario actual (no bloqueante)
+  useEffect(() => {
+    const loadNumericUserId = async () => {
+      if (!currentUser?.id) return
+      
+      try {
+        const session = await getSession()
+        const token = session?.access_token
+        if (!token) return
+        
+        const supabase = getSupabaseClient()
+        if (!supabase) return
+        
+        // Intentar primero con auth_user_id
+        let { data, error } = await supabase
+          .from('usuario')
+          .select('user_id')
+          .eq('auth_user_id', currentUser.id)
+          .single()
+        
+        // Si falla con auth_user_id, intentar con email como fallback
+        if (error && currentUser?.email) {
+          const { data: emailData, error: emailError } = await supabase
+            .from('usuario')
+            .select('user_id')
+            .eq('email', currentUser.email)
+            .single()
+          
+          if (!emailError && emailData) {
+            data = emailData
+            error = null
+          }
+        }
+        
+        if (error) {
+          console.warn('⚠️ [ChatModule] Error obteniendo user_id numérico:', error)
+          return
+        }
+        
+        // Obtener el user_id numérico
+        const numericId = data?.user_id
+        if (numericId) {
+          setCurrentUserIdNumeric(String(numericId))
+          console.log('✅ [ChatModule] user_id numérico cargado:', numericId)
+        }
+      } catch (error: any) {
+        console.warn('⚠️ [ChatModule] Error inesperado obteniendo usuario_id:', error.message)
+      }
+    }
+    
+    // Ejecutar en segundo plano sin bloquear
+    loadNumericUserId()
+  }, [currentUser?.id, currentUser?.email])
+
   useEffect(() => {
     let isMounted = true
     
@@ -4808,48 +4871,46 @@ const getCurrentUserId = () => {
                   })
                   
                   if (hasDonation) {
-                    // Si hay una donación, determinar si es el donador usando múltiples métodos
-                    const currentUserId = getCurrentUserId()
-                    const currentUserIdNumber = parseInt(currentUserId || '0')
+                    // Si hay una donación, determinar cuál es el producto de donación
+                    // Usar el ID numérico correcto para comparar
+                    const currentUserNumeric = currentUserIdNumeric ? parseInt(currentUserIdNumeric) : null
                     
-                    // Método 1: Usar lógica de exchangeInfo
-                    const isDonorByExchangeInfo = !isCurrentUserBuyer()
-                    
-                    // Método 2: Verificar directamente los user_id de los productos
-                    const isDonorByProductId = (donationProduct: any) => {
-                      if (!donationProduct || !currentUserId) return false
-                      return donationProduct.user_id?.toString() === currentUserId ||
-                             donationProduct.user_id === currentUserIdNumber ||
-                             donationProduct.user_id?.toString() === currentUserIdNumber.toString()
+                    // Si aún no tenemos el ID numérico, no mostrar botones hasta que se cargue
+                    if (!currentUserNumeric) {
+                      console.log('⏳ Esperando currentUserIdNumeric...')
+                      return (
+                        <div className="flex items-center space-x-2 px-3 py-1.5">
+                          <div className="animate-pulse h-8 bg-gray-300 dark:bg-gray-600 rounded w-32"></div>
+                        </div>
+                      )
                     }
                     
-                    // Determinar cuál es el producto de donación
-                    const donationProduct = isDonorByExchangeInfo ? requestedProduct : offeredProduct
-                    const isDonorByProduct = isDonorByProductId(donationProduct)
+                    // Determinar cuál producto es la donación
+                    const donationProduct = isOfferedDonation ? offeredProduct : requestedProduct
                     
-                    // Usar ambos métodos para mayor confiabilidad
-                    const isDonor = isDonorByExchangeInfo && isDonorByProduct
+                    // Verificar si el usuario actual es el dueño/donador del producto de donación
+                    const isDonor = donationProduct && (
+                      donationProduct.user_id === currentUserNumeric ||
+                      parseInt(donationProduct.user_id?.toString() || '0') === currentUserNumeric ||
+                      donationProduct.user_id?.toString() === currentUserNumeric.toString()
+                    )
                     
-                    console.log('🔍 Donación - Verificando donador (método dual):', {
-                      exchangeInfo,
-                      isCurrentUserBuyer: isCurrentUserBuyer(),
-                      isDonorByExchangeInfo,
-                      isDonorByProduct,
+                    console.log('🔍 Donación - Verificando donador:', {
+                      isOfferedDonation,
+                      isRequestedDonation,
                       isDonor,
-                      currentUserId: getCurrentUserId(),
-                      currentUserIdNumber,
-                      offeredProduct: offeredProduct?.titulo,
-                      requestedProduct: requestedProduct?.titulo,
-                      offeredProductUserId: offeredProduct?.user_id,
-                      requestedProductUserId: requestedProduct?.user_id,
-                      currentUserFromSession: currentUser?.id,
+                      currentUserNumeric,
+                      currentUserIdNumericFromState: currentUserIdNumeric,
                       donationProduct: donationProduct?.titulo,
                       donationProductUserId: donationProduct?.user_id,
-                      detailedExchangeInfo: {
-                        usuarioProponeId: exchangeInfo.usuarioProponeId,
-                        usuarioRecibeId: exchangeInfo.usuarioRecibeId,
-                        currentUserId: getCurrentUserId(),
-                        currentUserIdNumber: parseInt(getCurrentUserId() || '0')
+                      offeredProduct: offeredProduct?.titulo,
+                      offeredProductUserId: offeredProduct?.user_id,
+                      requestedProduct: requestedProduct?.titulo,
+                      requestedProductUserId: requestedProduct?.user_id,
+                      comparacion: {
+                        userIdEquals: donationProduct?.user_id === currentUserNumeric,
+                        userIdIntEquals: parseInt(donationProduct?.user_id?.toString() || '0') === currentUserNumeric,
+                        userIdStringEquals: donationProduct?.user_id?.toString() === currentUserNumeric?.toString()
                       }
                     })
                     
