@@ -5020,11 +5020,21 @@ const getCurrentUserId = () => {
                     // Usar el ID numérico correcto para comparar
                     const currentUserNumeric = currentUserIdNumeric ? parseInt(currentUserIdNumeric) : null
                     
+                    // Si aún no tenemos el ID numérico, no mostrar botones hasta que se cargue
+                    if (!currentUserNumeric) {
+                      console.log('⏳ Esperando currentUserIdNumeric...')
+                      return (
+                        <div className="flex items-center space-x-2 px-3 py-1.5">
+                          <div className="animate-pulse h-8 bg-gray-300 dark:bg-gray-600 rounded w-32"></div>
+                        </div>
+                      )
+                    }
+                    
                     // Determinar cuál producto es la donación
                     const donationProduct = isOfferedDonation ? offeredProduct : requestedProduct
                     
                     // Verificar si el usuario actual es el dueño/donador del producto de donación
-                    const isDonor = donationProduct && currentUserNumeric && (
+                    const isDonor = donationProduct && (
                       donationProduct.user_id === currentUserNumeric ||
                       parseInt(donationProduct.user_id?.toString() || '0') === currentUserNumeric ||
                       donationProduct.user_id?.toString() === currentUserNumeric.toString()

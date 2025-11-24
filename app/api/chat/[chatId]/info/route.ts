@@ -100,6 +100,7 @@ export async function GET(
           producto_solicitado_id,
           producto_ofrecido:producto!intercambio_producto_ofrecido_id_fkey (
             producto_id,
+            user_id,
             titulo,
             descripcion,
             precio,
@@ -118,6 +119,7 @@ export async function GET(
           ),
           producto_solicitado:producto!intercambio_producto_solicitado_id_fkey (
             producto_id,
+            user_id,
             titulo,
             descripcion,
             precio,
@@ -316,6 +318,7 @@ export async function GET(
         offeredProduct: {
           id: productoOfrecido.producto_id,
           producto_id: productoOfrecido.producto_id,
+          user_id: productoOfrecido.user_id,
           title: productoOfrecido.titulo,
           titulo: productoOfrecido.titulo,
           descripcion: productoOfrecido.descripcion,
@@ -338,6 +341,7 @@ export async function GET(
         requestedProduct: productoSolicitado ? {
           id: productoSolicitado.producto_id,
           producto_id: productoSolicitado.producto_id,
+          user_id: productoSolicitado.user_id,
           title: productoSolicitado.titulo,
           titulo: productoSolicitado.titulo,
           descripcion: productoSolicitado.descripcion,
