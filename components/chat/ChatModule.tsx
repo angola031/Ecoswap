@@ -401,11 +401,7 @@ const renderProductInfoCompact = (product: any, label: string, currentUserId?: s
   if (!product) return null
   
   // Determinar si el usuario actual es el propietario del producto
-  // currentUserId ahora es el ID numérico como string
-  const isOwner = currentUserId && product.user_id && (
-    parseInt(currentUserId) === product.user_id ||
-    currentUserId === product.user_id.toString()
-  )
+  const isOwner = currentUserId && product.user_id && currentUserId === product.user_id.toString()
   
   
   return (
@@ -475,7 +471,7 @@ const renderProductInfoCompact = (product: any, label: string, currentUserId?: s
 }
 
 // Función para renderizar información de producto completa (mantener para otros usos)
-const renderProductInfo = (product: any, label: string, currentUserId?: string) => {
+const renderProductInfo = (product: any, label: string) => {
   if (!product) return null
   
   return (
@@ -571,14 +567,6 @@ const renderProductInfo = (product: any, label: string, currentUserId?: string) 
               
               const finalIsDonation = isDonation || hasDonationTag
               
-              // Verificar si el usuario actual es el donador del producto
-              // currentUserId ahora es el ID numérico como string
-              const isDonor = currentUserId && product.user_id && (
-                parseInt(currentUserId) === product.user_id ||
-                currentUserId === product.user_id.toString() ||
-                parseInt(currentUserId) === parseInt(product.user_id?.toString() || '0')
-              )
-              
               console.log('Debug detallado ChatModule:', {
                 tipo_transaccion: product.tipo_transaccion,
                 tipo_transaccion_lower: product.tipo_transaccion?.toLowerCase(),
@@ -588,20 +576,14 @@ const renderProductInfo = (product: any, label: string, currentUserId?: string) 
                 titulo: product.titulo,
                 estado: product.estado,
                 id: product.id,
-                producto_id: product.producto_id,
-                currentUserId,
-                productUserId: product.user_id,
-                isDonor
+                producto_id: product.producto_id
               })
               
-              // Si es una donación y el usuario NO es el donador, mostrar botón de solicitar donación
-              if (finalIsDonation && !isDonor) {
-                return true
-              }
-              
-              return false
+              // TEMPORAL: Siempre mostrar botones de donación para debug
+              console.log('🔍 TEMPORAL: Forzando botones de donación para debug')
+              return true
             })() ? (
-              // Para donaciones: mostrar botón de solicitar donación (solo si NO es el donador)
+              // Para donaciones: mostrar botón de solicitar donación
               <>
                 <button
                   onClick={() => handleDonationRequest(product)}
@@ -653,9 +635,6 @@ const renderProductInfo = (product: any, label: string, currentUserId?: string) 
     </div>
   )
 }
-
-// Avatar por defecto (icono verde de usuario)
-const DEFAULT_AVATAR = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle fill=%22%2310B981%22 cx=%2212%22 cy=%2212%22 r=%2212%22/%3E%3Cpath fill=%22white%22 d=%22M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z%22/%3E%3C/svg%3E'
 
 // Función para normalizar avatares: convierte valores no válidos en undefined
 // para que el UI muestre el icono verde por defecto
@@ -733,7 +712,6 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
     }
   }
   const [conversations, setConversations] = useState<ChatConversation[]>([])
-  const [currentUserIdNumeric, setCurrentUserIdNumeric] = useState<string | null>(null)
   const [selectedConversation, setSelectedConversation] = useState<ChatConversation | null>(null)
   const [newMessage, setNewMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -747,7 +725,6 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
   const imageInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [offeredProduct, setOfferedProduct] = useState<any>(null)
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [imagePreview, setImagePreview] = useState<{
     file: File | null
     url: string | null
@@ -1626,113 +1603,23 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
 const getCurrentUserId = () => {
   return String(currentUser?.id || '')
 }
-
-  // Obtener el usuario_id numérico del usuario actual (no bloqueante)
-  useEffect(() => {
-    const loadNumericUserId = async () => {
-      if (!currentUser?.id) return
-      
-      try {
-        const session = await getSession()
-        const token = session?.access_token
-        if (!token) return
-        
-        const supabase = getSupabaseClient()
-        if (!supabase) return
-        
-        // Timeout para la consulta
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 3000)
-        )
-        
-        // Intentar primero con auth_user_id
-        const queryPromise = supabase
-          .from('usuario')
-          .select('user_id')
-          .eq('auth_user_id', currentUser.id)
-          .single()
-        
-        let { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any
-        
-        // Si falla con auth_user_id, intentar con email como fallback (solo si no fue timeout)
-        if (error && error.message !== 'Timeout' && currentUser?.email) {
-          const emailQueryPromise = supabase
-            .from('usuario')
-            .select('user_id')
-            .eq('email', currentUser.email)
-            .single()
-          
-          const { data: emailData, error: emailError } = await Promise.race([emailQueryPromise, timeoutPromise]) as any
-          
-          if (!emailError && emailData) {
-            data = emailData
-            error = null
-          }
-        }
-        
-        if (error) {
-          if (error.message === 'Timeout') {
-            console.warn('⚠️ [ChatModule] Timeout obteniendo user_id numérico')
-          } else {
-            console.warn('⚠️ [ChatModule] Error obteniendo user_id numérico:', error.message)
-          }
-          return
-        }
-        
-        // Obtener el user_id numérico
-        const numericId = data?.user_id
-        if (numericId) {
-          setCurrentUserIdNumeric(String(numericId))
-        }
-      } catch (error: any) {
-        console.warn('⚠️ [ChatModule] Error obteniendo usuario_id:', error.message)
-      }
-    }
-    
-    // Ejecutar en segundo plano sin bloquear
-    loadNumericUserId()
-  }, [currentUser?.id, currentUser?.email])
-
   useEffect(() => {
     let isMounted = true
-    let loadingTimeout: NodeJS.Timeout | null = null
     
     const loadConversations = async () => {
       if (!isMounted) return
       
       setIsLoading(true)
-      
-      // Timeout de seguridad: 15 segundos (tiempo razonable para conexiones lentas)
-      loadingTimeout = setTimeout(() => {
-        if (isMounted) {
-          console.warn('⚠️ [ChatModule] Timeout cargando conversaciones, reseteando loading state')
-          setIsLoading(false)
-        }
-      }, 15000)
-      
       try {
         const session = await getSession()
         
         const token = session?.access_token
         if (!token) {
-          if (isMounted) {
-            setIsLoading(false)
-          }
-          if (loadingTimeout) clearTimeout(loadingTimeout)
           router.push('/login')
           return
         }
         
-        // Agregar timeout al fetch para evitar esperas infinitas
-        const controller = new AbortController()
-        const fetchTimeout = setTimeout(() => controller.abort(), 12000) // 12 segundos timeout
-        
-        const res = await fetch('/api/chat/conversations', { 
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal
-        })
-        clearTimeout(fetchTimeout)
-        
+        const res = await fetch('/api/chat/conversations', { headers: { Authorization: `Bearer ${token}` } })
         const json = await res.json()
         
                 if (!res.ok) throw new Error(json?.error || 'Error cargando chats')     
@@ -1756,45 +1643,26 @@ const getCurrentUserId = () => {
         
         if (isMounted) {
         setConversations(list)
-          if (list.length > 0) {
-            // Intentar restaurar conversación seleccionada desde localStorage
-            const savedChatId = localStorage.getItem('ecoswap_selected_chat_id')
-            if (savedChatId) {
-              const savedConversation = list.find(c => c.id === savedChatId)
-              if (savedConversation) {
-                setSelectedConversation(savedConversation)
-              } else if (!selectedConversation) {
-                // Si la conversación guardada no existe, usar la primera
-                setSelectedConversation(list[0])
-              }
-            } else if (!selectedConversation) {
-              // Si no hay conversación guardada, usar la primera
-              setSelectedConversation(list[0])
-            }
+          if (list.length > 0 && !selectedConversation) {
+            setSelectedConversation(list[0])
           }
         }
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          console.warn('⚠️ [ChatModule] Timeout cargando conversaciones')
-        } else {
-          console.error('❌ [ChatModule] Error cargando conversaciones:', error)
-        }
+      } catch (error) {
+        console.error('❌ [ChatModule] Error cargando conversaciones:', error)
         if (isMounted) {
-          setConversations([])
+        setConversations([])
         }
       } finally {
-        if (loadingTimeout) clearTimeout(loadingTimeout)
         if (isMounted) {
-          setIsLoading(false)
-        }
+        setIsLoading(false)
       }
+    }
     }
     
     loadConversations()
     
     return () => {
       isMounted = false
-      if (loadingTimeout) clearTimeout(loadingTimeout)
     }
   }, [])
 
@@ -1806,8 +1674,7 @@ const getCurrentUserId = () => {
       
         const chatId = Number(selectedConversation.id)
         if (!chatId) return
-      
-      // Mostrar mensajes en caché primero para mejor UX, luego recargar desde servidor
+        
       const cachedConversation = conversations.find(c => c.id === String(chatId))
       if (cachedConversation?.messages?.length > 0) {
         setSelectedConversation(prev => prev ? { ...prev, messages: cachedConversation.messages } : prev)
@@ -1819,7 +1686,6 @@ const getCurrentUserId = () => {
         }, 50)
       }
       
-      // Siempre recargar desde el servidor para tener datos actualizados
       try {
         const session = await getSession()
         const token = session?.access_token
@@ -1832,13 +1698,8 @@ const getCurrentUserId = () => {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 5000)
         
-        // Agregar timestamp para evitar caché
-        const res = await fetch(`/api/chat/${chatId}/messages?limit=50&t=${Date.now()}`, { 
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          },
+        const res = await fetch(`/api/chat/${chatId}/messages?limit=50`, { 
+          headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal
         })
         clearTimeout(timeoutId)
@@ -1847,11 +1708,6 @@ const getCurrentUserId = () => {
         
         const json = await res.json()
         if (!res.ok) throw new Error(json?.error || 'Error cargando mensajes')
-        
-        // Actualizar currentUserIdNumeric desde la respuesta de la API
-        if (json.currentUserId) {
-          setCurrentUserIdNumeric(String(json.currentUserId))
-        }
         
         const messages: ChatMessage[] = (json.items || [])
           .filter((m: any) => {
@@ -2103,42 +1959,26 @@ const getCurrentUserId = () => {
     if (!selectedConversation?.id) {
       setOfferedProduct(null)
       setRequestedProduct(null)
-      setIsLoadingProducts(false)
       return
     }
-
-    setIsLoadingProducts(true)
 
     try {
       const session = await getSession()
       const token = session?.access_token
-      if (!token) {
-        console.warn('⚠️ [ChatModule] No hay token para cargar productos')
-        setIsLoadingProducts(false)
-        return
-      }
+      if (!token) return
 
-      // Agregar timestamp para evitar caché y timeout
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 segundos timeout
       
-      const response = await fetch(`/api/chat/${selectedConversation.id}/info?t=${Date.now()}`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-        signal: controller.signal
+      const response = await fetch(`/api/chat/${selectedConversation.id}/info`, {
+        headers: { Authorization: `Bearer ${token}` }
       })
       
-      clearTimeout(timeoutId)
       
       if (response.ok) {
         const responseData = await response.json()
         
         const data = responseData.data || responseData
-        setOfferedProduct(data.offeredProduct || null)
-        setRequestedProduct(data.requestedProduct || null)
+        setOfferedProduct(data.offeredProduct)
+        setRequestedProduct(data.requestedProduct)
         
         // Obtener información del intercambio desde la respuesta
         if (data.exchangeInfo) {
@@ -2147,19 +1987,10 @@ const getCurrentUserId = () => {
             usuarioRecibeId: data.exchangeInfo.usuarioRecibeId
           })
         }
-      } else {
-        console.warn('⚠️ [ChatModule] Error en respuesta al cargar productos:', response.status)
-        // No resetear a null, mantener los productos anteriores o vacíos
+        
       }
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.warn('⚠️ [ChatModule] Timeout cargando información de productos')
-      } else {
-        console.error('❌ [ChatModule] Error cargando información de productos:', error)
-      }
-      // No resetear a null en caso de error, solo dejar de mostrar loading
-    } finally {
-      setIsLoadingProducts(false)
+    } catch (error) {
+      console.error('❌ [ChatModule] Error cargando información de productos:', error)
     }
   }
 
@@ -2167,16 +1998,13 @@ const getCurrentUserId = () => {
     let isMounted = true
     
     const loadProductInfoEffect = async () => {
-      if (!selectedConversation?.id) {
+      if (!selectedConversation?.id || !isMounted) {
         if (isMounted) {
           setOfferedProduct(null)
           setRequestedProduct(null)
-          setIsLoadingProducts(false)
         }
         return
       }
-
-      if (!isMounted) return
 
       await loadProductInfo()
     }
@@ -2185,25 +2013,6 @@ const getCurrentUserId = () => {
     
     return () => {
       isMounted = false
-    }
-  }, [selectedConversation?.id])
-
-  // Detectar cuando el usuario regresa después de inactividad y recargar datos
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && selectedConversation?.id) {
-        console.log('🔄 [ChatModule] Usuario regresó, recargando datos del chat...')
-        // Forzar recarga de productos y propuestas
-        loadProductInfo()
-        loadProposals()
-        loadUserValidations()
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [selectedConversation?.id])
 
@@ -2221,13 +2030,8 @@ const getCurrentUserId = () => {
       if (!token) return
 
       
-      // Agregar timestamp para evitar caché
-      const response = await fetch(`/api/chat/${selectedConversation.id}/proposals?t=${Date.now()}`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+      const response = await fetch(`/api/chat/${selectedConversation.id}/proposals`, {
+        headers: { Authorization: `Bearer ${token}` }
       })
       
       
@@ -2370,11 +2174,7 @@ const getCurrentUserId = () => {
     if (realtimeChannel) {
       const supabase = getSupabaseClient()
       if (supabase) {
-        try {
-          supabase.removeChannel(realtimeChannel)
-        } catch (error) {
-          // Ignorar errores de limpieza
-        }
+        supabase.removeChannel(realtimeChannel)
       }
       setRealtimeChannel(null)
     }
@@ -2384,17 +2184,13 @@ const getCurrentUserId = () => {
       return
     }
 
+
     // Crear canal más simple y directo
     const supabase = getSupabaseClient()
     if (!supabase) return
     
     const channel = supabase
-      .channel(`chat_${chatId}`, {
-        config: {
-          broadcast: { self: false },
-          presence: { key: String(currentUser.id) }
-        }
-      })
+      .channel(`chat_${chatId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -2406,11 +2202,10 @@ const getCurrentUserId = () => {
         if (!m) return
 
         const messageId = String(m.mensaje_id)
-        // Usar currentUserIdNumeric en lugar de getCurrentUserId (UUID)
-        const currentUserId = currentUserIdNumeric
+        const currentUserId = getCurrentUserId()
         
-        // No procesar nuestros propios mensajes (comparar con ID numérico)
-        if (currentUserId && String(m.usuario_id) === currentUserId) {
+        // No procesar nuestros propios mensajes
+        if (String(m.usuario_id) === currentUserId) {
           return
         }
 
@@ -2479,17 +2274,11 @@ const getCurrentUserId = () => {
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ [ChatModule] Canal realtime suscrito para chat:', chatId)
         } else if (status === 'CHANNEL_ERROR') {
-          console.warn('⚠️ [ChatModule] Error en canal realtime para chat:', chatId, '- El sistema de polling continuará funcionando')
+          console.error('❌ [ChatModule] Error en canal realtime para chat:', chatId)
         } else if (status === 'TIMED_OUT') {
-          // El timeout es normal en algunos casos, el sistema de polling actúa como respaldo
-          // Solo mostrar warning si sigue siendo el chat actual
-          if (Number(selectedConversation?.id) === chatId) {
-            console.warn('⚠️ [ChatModule] Timeout en canal realtime para chat:', chatId, '- El sistema de polling continuará funcionando')
-          }
+          console.error('❌ [ChatModule] Timeout en canal realtime para chat:', chatId)
         } else if (status === 'CLOSED') {
-          console.log('ℹ️ [ChatModule] Canal realtime cerrado para chat:', chatId)
         }
       })
 
@@ -2499,11 +2288,7 @@ const getCurrentUserId = () => {
       if (channel) {
         const supabase = getSupabaseClient()
         if (supabase) {
-          try {
-            supabase.removeChannel(channel)
-          } catch (error) {
-            // Ignorar errores de limpieza
-          }
+          supabase.removeChannel(channel)
         }
       }
       setRealtimeChannel(null)
@@ -2530,12 +2315,6 @@ const getCurrentUserId = () => {
 
         if (response.ok) {
           const data = await response.json()
-          
-          // Actualizar currentUserIdNumeric desde la respuesta de la API
-          if (data.currentUserId) {
-            setCurrentUserIdNumeric(String(data.currentUserId))
-          }
-          
           const newMessages = data.items || []
           
           if (newMessages.length > 0) {
@@ -2543,11 +2322,10 @@ const getCurrentUserId = () => {
             const transformedMessages = newMessages
               .filter((m: any) => {
                 const messageId = Number(m.mensaje_id)
-                // Usar currentUserIdNumeric en lugar de getCurrentUserId (UUID)
-                const currentUserId = currentUserIdNumeric
+                const currentUserId = getCurrentUserId()
                 
-                // No procesar nuestros propios mensajes (comparar con ID numérico)
-                if (currentUserId && String(m.usuario_id) === currentUserId) {
+                // No procesar nuestros propios mensajes
+                if (String(m.usuario_id) === currentUserId) {
                   return false
                 }
                 
@@ -2658,8 +2436,7 @@ const getCurrentUserId = () => {
     
     const messageContent = newMessage.trim()
     const tempId = `temp-${Date.now()}-${Math.random()}`
-    // Usar el ID numérico para que coincida con los mensajes de la BD
-    const currentUserId = currentUserIdNumeric || getCurrentUserId()
+    const currentUserId = getCurrentUserId()
     
     const now = new Date()
     const optimisticMessage: ChatMessage = {
@@ -3227,12 +3004,8 @@ const getCurrentUserId = () => {
   }
 
   const isOwnMessage = (message: ChatMessage) => {
-    // Usar el ID numérico para comparar con senderId (que es numérico en la BD)
-    const userIdToCompare = currentUserIdNumeric
-    return userIdToCompare && 
-      userIdToCompare !== '' && 
-      userIdToCompare !== null &&
-      String(message.senderId) === String(userIdToCompare)
+    const currentUserId = getCurrentUserId()
+    return message.senderId === currentUserId
   }
 
   const handleInputChange = (value: string) => {
@@ -3805,8 +3578,7 @@ const getCurrentUserId = () => {
     if (!imagePreview.file || !selectedConversation || !currentUser) return
 
     const tempId = `temp-image-${Date.now()}-${Math.random()}`
-    // Usar el ID numérico para que coincida con los mensajes de la BD
-    const currentUserId = currentUserIdNumeric || getCurrentUserId()
+    const currentUserId = getCurrentUserId()
     
     // Crear mensaje temporal optimista
     const optimisticMessage: ChatMessage = {
@@ -4110,27 +3882,7 @@ const getCurrentUserId = () => {
                 key={conversation.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                onClick={() => {
-                  // Limpiar estados relacionados antes de cambiar de conversación
-                  // Esto asegura que no se muestren datos del chat anterior
-                  setOfferedProduct(null)
-                  setRequestedProduct(null)
-                  setIsLoadingProducts(true) // Iniciar estado de loading
-                  setProposals([])
-                  setUserValidations([])
-                  setExchangeInfo({
-                    usuarioProponeId: null,
-                    usuarioRecibeId: null
-                  })
-                  setNewMessage('')
-                  setReplyToMessageId(null)
-                  
-                  // Establecer la nueva conversación
-                  setSelectedConversation(conversation)
-                  
-                  // Guardar conversación seleccionada en localStorage
-                  localStorage.setItem('ecoswap_selected_chat_id', conversation.id)
-                }}
+                onClick={() => setSelectedConversation(conversation)}
                 className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${selectedConversation?.id === conversation.id ? 'bg-primary-50 dark:bg-primary-900/20 border-r-2 border-primary-500 dark:border-primary-400' : ''}`}
               >
                 <div className="flex items-center space-x-3">
@@ -4214,9 +3966,7 @@ const getCurrentUserId = () => {
                       <MapPinIcon className="w-3 h-3" />
                       <span>{selectedConversation.user.location}</span>
                       <span>•</span>
-                      <span className={isUserOnline(selectedConversation.user.id) ? 'text-green-600 dark:text-green-400' : ''}>
-                        {isUserOnline(selectedConversation.user.id) ? 'En línea' : 'Desconectado'}
-                      </span>
+                      <span>En línea</span>
                     </div>
                   </div>
                   
@@ -4309,21 +4059,15 @@ const getCurrentUserId = () => {
                   })()}
                 </div>
                 <div className="space-y-2">
-                  {offeredProduct && renderProductInfoCompact(offeredProduct, 'Ofrecido', currentUserIdNumeric || undefined)}
-                  {requestedProduct && renderProductInfoCompact(requestedProduct, 'Solicitado', currentUserIdNumeric || undefined)}
+                  {offeredProduct && renderProductInfoCompact(offeredProduct, 'Ofrecido', getCurrentUserId())}
+                  {requestedProduct && renderProductInfoCompact(requestedProduct, 'Solicitado', getCurrentUserId())}
                   {!offeredProduct && !requestedProduct && (
                     <div className="text-center py-2 text-gray-500 dark:text-gray-400">
-                      {isLoadingProducts ? (
-                        <>
-                          <div className="animate-pulse">
-                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mx-auto mb-1"></div>
-                            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mx-auto"></div>
-                          </div>
-                          <p className="text-xs mt-1">Cargando producto...</p>
-                        </>
-                      ) : (
-                        <p className="text-xs">No hay productos en negociación</p>
-                      )}
+                      <div className="animate-pulse">
+                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mx-auto mb-1"></div>
+                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mx-auto"></div>
+                      </div>
+                      <p className="text-xs mt-1">Cargando producto...</p>
                     </div>
                   )}
               </div>
@@ -4810,43 +4554,30 @@ const getCurrentUserId = () => {
                 </div>
               ) : (
                 selectedConversation.messages.map((message) => {
-                  // Usar el usuario_id numérico para comparar con senderId (que es numérico en la BD)
-                  // Los mensajes de la BD usan usuario_id (numérico), no UUID
-                  const userIdToCompare = currentUserIdNumeric
+                  const isOwnMsg = isOwnMessage(message)
+                  const isSystemMsg = message.senderId === 'system'
                   
-                  // Debug temporal para identificar el problema
-                  if (!userIdToCompare) {
-                    console.warn('⚠️ [ChatModule] currentUserIdNumeric es null/undefined. senderId:', message.senderId)
-                  }
-                  
-                  const isOwnMessage = userIdToCompare && 
-                    userIdToCompare !== '' && 
-                    userIdToCompare !== null &&
-                    String(message.senderId) === String(userIdToCompare)
-                  const isSystemMessage = message.senderId === 'system'
-                  
-                  // Renderizar mensaje del sistema como mensaje normal pero con estilo especial
-                  if (isSystemMessage) {
+                  // Renderizar mensaje del sistema de manera especial
+                  if (isSystemMsg) {
                     return (
                       <motion.div
                         key={message.id}
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex justify-start my-2"
+                        className="flex justify-center mb-4"
                       >
-                        <div className="flex items-end space-x-2 max-w-xs lg:max-w-md">
-                          <div className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V9H21ZM3 9H9V6.5L3 7V9ZM12 7.5C13.66 7.5 15 8.84 15 10.5V12H9V10.5C9 8.84 10.34 7.5 12 7.5ZM7.5 13.5C7.5 12.67 8.17 12 9 12H15C15.83 12 16.5 12.67 16.5 13.5V16H7.5V13.5ZM18 10.5C18.83 10.5 19.5 11.17 19.5 12V15H21V17H19.5V20H17.5V17H6.5V20H4.5V17H3V15H4.5V12C4.5 11.17 5.17 10.5 6 10.5H18Z"/>
-                            </svg>
-                          </div>
-                          <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-gray-900 dark:text-white px-4 py-2 rounded-2xl transition-colors">
-                            <div className="flex items-center space-x-1 mb-1">
-                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">🔔</span>
-                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Sistema</span>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 max-w-md">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-6 h-6 rounded-full border border-gray-200 bg-blue-100 flex items-center justify-center">
+                              <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 6.5V9H21ZM3 9H9V6.5L3 7V9ZM12 7.5C13.66 7.5 15 8.84 15 10.5V12H9V10.5C9 8.84 10.34 7.5 12 7.5ZM7.5 13.5C7.5 12.67 8.17 12 9 12H15C15.83 12 16.5 12.67 16.5 13.5V16H7.5V13.5ZM18 10.5C18.83 10.5 19.5 11.17 19.5 12V15H21V17H19.5V20H17.5V17H6.5V20H4.5V17H3V15H4.5V12C4.5 11.17 5.17 10.5 6 10.5H18Z"/>
+                              </svg>
                             </div>
-                            <p className="text-sm">{message.content}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{message.timestamp}</p>
+                            <div>
+                              <p className="text-sm font-medium text-blue-800">Sistema</p>
+                              <p className="text-sm text-blue-700">{message.content}</p>
+                              <p className="text-xs text-blue-600 mt-1">{message.timestamp}</p>
+                            </div>
                           </div>
                         </div>
                       </motion.div>
@@ -4854,91 +4585,152 @@ const getCurrentUserId = () => {
                   }
                   
                   return (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                        {(() => {
-                          // Si es mensaje propio, usar el avatar del usuario actual
-                          // Si es mensaje del otro, usar el avatar del sender o del usuario de la conversación
-                          let avatarSrc: string | undefined
-                          
-                          if (isOwnMessage) {
-                            // Mensaje propio: usar avatar del usuario actual
-                            avatarSrc = normalizeAvatar(currentUser?.avatar) || DEFAULT_AVATAR
-                          } else {
-                            // Mensaje del otro: usar avatar del sender o del usuario de la conversación
-                            const senderAvatar = normalizeAvatar(message.sender?.avatar)
-                            const conversationUserAvatar = normalizeAvatar(selectedConversation.user.avatar)
-                            avatarSrc = senderAvatar || conversationUserAvatar || DEFAULT_AVATAR
-                          }
-                          
-                          const displayName = isOwnMessage 
-                            ? `${currentUser?.name || 'Usuario'} ${currentUser?.lastName || ''}`.trim()
-                            : `${message.sender?.name || selectedConversation.user.name} ${message.sender?.lastName || ''}`.trim()
-                          
-                          return (
-                            <img
-                              src={avatarSrc}
-                              alt={displayName}
-                              className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700"
-                              onError={(e) => {
-                                // Si falla la carga, usar el avatar por defecto
-                                e.currentTarget.src = DEFAULT_AVATAR
-                              }}
-                            />
-                          )
-                        })()}
-                        <div className={`px-4 py-2 rounded-2xl ${isOwnMessage 
-                          ? 'bg-green-600 text-white' 
-                          : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
-                        } transition-colors`}>
-                          {/* Contenido del mensaje */}
-                          {((message.type as any) === 'imagen' || message.type === 'image') && message.metadata?.imageUrl ? (
-                            <div className="space-y-2">
-                              {/* Comentario si existe */}
-                              {message.content && message.content.trim() && message.content !== 'Subiendo imagen...' && (
-                                <p className="text-sm">{message.content}</p>
-                              )}
-                              
-                              {/* Imagen pequeña */}
-                              <div className="relative group">
-                                <img
-                                  src={message.metadata.imageUrl}
-                                  alt="Imagen del chat"
-                                  className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200 dark:border-gray-700"
-                                  onClick={() => {
-                                    openImageModal(message.metadata?.imageUrl!, 'Imagen del chat')
-                                  }}
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    target.style.display = 'none'
-                                    const fallback = document.createElement('div')
-                                    fallback.className = 'w-32 h-32 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-500'
-                                    fallback.textContent = 'Error al cargar'
-                                    target.parentNode?.insertBefore(fallback, target.nextSibling)
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="text-sm">{message.content}</p>
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex ${isOwnMsg ? 'justify-end' : 'justify-start'} mb-4`}
+                >
+                                    <div className={`flex items-end space-x-2 max-w-md ${isOwnMessage(message) ? 'flex-row-reverse space-x-reverse ml-auto' : ''}`}>                      
+                    {!isOwnMessage(message) && (
+                      <Avatar
+                        src={normalizeAvatar(message.sender?.avatar || selectedConversation.user.avatar)}                                                                        
+                        alt={message.sender?.name || selectedConversation.user.name}                                                                            
+                        size="sm"
+                        className="border border-gray-200 flex-shrink-0"        
+                      />
+                    )}
+
+                                        <div className={`rounded-xl px-4 py-2 relative group shadow-sm ${isOwnMessage(message)                                                      
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'      
+                      }`}>
+                      {message.replyToId && (
+                        <div className={`text-xs mb-2 px-3 py-1.5 rounded-lg ${isOwnMessage(message) ? 'bg-green-600/40' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                          <span className="opacity-80">Respuesta a:</span>
+                          <span className="ml-1 font-medium">
+                            {findMessageById(message.replyToId)?.content?.slice(0, 60) || 'mensaje'}
+                          </span>
+                        </div>
+                      )}
+                      {message.type === 'text' && (
+                        <p className="text-sm leading-relaxed">{message.content}</p>
+                      )}
+
+                      {message.type === 'image' && message.metadata?.imageUrl && (
+                        <div className="space-y-2">
+                          {/* Comentario si existe */}
+                          {message.content && message.content.trim() && message.content !== 'Subiendo imagen...' && (
+                            <p className="text-sm leading-relaxed">{message.content}</p>
                           )}
                           
-                          <div className="flex items-center justify-between mt-1">
-                            <p className={`text-xs ${isOwnMessage ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'}`}>
-                              {message.timestamp}
-                            </p>
-                            {isOwnMessage && (
-                              <div className={`w-2 h-2 rounded-full ${message.isRead ? 'bg-green-300' : 'bg-gray-400 dark:bg-gray-500'}`}></div>
+                          {/* Imagen */}
+                          <div className="relative group">
+                        <img
+                          src={message.metadata.imageUrl}
+                              alt="Imagen del chat"
+                              className="rounded-lg max-w-32 max-h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-200"
+                              onClick={() => {
+                                openImageModal(message.metadata?.imageUrl!, 'Imagen del chat')
+                              }}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                                const fallback = document.createElement('div')
+                                fallback.className = 'w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400'
+                                fallback.innerHTML = `
+                                  <div class="text-center">
+                                    <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <p class="text-xs">Error cargando imagen</p>
+                                  </div>
+                                `
+                                target.parentNode?.insertBefore(fallback, target.nextSibling)
+                              }}
+                            />
+                            {message.content === 'Subiendo imagen...' && (
+                              <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
+                                <div className="text-white text-sm flex items-center space-x-2">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  <span>Subiendo...</span>
+                                </div>
+                              </div>
+                            )}
+                            {message.metadata?.fileName && message.content !== 'Subiendo imagen...' && (
+                              <div className="absolute bottom-2 left-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                {message.metadata.fileName}
+                                {message.metadata.fileSize && ` (${message.metadata.fileSize})`}
+                              </div>
                             )}
                           </div>
                         </div>
+                      )}
+
+                      {message.type === 'location' && message.metadata?.coordinates && (
+                        <div className="flex items-center space-x-2">
+                          <MapPinIcon className="w-4 h-4" />
+                          <span className="text-sm">Ubicación compartida</span>
+                        </div>
+                      )}
+
+                      {message.type === 'file' && message.metadata?.fileName && (
+                        <div className="flex items-center space-x-2">
+                          <PaperClipIcon className="w-4 h-4" />
+                          <span className="text-sm">{message.metadata.fileName}</span>
+                        </div>
+                      )}
+
+              {/* Fecha integrada dentro del mensaje */}
+                            <div className={`flex items-center justify-between ${isOwnMessage(message) ? '' : ''}`}>                                                          
+                        <div className="flex items-center space-x-1">
+                          <span className={`text-xs ${isOwnMessage(message) ? 'text-green-100' : 'text-gray-500'}`}>                                          
+                        {formatTime(message.timestamp)}
+                      </span>
+                          <span className={`text-xs ${isOwnMessage(message) ? 'text-green-200' : 'text-gray-400'}`}>                                          
+                            • {message.sender?.name || selectedConversation.user.name}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center space-x-1">
+                      {isOwnMessage(message) && (
+                        <div className="flex items-center">
+                          {message.isRead ? (
+                                <CheckIcon className="w-3 h-3 text-primary-200" />
+                          ) : (
+                                <CheckIcon className="w-3 h-3 text-primary-300" />
+                          )}
+                        </div>
+                      )}
+                                            {message.reactions && (
+                            <div className="flex space-x-1">
+                          {Object.entries(message.reactions).map(([emoji, count]) => (                                                                          
+                                <span key={emoji} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${isOwnMessage(message) ? 'border-green-400/40' : 'border-gray-300'}`}>
+                              {emoji} {count}
+                            </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </motion.div>
+
+                      <div className={`absolute -top-3 ${isOwnMessage(message) ? 'right-2' : 'left-2'} opacity-0 group-hover:opacity-100 transition-opacity`}>
+                        <div className="bg-white border border-gray-200 shadow-sm rounded-lg px-1 py-0.5 flex space-x-1">
+                          <button onClick={() => setOpenReactionsFor(message.id)} className="text-xs px-2 py-1 hover:bg-gray-100 rounded">🙂</button>
+                          <button onClick={() => handleReply(message.id)} className="text-xs px-2 py-1 hover:bg-gray-100 rounded">Responder</button>
+                        </div>
+                      </div>
+
+                      {openReactionsFor === message.id && (
+                        <div className={`absolute ${isOwnMessage(message) ? 'right-0' : 'left-0'} -top-12 bg-white border border-gray-200 shadow-lg rounded-lg p-1 flex space-x-1 z-10`}>
+                          {['👍', '❤️', '🎉', '😂', '😮', '😢'].map(e => (
+                            <button key={e} className="px-1 hover:scale-110 transition" onClick={() => handleAddReaction(message.id, e)}>{e}</button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
                   )
                 })
               )}
@@ -5016,46 +4808,48 @@ const getCurrentUserId = () => {
                   })
                   
                   if (hasDonation) {
-                    // Si hay una donación, determinar cuál es el producto de donación
-                    // Usar el ID numérico correcto para comparar
-                    const currentUserNumeric = currentUserIdNumeric ? parseInt(currentUserIdNumeric) : null
+                    // Si hay una donación, determinar si es el donador usando múltiples métodos
+                    const currentUserId = getCurrentUserId()
+                    const currentUserIdNumber = parseInt(currentUserId || '0')
                     
-                    // Si aún no tenemos el ID numérico, no mostrar botones hasta que se cargue
-                    if (!currentUserNumeric) {
-                      console.log('⏳ Esperando currentUserIdNumeric...')
-                      return (
-                        <div className="flex items-center space-x-2 px-3 py-1.5">
-                          <div className="animate-pulse h-8 bg-gray-300 dark:bg-gray-600 rounded w-32"></div>
-                        </div>
-                      )
+                    // Método 1: Usar lógica de exchangeInfo
+                    const isDonorByExchangeInfo = !isCurrentUserBuyer()
+                    
+                    // Método 2: Verificar directamente los user_id de los productos
+                    const isDonorByProductId = (donationProduct: any) => {
+                      if (!donationProduct || !currentUserId) return false
+                      return donationProduct.user_id?.toString() === currentUserId ||
+                             donationProduct.user_id === currentUserIdNumber ||
+                             donationProduct.user_id?.toString() === currentUserIdNumber.toString()
                     }
                     
-                    // Determinar cuál producto es la donación
-                    const donationProduct = isOfferedDonation ? offeredProduct : requestedProduct
+                    // Determinar cuál es el producto de donación
+                    const donationProduct = isDonorByExchangeInfo ? requestedProduct : offeredProduct
+                    const isDonorByProduct = isDonorByProductId(donationProduct)
                     
-                    // Verificar si el usuario actual es el dueño/donador del producto de donación
-                    const isDonor = donationProduct && (
-                      donationProduct.user_id === currentUserNumeric ||
-                      parseInt(donationProduct.user_id?.toString() || '0') === currentUserNumeric ||
-                      donationProduct.user_id?.toString() === currentUserNumeric.toString()
-                    )
+                    // Usar ambos métodos para mayor confiabilidad
+                    const isDonor = isDonorByExchangeInfo && isDonorByProduct
                     
-                    console.log('🔍 Donación - Verificando donador:', {
-                      isOfferedDonation,
-                      isRequestedDonation,
+                    console.log('🔍 Donación - Verificando donador (método dual):', {
+                      exchangeInfo,
+                      isCurrentUserBuyer: isCurrentUserBuyer(),
+                      isDonorByExchangeInfo,
+                      isDonorByProduct,
                       isDonor,
-                      currentUserNumeric,
-                      currentUserIdNumeric,
+                      currentUserId: getCurrentUserId(),
+                      currentUserIdNumber,
+                      offeredProduct: offeredProduct?.titulo,
+                      requestedProduct: requestedProduct?.titulo,
+                      offeredProductUserId: offeredProduct?.user_id,
+                      requestedProductUserId: requestedProduct?.user_id,
+                      currentUserFromSession: currentUser?.id,
                       donationProduct: donationProduct?.titulo,
                       donationProductUserId: donationProduct?.user_id,
-                      offeredProduct: offeredProduct?.titulo,
-                      offeredProductUserId: offeredProduct?.user_id,
-                      requestedProduct: requestedProduct?.titulo,
-                      requestedProductUserId: requestedProduct?.user_id,
-                      comparacion: {
-                        userIdEquals: donationProduct?.user_id === currentUserNumeric,
-                        userIdIntEquals: parseInt(donationProduct?.user_id?.toString() || '0') === currentUserNumeric,
-                        userIdStringEquals: donationProduct?.user_id?.toString() === currentUserNumeric?.toString()
+                      detailedExchangeInfo: {
+                        usuarioProponeId: exchangeInfo.usuarioProponeId,
+                        usuarioRecibeId: exchangeInfo.usuarioRecibeId,
+                        currentUserId: getCurrentUserId(),
+                        currentUserIdNumber: parseInt(getCurrentUserId() || '0')
                       }
                     })
                     

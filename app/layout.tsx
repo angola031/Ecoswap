@@ -18,12 +18,8 @@ export const metadata: Metadata = {
     creator: 'EcoSwap Colombia',
     publisher: 'EcoSwap Colombia',
     icons: {
-        icon: [
-            { url: '/favicon.ico', sizes: 'any' },
-            { url: '/icon.svg', type: 'image/svg+xml' }
-        ],
+        icon: '/icon.svg',
         apple: '/icon.svg',
-        shortcut: '/favicon.ico',
     },
     formatDetection: {
         email: false,
