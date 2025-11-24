@@ -2052,6 +2052,15 @@ const getCurrentUserId = () => {
         const responseData = await response.json()
         
         const data = responseData.data || responseData
+        
+        console.log('🔍 [loadProductInfo] Respuesta del API:', {
+          offeredProduct: data.offeredProduct,
+          requestedProduct: data.requestedProduct,
+          offeredProductType: typeof data.offeredProduct,
+          requestedProductType: typeof data.requestedProduct,
+          offeredProductKeys: data.offeredProduct ? Object.keys(data.offeredProduct) : null
+        })
+        
         setOfferedProduct(data.offeredProduct)
         setRequestedProduct(data.requestedProduct)
         
