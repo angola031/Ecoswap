@@ -4385,16 +4385,16 @@ const getCurrentUserId = () => {
                             const anyAccepted = proposals.some(p => p.status === 'aceptada')
                             if (anyAccepted) return false
                             const role = getUserRole()
-                            const currentUserId = parseInt(getCurrentUserId())
+                            const currentUserIdNum = currentUserIdNumeric ? parseInt(currentUserIdNumeric) : 0
                             const proposerId = (proposal as any)?.proposer?.id ? Number((proposal as any).proposer.id) : null
                             
                             // Si soy el vendedor y la propuesta la envió el comprador, puedo aceptar
-                            if (role === 'vendedor' && proposerId && proposerId !== currentUserId) {
+                            if (role === 'vendedor' && proposerId && proposerId !== currentUserIdNum) {
                               return true
                             }
                             
                             // Si soy el comprador y la propuesta la envió el vendedor, puedo aceptar
-                            if (role === 'comprador' && proposerId && proposerId !== currentUserId) {
+                            if (role === 'comprador' && proposerId && proposerId !== currentUserIdNum) {
                               return true
                             }
                             
@@ -4465,28 +4465,20 @@ const getCurrentUserId = () => {
               const isRejected = proposals.some(p => (p as any).exchangeStatus === 'rechazado' || (p as any).exchangeStatus === 'fallido')
               
               // Verificar si el usuario actual ya validó con comparación normalizada
-              const currentUserIdString = getCurrentUserId()
-              const currentUserIdNumber = parseInt(currentUserIdString || '0')
+              // Usar el ID numérico directamente del estado en lugar de getCurrentUserId()
+              const currentUserIdNumber = currentUserIdNumeric ? parseInt(currentUserIdNumeric) : 0
               
-              // Debug para identificar el problema con getCurrentUserId
-              console.log('🔍 [Banner Debug] getCurrentUserId result:', {
-                currentUserIdString,
+              // Debug para identificar el problema
+              console.log('🔍 [Banner Debug] Usuario ID:', {
+                currentUserIdNumeric,
                 currentUserIdNumber,
                 isNaN: Number.isNaN(currentUserIdNumber),
-                type: typeof currentUserIdString,
-                length: currentUserIdString?.length
+                type: typeof currentUserIdNumeric,
+                authUserId: currentUser?.id
               })
               
-              // Si getCurrentUserId falla, intentar obtener el ID del currentUser
-              let finalCurrentUserId = currentUserIdNumber
-              if (Number.isNaN(currentUserIdNumber) && currentUser?.id) {
-                finalCurrentUserId = parseInt(String(currentUser.id))
-                console.log('🔍 [Banner Debug] Usando currentUser.id como fallback:', {
-                  currentUser_id: currentUser.id,
-                  finalCurrentUserId,
-                  isNaN: Number.isNaN(finalCurrentUserId)
-                })
-              }
+              // Usar el ID numérico del estado (ya verificado)
+              const finalCurrentUserId = currentUserIdNumber
               
               // 🔥 CRÍTICO: Normalizar TODOS los IDs a números para comparación
               const userAlreadyValidated = userValidations.some(validation => {
@@ -4504,7 +4496,7 @@ const getCurrentUserId = () => {
               })
               
               console.log('🔍 [Banner] Estado de validación:', {
-                currentUserId: currentUserIdString,
+                currentUserIdNumeric,
                 currentUserIdNumber,
                 finalCurrentUserId,
                 userValidations: userValidations.map(v => ({
