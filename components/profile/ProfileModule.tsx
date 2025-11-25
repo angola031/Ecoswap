@@ -210,6 +210,13 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     return
                 }
 
+                console.log('👤 Usuario de BD:', {
+                    email: dbUser.email,
+                    es_fundacion: dbUser.es_fundacion,
+                    fundacion_verificada: dbUser.fundacion_verificada,
+                    nombre_fundacion: dbUser.nombre_fundacion
+                })
+
                 const { data: location } = await supabase
                     .from('ubicacion')
                     .select('ciudad, departamento')
@@ -285,6 +292,11 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 }
 
                 setProfileData(profile)
+                console.log('📊 ProfileData cargado:', {
+                    es_fundacion: profile.es_fundacion,
+                    fundacion_verificada: profile.fundacion_verificada,
+                    nombre_fundacion: profile.nombre_fundacion
+                })
 
                 // Cargar productos del usuario (incluye pendientes, aprobados y rechazados)
                 const { data: productsData, error: productsError } = await supabase
@@ -570,6 +582,13 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
         }
     }
 
+    console.log('🔄 Renderizando ProfileModule - activeTab:', activeTab)
+    console.log('📋 ProfileData:', profileData ? {
+        es_fundacion: profileData.es_fundacion,
+        fundacion_verificada: profileData.fundacion_verificada,
+        nombre_fundacion: profileData.nombre_fundacion
+    } : 'null')
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -706,11 +725,19 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                 <div className="flex gap-2 items-center flex-wrap">
                                     <button
                                         onClick={() => {
+                                            console.log('🔍 Botón Verificar clickeado')
+                                            console.log('🏛️ es_fundacion:', profileData.es_fundacion)
+                                            console.log('📋 activeTab antes:', activeTab)
+                                            
                                             if (profileData.es_fundacion) {
                                                 // Para fundaciones, ir a la pestaña de Verificación
+                                                console.log('✅ Cambiando a pestaña verification')
                                                 setActiveTab('verification')
+                                                // Hacer scroll hacia arriba para ver el contenido
+                                                window.scrollTo({ top: 0, behavior: 'smooth' })
                                             } else {
                                                 // Para usuarios normales, ir a verificación de identidad
+                                                console.log('👤 Redirigiendo a verificación de identidad')
                                                 router.push('/verificacion-identidad')
                                             }
                                         }}
@@ -1028,6 +1055,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 {/* Pestaña Verificación (solo fundaciones) */}
                 {activeTab === 'verification' && profileData.es_fundacion && (
                     <div className="space-y-6">
+                        {console.log('✅ Renderizando pestaña de Verificación')}
                         {/* Estado de Verificación */}
                         <div className="card">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
