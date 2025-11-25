@@ -705,11 +705,22 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                             <div className="flex flex-col lg:flex-row gap-2 lg:items-center">
                                 <div className="flex gap-2 items-center flex-wrap">
                                     <button
-                                        onClick={() => router.push('/verificacion-identidad')}
-                                        className={`${profileData.badges?.includes('Verificado') ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-yellow-500 hover:bg-yellow-600 text-white'} px-3 py-2 rounded-md inline-flex items-center text-sm`}
+                                        onClick={() => {
+                                            if (profileData.es_fundacion) {
+                                                // Para fundaciones, ir a la pestaña de Verificación
+                                                setActiveTab('verification')
+                                            } else {
+                                                // Para usuarios normales, ir a verificación de identidad
+                                                router.push('/verificacion-identidad')
+                                            }
+                                        }}
+                                        className={`${profileData.badges?.includes('Verificado') || profileData.fundacion_verificada ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-yellow-500 hover:bg-yellow-600 text-white'} px-3 py-2 rounded-md inline-flex items-center text-sm`}
                                     >
                                         <ShieldCheckIcon className="w-4 h-4 mr-2" />
-                                        {profileData.badges?.includes('Verificado') ? 'Cuenta verificada' : 'Verificar cuenta'}
+                                        {profileData.es_fundacion 
+                                            ? (profileData.fundacion_verificada ? 'Fundación Verificada' : 'Verificar Fundación')
+                                            : (profileData.badges?.includes('Verificado') ? 'Cuenta verificada' : 'Verificar cuenta')
+                                        }
                                     </button>
 
                                     {/* Indicador de estado de validación */}
