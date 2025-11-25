@@ -24,6 +24,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { uploadUserProfileImage } from '@/lib/storage'
 import Avatar from '@/components/ui/Avatar'
+import FoundationBadge, { FoundationBadgeTooltip } from '@/components/foundation/FoundationBadge'
 
 interface BadgeDetail {
     nombre: string
@@ -64,6 +65,11 @@ interface ProfileData {
         facebook?: string
         twitter?: string
     }
+    // Datos de fundación
+    es_fundacion?: boolean
+    fundacion_verificada?: boolean
+    nombre_fundacion?: string
+    tipo_fundacion?: string
 }
 
 interface UserProduct {
@@ -256,7 +262,12 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     totalExchanges: typeof dbUser.total_intercambios === 'number' ? dbUser.total_intercambios : 0,
                     totalViews: 0,
                     badges: dbUser.verificado ? ['Verificado', ...badgeNames] : badgeNames,
-                    socialLinks: {}
+                    socialLinks: {},
+                    // Datos de fundación
+                    es_fundacion: dbUser.es_fundacion || false,
+                    fundacion_verificada: dbUser.fundacion_verificada || false,
+                    nombre_fundacion: dbUser.nombre_fundacion || undefined,
+                    tipo_fundacion: dbUser.tipo_fundacion || undefined
                 }
 
                 setProfileData(profile)
@@ -650,11 +661,16 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                             <div>
                                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center flex-wrap gap-2">
-                                    {profileData.name}
+                                    {profileData.es_fundacion && profileData.nombre_fundacion ? profileData.nombre_fundacion : profileData.name}
                                     {profileData.badges?.includes('Verificado') && (
                                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
                                             <ShieldCheckIcon className="w-4 h-4 mr-1" /> Verificado
                                         </span>
+                                    )}
+                                    {profileData.es_fundacion && profileData.fundacion_verificada && (
+                                        <FoundationBadgeTooltip>
+                                            <FoundationBadge size="md" showText={false} />
+                                        </FoundationBadgeTooltip>
                                     )}
                                 </h1>
                                 <div className="flex items-center space-x-3 sm:space-x-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3">
@@ -885,64 +901,101 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
             >
                 {/* Pestaña Resumen */}
                 {activeTab === 'overview' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Información de contacto */}
-                        <div className="card">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Información de Contacto</h3>
-                            <div className="space-y-3">
-                                <div className="flex items-center space-x-3">
-                                    <EnvelopeIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                                    <span className="text-gray-700 dark:text-gray-300">{profileData.email}</span>
+                    <>
+                        {/* Información de fundación */}
+                        {profileData.es_fundacion && (
+                            <div className="card mb-6 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-2 border-purple-200 dark:border-purple-700">
+                                <div className="flex items-center space-x-3 mb-4">
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">🏛️ Información de Fundación</h3>
+                                    {profileData.fundacion_verificada && (
+                                        <FoundationBadge size="sm" showText={true} />
+                                    )}
                                 </div>
-                                <div className="flex items-center space-x-3">
-                                    <PhoneIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                                    <span className="text-gray-700 dark:text-gray-300">{profileData.phone}</span>
-                                </div>
-                                <div className="flex items-center space-x-3">
-                                    <MapPinIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                                    <span className="text-gray-700 dark:text-gray-300">{profileData.location}</span>
-                                </div>
-                                {profileData.socialLinks.website && (
-                                    <div className="flex items-center space-x-3">
-                                        <GlobeAltIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                                        <a
-                                            href={profileData.socialLinks.website}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
-                                        >
-                                            {profileData.socialLinks.website}
-                                        </a>
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Nombre de la Fundación</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{profileData.nombre_fundacion}</p>
                                     </div>
-                                )}
+                                    {profileData.tipo_fundacion && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Enfoque</p>
+                                            <p className="text-sm text-gray-700 dark:text-gray-300">{profileData.tipo_fundacion}</p>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Responsable</p>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300">{profileData.name}</p>
+                                    </div>
+                                    {!profileData.fundacion_verificada && (
+                                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md p-3 mt-3">
+                                            <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                                                ⏳ Verificación pendiente
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Información de contacto */}
+                            <div className="card">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Información de Contacto</h3>
+                                <div className="space-y-3">
+                                    <div className="flex items-center space-x-3">
+                                        <EnvelopeIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                        <span className="text-gray-700 dark:text-gray-300">{profileData.email}</span>
+                                    </div>
+                                    <div className="flex items-center space-x-3">
+                                        <PhoneIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                        <span className="text-gray-700 dark:text-gray-300">{profileData.phone}</span>
+                                    </div>
+                                    <div className="flex items-center space-x-3">
+                                        <MapPinIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                        <span className="text-gray-700 dark:text-gray-300">{profileData.location}</span>
+                                    </div>
+                                    {profileData.socialLinks.website && (
+                                        <div className="flex items-center space-x-3">
+                                            <GlobeAltIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                            <a
+                                                href={profileData.socialLinks.website}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+                                            >
+                                                {profileData.socialLinks.website}
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
 
-                        {/* Enlaces sociales */}
-                        <div className="card">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Redes Sociales</h3>
-                            <div className="space-y-3">
-                                {profileData.socialLinks.instagram && (
-                                    <div className="flex items-center space-x-3">
-                                        <span className="text-pink-600 dark:text-pink-400 text-lg">📷</span>
-                                        <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.instagram}</span>
-                                    </div>
-                                )}
-                                {profileData.socialLinks.facebook && (
-                                    <div className="flex items-center space-x-3">
-                                        <span className="text-blue-600 dark:text-blue-400 text-lg">📘</span>
-                                        <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.facebook}</span>
-                                    </div>
-                                )}
-                                {profileData.socialLinks.twitter && (
-                                    <div className="flex items-center space-x-3">
-                                        <span className="text-blue-400 dark:text-blue-300 text-lg">🐦</span>
-                                        <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.twitter}</span>
-                                    </div>
-                                )}
+                            {/* Enlaces sociales */}
+                            <div className="card">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Redes Sociales</h3>
+                                <div className="space-y-3">
+                                    {profileData.socialLinks.instagram && (
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-pink-600 dark:text-pink-400 text-lg">📷</span>
+                                            <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.instagram}</span>
+                                        </div>
+                                    )}
+                                    {profileData.socialLinks.facebook && (
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-blue-600 dark:text-blue-400 text-lg">📘</span>
+                                            <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.facebook}</span>
+                                        </div>
+                                    )}
+                                    {profileData.socialLinks.twitter && (
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-blue-400 dark:text-blue-300 text-lg">🐦</span>
+                                            <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.twitter}</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </>
                 )}
 
                 {/* Pestaña Productos */}
