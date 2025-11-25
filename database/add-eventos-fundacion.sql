@@ -22,15 +22,7 @@ CREATE TABLE IF NOT EXISTS evento_fundacion (
     requiere_registro BOOLEAN DEFAULT false,
     estado VARCHAR(20) DEFAULT 'activo' CHECK (estado IN ('activo', 'cancelado', 'finalizado')),
     fecha_creacion TIMESTAMP DEFAULT NOW(),
-    fecha_actualizacion TIMESTAMP DEFAULT NOW(),
-    CONSTRAINT check_fundacion_verificada CHECK (
-        EXISTS (
-            SELECT 1 FROM usuario 
-            WHERE user_id = fundacion_id 
-            AND es_fundacion = true 
-            AND fundacion_verificada = true
-        )
-    )
+    fecha_actualizacion TIMESTAMP DEFAULT NOW()
 );
 
 -- Tabla de registros a eventos (si requiere registro)
@@ -50,6 +42,37 @@ CREATE INDEX IF NOT EXISTS idx_evento_fecha_inicio ON evento_fundacion(fecha_ini
 CREATE INDEX IF NOT EXISTS idx_evento_estado ON evento_fundacion(estado);
 CREATE INDEX IF NOT EXISTS idx_registro_evento_id ON registro_evento(evento_id);
 CREATE INDEX IF NOT EXISTS idx_registro_usuario_id ON registro_evento(usuario_id);
+
+-- Trigger para validar que solo fundaciones verificadas puedan crear eventos
+CREATE OR REPLACE FUNCTION validate_fundacion_verificada()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_es_fundacion BOOLEAN;
+    v_verificada BOOLEAN;
+BEGIN
+    -- Obtener información de la fundación
+    SELECT es_fundacion, fundacion_verificada 
+    INTO v_es_fundacion, v_verificada
+    FROM usuario 
+    WHERE user_id = NEW.fundacion_id;
+    
+    -- Validar que sea fundación verificada
+    IF v_es_fundacion IS NULL OR v_es_fundacion = false THEN
+        RAISE EXCEPTION 'Solo las fundaciones pueden crear eventos';
+    END IF;
+    
+    IF v_verificada IS NULL OR v_verificada = false THEN
+        RAISE EXCEPTION 'La fundación debe estar verificada para crear eventos';
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_validate_fundacion
+    BEFORE INSERT ON evento_fundacion
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_fundacion_verificada();
 
 -- Trigger para actualizar fecha_actualizacion
 CREATE OR REPLACE FUNCTION update_evento_updated_at()
