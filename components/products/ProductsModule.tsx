@@ -67,6 +67,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high' | 'popular'>('newest')
     const [availableCategories, setAvailableCategories] = useState<string[]>([])
+    const [isFoundationVerified, setIsFoundationVerified] = useState(false)
 
     const handlePublishProduct = async () => {
         // Verificar si el usuario está autenticado
@@ -126,6 +127,41 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
     }, [])
 
     // Cargar productos desde la API
+    // Verificar si el usuario es fundación verificada
+    useEffect(() => {
+        const checkFoundation = async () => {
+            if (!currentUser) {
+                setIsFoundationVerified(false)
+                return
+            }
+
+            try {
+                const supabase = (await import('@/lib/supabase-client')).getSupabaseClient()
+                const { data: { session } } = await supabase.auth.getSession()
+                
+                if (!session?.access_token) return
+
+                const response = await fetch('/api/foundation/register', {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                })
+
+                if (response.ok) {
+                    const data = await response.json()
+                    setIsFoundationVerified(
+                        data.foundation?.es_fundacion === true && 
+                        data.foundation?.fundacion_verificada === true
+                    )
+                }
+            } catch (error) {
+                console.error('Error verificando fundación:', error)
+            }
+        }
+
+        checkFoundation()
+    }, [currentUser])
+
     useEffect(() => {
         const loadProducts = async () => {
             setIsLoading(true)
@@ -215,6 +251,14 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
     useEffect(() => {
         let filtered = products
 
+        // Filtrar productos de donación para usuarios normales
+        // Solo fundaciones verificadas pueden ver productos de donación
+        if (!isFoundationVerified) {
+            filtered = filtered.filter(product => 
+                product.tipoTransaccion !== 'donacion'
+            )
+        }
+
         // Filtro por categoría
         if (selectedCategory !== 'all') {
             filtered = filtered.filter(product => {
@@ -254,7 +298,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
         }
 
         setFilteredProducts(filtered)
-    }, [products, selectedCategory, searchQuery, sortBy])
+    }, [products, selectedCategory, searchQuery, sortBy, isFoundationVerified])
 
     // Funciones para navegación
     const openProductDetail = (product: Product) => {

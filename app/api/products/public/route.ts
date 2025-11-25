@@ -12,6 +12,29 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
         }
 
+        // Verificar si el usuario es fundación verificada
+        let isFoundationVerified = false
+        try {
+            const auth = req.headers.get('authorization') || ''
+            const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
+            
+            if (token) {
+                const { data } = await supabase.auth.getUser(token)
+                if (data?.user) {
+                    const { data: userData } = await supabase
+                        .from('usuario')
+                        .select('es_fundacion, fundacion_verificada')
+                        .eq('email', data.user.email)
+                        .single()
+                    
+                    isFoundationVerified = userData?.es_fundacion === true && userData?.fundacion_verificada === true
+                }
+            }
+        } catch (error) {
+            // Si hay error verificando usuario, continuar sin privilegios de fundación
+            console.log('Usuario no autenticado o error verificando fundación')
+        }
+
         // Obtener parámetros de consulta
         const { searchParams } = new URL(req.url)
         const limit = parseInt(searchParams.get('limit') || '20')
@@ -56,6 +79,12 @@ export async function GET(req: NextRequest) {
             .eq('estado_publicacion', 'activo')
             .order('fecha_publicacion', { ascending: false })
             .range(offset, offset + limit - 1)
+
+        // Excluir productos de donación para usuarios normales
+        // Solo fundaciones verificadas pueden ver productos de donación
+        if (!isFoundationVerified) {
+            query = query.neq('tipo_transaccion', 'donacion')
+        }
 
         // Aplicar filtros si existen
         if (categoria) {
