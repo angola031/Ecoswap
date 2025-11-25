@@ -403,69 +403,245 @@ const handleManageDonations = async (product: any) => {
       didOpen: () => {
         // Agregar funciones globales para los botones
         (window as any).acceptDonationRequest = async (propuestaId: number, chatId: number) => {
-          const result = await (window as any).Swal.fire({
-            title: '¿Aceptar esta solicitud?',
-            text: 'Podrás coordinar la entrega con el solicitante por chat',
-            icon: 'question',
+          // Mostrar formulario para proponer fecha y lugar
+          const { value: formData } = await (window as any).Swal.fire({
+            title: '📍 Proponer Fecha y Lugar',
+            html: `
+              <div class="text-left space-y-4">
+                <p class="text-sm text-gray-600">Propón una fecha y lugar de encuentro para entregar la donación</p>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">📅 Fecha y hora de encuentro</label>
+                  <input 
+                    type="datetime-local" 
+                    id="fecha-encuentro" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    min="${new Date().toISOString().slice(0, 16)}"
+                  >
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">📍 Lugar de encuentro</label>
+                  <input 
+                    type="text" 
+                    id="lugar-encuentro" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Ej: Centro comercial Unicentro, entrada principal"
+                  >
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">💬 Mensaje adicional (opcional)</label>
+                  <textarea 
+                    id="mensaje-adicional" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    rows="3"
+                    placeholder="Ej: Te veo en la entrada principal. Llevo camisa azul..."
+                  ></textarea>
+                </div>
+              </div>
+            `,
             showCancelButton: true,
-            confirmButtonText: 'Sí, aceptar',
+            confirmButtonText: 'Aceptar y Proponer',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#10B981',
-            cancelButtonColor: '#6B7280'
+            cancelButtonColor: '#6B7280',
+            preConfirm: () => {
+              const fecha = (document.getElementById('fecha-encuentro') as HTMLInputElement)?.value
+              const lugar = (document.getElementById('lugar-encuentro') as HTMLInputElement)?.value
+              const mensaje = (document.getElementById('mensaje-adicional') as HTMLTextAreaElement)?.value
+
+              if (!fecha) {
+                (window as any).Swal.showValidationMessage('Por favor, selecciona una fecha y hora')
+                return false
+              }
+
+              if (!lugar || lugar.trim().length < 5) {
+                (window as any).Swal.showValidationMessage('Por favor, ingresa un lugar de encuentro (mínimo 5 caracteres)')
+                return false
+              }
+
+              return {
+                fecha: fecha,
+                lugar: lugar.trim(),
+                mensaje: mensaje?.trim() || ''
+              }
+            }
           })
 
-          if (result.isConfirmed) {
-            // TODO: Implementar aceptación de solicitud
-            await (window as any).Swal.fire({
-              title: '✅ Solicitud Aceptada',
-              html: `
-                <div class="text-left space-y-3">
-                  <p class="text-gray-700">Has aceptado la solicitud. Puedes coordinar la entrega por chat.</p>
-                  <div class="bg-blue-50 p-3 rounded-lg">
-                    <h4 class="font-medium text-blue-900 mb-2">📋 Próximos pasos:</h4>
-                    <ul class="text-sm text-blue-800 space-y-1">
-                      <li>• Ve al chat para coordinar</li>
-                      <li>• Acuerda fecha, hora y lugar de encuentro</li>
-                      <li>• Confirma que el producto esté listo</li>
-                      <li>• Realiza la entrega</li>
-                    </ul>
+          if (formData) {
+            try {
+              // Mostrar loading
+              (window as any).Swal.fire({
+                title: 'Aceptando solicitud...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                  (window as any).Swal.showLoading()
+                }
+              })
+
+              // Obtener token de sesión
+              const supabase = getSupabaseClient()
+              const { data: { session } } = await supabase.auth.getSession()
+              
+              if (!session?.access_token) {
+                throw new Error('No se pudo verificar tu sesión')
+              }
+
+              // Enviar respuesta a la API
+              const response = await fetch(`/api/donations/request/${propuestaId}/respond`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({
+                  accion: 'aceptar',
+                  fecha_encuentro: formData.fecha,
+                  lugar_encuentro: formData.lugar,
+                  mensaje: formData.mensaje
+                })
+              })
+
+              const data = await response.json()
+
+              if (!response.ok) {
+                throw new Error(data.error || 'Error al aceptar la solicitud')
+              }
+
+              // Éxito
+              await (window as any).Swal.fire({
+                title: '✅ Solicitud Aceptada',
+                html: `
+                  <div class="text-left space-y-3">
+                    <p class="text-gray-700">Has aceptado la solicitud y propuesto el encuentro.</p>
+                    <div class="bg-blue-50 p-3 rounded-lg">
+                      <h4 class="font-medium text-blue-900 mb-2">📋 Detalles del encuentro:</h4>
+                      <ul class="text-sm text-blue-800 space-y-1">
+                        <li>📅 ${new Date(formData.fecha).toLocaleString('es-CO', { 
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}</li>
+                        <li>📍 ${formData.lugar}</li>
+                      </ul>
+                    </div>
+                    <p class="text-sm text-gray-600">El solicitante ha sido notificado. Puedes coordinar más detalles por chat.</p>
                   </div>
-                </div>
-              `,
-              icon: 'success',
-              confirmButtonText: 'Entendido',
-              confirmButtonColor: '#7C3AED'
-            })
-            
-            // Recargar modal
-            handleManageDonations(product)
+                `,
+                icon: 'success',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#7C3AED'
+              })
+              
+              // Recargar modal
+              handleManageDonations(product)
+              
+            } catch (error: any) {
+              console.error('Error aceptando solicitud:', error)
+              await (window as any).Swal.fire({
+                title: 'Error',
+                text: error.message || 'No se pudo aceptar la solicitud',
+                icon: 'error',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#7C3AED'
+              })
+            }
           }
         }
         
         (window as any).rejectDonationRequest = async (propuestaId: number) => {
-          const result = await (window as any).Swal.fire({
+          const { value: motivo } = await (window as any).Swal.fire({
             title: '¿Rechazar esta solicitud?',
-            text: 'El solicitante será notificado',
+            html: `
+              <div class="text-left space-y-3">
+                <p class="text-sm text-gray-600">El solicitante será notificado</p>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Motivo (opcional)</label>
+                  <textarea 
+                    id="motivo-rechazo" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    rows="3"
+                    placeholder="Ej: Lo siento, ya lo doné a otra persona..."
+                  ></textarea>
+                </div>
+              </div>
+            `,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sí, rechazar',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#EF4444',
-            cancelButtonColor: '#6B7280'
+            cancelButtonColor: '#6B7280',
+            preConfirm: () => {
+              const motivo = (document.getElementById('motivo-rechazo') as HTMLTextAreaElement)?.value
+              return motivo?.trim() || ''
+            }
           })
 
-          if (result.isConfirmed) {
-            // TODO: Implementar rechazo de solicitud
-            await (window as any).Swal.fire({
-              title: '❌ Solicitud Rechazada',
-              text: 'La solicitud ha sido rechazada. El solicitante será notificado.',
-              icon: 'success',
-              confirmButtonText: 'Entendido',
-              confirmButtonColor: '#7C3AED'
-            })
-            
-            // Recargar modal
-            handleManageDonations(product)
+          if (motivo !== undefined) {
+            try {
+              // Mostrar loading
+              (window as any).Swal.fire({
+                title: 'Rechazando solicitud...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                  (window as any).Swal.showLoading()
+                }
+              })
+
+              // Obtener token de sesión
+              const supabase = getSupabaseClient()
+              const { data: { session } } = await supabase.auth.getSession()
+              
+              if (!session?.access_token) {
+                throw new Error('No se pudo verificar tu sesión')
+              }
+
+              // Enviar respuesta a la API
+              const response = await fetch(`/api/donations/request/${propuestaId}/respond`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({
+                  accion: 'rechazar',
+                  mensaje: motivo
+                })
+              })
+
+              const data = await response.json()
+
+              if (!response.ok) {
+                throw new Error(data.error || 'Error al rechazar la solicitud')
+              }
+
+              // Éxito
+              await (window as any).Swal.fire({
+                title: '❌ Solicitud Rechazada',
+                text: 'La solicitud ha sido rechazada. El solicitante será notificado.',
+                icon: 'success',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#7C3AED'
+              })
+              
+              // Recargar modal
+              handleManageDonations(product)
+              
+            } catch (error: any) {
+              console.error('Error rechazando solicitud:', error)
+              await (window as any).Swal.fire({
+                title: 'Error',
+                text: error.message || 'No se pudo rechazar la solicitud',
+                icon: 'error',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#7C3AED'
+              })
+            }
           }
         }
       }
