@@ -1356,7 +1356,6 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         )
                                     }
                                 })()}
-                                </div>
 
                                 {/* Detalles de la Fundación */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
