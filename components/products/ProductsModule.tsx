@@ -68,6 +68,8 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
     const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high' | 'popular'>('newest')
     const [availableCategories, setAvailableCategories] = useState<string[]>([])
     const [isFoundationVerified, setIsFoundationVerified] = useState(false)
+    const [userLocation, setUserLocation] = useState<{ ciudad: string; departamento: string } | null>(null)
+    const [filterByLocation, setFilterByLocation] = useState(true)
 
     const handlePublishProduct = async () => {
         // Verificar si el usuario está autenticado
@@ -127,11 +129,12 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
     }, [])
 
     // Cargar productos desde la API
-    // Verificar si el usuario es fundación verificada
+    // Verificar si el usuario es fundación verificada y obtener su ubicación
     useEffect(() => {
-        const checkFoundation = async () => {
+        const checkFoundationAndLocation = async () => {
             if (!currentUser) {
                 setIsFoundationVerified(false)
+                setUserLocation(null)
                 return
             }
 
@@ -141,6 +144,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                 
                 if (!session?.access_token) return
 
+                // Verificar si es fundación
                 const response = await fetch('/api/foundation/register', {
                     headers: {
                         'Authorization': `Bearer ${session.access_token}`
@@ -154,12 +158,36 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                         data.foundation?.fundacion_verificada === true
                     )
                 }
+
+                // Obtener ubicación del usuario
+                const { data: userData } = await supabase
+                    .from('usuario')
+                    .select('user_id, email')
+                    .eq('email', session.user.email)
+                    .single()
+
+                if (userData) {
+                    const { data: ubicacion } = await supabase
+                        .from('ubicacion')
+                        .select('ciudad, departamento')
+                        .eq('user_id', userData.user_id)
+                        .eq('es_principal', true)
+                        .single()
+
+                    if (ubicacion) {
+                        setUserLocation({
+                            ciudad: ubicacion.ciudad,
+                            departamento: ubicacion.departamento
+                        })
+                        console.log('📍 Ubicación del usuario:', ubicacion.ciudad, ubicacion.departamento)
+                    }
+                }
             } catch (error) {
-                console.error('Error verificando fundación:', error)
+                console.error('Error verificando fundación y ubicación:', error)
             }
         }
 
-        checkFoundation()
+        checkFoundationAndLocation()
     }, [currentUser])
 
     useEffect(() => {
@@ -259,6 +287,19 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
             )
         }
 
+        // Filtro por ubicación del usuario
+        if (filterByLocation && userLocation) {
+            filtered = filtered.filter(product => {
+                const productLocation = product.location?.toLowerCase() || ''
+                const userCiudad = userLocation.ciudad?.toLowerCase() || ''
+                const userDepartamento = userLocation.departamento?.toLowerCase() || ''
+                
+                // Mostrar si coincide con ciudad o departamento
+                return productLocation.includes(userCiudad) || 
+                       productLocation.includes(userDepartamento)
+            })
+        }
+
         // Filtro por categoría
         if (selectedCategory !== 'all') {
             filtered = filtered.filter(product => {
@@ -298,7 +339,7 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
         }
 
         setFilteredProducts(filtered)
-    }, [products, selectedCategory, searchQuery, sortBy, isFoundationVerified])
+    }, [products, selectedCategory, searchQuery, sortBy, isFoundationVerified, filterByLocation, userLocation])
 
     // Funciones para navegación
     const openProductDetail = (product: Product) => {
@@ -408,6 +449,28 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                         </select>
                     </div>
                 </div>
+
+                {/* Toggle de filtro por ubicación */}
+                {currentUser && userLocation && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={filterByLocation}
+                                onChange={(e) => setFilterByLocation(e.target.checked)}
+                                className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                                📍 Mostrar solo productos de mi ubicación ({userLocation.ciudad}, {userLocation.departamento})
+                            </span>
+                        </label>
+                        {filterByLocation && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 ml-7">
+                                {filteredProducts.length} productos encontrados en tu zona
+                            </p>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Lista de productos */}
