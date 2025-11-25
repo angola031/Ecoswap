@@ -4063,7 +4063,7 @@ const getCurrentUserId = () => {
                       <MapPinIcon className="w-3 h-3" />
                       <span>{selectedConversation.user.location}</span>
                       <span>•</span>
-                      <span>En línea</span>
+                      <span>{isUserOnline(selectedConversation.user.id) ? 'En línea' : 'Desconectado'}</span>
                     </div>
                   </div>
                   

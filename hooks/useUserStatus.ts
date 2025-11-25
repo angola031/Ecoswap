@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { getSupabaseClient } from '../lib/supabase-client'
+import { useActivityDetection } from './useActivityDetection'
 
 interface UserStatus {
   id: string
@@ -23,6 +24,7 @@ export function useUserStatus(): UseUserStatusReturn {
   const [onlineUsers, setOnlineUsers] = useState<UserStatus[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const hasSetInitialStatus = useRef(false)
 
   // Función para obtener usuarios en línea
   const fetchOnlineUsers = useCallback(async () => {
@@ -65,12 +67,14 @@ export function useUserStatus(): UseUserStatusReturn {
     try {
       const supabase = getSupabaseClient()
       if (!supabase) {
-        throw new Error('Supabase no está configurado')
+        console.warn('Supabase no está configurado')
+        return
       }
       
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
-        throw new Error('No hay sesión activa')
+        console.warn('No hay sesión activa para actualizar estado')
+        return
       }
 
       const response = await fetch('/api/users/status', {
@@ -83,7 +87,8 @@ export function useUserStatus(): UseUserStatusReturn {
       })
 
       if (!response.ok) {
-        throw new Error('Error actualizando estado del usuario')
+        console.warn('Error actualizando estado del usuario:', response.statusText)
+        return
       }
 
       // Actualizar la lista local de usuarios
@@ -98,6 +103,53 @@ export function useUserStatus(): UseUserStatusReturn {
   const refreshStatus = useCallback(async () => {
     await fetchOnlineUsers()
   }, [fetchOnlineUsers])
+
+  // Detectar actividad del usuario y actualizar estado automáticamente
+  useActivityDetection({
+    onActivity: async () => {
+      // Verificar que haya sesión activa
+      const supabase = getSupabaseClient()
+      if (!supabase) return
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        console.log('🟢 Actividad detectada - Marcando usuario como en línea')
+        await updateUserStatus(true)
+      }
+    },
+    onInactive: async () => {
+      // Cuando el usuario esté inactivo por más de 5 minutos
+      const supabase = getSupabaseClient()
+      if (!supabase) return
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        console.log('🔴 Inactividad detectada - Marcando usuario como desconectado')
+        await updateUserStatus(false)
+      }
+    },
+    inactivityTimeout: 5 * 60 * 1000, // 5 minutos
+    throttleDelay: 30000 // 30 segundos - no actualizar muy frecuentemente
+  })
+
+  // Establecer estado inicial al montar el componente si hay sesión
+  useEffect(() => {
+    const setInitialOnlineStatus = async () => {
+      if (hasSetInitialStatus.current) return
+
+      const supabase = getSupabaseClient()
+      if (!supabase) return
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        console.log('✅ Sesión detectada en caché - Marcando usuario como en línea')
+        await updateUserStatus(true)
+        hasSetInitialStatus.current = true
+      }
+    }
+
+    setInitialOnlineStatus()
+  }, [updateUserStatus])
 
   // Cargar usuarios al montar el componente
   useEffect(() => {

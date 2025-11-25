@@ -36,6 +36,7 @@ import { getCurrentUser, logoutUser, isUserAdmin } from '@/lib/auth'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { useInactivity } from '@/hooks/useInactivity'
 import { useNotifications } from '@/hooks/useNotifications'
+import { useUserStatus } from '@/hooks/useUserStatus'
 
 export default function HomePage() {
     const searchParams = useSearchParams()
@@ -56,6 +57,9 @@ export default function HomePage() {
     
     // Hook para notificaciones
     const { unreadCount, loading: notificationsLoading } = useNotifications()
+    
+    // Hook para estado de usuario en línea - detecta automáticamente actividad
+    useUserStatus()
 
     // Función para verificar sesión después de actividad
     const checkSessionAfterActivity = async () => {
