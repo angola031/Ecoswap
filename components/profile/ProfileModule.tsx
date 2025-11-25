@@ -19,7 +19,12 @@ import {
     Cog6ToothIcon,
     ShieldCheckIcon,
     BellIcon,
-    BookmarkIcon
+    BookmarkIcon,
+    CheckCircleIcon,
+    ClockIcon,
+    InformationCircleIcon,
+    CheckIcon,
+    QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { uploadUserProfileImage } from '@/lib/storage'
@@ -118,7 +123,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     const [userReviews, setUserReviews] = useState<UserReview[]>([])
     const [userActivities, setUserActivities] = useState<UserActivity[]>([])
     const [isLoading, setIsLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'reviews' | 'activities' | 'settings'>('overview')
+    const [activeTab, setActiveTab] = useState<'overview' | 'verification' | 'products' | 'reviews' | 'activities' | 'settings'>('overview')
     const [isUploading, setIsUploading] = useState(false)
     const [uploadError, setUploadError] = useState<string | null>(null)
     const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
@@ -869,6 +874,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 <nav className="flex space-x-6 md:space-x-8 overflow-x-auto no-scrollbar -mx-4 px-4 whitespace-nowrap">
                     {[
                         { id: 'overview', name: 'Resumen', icon: UserIcon },
+                        ...(profileData.es_fundacion ? [{ id: 'verification', name: 'Verificación', icon: ShieldCheckIcon }] : []),
                         { id: 'products', name: 'Productos', icon: HeartIcon },
                         { id: 'reviews', name: 'Reseñas', icon: StarIcon },
                         { id: 'activities', name: 'Actividad', icon: EyeIcon },
@@ -996,6 +1002,218 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                             </div>
                         </div>
                     </>
+                )}
+
+                {/* Pestaña Verificación (solo fundaciones) */}
+                {activeTab === 'verification' && profileData.es_fundacion && (
+                    <div className="space-y-6">
+                        {/* Estado de Verificación */}
+                        <div className="card">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                                Estado de Verificación
+                            </h3>
+                            
+                            <div className="space-y-4">
+                                {/* Status Badge */}
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">Estado actual:</span>
+                                    {profileData.fundacion_verificada ? (
+                                        <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                            <CheckCircleIcon className="w-5 h-5 mr-2" />
+                                            Verificada
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                            <ClockIcon className="w-5 h-5 mr-2" />
+                                            Verificación Pendiente
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Información de Verificación */}
+                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                                    <div className="flex items-start space-x-3">
+                                        <InformationCircleIcon className="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                                                {profileData.fundacion_verificada 
+                                                    ? '¡Tu fundación está verificada!' 
+                                                    : 'Tu solicitud está en revisión'}
+                                            </h4>
+                                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                                                {profileData.fundacion_verificada
+                                                    ? 'Tu fundación ha sido verificada y ahora puedes recibir donaciones de la comunidad.'
+                                                    : 'Nuestro equipo está revisando la información de tu fundación. Te notificaremos cuando el proceso esté completo.'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Detalles de la Fundación */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                    <div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Nombre de la Fundación</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{profileData.nombre_fundacion}</p>
+                                    </div>
+                                    {profileData.tipo_fundacion && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo de Fundación</p>
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white">{profileData.tipo_fundacion}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Proceso de Verificación */}
+                        <div className="card">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                                Proceso de Verificación
+                            </h3>
+                            
+                            <div className="space-y-4">
+                                {/* Paso 1 */}
+                                <div className="flex items-start space-x-4">
+                                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                                        profileData.fundacion_verificada || !profileData.fundacion_verificada
+                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                            : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
+                                    }`}>
+                                        <CheckIcon className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                            Documentación Enviada
+                                        </h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Hemos recibido tu información y documentos de registro.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Paso 2 */}
+                                <div className="flex items-start space-x-4">
+                                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                                        profileData.fundacion_verificada
+                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                            : 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                    }`}>
+                                        {profileData.fundacion_verificada ? (
+                                            <CheckIcon className="w-5 h-5" />
+                                        ) : (
+                                            <ClockIcon className="w-5 h-5" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                            Revisión Administrativa
+                                        </h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            {profileData.fundacion_verificada
+                                                ? 'Tu fundación ha sido revisada y aprobada.'
+                                                : 'Nuestro equipo está verificando tu información.'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Paso 3 */}
+                                <div className="flex items-start space-x-4">
+                                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                                        profileData.fundacion_verificada
+                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                            : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
+                                    }`}>
+                                        <CheckIcon className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                            Verificación Completa
+                                        </h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            {profileData.fundacion_verificada
+                                                ? '¡Felicitaciones! Tu fundación está verificada y activa.'
+                                                : 'Una vez aprobada, podrás recibir donaciones.'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Beneficios de la Verificación */}
+                        <div className="card bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-2 border-purple-200 dark:border-purple-700">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                                🎁 Beneficios de la Verificación
+                            </h3>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="flex items-start space-x-3">
+                                    <CheckCircleIcon className="w-6 h-6 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                            Badge Verificado
+                                        </h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Insignia visible en tu perfil que genera confianza
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start space-x-3">
+                                    <CheckCircleIcon className="w-6 h-6 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                            Recibir Donaciones
+                                        </h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Acceso al panel de donaciones disponibles
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start space-x-3">
+                                    <CheckCircleIcon className="w-6 h-6 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                            Prioridad
+                                        </h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Mayor visibilidad en solicitudes de donación
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start space-x-3">
+                                    <CheckCircleIcon className="w-6 h-6 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                            Estadísticas de Impacto
+                                        </h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Dashboard con métricas de donaciones recibidas
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Soporte */}
+                        <div className="card bg-gray-50 dark:bg-gray-800/50">
+                            <div className="flex items-start space-x-3">
+                                <QuestionMarkCircleIcon className="w-6 h-6 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                                <div>
+                                    <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                        ¿Necesitas ayuda?
+                                    </h4>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                        Si tienes preguntas sobre el proceso de verificación o necesitas actualizar tu información, contáctanos.
+                                    </p>
+                                    <button className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium">
+                                        Contactar Soporte →
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Pestaña Productos */}

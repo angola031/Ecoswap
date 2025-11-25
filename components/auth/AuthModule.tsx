@@ -427,7 +427,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
     setRegisterForm(prev => ({ ...prev, [field]: value }))
 
     // Validar email en tiempo real cuando se cambia
-    if (field === 'email') {
+    if (field === 'email' && typeof value === 'string') {
       // Validar formato primero
       const isValidFormat = isValidEmailFormat(value)
       setEmailValidation(prev => ({ 
@@ -452,7 +452,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
     }
 
     // Validar teléfono en tiempo real cuando se cambia
-    if (field === 'phone') {
+    if (field === 'phone' && typeof value === 'string') {
       // Validar formato primero
       const isValidFormat = isValidPhoneFormat(value)
       
