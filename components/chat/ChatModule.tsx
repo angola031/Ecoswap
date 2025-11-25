@@ -1344,16 +1344,20 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
         ? proposal.usuario_recibe_id 
         : proposal.usuario_propone_id
 
+      const senderName = currentUser?.name || currentUser?.email || 'Un usuario'
+      const proposalTypeText = getProposalTypeText(proposal.tipo_propuesta)
+
       const notificationData = {
         usuario_id: otherUserId,
         tipo: 'nueva_propuesta',
-        titulo: `Nueva ${getProposalTypeText(proposal.tipo_propuesta)}`,
-        mensaje: `${currentUser?.email || 'Usuario'} te ha enviado una nueva propuesta en el chat`,
+        titulo: `Nueva ${proposalTypeText}`,
+        mensaje: `${senderName} te ha enviado una nueva propuesta en el chat`,
         datos_adicionales: {
           propuesta_id: proposal.id,
           chat_id: selectedConversation?.id,
           tipo_propuesta: proposal.tipo_propuesta,
-          remitente_id: currentUser?.id
+          remitente_id: currentUser?.id,
+          remitente_nombre: senderName
         },
         es_push: true,
         es_email: false
@@ -1370,7 +1374,10 @@ export default function ChatModule({ currentUser }: ChatModuleProps) {
       })
 
       if (response.ok) {
+        console.log('✅ Notificación de propuesta enviada exitosamente')
       } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Error enviando notificación de propuesta:', errorData)
       }
     } catch (error) {
       console.error('❌ [ChatModule] Error enviando notificación push:', error)

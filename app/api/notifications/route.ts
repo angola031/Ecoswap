@@ -78,6 +78,60 @@ export async function GET(req: NextRequest) {
     }
 }
 
+export async function POST(req: NextRequest) {
+    try {
+        const user = await authUser(req)
+        if (!user) {
+            return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+        }
+
+        const body = await req.json()
+        const { usuario_id, tipo, titulo, mensaje, datos_adicionales, es_push, es_email } = body
+
+        if (!usuario_id || !tipo || !titulo || !mensaje) {
+            return NextResponse.json({ 
+                error: 'Faltan campos requeridos: usuario_id, tipo, titulo, mensaje' 
+            }, { status: 400 })
+        }
+
+        const supabase = getSupabaseClient()
+        if (!supabase) {
+            return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
+        }
+
+        const { data: notification, error } = await supabase
+            .from('notificacion')
+            .insert({
+                usuario_id,
+                tipo,
+                titulo,
+                mensaje,
+                metadata: datos_adicionales || {},
+                leida: false,
+                fecha_creacion: new Date().toISOString()
+            })
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Error creando notificación:', error)
+            return NextResponse.json({ error: error.message }, { status: 400 })
+        }
+
+        console.log('✅ Notificación creada exitosamente:', {
+            notificacion_id: notification.notificacion_id,
+            tipo,
+            usuario_id
+        })
+
+        return NextResponse.json({ success: true, notification })
+
+    } catch (error: any) {
+        console.error('Error en POST notificaciones:', error)
+        return NextResponse.json({ error: error?.message || 'Error interno' }, { status: 500 })
+    }
+}
+
 export async function PUT(req: NextRequest) {
     try {
         const user = await authUser(req)
