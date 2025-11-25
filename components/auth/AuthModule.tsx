@@ -269,40 +269,61 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
       if (user) {
         // Si se registró como fundación, registrar los datos de fundación
         if (registerForm.esFundacion) {
+          console.log('🏛️ Iniciando registro de fundación...')
+          console.log('📋 Datos de fundación:', {
+            nombre_fundacion: registerForm.nombreFundacion,
+            nit_fundacion: registerForm.nitFundacion,
+            tipo_fundacion: registerForm.tipoFundacion,
+            descripcion_fundacion: registerForm.descripcionFundacion?.substring(0, 50) + '...'
+          })
+          
           try {
             const { getSupabaseClient } = await import('@/lib/supabase-client')
             const supabase = getSupabaseClient()
             const { data: { session } } = await supabase.auth.getSession()
             
-            if (session?.access_token) {
-              const foundationResponse = await fetch('/api/foundation/register', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${session.access_token}`
-                },
-                body: JSON.stringify({
-                  nombre_fundacion: registerForm.nombreFundacion.trim(),
-                  nit_fundacion: registerForm.nitFundacion.trim(),
-                  tipo_fundacion: registerForm.tipoFundacion,
-                  descripcion_fundacion: registerForm.descripcionFundacion.trim()
-                })
-              })
-
-              if (foundationResponse.ok) {
-                console.log('✅ Fundación registrada exitosamente')
-                // Dar tiempo para que se guarden los datos en la BD
-                await new Promise(resolve => setTimeout(resolve, 1000))
-              } else {
-                const errorData = await foundationResponse.json()
-                console.error('Error registrando fundación:', errorData)
-                // No fallar el registro completo si la fundación falla
-                setSuccess('¡Cuenta creada! Pero hubo un problema al registrar la fundación. Puedes completarlo más tarde.')
-              }
+            if (!session?.access_token) {
+              console.error('❌ No hay sesión activa para registrar fundación')
+              setError('Error: No se pudo obtener la sesión. Por favor, inicia sesión para completar el registro de la fundación.')
+              setIsLoading(false)
+              return
             }
-          } catch (foundationError) {
-            console.error('Error en registro de fundación:', foundationError)
-            // No fallar el registro completo
+            
+            console.log('🔑 Token de sesión obtenido')
+            
+            const foundationResponse = await fetch('/api/foundation/register', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+              },
+              body: JSON.stringify({
+                nombre_fundacion: registerForm.nombreFundacion.trim(),
+                nit_fundacion: registerForm.nitFundacion.trim(),
+                tipo_fundacion: registerForm.tipoFundacion,
+                descripcion_fundacion: registerForm.descripcionFundacion.trim()
+              })
+            })
+
+            console.log('📡 Respuesta de API fundación:', foundationResponse.status)
+
+            if (foundationResponse.ok) {
+              const foundationData = await foundationResponse.json()
+              console.log('✅ Fundación registrada exitosamente:', foundationData)
+              // Dar tiempo para que se guarden los datos en la BD
+              await new Promise(resolve => setTimeout(resolve, 1500))
+            } else {
+              const errorData = await foundationResponse.json()
+              console.error('❌ Error registrando fundación:', errorData)
+              setError(`Error al registrar la fundación: ${errorData.error || 'Error desconocido'}. Tu cuenta de usuario fue creada, pero necesitas completar el registro de fundación más tarde.`)
+              setIsLoading(false)
+              return
+            }
+          } catch (foundationError: any) {
+            console.error('❌ Excepción en registro de fundación:', foundationError)
+            setError(`Error al registrar la fundación: ${foundationError.message}. Tu cuenta fue creada, pero necesitas completar el registro de fundación más tarde.`)
+            setIsLoading(false)
+            return
           }
         }
 

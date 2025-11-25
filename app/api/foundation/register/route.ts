@@ -27,12 +27,24 @@ async function authUser(req: NextRequest) {
 // POST - Registrar como fundación o actualizar información de fundación
 export async function POST(req: NextRequest) {
   try {
+    console.log('🏛️ [API Foundation] Iniciando POST para registrar fundación')
+    
     const user = await authUser(req)
     if (!user) {
+      console.error('❌ [API Foundation] Usuario no autenticado')
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    console.log('✅ [API Foundation] Usuario autenticado:', user.email, 'ID:', user.user_id)
+
     const body = await req.json()
+    console.log('📋 [API Foundation] Datos recibidos:', {
+      nombre_fundacion: body.nombre_fundacion,
+      nit_fundacion: body.nit_fundacion,
+      tipo_fundacion: body.tipo_fundacion,
+      tiene_descripcion: !!body.descripcion_fundacion
+    })
+    
     const {
       nombre_fundacion,
       nit_fundacion,
@@ -79,19 +91,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Supabase no está configurado' }, { status: 500 })
     }
 
+    console.log('✅ [API Foundation] Validaciones pasadas correctamente')
+
     // Verificar que el NIT no esté ya registrado
-    const { data: existingNit } = await supabase
+    const { data: existingNit, error: nitCheckError } = await supabase
       .from('usuario')
       .select('user_id')
       .eq('nit_fundacion', nit_fundacion.trim())
       .neq('user_id', user.user_id)
       .single()
 
+    if (nitCheckError && nitCheckError.code !== 'PGRST116') { // PGRST116 = no rows found
+      console.error('❌ [API Foundation] Error verificando NIT:', nitCheckError)
+    }
+
     if (existingNit) {
+      console.error('❌ [API Foundation] NIT ya registrado')
       return NextResponse.json({ 
         error: 'Este NIT ya está registrado con otra cuenta' 
       }, { status: 400 })
     }
+
+    console.log('🔄 [API Foundation] Actualizando usuario en BD...')
 
     // Actualizar usuario como fundación
     const { data: updatedUser, error: updateError } = await supabase
@@ -112,9 +133,11 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (updateError) {
-      console.error('Error actualizando usuario como fundación:', updateError)
+      console.error('❌ [API Foundation] Error actualizando usuario:', updateError)
       return NextResponse.json({ error: updateError.message }, { status: 400 })
     }
+
+    console.log('✅ [API Foundation] Usuario actualizado correctamente:', updatedUser)
 
     // Crear notificación para administradores
     try {
