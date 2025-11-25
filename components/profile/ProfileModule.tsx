@@ -76,6 +76,10 @@ interface ProfileData {
     fundacion_verificada?: boolean
     nombre_fundacion?: string
     tipo_fundacion?: string
+    nit_fundacion?: string
+    descripcion_fundacion?: string
+    pagina_web_fundacion?: string
+    documento_fundacion?: string
 }
 
 interface UserProduct {
@@ -273,7 +277,11 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     es_fundacion: dbUser.es_fundacion || false,
                     fundacion_verificada: dbUser.fundacion_verificada || false,
                     nombre_fundacion: dbUser.nombre_fundacion || undefined,
-                    tipo_fundacion: dbUser.tipo_fundacion || undefined
+                    tipo_fundacion: dbUser.tipo_fundacion || undefined,
+                    nit_fundacion: dbUser.nit_fundacion || undefined,
+                    descripcion_fundacion: dbUser.descripcion_fundacion || undefined,
+                    pagina_web_fundacion: dbUser.pagina_web_fundacion || undefined,
+                    documento_fundacion: dbUser.documento_fundacion || undefined
                 }
 
                 setProfileData(profile)
@@ -945,64 +953,64 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                             </div>
                         )}
                         
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Información de contacto */}
-                            <div className="card">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Información de Contacto</h3>
-                                <div className="space-y-3">
-                                    <div className="flex items-center space-x-3">
-                                        <EnvelopeIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                                        <span className="text-gray-700 dark:text-gray-300">{profileData.email}</span>
-                                    </div>
-                                    <div className="flex items-center space-x-3">
-                                        <PhoneIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                                        <span className="text-gray-700 dark:text-gray-300">{profileData.phone}</span>
-                                    </div>
-                                    <div className="flex items-center space-x-3">
-                                        <MapPinIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                                        <span className="text-gray-700 dark:text-gray-300">{profileData.location}</span>
-                                    </div>
-                                    {profileData.socialLinks.website && (
-                                        <div className="flex items-center space-x-3">
-                                            <GlobeAltIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                                            <a
-                                                href={profileData.socialLinks.website}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
-                                            >
-                                                {profileData.socialLinks.website}
-                                            </a>
-                                        </div>
-                                    )}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Información de contacto */}
+                        <div className="card">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Información de Contacto</h3>
+                            <div className="space-y-3">
+                                <div className="flex items-center space-x-3">
+                                    <EnvelopeIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                    <span className="text-gray-700 dark:text-gray-300">{profileData.email}</span>
                                 </div>
-                            </div>
-
-                            {/* Enlaces sociales */}
-                            <div className="card">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Redes Sociales</h3>
-                                <div className="space-y-3">
-                                    {profileData.socialLinks.instagram && (
-                                        <div className="flex items-center space-x-3">
-                                            <span className="text-pink-600 dark:text-pink-400 text-lg">📷</span>
-                                            <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.instagram}</span>
-                                        </div>
-                                    )}
-                                    {profileData.socialLinks.facebook && (
-                                        <div className="flex items-center space-x-3">
-                                            <span className="text-blue-600 dark:text-blue-400 text-lg">📘</span>
-                                            <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.facebook}</span>
-                                        </div>
-                                    )}
-                                    {profileData.socialLinks.twitter && (
-                                        <div className="flex items-center space-x-3">
-                                            <span className="text-blue-400 dark:text-blue-300 text-lg">🐦</span>
-                                            <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.twitter}</span>
-                                        </div>
-                                    )}
+                                <div className="flex items-center space-x-3">
+                                    <PhoneIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                    <span className="text-gray-700 dark:text-gray-300">{profileData.phone}</span>
                                 </div>
+                                <div className="flex items-center space-x-3">
+                                    <MapPinIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                    <span className="text-gray-700 dark:text-gray-300">{profileData.location}</span>
+                                </div>
+                                {profileData.socialLinks.website && (
+                                    <div className="flex items-center space-x-3">
+                                        <GlobeAltIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                        <a
+                                            href={profileData.socialLinks.website}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+                                        >
+                                            {profileData.socialLinks.website}
+                                        </a>
+                                    </div>
+                                )}
                             </div>
                         </div>
+
+                        {/* Enlaces sociales */}
+                        <div className="card">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Redes Sociales</h3>
+                            <div className="space-y-3">
+                                {profileData.socialLinks.instagram && (
+                                    <div className="flex items-center space-x-3">
+                                        <span className="text-pink-600 dark:text-pink-400 text-lg">📷</span>
+                                        <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.instagram}</span>
+                                    </div>
+                                )}
+                                {profileData.socialLinks.facebook && (
+                                    <div className="flex items-center space-x-3">
+                                        <span className="text-blue-600 dark:text-blue-400 text-lg">📘</span>
+                                        <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.facebook}</span>
+                                    </div>
+                                )}
+                                {profileData.socialLinks.twitter && (
+                                    <div className="flex items-center space-x-3">
+                                        <span className="text-blue-400 dark:text-blue-300 text-lg">🐦</span>
+                                        <span className="text-gray-700 dark:text-gray-300">{profileData.socialLinks.twitter}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                     </>
                 )}
 
@@ -1064,6 +1072,92 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Información Completa de la Fundación */}
+                        <div className="card">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                                Información Registrada
+                            </h3>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nombre de la Fundación</p>
+                                    <p className="text-sm text-gray-900 dark:text-white">{profileData.nombre_fundacion || 'No proporcionado'}</p>
+                                </div>
+                                
+                                <div>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">NIT</p>
+                                    <p className="text-sm text-gray-900 dark:text-white">
+                                        {(profileData as any).nit_fundacion || 'No proporcionado'}
+                                    </p>
+                                </div>
+                                
+                                <div>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Tipo de Fundación</p>
+                                    <p className="text-sm text-gray-900 dark:text-white">{profileData.tipo_fundacion || 'No proporcionado'}</p>
+                                </div>
+                                
+                                <div>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Descripción</p>
+                                    <p className="text-sm text-gray-900 dark:text-white">
+                                        {(profileData as any).descripcion_fundacion || 'No proporcionada'}
+                                    </p>
+                                </div>
+                                
+                                {(profileData as any).pagina_web_fundacion && (
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Página Web</p>
+                                        <a 
+                                            href={(profileData as any).pagina_web_fundacion} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                                        >
+                                            {(profileData as any).pagina_web_fundacion}
+                                        </a>
+                                    </div>
+                                )}
+                                
+                                <div>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Documento de Registro</p>
+                                    {(profileData as any).documento_fundacion ? (
+                                        <a 
+                                            href={(profileData as any).documento_fundacion} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center space-x-2 text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            <span>Ver documento</span>
+                                        </a>
+                                    ) : (
+                                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md p-3">
+                                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                                ⚠️ No has subido un documento de registro. Esto es necesario para la verificación.
+                                            </p>
+                                            <button className="mt-2 text-sm text-yellow-900 dark:text-yellow-100 font-medium hover:underline">
+                                                Subir documento →
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {!profileData.fundacion_verificada && (
+                                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                        <button 
+                                            className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
+                                            onClick={() => {
+                                                alert('La funcionalidad de actualizar información estará disponible próximamente. Por favor contacta a soporte si necesitas realizar cambios.')
+                                            }}
+                                        >
+                                            ✏️ Actualizar información
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
