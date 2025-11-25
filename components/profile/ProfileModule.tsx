@@ -31,6 +31,7 @@ import { uploadUserProfileImage } from '@/lib/storage'
 import Avatar from '@/components/ui/Avatar'
 import FoundationBadge, { FoundationBadgeTooltip } from '@/components/foundation/FoundationBadge'
 import EventsManager from '@/components/foundation/EventsManager'
+import DocumentUploader from '@/components/foundation/DocumentUploader'
 
 interface BadgeDetail {
     nombre: string
@@ -80,6 +81,13 @@ interface ProfileData {
     descripcion_fundacion?: string
     pagina_web_fundacion?: string
     documento_fundacion?: string
+    documentos_fundacion?: {
+        acta_constitucion?: string
+        estatutos?: string
+        pre_rut?: string
+        cartas_aceptacion?: string
+        formulario_rues?: string
+    }
 }
 
 interface UserProduct {
@@ -141,8 +149,8 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     const [documentFile, setDocumentFile] = useState<File | null>(null)
     const [documentUploading, setDocumentUploading] = useState(false)
 
-    // Función para subir documento de fundación
-    const handleUploadDocument = async () => {
+    // Función para subir documento de fundación (con tipo específico)
+    const handleUploadDocument = async (documentType?: string) => {
         if (!documentFile || !currentUser) {
             await (window as any).Swal.fire({
                 icon: 'error',
@@ -219,22 +227,55 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 .from('documentos')
                 .getPublicUrl(filePath)
 
-            // Actualizar usuario con la URL del documento
-            const { error: updateError } = await supabase
-                .from('usuario')
-                .update({ documento_fundacion: publicUrl })
-                .eq('user_id', currentUser.id)
+            // Si hay tipo específico, actualizar documentos_fundacion (JSONB)
+            if (documentType) {
+                // Obtener documentos actuales
+                const { data: currentData } = await supabase
+                    .from('usuario')
+                    .select('documentos_fundacion')
+                    .eq('user_id', currentUser.id)
+                    .single()
 
-            if (updateError) {
-                throw updateError
-            }
+                const currentDocs = currentData?.documentos_fundacion || {}
+                const updatedDocs = {
+                    ...currentDocs,
+                    [documentType]: publicUrl
+                }
 
-            // Actualizar estado local
-            if (profileData) {
-                setProfileData({
-                    ...profileData,
-                    documento_fundacion: publicUrl
-                })
+                const { error: updateError } = await supabase
+                    .from('usuario')
+                    .update({ documentos_fundacion: updatedDocs })
+                    .eq('user_id', currentUser.id)
+
+                if (updateError) {
+                    throw updateError
+                }
+
+                // Actualizar estado local
+                if (profileData) {
+                    setProfileData({
+                        ...profileData,
+                        documentos_fundacion: updatedDocs
+                    })
+                }
+            } else {
+                // Fallback: actualizar documento_fundacion (campo legacy)
+                const { error: updateError } = await supabase
+                    .from('usuario')
+                    .update({ documento_fundacion: publicUrl })
+                    .eq('user_id', currentUser.id)
+
+                if (updateError) {
+                    throw updateError
+                }
+
+                // Actualizar estado local
+                if (profileData) {
+                    setProfileData({
+                        ...profileData,
+                        documento_fundacion: publicUrl
+                    })
+                }
             }
 
             await (window as any).Swal.fire({
@@ -430,7 +471,8 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     nit_fundacion: dbUser.nit_fundacion || undefined,
                     descripcion_fundacion: dbUser.descripcion_fundacion || undefined,
                     pagina_web_fundacion: dbUser.pagina_web_fundacion || undefined,
-                    documento_fundacion: dbUser.documento_fundacion || undefined
+                    documento_fundacion: dbUser.documento_fundacion || undefined,
+                    documentos_fundacion: dbUser.documentos_fundacion || undefined
                 }
 
                 setProfileData(profile)
@@ -1302,10 +1344,39 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                 )}
                                 
                                 <div>
-                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">Documentos de Registro</p>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">Documentos de Registro (ESAL)</p>
                                     
-                                    {/* Lista de documentos requeridos */}
-                                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md p-4 mb-3">
+                                    {/* Componente de subida de documentos por separado */}
+                                    <DocumentUploader 
+                                        currentUser={currentUser}
+                                        documentos={profileData.documentos_fundacion}
+                                        onUpdate={(newDocs) => {
+                                            setProfileData({
+                                                ...profileData,
+                                                documentos_fundacion: newDocs
+                                            })
+                                        }}
+                                    />
+                                    
+                                    {/* Sección legacy para documento_fundacion antiguo */}
+                                    {(profileData as any).documento_fundacion && !(profileData as any).documentos_fundacion && (
+                                        <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded">
+                                            <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-2">
+                                                ℹ️ <strong>Migración requerida:</strong> Tienes documentos en el formato anterior. 
+                                                Te recomendamos subirlos nuevamente usando el nuevo sistema para organizarlos mejor.
+                                            </p>
+                                            <a 
+                                                href={(profileData as any).documento_fundacion}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-yellow-900 dark:text-yellow-100 font-medium hover:underline"
+                                            >
+                                                Ver documento anterior →
+                                            </a>
+                                        </div>
+                                    )}
+                                    
+                                </div>
                                         <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">
                                             📋 Documentos Requeridos para Verificación (ESAL)
                                         </p>
