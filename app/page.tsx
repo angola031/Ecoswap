@@ -404,7 +404,11 @@ export default function HomePage() {
 
         const checkAuth = async () => {
             try {
-                setIsLoading(true)
+                // Solo mostrar loading en la carga inicial, no en cada cambio de módulo
+                const isInitialLoad = !currentUser
+                if (isInitialLoad) {
+                    setIsLoading(true)
+                }
                 console.log('🔍 Iniciando verificación de autenticación...')
                 
                 // Primero intentar obtener usuario de getCurrentUser
@@ -441,8 +445,10 @@ export default function HomePage() {
                 if (user) {
                     console.log('✅ Usuario encontrado, configurando estado...')
                     
-                    // Cargar datos de fundación
-                    await loadFoundationData()
+                    // Cargar datos de fundación en paralelo (no bloquear)
+                    loadFoundationData().catch(err => 
+                        console.error('Error en loadFoundationData:', err)
+                    )
                     
                     // Verificar si es administrador usando la función isUserAdmin
                     try {
@@ -568,7 +574,7 @@ export default function HomePage() {
         checkAuth()
     }, [searchParams])
 
-    // Cargar datos de fundación
+    // Cargar datos de fundación con timeout
     const loadFoundationData = async () => {
         try {
             const supabase = getSupabaseClient()
@@ -580,11 +586,20 @@ export default function HomePage() {
             }
 
             console.log('🔄 Cargando datos de fundación...')
-            const response = await fetch('/api/foundation/register', {
+            
+            // Crear una promesa con timeout de 5 segundos
+            const timeoutPromise = new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout')), 5000)
+            )
+            
+            const fetchPromise = fetch('/api/foundation/register', {
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`
                 }
             })
+            
+            // Usar Promise.race para que falle si tarda más de 5 segundos
+            const response = await Promise.race([fetchPromise, timeoutPromise]) as Response
 
             if (response.ok) {
                 const data = await response.json()
@@ -599,8 +614,13 @@ export default function HomePage() {
             } else {
                 console.log('⚠️ No se encontraron datos de fundación para este usuario')
             }
-        } catch (error) {
-            console.error('❌ Error cargando datos de fundación:', error)
+        } catch (error: any) {
+            if (error.message === 'Timeout') {
+                console.warn('⚠️ Timeout cargando datos de fundación - continuando de todos modos')
+            } else {
+                console.error('❌ Error cargando datos de fundación:', error)
+            }
+            // No bloquear la aplicación si falla la carga de datos de fundación
         }
     }
 
