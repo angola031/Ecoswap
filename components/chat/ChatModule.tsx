@@ -193,39 +193,8 @@ const handleDonationRequest = async (product: any) => {
         
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">📝 Mensaje de solicitud</label>
-          <textarea id="donation-message" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500" rows="4" placeholder="Ej: Hola, me interesa mucho esta donación porque... ¿Podrías considerar donármela? Estoy disponible para coordinarnos..."></textarea>
-          <p class="text-xs text-gray-500 mt-1">Explica por qué te interesa esta donación y cómo planeas usarla</p>
-        </div>
-        
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">📅 Fecha preferida</label>
-            <input type="date" id="preferred-date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">🕐 Hora preferida</label>
-            <select id="preferred-time" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
-              <option value="">Seleccionar hora</option>
-              <option value="08:00">8:00 AM</option>
-              <option value="09:00">9:00 AM</option>
-              <option value="10:00">10:00 AM</option>
-              <option value="11:00">11:00 AM</option>
-              <option value="12:00">12:00 PM</option>
-              <option value="13:00">1:00 PM</option>
-              <option value="14:00">2:00 PM</option>
-              <option value="15:00">3:00 PM</option>
-              <option value="16:00">4:00 PM</option>
-              <option value="17:00">5:00 PM</option>
-              <option value="18:00">6:00 PM</option>
-              <option value="19:00">7:00 PM</option>
-            </select>
-          </div>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">📍 Lugar de encuentro</label>
-          <input type="text" id="meeting-place" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Ej: Centro comercial, parque, estación de metro...">
+          <textarea id="donation-message" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500" rows="6" placeholder="Ej: Hola, me interesa mucho esta donación porque... ¿Podrías considerar donármela? Estoy disponible para coordinarnos..."></textarea>
+          <p class="text-xs text-gray-500 mt-1">Explica por qué te interesa esta donación y cómo planeas usarla. El dueño coordinará contigo los detalles del encuentro.</p>
         </div>
       </div>
     `,
@@ -237,9 +206,6 @@ const handleDonationRequest = async (product: any) => {
     cancelButtonColor: '#6B7280',
     preConfirm: () => {
       const message = (document.getElementById('donation-message') as HTMLTextAreaElement)?.value
-      const preferredDate = (document.getElementById('preferred-date') as HTMLInputElement)?.value
-      const preferredTime = (document.getElementById('preferred-time') as HTMLSelectElement)?.value
-      const meetingPlace = (document.getElementById('meeting-place') as HTMLInputElement)?.value
 
       if (!message || message.trim().length < 10) {
         (window as any).Swal.showValidationMessage('Por favor, escribe un mensaje de al menos 10 caracteres')
@@ -247,10 +213,7 @@ const handleDonationRequest = async (product: any) => {
       }
 
       return {
-        message: message.trim(),
-        preferredDate,
-        preferredTime,
-        meetingPlace: meetingPlace?.trim() || ''
+        message: message.trim()
       }
     }
   })
@@ -268,7 +231,7 @@ const handleDonationRequest = async (product: any) => {
             <ul class="text-sm text-blue-800 space-y-1">
               <li>• El propietario revisará tu solicitud</li>
               <li>• Te notificaremos cuando responda</li>
-              <li>• Podrás coordinar la entrega por chat</li>
+              <li>• Si acepta, el propietario coordinará contigo la fecha y lugar de entrega por chat</li>
             </ul>
           </div>
         </div>
@@ -305,8 +268,6 @@ const handleManageDonations = async (product: any) => {
               <div>
                 <h4 class="font-medium text-gray-900">Solicitud de María González</h4>
                 <p class="text-sm text-gray-600">"Me interesa mucho esta donación porque..."</p>
-                <p class="text-xs text-gray-500 mt-1">📅 Fecha preferida: 15 de Noviembre, 2:00 PM</p>
-                <p class="text-xs text-gray-500">📍 Lugar: Centro comercial</p>
               </div>
               <div class="flex space-x-2">
                 <button class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200" onclick="acceptRequest('maria')">
@@ -324,8 +285,6 @@ const handleManageDonations = async (product: any) => {
               <div>
                 <h4 class="font-medium text-gray-900">Solicitud de Carlos Ruiz</h4>
                 <p class="text-sm text-gray-600">"Soy estudiante y esta donación me ayudaría mucho..."</p>
-                <p class="text-xs text-gray-500 mt-1">📅 Fecha preferida: 18 de Noviembre, 10:00 AM</p>
-                <p class="text-xs text-gray-500">📍 Lugar: Parque central</p>
               </div>
               <div class="flex space-x-2">
                 <button class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200" onclick="acceptRequest('carlos')">
