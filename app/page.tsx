@@ -16,7 +16,8 @@ import {
     ShoppingBagIcon,
     ArrowsRightLeftIcon,
     ArrowRightOnRectangleIcon,
-    DocumentTextIcon
+    DocumentTextIcon,
+    GiftIcon
 } from '@heroicons/react/24/outline'
 
 // Componentes - Lazy loading para componentes pesados
@@ -27,6 +28,8 @@ const ChatModule = lazy(() => import('@/components/chat/ChatModule'))
 const ProfileModule = lazy(() => import('@/components/profile/ProfileModule'))
 const InteractionsModule = lazy(() => import('@/components/interactions/InteractionsModule'))
 const ProposalsModule = lazy(() => import('@/components/proposals/ProposalsModule').then(module => ({ default: module.ProposalsModule })))
+const DonationsPanel = lazy(() => import('@/components/foundation/DonationsPanel'))
+import FoundationBadge from '@/components/foundation/FoundationBadge'
 import NotificationToast from '@/components/NotificationToast'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -54,12 +57,17 @@ export default function HomePage() {
     // Inicializar isLoading como true para evitar mostrar login mientras se verifica la sesión
     const [isLoading, setIsLoading] = useState(true)
     const [timeoutMessage, setTimeoutMessage] = useState<string>('')
+    const [foundationData, setFoundationData] = useState<any>(null)
     
     // Hook para notificaciones
     const { unreadCount, loading: notificationsLoading } = useNotifications()
     
     // Hook para estado de usuario en línea - detecta automáticamente actividad
     useUserStatus()
+    
+    // Verificar si es fundación
+    const isFoundation = foundationData?.es_fundacion === true
+    const isVerifiedFoundation = isFoundation && foundationData?.fundacion_verificada === true
 
     // Función para verificar sesión después de actividad
     const checkSessionAfterActivity = async () => {
@@ -431,6 +439,9 @@ export default function HomePage() {
                 if (user) {
                     console.log('✅ Usuario encontrado, configurando estado...')
                     
+                    // Cargar datos de fundación
+                    await loadFoundationData()
+                    
                     // Verificar si es administrador usando la función isUserAdmin
                     try {
                         const { isAdmin } = await isUserAdmin(user.email)
@@ -555,11 +566,37 @@ export default function HomePage() {
         checkAuth()
     }, [searchParams])
 
+    // Cargar datos de fundación
+    const loadFoundationData = async () => {
+        try {
+            const supabase = getSupabaseClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            
+            if (!session?.access_token) return
+
+            const response = await fetch('/api/foundation/register', {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setFoundationData(data.foundation)
+            }
+        } catch (error) {
+            console.error('Error cargando datos de fundación:', error)
+        }
+    }
+
     const handleLogin = (userData: any) => {
         setCurrentUser(userData)
         setIsAuthenticated(true)
         setCurrentScreen('main')
         localStorage.setItem('ecoswap_user', JSON.stringify(userData))
+        
+        // Cargar datos de fundación si aplica
+        loadFoundationData()
         
         // Verificar si hay returnUrl para redirigir después del login
         const params = new URLSearchParams(window.location.search)
@@ -593,6 +630,14 @@ export default function HomePage() {
             case 'home':
                 return <CoreModule currentUser={currentUser} onLogout={handleLogout} />
             case 'products':
+                // Si es fundación, mostrar panel de donaciones
+                if (isFoundation) {
+                    return (
+                        <Suspense fallback={<LoadingFallback />}>
+                            <DonationsPanel currentUser={currentUser} />
+                        </Suspense>
+                    )
+                }
                 return <ProductsModule currentUser={currentUser} />
             case 'interactions':
                 if (isLoading) {
@@ -717,8 +762,17 @@ export default function HomePage() {
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
                             >
-                                <ShoppingBagIcon className="w-5 h-5" />
-                                <span>Productos</span>
+                                {isFoundation ? (
+                                    <>
+                                        <GiftIcon className="w-5 h-5" />
+                                        <span>Donaciones</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <ShoppingBagIcon className="w-5 h-5" />
+                                        <span>Productos</span>
+                                    </>
+                                )}
                             </button>
 
                             {isAuthenticated && (
@@ -856,6 +910,12 @@ export default function HomePage() {
                                         <UserIcon className="w-5 h-5" />
                                         <span className="hidden sm:inline">Perfil</span>
                                     </button>
+                                    
+                                    {isVerifiedFoundation && (
+                                        <div className="flex items-center">
+                                            <FoundationBadge size="sm" showText={false} />
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="flex space-x-2">
@@ -923,8 +983,17 @@ export default function HomePage() {
                         className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'products' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                             }`}
                     >
-                        <ShoppingBagIcon className="w-6 h-6" />
-                        <span className="text-xs">Productos</span>
+                        {isFoundation ? (
+                            <>
+                                <GiftIcon className="w-6 h-6" />
+                                <span className="text-xs">Donaciones</span>
+                            </>
+                        ) : (
+                            <>
+                                <ShoppingBagIcon className="w-6 h-6" />
+                                <span className="text-xs">Productos</span>
+                            </>
+                        )}
                     </button>
 
                     {isAuthenticated ? (
