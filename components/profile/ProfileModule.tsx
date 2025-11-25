@@ -146,8 +146,8 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
         if (!documentFile || !currentUser) {
             await (window as any).Swal.fire({
                 icon: 'error',
-                title: 'Error',
-                text: 'Por favor selecciona un documento'
+                title: 'Archivo no seleccionado',
+                text: 'Por favor selecciona el archivo con la documentación de tu fundación'
             })
             return
         }
@@ -158,7 +158,14 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
             await (window as any).Swal.fire({
                 icon: 'error',
                 title: 'Tipo de archivo no válido',
-                text: 'Solo se permiten archivos PDF, JPG, JPEG y PNG'
+                html: `
+                    <p class="text-sm text-gray-600 mb-2">Solo se permiten archivos en formato:</p>
+                    <ul class="text-xs text-left text-gray-700 bg-gray-50 rounded p-2">
+                        <li>• PDF (recomendado)</li>
+                        <li>• JPG/JPEG</li>
+                        <li>• PNG</li>
+                    </ul>
+                `
             })
             return
         }
@@ -168,7 +175,17 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
             await (window as any).Swal.fire({
                 icon: 'error',
                 title: 'Archivo muy grande',
-                text: 'El archivo no debe superar los 5MB'
+                html: `
+                    <p class="text-sm text-gray-600 mb-2">
+                        El archivo no debe superar los <strong>5MB</strong>
+                    </p>
+                    <p class="text-xs text-gray-500 mt-2">
+                        Tamaño actual: <strong>${(documentFile.size / 1024 / 1024).toFixed(2)} MB</strong>
+                    </p>
+                    <p class="text-xs text-gray-500 mt-2">
+                        💡 Tip: Puedes comprimir el PDF en línea o reducir la calidad de las imágenes
+                    </p>
+                `
             })
             return
         }
@@ -222,8 +239,19 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
             await (window as any).Swal.fire({
                 icon: 'success',
-                title: 'Documento subido',
-                text: 'Tu documento ha sido subido exitosamente. Ahora está en revisión.',
+                title: '✅ Documentación subida',
+                html: `
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        Tu documentación ha sido subida exitosamente.
+                    </p>
+                    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 mt-3">
+                        <p class="text-xs text-blue-800 dark:text-blue-200">
+                            <strong>Próximo paso:</strong> Nuestro equipo revisará tu documentación de ESAL. 
+                            Te notificaremos cuando tu fundación sea verificada.
+                        </p>
+                    </div>
+                `,
+                confirmButtonText: 'Entendido',
                 confirmButtonColor: '#10B981'
             })
 
@@ -234,8 +262,18 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
             console.error('Error subiendo documento:', error)
             await (window as any).Swal.fire({
                 icon: 'error',
-                title: 'Error',
-                text: error.message || 'No se pudo subir el documento. Intenta de nuevo.'
+                title: 'Error al subir documentación',
+                html: `
+                    <p class="text-sm text-gray-600 mb-2">
+                        ${error.message || 'No se pudo subir la documentación.'}
+                    </p>
+                    <div class="bg-gray-50 dark:bg-gray-800 rounded p-2 mt-3">
+                        <p class="text-xs text-gray-500">
+                            Si el problema persiste, contacta a soporte con el siguiente código de error:
+                        </p>
+                        <p class="text-xs font-mono text-red-600 mt-1">${error.code || 'UPLOAD_ERROR'}</p>
+                    </div>
+                `
             })
         } finally {
             setDocumentUploading(false)
@@ -1267,21 +1305,55 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                     <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">Documentos de Registro</p>
                                     
                                     {/* Lista de documentos requeridos */}
-                                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md p-3 mb-3">
-                                        <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-2">📋 Documentos Necesarios:</p>
-                                        <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-                                            <li className="flex items-center space-x-2">
-                                                <span className="text-blue-600 dark:text-blue-400">•</span>
-                                                <span>Acta de Constitución de la fundación</span>
-                                            </li>
-                                            <li className="flex items-center space-x-2">
-                                                <span className="text-blue-600 dark:text-blue-400">•</span>
-                                                <span>RUT (Registro Único Tributario)</span>
-                                            </li>
-                                        </ul>
-                                        <p className="text-xs text-blue-700 dark:text-blue-300 mt-2 italic">
-                                            Puedes subir ambos documentos en un solo archivo PDF o imágenes individuales
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md p-4 mb-3">
+                                        <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">
+                                            📋 Documentos Requeridos para Verificación (ESAL)
                                         </p>
+                                        <div className="space-y-2">
+                                            <div className="bg-white dark:bg-gray-800/50 rounded p-2">
+                                                <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1">
+                                                    ✓ Documentos Principales:
+                                                </p>
+                                                <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1.5 ml-2">
+                                                    <li className="flex items-start space-x-2">
+                                                        <span className="text-blue-600 dark:text-blue-400 mt-0.5">1.</span>
+                                                        <span><strong>Acta de Constitución</strong> (o documento privado/escritura pública con lista de asociados)</span>
+                                                    </li>
+                                                    <li className="flex items-start space-x-2">
+                                                        <span className="text-blue-600 dark:text-blue-400 mt-0.5">2.</span>
+                                                        <span><strong>Estatutos</strong> aprobados de la fundación</span>
+                                                    </li>
+                                                    <li className="flex items-start space-x-2">
+                                                        <span className="text-blue-600 dark:text-blue-400 mt-0.5">3.</span>
+                                                        <span><strong>PRE-RUT</strong> expedido por la DIAN</span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            
+                                            <div className="bg-white dark:bg-gray-800/50 rounded p-2">
+                                                <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1">
+                                                    📌 Documentos Adicionales (recomendados):
+                                                </p>
+                                                <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1 ml-2">
+                                                    <li className="flex items-start space-x-2">
+                                                        <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                                                        <span>Cartas de aceptación de cargos (Junta Directiva, Revisor Fiscal)</span>
+                                                    </li>
+                                                    <li className="flex items-start space-x-2">
+                                                        <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                                                        <span>Formulario RUES (Registro Único Empresarial y Social)</span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                                            <p className="text-xs text-blue-700 dark:text-blue-300 italic flex items-start">
+                                                <svg className="w-4 h-4 mr-1 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+                                                </svg>
+                                                <span>Puedes subir todos los documentos compilados en un solo archivo PDF (Máx. 5MB)</span>
+                                            </p>
+                                        </div>
                                     </div>
                                     
                                     {(profileData as any).documento_fundacion ? (
@@ -1328,10 +1400,10 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                                 <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-4 space-y-4">
                                                     <div>
                                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                            Actualizar Documento
+                                                            Actualizar Documentación
                                                         </label>
                                                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                                                            Sube un nuevo documento (PDF, JPG, PNG - Máx. 5MB)
+                                                            Reemplaza la documentación con una versión actualizada. Asegúrate de incluir todos los documentos requeridos (PDF, JPG, PNG - Máx. 5MB)
                                                         </p>
                                                         <input
                                                             type="file"
@@ -1373,7 +1445,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                                                     Subiendo...
                                                                 </>
                                                             ) : (
-                                                                <>📄 Actualizar documento</>
+                                                                <>📄 Actualizar documentación</>
                                                             )}
                                                         </button>
                                                         <button
@@ -1393,14 +1465,17 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                     ) : (
                                         <div className="space-y-3">
                                             <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md p-3">
-                                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                                                    ⚠️ No has subido documentos de registro. Son necesarios para la verificación.
+                                                <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                                                    ⚠️ Documentos Pendientes
+                                                </p>
+                                                <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                                                    No has subido los documentos de registro. Son necesarios para la verificación de tu fundación como ESAL.
                                                 </p>
                                                 <button 
                                                     onClick={() => setShowDocumentUpload(!showDocumentUpload)}
-                                                    className="mt-2 text-sm text-yellow-900 dark:text-yellow-100 font-medium hover:underline"
+                                                    className="mt-2 text-sm text-yellow-900 dark:text-yellow-100 font-medium hover:underline flex items-center"
                                                 >
-                                                    {showDocumentUpload ? '✕ Cancelar' : '📤 Subir documentos →'}
+                                                    {showDocumentUpload ? '✕ Cancelar' : '📤 Subir documentación completa →'}
                                                 </button>
                                             </div>
 
@@ -1409,10 +1484,10 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                                 <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-4 space-y-4">
                                                     <div>
                                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                            Subir Documentos
+                                                            Subir Documentación de la Fundación
                                                         </label>
                                                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                                                            Sube tu Acta de Constitución y RUT en un solo archivo o de forma separada (PDF, JPG, PNG - Máx. 5MB por archivo)
+                                                            Compila todos los documentos requeridos en un solo archivo PDF. Si tienes documentos por separado, puedes usar herramientas en línea para combinarlos. Formato: PDF, JPG, PNG - Máx. 5MB
                                                         </p>
                                                         <input
                                                             type="file"
@@ -1462,7 +1537,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                                                     Subiendo...
                                                                 </>
                                                             ) : (
-                                                                <>📄 Subir documentos</>
+                                                                <>📄 Subir documentación</>
                                                             )}
                                                         </button>
                                                         <button
