@@ -64,7 +64,13 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
     phone: '',
     location: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    // Campos para fundación
+    esFundacion: false,
+    nombreFundacion: '',
+    nitFundacion: '',
+    tipoFundacion: '',
+    descripcionFundacion: ''
   })
 
   // Estado del formulario de olvidar contraseña
@@ -196,6 +202,33 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
       return
     }
 
+    // Validaciones adicionales para fundaciones
+    if (registerForm.esFundacion) {
+      if (!registerForm.nombreFundacion || registerForm.nombreFundacion.trim().length < 3) {
+        setError('El nombre de la fundación debe tener al menos 3 caracteres')
+        setIsLoading(false)
+        return
+      }
+
+      if (!registerForm.nitFundacion || registerForm.nitFundacion.trim().length < 5) {
+        setError('El NIT debe tener al menos 5 caracteres')
+        setIsLoading(false)
+        return
+      }
+
+      if (!registerForm.tipoFundacion) {
+        setError('Por favor selecciona el área de enfoque de la fundación')
+        setIsLoading(false)
+        return
+      }
+
+      if (!registerForm.descripcionFundacion || registerForm.descripcionFundacion.trim().length < 20) {
+        setError('La descripción de la fundación debe tener al menos 20 caracteres')
+        setIsLoading(false)
+        return
+      }
+    }
+
     try {
       const registerData = {
         firstName: registerForm.firstName,
@@ -234,7 +267,46 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
       }
 
       if (user) {
-        setSuccess('¡Cuenta creada exitosamente!')
+        // Si se registró como fundación, registrar los datos de fundación
+        if (registerForm.esFundacion) {
+          try {
+            const { getSupabaseClient } = await import('@/lib/supabase-client')
+            const supabase = getSupabaseClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            
+            if (session?.access_token) {
+              const foundationResponse = await fetch('/api/foundation/register', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({
+                  nombre_fundacion: registerForm.nombreFundacion.trim(),
+                  nit_fundacion: registerForm.nitFundacion.trim(),
+                  tipo_fundacion: registerForm.tipoFundacion,
+                  descripcion_fundacion: registerForm.descripcionFundacion.trim()
+                })
+              })
+
+              if (foundationResponse.ok) {
+                console.log('✅ Fundación registrada exitosamente')
+              } else {
+                const errorData = await foundationResponse.json()
+                console.error('Error registrando fundación:', errorData)
+                // No fallar el registro completo si la fundación falla
+                setSuccess('¡Cuenta creada! Pero hubo un problema al registrar la fundación. Puedes completarlo más tarde.')
+              }
+            }
+          } catch (foundationError) {
+            console.error('Error en registro de fundación:', foundationError)
+            // No fallar el registro completo
+          }
+        }
+
+        setSuccess(registerForm.esFundacion 
+          ? '¡Cuenta y fundación creadas exitosamente! Tu fundación será verificada por un administrador.' 
+          : '¡Cuenta creada exitosamente!')
         onLogin(user)
       }
     } catch (error) {
@@ -351,7 +423,7 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
     }
   }
 
-  const updateRegisterForm = (field: string, value: string) => {
+  const updateRegisterForm = (field: string, value: string | boolean) => {
     setRegisterForm(prev => ({ ...prev, [field]: value }))
 
     // Validar email en tiempo real cuando se cambia
@@ -976,6 +1048,114 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
                     />
                   </div>
                 </div>
+
+                {/* Opción de registrarse como fundación */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <div className="flex items-start space-x-3">
+                    <input
+                      id="register-es-fundacion"
+                      type="checkbox"
+                      checked={registerForm.esFundacion}
+                      onChange={(e) => updateRegisterForm('esFundacion', e.target.checked)}
+                      className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    />
+                    <div className="flex-1">
+                      <label htmlFor="register-es-fundacion" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                        👶 Registrarme como Fundación para Niños
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Si representas una fundación dedicada al bienestar de niños, marca esta opción para acceder a beneficios especiales.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Campos adicionales para fundación */}
+                {registerForm.esFundacion && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-4 border-l-4 border-purple-500 pl-4"
+                  >
+                    <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-md">
+                      <p className="text-xs text-purple-800 dark:text-purple-200">
+                        ℹ️ Los datos de tu fundación serán verificados por nuestro equipo antes de otorgar beneficios.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label htmlFor="register-nombre-fundacion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Nombre de la Fundación
+                      </label>
+                      <input
+                        id="register-nombre-fundacion"
+                        type="text"
+                        value={registerForm.nombreFundacion}
+                        onChange={(e) => updateRegisterForm('nombreFundacion', e.target.value)}
+                        className="input-field"
+                        placeholder="Fundación ABC para Niños"
+                        required={registerForm.esFundacion}
+                        minLength={3}
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="register-nit-fundacion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        NIT o Identificación Tributaria
+                      </label>
+                      <input
+                        id="register-nit-fundacion"
+                        type="text"
+                        value={registerForm.nitFundacion}
+                        onChange={(e) => updateRegisterForm('nitFundacion', e.target.value)}
+                        className="input-field"
+                        placeholder="900123456-1"
+                        required={registerForm.esFundacion}
+                        minLength={5}
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="register-tipo-fundacion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Área de Enfoque
+                      </label>
+                      <select
+                        id="register-tipo-fundacion"
+                        value={registerForm.tipoFundacion}
+                        onChange={(e) => updateRegisterForm('tipoFundacion', e.target.value)}
+                        className="input-field"
+                        required={registerForm.esFundacion}
+                      >
+                        <option value="">Selecciona el área de enfoque</option>
+                        <option value="proteccion_ninos">🛡️ Protección de Niños</option>
+                        <option value="educacion_ninos">📚 Educación Infantil</option>
+                        <option value="salud_ninos">💊 Salud Infantil</option>
+                        <option value="nutricion_ninos">🍎 Nutrición Infantil</option>
+                        <option value="derechos_ninos">⚖️ Derechos de los Niños</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="register-descripcion-fundacion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Descripción de la Fundación
+                      </label>
+                      <textarea
+                        id="register-descripcion-fundacion"
+                        value={registerForm.descripcionFundacion}
+                        onChange={(e) => updateRegisterForm('descripcionFundacion', e.target.value)}
+                        className="input-field"
+                        placeholder="Describe la misión y actividades de tu fundación para niños..."
+                        rows={3}
+                        required={registerForm.esFundacion}
+                        minLength={20}
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Mínimo 20 caracteres
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
 
                 <button
                   type="submit"
