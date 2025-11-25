@@ -30,6 +30,7 @@ import { useRouter } from 'next/navigation'
 import { uploadUserProfileImage } from '@/lib/storage'
 import Avatar from '@/components/ui/Avatar'
 import FoundationBadge, { FoundationBadgeTooltip } from '@/components/foundation/FoundationBadge'
+import EventsManager from '@/components/foundation/EventsManager'
 
 interface BadgeDetail {
     nombre: string
@@ -123,7 +124,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     const [userReviews, setUserReviews] = useState<UserReview[]>([])
     const [userActivities, setUserActivities] = useState<UserActivity[]>([])
     const [isLoading, setIsLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<'overview' | 'verification' | 'products' | 'reviews' | 'activities' | 'settings'>('overview')
+    const [activeTab, setActiveTab] = useState<'overview' | 'verification' | 'events' | 'products' | 'reviews' | 'activities' | 'settings'>('overview')
     const [isUploading, setIsUploading] = useState(false)
     const [uploadError, setUploadError] = useState<string | null>(null)
     const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
@@ -875,6 +876,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     {[
                         { id: 'overview', name: 'Resumen', icon: UserIcon },
                         ...(profileData.es_fundacion ? [{ id: 'verification', name: 'Verificación', icon: ShieldCheckIcon }] : []),
+                        ...(profileData.es_fundacion && profileData.fundacion_verificada ? [{ id: 'events', name: 'Eventos', icon: CalendarIcon }] : []),
                         { id: 'products', name: 'Productos', icon: HeartIcon },
                         { id: 'reviews', name: 'Reseñas', icon: StarIcon },
                         { id: 'activities', name: 'Actividad', icon: EyeIcon },
@@ -1214,6 +1216,15 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* Pestaña Eventos (solo fundaciones verificadas) */}
+                {activeTab === 'events' && profileData.es_fundacion && profileData.fundacion_verificada && (
+                    <EventsManager 
+                        currentUser={currentUser}
+                        isFoundation={profileData.es_fundacion}
+                        isVerified={profileData.fundacion_verificada}
+                    />
                 )}
 
                 {/* Pestaña Productos */}
