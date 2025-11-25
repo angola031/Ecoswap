@@ -137,6 +137,110 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     const [validationStatus, setValidationStatus] = useState<'pendiente' | 'en_revision' | 'aprobada' | 'rechazada' | null>(null)
     const [rejectionReason, setRejectionReason] = useState<string | null>(null)
     const [badgesDetail, setBadgesDetail] = useState<BadgeDetail[]>([])
+    const [showDocumentUpload, setShowDocumentUpload] = useState(false)
+    const [documentFile, setDocumentFile] = useState<File | null>(null)
+    const [documentUploading, setDocumentUploading] = useState(false)
+
+    // Función para subir documento de fundación
+    const handleUploadDocument = async () => {
+        if (!documentFile || !currentUser) {
+            await (window as any).Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Por favor selecciona un documento'
+            })
+            return
+        }
+
+        // Validar tipo de archivo (solo PDFs e imágenes)
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+        if (!allowedTypes.includes(documentFile.type)) {
+            await (window as any).Swal.fire({
+                icon: 'error',
+                title: 'Tipo de archivo no válido',
+                text: 'Solo se permiten archivos PDF, JPG, JPEG y PNG'
+            })
+            return
+        }
+
+        // Validar tamaño (máximo 5MB)
+        if (documentFile.size > 5 * 1024 * 1024) {
+            await (window as any).Swal.fire({
+                icon: 'error',
+                title: 'Archivo muy grande',
+                text: 'El archivo no debe superar los 5MB'
+            })
+            return
+        }
+
+        setDocumentUploading(true)
+
+        try {
+            const supabase = getSupabaseClient()
+            const { data: { session } } = await supabase.auth.getSession()
+
+            if (!session) {
+                throw new Error('No hay sesión activa')
+            }
+
+            // Crear nombre único para el archivo
+            const fileExt = documentFile.name.split('.').pop()
+            const fileName = `${currentUser.id}_fundacion_${Date.now()}.${fileExt}`
+            const filePath = `fundaciones/${fileName}`
+
+            // Subir archivo a Supabase Storage
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('documentos')
+                .upload(filePath, documentFile)
+
+            if (uploadError) {
+                throw uploadError
+            }
+
+            // Obtener URL pública
+            const { data: { publicUrl } } = supabase.storage
+                .from('documentos')
+                .getPublicUrl(filePath)
+
+            // Actualizar usuario con la URL del documento
+            const { error: updateError } = await supabase
+                .from('usuario')
+                .update({ documento_fundacion: publicUrl })
+                .eq('user_id', currentUser.id)
+
+            if (updateError) {
+                throw updateError
+            }
+
+            // Actualizar estado local
+            if (profileData) {
+                setProfileData({
+                    ...profileData,
+                    documento_fundacion: publicUrl
+                })
+            }
+
+            await (window as any).Swal.fire({
+                icon: 'success',
+                title: 'Documento subido',
+                text: 'Tu documento ha sido subido exitosamente. Ahora está en revisión.',
+                confirmButtonColor: '#10B981'
+            })
+
+            setShowDocumentUpload(false)
+            setDocumentFile(null)
+
+        } catch (error: any) {
+            console.error('Error subiendo documento:', error)
+            await (window as any).Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'No se pudo subir el documento. Intenta de nuevo.'
+            })
+        } finally {
+            setDocumentUploading(false)
+        }
+    }
 
     const handlePublishProduct = async () => {
         // Verificar si el usuario está autenticado
@@ -1174,13 +1278,85 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                             <span>Ver documento</span>
                                         </a>
                                     ) : (
-                                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md p-3">
-                                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                                                ⚠️ No has subido un documento de registro. Esto es necesario para la verificación.
-                                            </p>
-                                            <button className="mt-2 text-sm text-yellow-900 dark:text-yellow-100 font-medium hover:underline">
-                                                Subir documento →
-                                            </button>
+                                        <div className="space-y-3">
+                                            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md p-3">
+                                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                                    ⚠️ No has subido un documento de registro. Esto es necesario para la verificación.
+                                                </p>
+                                                <button 
+                                                    onClick={() => setShowDocumentUpload(!showDocumentUpload)}
+                                                    className="mt-2 text-sm text-yellow-900 dark:text-yellow-100 font-medium hover:underline"
+                                                >
+                                                    {showDocumentUpload ? '✕ Cancelar' : 'Subir documento →'}
+                                                </button>
+                                            </div>
+
+                                            {/* Formulario de subir documento */}
+                                            {showDocumentUpload && (
+                                                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-4 space-y-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                            Documento de Registro
+                                                        </label>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                                            Sube tu documento de constitución, RUT o certificado de existencia de la fundación (PDF, JPG, PNG - Máx. 5MB)
+                                                        </p>
+                                                        <input
+                                                            type="file"
+                                                            accept=".pdf,.jpg,.jpeg,.png"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0]
+                                                                if (file) {
+                                                                    setDocumentFile(file)
+                                                                }
+                                                            }}
+                                                            className="block w-full text-sm text-gray-500 dark:text-gray-400
+                                                                file:mr-4 file:py-2 file:px-4
+                                                                file:rounded-md file:border-0
+                                                                file:text-sm file:font-semibold
+                                                                file:bg-primary-50 file:text-primary-700
+                                                                hover:file:bg-primary-100
+                                                                dark:file:bg-primary-900/30 dark:file:text-primary-400
+                                                                dark:hover:file:bg-primary-900/50"
+                                                        />
+                                                        {documentFile && (
+                                                            <p className="mt-2 text-xs text-green-600 dark:text-green-400">
+                                                                ✓ Archivo seleccionado: {documentFile.name}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={handleUploadDocument}
+                                                            disabled={!documentFile || documentUploading}
+                                                            className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-md font-medium text-sm transition-colors flex items-center justify-center"
+                                                        >
+                                                            {documentUploading ? (
+                                                                <>
+                                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                    </svg>
+                                                                    Subiendo...
+                                                                </>
+                                                            ) : (
+                                                                <>📄 Subir documento</>
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setShowDocumentUpload(false)
+                                                                setDocumentFile(null)
+                                                            }}
+                                                            disabled={documentUploading}
+                                                            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md font-medium text-sm transition-colors disabled:opacity-50"
+                                                        >
+                                                            Cancelar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
