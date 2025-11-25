@@ -876,7 +876,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     {[
                         { id: 'overview', name: 'Resumen', icon: UserIcon },
                         ...(profileData.es_fundacion ? [{ id: 'verification', name: 'Verificación', icon: ShieldCheckIcon }] : []),
-                        ...(profileData.es_fundacion && profileData.fundacion_verificada ? [{ id: 'events', name: 'Eventos', icon: CalendarIcon }] : []),
+                        ...(profileData.es_fundacion ? [{ id: 'events', name: 'Eventos', icon: CalendarIcon }] : []),
                         ...(!profileData.es_fundacion ? [{ id: 'products', name: 'Productos', icon: HeartIcon }] : []),
                         { id: 'reviews', name: 'Reseñas', icon: StarIcon },
                         { id: 'activities', name: 'Actividad', icon: EyeIcon },
@@ -1218,12 +1218,12 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     </div>
                 )}
 
-                {/* Pestaña Eventos (solo fundaciones verificadas) */}
-                {activeTab === 'events' && profileData.es_fundacion && profileData.fundacion_verificada && (
+                {/* Pestaña Eventos (solo fundaciones) */}
+                {activeTab === 'events' && profileData.es_fundacion && (
                     <EventsManager 
                         currentUser={currentUser}
                         isFoundation={profileData.es_fundacion}
-                        isVerified={profileData.fundacion_verificada}
+                        isVerified={profileData.fundacion_verificada || false}
                     />
                 )}
 
