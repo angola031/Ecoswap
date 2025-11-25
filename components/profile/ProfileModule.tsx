@@ -767,12 +767,15 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
         }
     }
 
-    console.log('🔄 Renderizando ProfileModule - activeTab:', activeTab)
-    console.log('📋 ProfileData:', profileData ? {
-        es_fundacion: profileData.es_fundacion,
-        fundacion_verificada: profileData.fundacion_verificada,
-        nombre_fundacion: profileData.nombre_fundacion
-    } : 'null')
+    // Debug logging
+    useEffect(() => {
+        console.log('🔄 Renderizando ProfileModule - activeTab:', activeTab)
+        console.log('📋 ProfileData:', profileData ? {
+            es_fundacion: profileData.es_fundacion,
+            fundacion_verificada: profileData.fundacion_verificada,
+            nombre_fundacion: profileData.nombre_fundacion
+        } : 'null')
+    }, [activeTab, profileData])
 
     if (isLoading) {
         return (
@@ -1240,7 +1243,6 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 {/* Pestaña Verificación (solo fundaciones) */}
                 {activeTab === 'verification' && profileData.es_fundacion && (
                     <div className="space-y-6">
-                        {console.log('✅ Renderizando pestaña de Verificación')}
                         {/* Estado de Verificación */}
                         <div className="card">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -1669,32 +1671,138 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         {/* Proceso de Verificación */}
                         <div className="card">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                                            📋 Documentos Requeridos para Verificación (ESAL)
-                                        </p>
-                                        <div className="space-y-2">
-                                            <div className="bg-white dark:bg-gray-800/50 rounded p-2">
-                                                <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1">
-                                                    ✓ Documentos Principales:
-                                                </p>
-                                                <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1.5 ml-2">
-                                                    <li className="flex items-start space-x-2">
-                                                        <span className="text-blue-600 dark:text-blue-400 mt-0.5">1.</span>
-                                                        <span><strong>Acta de Constitución</strong> (o documento privado/escritura pública con lista de asociados)</span>
-                                                    </li>
-                                                    <li className="flex items-start space-x-2">
-                                                        <span className="text-blue-600 dark:text-blue-400 mt-0.5">2.</span>
-                                                        <span><strong>Estatutos</strong> aprobados de la fundación</span>
-                                                    </li>
-                                                    <li className="flex items-start space-x-2">
-                                                        <span className="text-blue-600 dark:text-blue-400 mt-0.5">3.</span>
-                                                        <span><strong>PRE-RUT</strong> expedido por la DIAN</span>
-                                                    </li>
-                                                </ul>
+                                Proceso de Verificación
+                            </h3>
+                        </div>
+
+                        {/* Proceso de Verificación */}
+                        <div className="card">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                                Proceso de Verificación
+                            </h3>
+                            
+                            <div className="space-y-4">
+                                {(() => {
+                                    const hasDocuments = !!(
+                                        (profileData as any).documento_fundacion || 
+                                        (profileData as any).documentos_fundacion && Object.keys((profileData as any).documentos_fundacion).length > 0
+                                    )
+                                    
+                                    return (
+                                        <>
+                                            {/* Paso 1 */}
+                                            <div className="flex items-start space-x-4">
+                                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                                                    hasDocuments
+                                                        ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                                        : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
+                                                }`}>
+                                                    {hasDocuments ? (
+                                                        <CheckIcon className="w-5 h-5" />
+                                                    ) : (
+                                                        <span className="text-sm font-bold">1</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                                        1. Subir Documentación
+                                                    </h4>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        {hasDocuments 
+                                                            ? '✓ Documentos recibidos correctamente.'
+                                                            : 'Sube los documentos de registro de tu fundación (ESAL).'}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            
-                                            <div className="bg-white dark:bg-gray-800/50 rounded p-2">
-                                                <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1">
-                                                    📌 Documentos Adicionales (recomendados):
+
+                                            {/* Paso 2 */}
+                                            <div className="flex items-start space-x-4">
+                                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                                                    profileData.fundacion_verificada
+                                                        ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                                        : hasDocuments
+                                                            ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                                            : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
+                                                }`}>
+                                                    {profileData.fundacion_verificada ? (
+                                                        <CheckIcon className="w-5 h-5" />
+                                                    ) : hasDocuments ? (
+                                                        <ClockIcon className="w-5 h-5" />
+                                                    ) : (
+                                                        <span className="text-sm font-bold">2</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                                        2. Revisión Administrativa
+                                                    </h4>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        {profileData.fundacion_verificada
+                                                            ? '✓ Tu fundación ha sido revisada y aprobada.'
+                                                            : hasDocuments 
+                                                                ? '⏳ Nuestro equipo está verificando tu información.'
+                                                                : 'Pendiente de recibir documentación.'}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Paso 3 */}
+                                            <div className="flex items-start space-x-4">
+                                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                                                    profileData.fundacion_verificada
+                                                        ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                                        : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
+                                                }`}>
+                                                    {profileData.fundacion_verificada ? (
+                                                        <CheckIcon className="w-5 h-5" />
+                                                    ) : (
+                                                        <span className="text-sm font-bold">3</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                                        3. Verificación Completa
+                                                    </h4>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        {profileData.fundacion_verificada
+                                                            ? '✓ ¡Felicitaciones! Tu fundación está verificada y activa.'
+                                                            : 'Una vez aprobada, podrás recibir donaciones y crear eventos.'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )
+                                })()}
+                            </div>
+                        </div>
+                        
+                        {/* Beneficios de la Verificación */}
+                        <div className="card bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-2 border-purple-200 dark:border-purple-700">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                                🎁 Beneficios de la Verificación
+                            </h3>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="flex items-start space-x-3">
+                                    <CheckCircleIcon className="w-6 h-6 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                            Badge Verificado
+                                        </h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Insignia visible en tu perfil que genera confianza
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start space-x-3">
+                                    <CheckCircleIcon className="w-6 h-6 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                            Recibir Donaciones
+                                        </h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Acceso al panel de donaciones disponibles
                                                 </p>
                                                 <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1 ml-2">
                                                     <li className="flex items-start space-x-2">
@@ -1794,7 +1902,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
                                                     <div className="flex gap-2">
                                                         <button
-                                                            onClick={handleUploadDocument}
+                                                            onClick={() => handleUploadDocument()}
                                                             disabled={!documentFile || documentUploading}
                                                             className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-md font-medium text-sm transition-colors flex items-center justify-center"
                                                         >
@@ -1886,7 +1994,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
                                                     <div className="flex gap-2">
                                                         <button
-                                                            onClick={handleUploadDocument}
+                                                            onClick={() => handleUploadDocument()}
                                                             disabled={!documentFile || documentUploading}
                                                             className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-md font-medium text-sm transition-colors flex items-center justify-center"
                                                         >
