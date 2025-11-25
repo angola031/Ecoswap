@@ -1264,42 +1264,74 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                 )}
                                 
                                 <div>
-                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Documento de Registro</p>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">Documentos de Registro</p>
+                                    
+                                    {/* Lista de documentos requeridos */}
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md p-3 mb-3">
+                                        <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-2">📋 Documentos Necesarios:</p>
+                                        <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                                            <li className="flex items-center space-x-2">
+                                                <span className="text-blue-600 dark:text-blue-400">•</span>
+                                                <span>Acta de Constitución de la fundación</span>
+                                            </li>
+                                            <li className="flex items-center space-x-2">
+                                                <span className="text-blue-600 dark:text-blue-400">•</span>
+                                                <span>RUT (Registro Único Tributario)</span>
+                                            </li>
+                                        </ul>
+                                        <p className="text-xs text-blue-700 dark:text-blue-300 mt-2 italic">
+                                            Puedes subir ambos documentos en un solo archivo PDF o imágenes individuales
+                                        </p>
+                                    </div>
+                                    
                                     {(profileData as any).documento_fundacion ? (
-                                        <a 
-                                            href={(profileData as any).documento_fundacion} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center space-x-2 text-sm text-primary-600 dark:text-primary-400 hover:underline"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                            <span>Ver documento</span>
-                                        </a>
-                                    ) : (
                                         <div className="space-y-3">
-                                            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md p-3">
-                                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                                                    ⚠️ No has subido un documento de registro. Esto es necesario para la verificación.
-                                                </p>
-                                                <button 
-                                                    onClick={() => setShowDocumentUpload(!showDocumentUpload)}
-                                                    className="mt-2 text-sm text-yellow-900 dark:text-yellow-100 font-medium hover:underline"
+                                            {/* Preview del documento */}
+                                            <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
+                                                {(profileData as any).documento_fundacion.toLowerCase().endsWith('.pdf') ? (
+                                                    <iframe
+                                                        src={(profileData as any).documento_fundacion}
+                                                        className="w-full h-64"
+                                                        title="Vista previa del documento"
+                                                    />
+                                                ) : (
+                                                    <img
+                                                        src={(profileData as any).documento_fundacion}
+                                                        alt="Documento de fundación"
+                                                        className="w-full h-auto max-h-64 object-contain bg-gray-100 dark:bg-gray-800"
+                                                    />
+                                                )}
+                                            </div>
+                                            
+                                            <div className="flex gap-2">
+                                                <a 
+                                                    href={(profileData as any).documento_fundacion} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="flex-1 inline-flex items-center justify-center space-x-2 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-medium transition-colors"
                                                 >
-                                                    {showDocumentUpload ? '✕ Cancelar' : 'Subir documento →'}
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                    </svg>
+                                                    <span>Ver en nueva ventana</span>
+                                                </a>
+                                                <button
+                                                    onClick={() => setShowDocumentUpload(!showDocumentUpload)}
+                                                    className="px-3 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium transition-colors"
+                                                >
+                                                    {showDocumentUpload ? '✕ Cancelar' : '🔄 Actualizar'}
                                                 </button>
                                             </div>
 
-                                            {/* Formulario de subir documento */}
+                                            {/* Formulario para actualizar documento */}
                                             {showDocumentUpload && (
                                                 <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-4 space-y-4">
                                                     <div>
                                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                            Documento de Registro
+                                                            Actualizar Documento
                                                         </label>
                                                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                                                            Sube tu documento de constitución, RUT o certificado de existencia de la fundación (PDF, JPG, PNG - Máx. 5MB)
+                                                            Sube un nuevo documento (PDF, JPG, PNG - Máx. 5MB)
                                                         </p>
                                                         <input
                                                             type="file"
@@ -1341,7 +1373,96 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                                                     Subiendo...
                                                                 </>
                                                             ) : (
-                                                                <>📄 Subir documento</>
+                                                                <>📄 Actualizar documento</>
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setShowDocumentUpload(false)
+                                                                setDocumentFile(null)
+                                                            }}
+                                                            disabled={documentUploading}
+                                                            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md font-medium text-sm transition-colors disabled:opacity-50"
+                                                        >
+                                                            Cancelar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md p-3">
+                                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                                    ⚠️ No has subido documentos de registro. Son necesarios para la verificación.
+                                                </p>
+                                                <button 
+                                                    onClick={() => setShowDocumentUpload(!showDocumentUpload)}
+                                                    className="mt-2 text-sm text-yellow-900 dark:text-yellow-100 font-medium hover:underline"
+                                                >
+                                                    {showDocumentUpload ? '✕ Cancelar' : '📤 Subir documentos →'}
+                                                </button>
+                                            </div>
+
+                                            {/* Formulario de subir documento */}
+                                            {showDocumentUpload && (
+                                                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-4 space-y-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                            Subir Documentos
+                                                        </label>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                                            Sube tu Acta de Constitución y RUT en un solo archivo o de forma separada (PDF, JPG, PNG - Máx. 5MB por archivo)
+                                                        </p>
+                                                        <input
+                                                            type="file"
+                                                            accept=".pdf,.jpg,.jpeg,.png"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0]
+                                                                if (file) {
+                                                                    setDocumentFile(file)
+                                                                }
+                                                            }}
+                                                            className="block w-full text-sm text-gray-500 dark:text-gray-400
+                                                                file:mr-4 file:py-2 file:px-4
+                                                                file:rounded-md file:border-0
+                                                                file:text-sm file:font-semibold
+                                                                file:bg-primary-50 file:text-primary-700
+                                                                hover:file:bg-primary-100
+                                                                dark:file:bg-primary-900/30 dark:file:text-primary-400
+                                                                dark:hover:file:bg-primary-900/50"
+                                                        />
+                                                        {documentFile && (
+                                                            <div className="mt-3 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-700">
+                                                                <p className="text-xs text-green-700 dark:text-green-300 flex items-center">
+                                                                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                                                                    </svg>
+                                                                    <span className="font-medium">Archivo seleccionado:</span>
+                                                                </p>
+                                                                <p className="text-xs text-green-600 dark:text-green-400 ml-6 mt-1">
+                                                                    {documentFile.name} ({(documentFile.size / 1024 / 1024).toFixed(2)} MB)
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={handleUploadDocument}
+                                                            disabled={!documentFile || documentUploading}
+                                                            className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-md font-medium text-sm transition-colors flex items-center justify-center"
+                                                        >
+                                                            {documentUploading ? (
+                                                                <>
+                                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                    </svg>
+                                                                    Subiendo...
+                                                                </>
+                                                            ) : (
+                                                                <>📄 Subir documentos</>
                                                             )}
                                                         </button>
                                                         <button
