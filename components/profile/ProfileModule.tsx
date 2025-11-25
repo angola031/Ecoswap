@@ -877,7 +877,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         { id: 'overview', name: 'Resumen', icon: UserIcon },
                         ...(profileData.es_fundacion ? [{ id: 'verification', name: 'Verificación', icon: ShieldCheckIcon }] : []),
                         ...(profileData.es_fundacion && profileData.fundacion_verificada ? [{ id: 'events', name: 'Eventos', icon: CalendarIcon }] : []),
-                        { id: 'products', name: 'Productos', icon: HeartIcon },
+                        ...(!profileData.es_fundacion ? [{ id: 'products', name: 'Productos', icon: HeartIcon }] : []),
                         { id: 'reviews', name: 'Reseñas', icon: StarIcon },
                         { id: 'activities', name: 'Actividad', icon: EyeIcon },
                         { id: 'settings', name: 'Configuración', icon: Cog6ToothIcon }
@@ -1227,8 +1227,8 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     />
                 )}
 
-                {/* Pestaña Productos */}
-                {activeTab === 'products' && (
+                {/* Pestaña Productos (solo para usuarios normales, no fundaciones) */}
+                {activeTab === 'products' && !profileData.es_fundacion && (
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Mis Productos</h3>
