@@ -131,9 +131,12 @@ const formatPrice = (precio: number | null, tipoTransaccion: string | null, cond
 // Función para manejar solicitud de donación
 const handleDonationRequest = async (product: any) => {
   // Verificar si el usuario está logueado
+  let session
   try {
     const supabase = getSupabaseClient()
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data } = await supabase.auth.getSession()
+    session = data.session
+    
     if (!session?.access_token) {
       await (window as any).Swal.fire({
         title: 'Iniciar sesión requerido',
@@ -219,140 +222,265 @@ const handleDonationRequest = async (product: any) => {
   })
 
   if (formValues) {
-    // Aquí iría la lógica para enviar la solicitud de donación
-    // Por ahora, solo mostramos un mensaje de confirmación
-    await (window as any).Swal.fire({
-      title: '✅ Solicitud Enviada',
-      html: `
-        <div class="text-left space-y-3">
-          <p class="text-gray-700">Tu solicitud de donación ha sido enviada al propietario.</p>
-          <div class="bg-blue-50 p-3 rounded-lg">
-            <h4 class="font-medium text-blue-900 mb-2">📋 Próximos pasos:</h4>
-            <ul class="text-sm text-blue-800 space-y-1">
-              <li>• El propietario revisará tu solicitud</li>
-              <li>• Te notificaremos cuando responda</li>
-              <li>• Si acepta, el propietario coordinará contigo la fecha y lugar de entrega por chat</li>
-            </ul>
-          </div>
-        </div>
-      `,
-      confirmButtonText: 'Entendido',
-      confirmButtonColor: '#7C3AED'
-    })
+    try {
+      // Mostrar indicador de carga
+      (window as any).Swal.fire({
+        title: 'Enviando solicitud...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          (window as any).Swal.showLoading()
+        }
+      })
+
+      // Enviar solicitud a la API
+      const response = await fetch('/api/donations/request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          producto_id: product.producto_id || product.id,
+          mensaje: formValues.message,
+          owner_id: product.user_id
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Éxito
+        await (window as any).Swal.fire({
+          title: '✅ Solicitud Enviada',
+          html: `
+            <div class="text-left space-y-3">
+              <p class="text-gray-700">Tu solicitud de donación ha sido enviada al propietario.</p>
+              <div class="bg-blue-50 p-3 rounded-lg">
+                <h4 class="font-medium text-blue-900 mb-2">📋 Próximos pasos:</h4>
+                <ul class="text-sm text-blue-800 space-y-1">
+                  <li>• El propietario revisará tu solicitud</li>
+                  <li>• Te notificaremos cuando responda</li>
+                  <li>• Si acepta, el propietario coordinará contigo la fecha y lugar de entrega por chat</li>
+                </ul>
+              </div>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#7C3AED'
+        })
+      } else {
+        // Error
+        throw new Error(data.error || 'Error al enviar la solicitud')
+      }
+    } catch (error: any) {
+      console.error('Error enviando solicitud de donación:', error)
+      await (window as any).Swal.fire({
+        title: 'Error',
+        text: error.message || 'No se pudo enviar la solicitud. Por favor, inténtalo de nuevo.',
+        icon: 'error',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#7C3AED'
+      })
+    }
   }
 }
 
 // Función para manejar gestión de donaciones (para propietarios)
 const handleManageDonations = async (product: any) => {
-  // Mostrar modal para gestionar solicitudes de donación
-  const { value: selectedRequest } = await (window as any).Swal.fire({
-    title: '🎁 Gestionar Solicitudes de Donación',
-    html: `
-      <div class="text-left space-y-4">
-        <div class="bg-purple-50 p-3 rounded-lg">
-          <h4 class="font-medium text-purple-900 mb-1">${product.titulo}</h4>
-          <p class="text-sm text-purple-700">Gestiona las solicitudes de donación para este producto</p>
+  try {
+    // Mostrar loading
+    (window as any).Swal.fire({
+      title: 'Cargando solicitudes...',
+      allowOutsideClick: false,
+      didOpen: () => {
+        (window as any).Swal.showLoading()
+      }
+    })
+
+    // Obtener token de sesión
+    const supabase = getSupabaseClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    if (!session?.access_token) {
+      await (window as any).Swal.fire({
+        title: 'Error',
+        text: 'No se pudo verificar tu sesión',
+        icon: 'error',
+        confirmButtonText: 'Entendido'
+      })
+      return
+    }
+
+    // Cargar solicitudes desde la API
+    const response = await fetch(`/api/donations/request?producto_id=${product.producto_id || product.id}`, {
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      }
+    })
+
+    const data = await response.json()
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Error cargando solicitudes')
+    }
+
+    const solicitudes = data.solicitudes || []
+
+    // Generar HTML de solicitudes
+    let solicitudesHTML = ''
+    
+    if (solicitudes.length === 0) {
+      solicitudesHTML = `
+        <div class="bg-gray-50 p-4 rounded-lg text-center">
+          <p class="text-gray-600">No has recibido solicitudes para esta donación aún.</p>
         </div>
+      `
+    } else {
+      solicitudesHTML = solicitudes.map((sol: any) => {
+        const mensaje = sol.descripcion.replace('Solicitud de donación: ', '')
+        const estadoBadge = sol.estado === 'pendiente' 
+          ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Pendiente</span>'
+          : sol.estado === 'aceptada'
+          ? '<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Aceptada</span>'
+          : '<span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">Rechazada</span>'
         
-        <div class="bg-gray-50 p-4 rounded-lg">
-          <p class="text-sm text-gray-600">
-            Aquí puedes ver y gestionar las solicitudes de donación que han recibido para este producto.
-            <br><br>
-            <strong>Funcionalidad en desarrollo:</strong> Próximamente podrás ver todas las solicitudes y aceptar la que prefieras.
-          </p>
-        </div>
-        
-        <div class="space-y-3">
+        const fecha = new Date(sol.fecha_creacion).toLocaleDateString('es-CO', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+
+        return `
           <div class="border border-gray-200 rounded-lg p-3 bg-white">
-            <div class="flex items-center justify-between">
-              <div>
-                <h4 class="font-medium text-gray-900">Solicitud de María González</h4>
-                <p class="text-sm text-gray-600">"Me interesa mucho esta donación porque..."</p>
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <h4 class="font-medium text-gray-900">${sol.usuario_propone[0].nombre} ${sol.usuario_propone[0].apellido}</h4>
+                  ${estadoBadge}
+                </div>
+                <p class="text-sm text-gray-600 mb-1">"${mensaje.substring(0, 100)}${mensaje.length > 100 ? '...' : ''}"</p>
+                <p class="text-xs text-gray-400">${fecha}</p>
+                ${sol.usuario_propone[0].calificacion_promedio ? `<p class="text-xs text-gray-500 mt-1">⭐ ${sol.usuario_propone[0].calificacion_promedio.toFixed(1)} (${sol.usuario_propone[0].total_intercambios} intercambios)</p>` : ''}
               </div>
-              <div class="flex space-x-2">
-                <button class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200" onclick="acceptRequest('maria')">
-                  ✅ Aceptar
-                </button>
-                <button class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs hover:bg-red-200" onclick="rejectRequest('maria')">
-                  ❌ Rechazar
-                </button>
-              </div>
+              ${sol.estado === 'pendiente' ? `
+                <div class="flex flex-col gap-2 ml-2">
+                  <button class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200" onclick="acceptDonationRequest(${sol.propuesta_id}, ${sol.chat_id})">
+                    ✅ Aceptar
+                  </button>
+                  <button class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs hover:bg-red-200" onclick="rejectDonationRequest(${sol.propuesta_id})">
+                    ❌ Rechazar
+                  </button>
+                </div>
+              ` : ''}
             </div>
+          </div>
+        `
+      }).join('')
+    }
+
+    // Mostrar modal con solicitudes
+    await (window as any).Swal.fire({
+      title: '🎁 Solicitudes de Donación',
+      html: `
+        <div class="text-left space-y-4">
+          <div class="bg-purple-50 p-3 rounded-lg">
+            <h4 class="font-medium text-purple-900 mb-1">${product.titulo}</h4>
+            <p class="text-sm text-purple-700">${solicitudes.length} solicitud(es) recibida(s)</p>
           </div>
           
-          <div class="border border-gray-200 rounded-lg p-3 bg-white">
-            <div class="flex items-center justify-between">
-              <div>
-                <h4 class="font-medium text-gray-900">Solicitud de Carlos Ruiz</h4>
-                <p class="text-sm text-gray-600">"Soy estudiante y esta donación me ayudaría mucho..."</p>
-              </div>
-              <div class="flex space-x-2">
-                <button class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200" onclick="acceptRequest('carlos')">
-                  ✅ Aceptar
-                </button>
-                <button class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs hover:bg-red-200" onclick="rejectRequest('carlos')">
-                  ❌ Rechazar
-                </button>
-              </div>
-            </div>
+          <div class="space-y-3 max-h-96 overflow-y-auto">
+            ${solicitudesHTML}
           </div>
         </div>
-      </div>
-    `,
-    showCancelButton: true,
-    cancelButtonText: 'Cerrar',
-    confirmButtonText: 'Ver Todas las Solicitudes',
-    confirmButtonColor: '#7C3AED',
-    cancelButtonColor: '#6B7280',
-    showConfirmButton: false,
-    didOpen: () => {
-      // Agregar funciones globales para los botones
-      (window as any).acceptRequest = (userId: string) => {
-        (window as any).Swal.fire({
-          title: '✅ Solicitud Aceptada',
-          html: `
-            <div class="text-left space-y-4">
-              <p class="text-gray-700">Has aceptado la solicitud de donación. Ahora puedes coordinar la entrega.</p>
-              
-              <div class="bg-blue-50 p-4 rounded-lg">
-                <h4 class="font-medium text-blue-900 mb-2">📋 Próximos pasos:</h4>
-                <ul class="text-sm text-blue-800 space-y-1">
-                  <li>• Contacta al solicitante para coordinar la entrega</li>
-                  <li>• Acuerda fecha, hora y lugar de encuentro</li>
-                  <li>• Confirma que el producto esté en buen estado</li>
-                  <li>• Realiza la entrega y confirma la donación</li>
-                </ul>
-              </div>
-              
-              <div class="flex space-x-3">
-                <button class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onclick="startChat()">
-                  💬 Iniciar Chat
-                </button>
-                <button class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" onclick="markAsCompleted()">
-                  ✅ Marcar como Completado
-                </button>
-              </div>
-            </div>
-          `,
-          showCancelButton: true,
-          cancelButtonText: 'Cerrar',
-          confirmButtonText: 'Continuar',
-          confirmButtonColor: '#7C3AED',
-          cancelButtonColor: '#6B7280'
-        })
+      `,
+      showCancelButton: false,
+      confirmButtonText: 'Cerrar',
+      confirmButtonColor: '#7C3AED',
+      width: '600px',
+      didOpen: () => {
+        // Agregar funciones globales para los botones
+        (window as any).acceptDonationRequest = async (propuestaId: number, chatId: number) => {
+          const result = await (window as any).Swal.fire({
+            title: '¿Aceptar esta solicitud?',
+            text: 'Podrás coordinar la entrega con el solicitante por chat',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, aceptar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#10B981',
+            cancelButtonColor: '#6B7280'
+          })
+
+          if (result.isConfirmed) {
+            // TODO: Implementar aceptación de solicitud
+            await (window as any).Swal.fire({
+              title: '✅ Solicitud Aceptada',
+              html: `
+                <div class="text-left space-y-3">
+                  <p class="text-gray-700">Has aceptado la solicitud. Puedes coordinar la entrega por chat.</p>
+                  <div class="bg-blue-50 p-3 rounded-lg">
+                    <h4 class="font-medium text-blue-900 mb-2">📋 Próximos pasos:</h4>
+                    <ul class="text-sm text-blue-800 space-y-1">
+                      <li>• Ve al chat para coordinar</li>
+                      <li>• Acuerda fecha, hora y lugar de encuentro</li>
+                      <li>• Confirma que el producto esté listo</li>
+                      <li>• Realiza la entrega</li>
+                    </ul>
+                  </div>
+                </div>
+              `,
+              icon: 'success',
+              confirmButtonText: 'Entendido',
+              confirmButtonColor: '#7C3AED'
+            })
+            
+            // Recargar modal
+            handleManageDonations(product)
+          }
+        }
+        
+        (window as any).rejectDonationRequest = async (propuestaId: number) => {
+          const result = await (window as any).Swal.fire({
+            title: '¿Rechazar esta solicitud?',
+            text: 'El solicitante será notificado',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, rechazar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#EF4444',
+            cancelButtonColor: '#6B7280'
+          })
+
+          if (result.isConfirmed) {
+            // TODO: Implementar rechazo de solicitud
+            await (window as any).Swal.fire({
+              title: '❌ Solicitud Rechazada',
+              text: 'La solicitud ha sido rechazada. El solicitante será notificado.',
+              icon: 'success',
+              confirmButtonText: 'Entendido',
+              confirmButtonColor: '#7C3AED'
+            })
+            
+            // Recargar modal
+            handleManageDonations(product)
+          }
+        }
       }
-      
-      (window as any).rejectRequest = (userId: string) => {
-        (window as any).Swal.fire({
-          title: '❌ Solicitud Rechazada',
-          text: 'La solicitud ha sido rechazada. El solicitante será notificado.',
-          icon: 'info',
-          confirmButtonText: 'Entendido',
-          confirmButtonColor: '#7C3AED'
-        })
-      }
-    }
-  })
+    })
+
+  } catch (error: any) {
+    console.error('Error gestionando solicitudes:', error)
+    await (window as any).Swal.fire({
+      title: 'Error',
+      text: error.message || 'No se pudieron cargar las solicitudes',
+      icon: 'error',
+      confirmButtonText: 'Entendido',
+      confirmButtonColor: '#7C3AED'
+    })
+  }
 }
 
 // Función para renderizar información de producto compacta
