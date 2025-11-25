@@ -148,6 +148,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     const [showDocumentUpload, setShowDocumentUpload] = useState(false)
     const [documentFile, setDocumentFile] = useState<File | null>(null)
     const [documentUploading, setDocumentUploading] = useState(false)
+    const [uploadMode, setUploadMode] = useState<'separated' | 'single'>('separated')
 
     // Función para subir documento de fundación (con tipo específico)
     const handleUploadDocument = async (documentType?: string) => {
@@ -1346,38 +1347,254 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                                 <div>
                                     <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">Documentos de Registro (ESAL)</p>
                                     
-                                    {/* Componente de subida de documentos por separado */}
-                                    <DocumentUploader 
-                                        currentUser={currentUser}
-                                        documentos={profileData.documentos_fundacion}
-                                        onUpdate={(newDocs) => {
-                                            setProfileData({
-                                                ...profileData,
-                                                documentos_fundacion: newDocs
-                                            })
-                                        }}
-                                    />
-                                    
-                                    {/* Sección legacy para documento_fundacion antiguo */}
-                                    {(profileData as any).documento_fundacion && !(profileData as any).documentos_fundacion && (
-                                        <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded">
-                                            <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-2">
-                                                ℹ️ <strong>Migración requerida:</strong> Tienes documentos en el formato anterior. 
-                                                Te recomendamos subirlos nuevamente usando el nuevo sistema para organizarlos mejor.
-                                            </p>
-                                            <a 
-                                                href={(profileData as any).documento_fundacion}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-xs text-yellow-900 dark:text-yellow-100 font-medium hover:underline"
+                                    {/* Selector de modo de subida */}
+                                    <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4 mb-4">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                                            📤 ¿Cómo deseas subir tus documentos?
+                                        </p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <button
+                                                onClick={() => setUploadMode('separated')}
+                                                className={`p-4 rounded-lg border-2 transition-all ${
+                                                    uploadMode === 'separated'
+                                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
+                                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-300'
+                                                }`}
                                             >
-                                                Ver documento anterior →
-                                            </a>
+                                                <div className="flex items-start space-x-3">
+                                                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                                                        uploadMode === 'separated'
+                                                            ? 'bg-primary-500 text-white'
+                                                            : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
+                                                    }`}>
+                                                        {uploadMode === 'separated' ? (
+                                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                                                            </svg>
+                                                        ) : (
+                                                            <span className="text-xs">○</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 text-left">
+                                                        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                                                            📁 Por separado
+                                                        </p>
+                                                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                                                            Sube cada documento en su propio archivo (Recomendado)
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                onClick={() => setUploadMode('single')}
+                                                className={`p-4 rounded-lg border-2 transition-all ${
+                                                    uploadMode === 'single'
+                                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
+                                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-300'
+                                                }`}
+                                            >
+                                                <div className="flex items-start space-x-3">
+                                                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                                                        uploadMode === 'single'
+                                                            ? 'bg-primary-500 text-white'
+                                                            : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
+                                                    }`}>
+                                                        {uploadMode === 'single' ? (
+                                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                                                            </svg>
+                                                        ) : (
+                                                            <span className="text-xs">○</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 text-left">
+                                                        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                                                            📄 Todo en uno
+                                                        </p>
+                                                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                                                            Sube todos los documentos compilados en un solo PDF
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </button>
                                         </div>
+                                    </div>
+                                    
+                                    {/* Mostrar interfaz según modo seleccionado */}
+                                    {uploadMode === 'separated' ? (
+                                        <>
+                                            {/* Componente de subida de documentos por separado */}
+                                            <DocumentUploader 
+                                                currentUser={currentUser}
+                                                documentos={profileData.documentos_fundacion}
+                                                onUpdate={(newDocs) => {
+                                                    setProfileData({
+                                                        ...profileData,
+                                                        documentos_fundacion: newDocs
+                                                    })
+                                                }}
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            {/* Interfaz de subida de documento único */}
+                                            <div className="space-y-4">
+                                                {/* Lista de documentos que debe incluir */}
+                                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                                                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">
+                                                        📋 Tu PDF debe incluir estos documentos:
+                                                    </p>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                        <div className="flex items-center space-x-2 text-xs text-blue-800 dark:text-blue-200">
+                                                            <div className="w-5 h-5 bg-blue-600 dark:bg-blue-400 text-white rounded-full flex items-center justify-center font-bold text-xs">1</div>
+                                                            <span>Acta de Constitución</span>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2 text-xs text-blue-800 dark:text-blue-200">
+                                                            <div className="w-5 h-5 bg-blue-600 dark:bg-blue-400 text-white rounded-full flex items-center justify-center font-bold text-xs">2</div>
+                                                            <span>Estatutos</span>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2 text-xs text-blue-800 dark:text-blue-200">
+                                                            <div className="w-5 h-5 bg-blue-600 dark:bg-blue-400 text-white rounded-full flex items-center justify-center font-bold text-xs">3</div>
+                                                            <span>PRE-RUT de la DIAN</span>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2 text-xs text-blue-800 dark:text-blue-200">
+                                                            <div className="w-5 h-5 bg-gray-400 dark:bg-gray-600 text-white rounded-full flex items-center justify-center text-xs">+</div>
+                                                            <span>Otros (opcional)</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Preview si ya hay documento subido */}
+                                                {(profileData as any).documento_fundacion && (
+                                                    <div className="card">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                                                Documento Actual
+                                                            </p>
+                                                            <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded text-xs font-medium">
+                                                                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                                                                </svg>
+                                                                Subido
+                                                            </span>
+                                                        </div>
+                                                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-3">
+                                                            {(profileData as any).documento_fundacion.toLowerCase().endsWith('.pdf') ? (
+                                                                <iframe
+                                                                    src={(profileData as any).documento_fundacion}
+                                                                    className="w-full h-64"
+                                                                    title="Documento completo"
+                                                                />
+                                                            ) : (
+                                                                <img
+                                                                    src={(profileData as any).documento_fundacion}
+                                                                    alt="Documento completo"
+                                                                    className="w-full h-auto max-h-64 object-contain bg-gray-50 dark:bg-gray-800"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <a
+                                                                href={(profileData as any).documento_fundacion}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="flex-1 text-center px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-medium transition-colors"
+                                                            >
+                                                                Ver completo
+                                                            </a>
+                                                            <button
+                                                                onClick={() => setShowDocumentUpload(!showDocumentUpload)}
+                                                                className="px-3 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium transition-colors"
+                                                            >
+                                                                {showDocumentUpload ? '✕ Cancelar' : '🔄 Reemplazar'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Formulario de subida (mostrar si no hay documento o si showDocumentUpload está activo) */}
+                                                {(!(profileData as any).documento_fundacion || showDocumentUpload) && (
+                                                    <div className="card">
+                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                            {(profileData as any).documento_fundacion ? 'Reemplazar Documento' : 'Subir Documento Completo'}
+                                                        </label>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                                            Sube un archivo PDF con todos los documentos requeridos (Máx. 5MB)
+                                                        </p>
+                                                        <input
+                                                            type="file"
+                                                            accept=".pdf"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0]
+                                                                if (file) {
+                                                                    setDocumentFile(file)
+                                                                }
+                                                            }}
+                                                            className="block w-full text-sm text-gray-500 dark:text-gray-400
+                                                                file:mr-4 file:py-2 file:px-4
+                                                                file:rounded-md file:border-0
+                                                                file:text-sm file:font-semibold
+                                                                file:bg-primary-50 file:text-primary-700
+                                                                hover:file:bg-primary-100
+                                                                dark:file:bg-primary-900/30 dark:file:text-primary-400
+                                                                dark:hover:file:bg-primary-900/50"
+                                                        />
+                                                        {documentFile && (
+                                                            <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-700">
+                                                                <p className="text-xs text-green-700 dark:text-green-300 flex items-center font-medium mb-1">
+                                                                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                                                                    </svg>
+                                                                    Archivo seleccionado
+                                                                </p>
+                                                                <p className="text-xs text-green-600 dark:text-green-400 ml-6">
+                                                                    {documentFile.name} ({(documentFile.size / 1024 / 1024).toFixed(2)} MB)
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex gap-2 mt-4">
+                                                            <button
+                                                                onClick={() => handleUploadDocument()}
+                                                                disabled={!documentFile || documentUploading}
+                                                                className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-md font-medium text-sm transition-colors flex items-center justify-center"
+                                                            >
+                                                                {documentUploading ? (
+                                                                    <>
+                                                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                        </svg>
+                                                                        Subiendo...
+                                                                    </>
+                                                                ) : (
+                                                                    <>📄 Subir documento completo</>
+                                                                )}
+                                                            </button>
+                                                            {showDocumentUpload && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setShowDocumentUpload(false)
+                                                                        setDocumentFile(null)
+                                                                    }}
+                                                                    disabled={documentUploading}
+                                                                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md font-medium text-sm transition-colors disabled:opacity-50"
+                                                                >
+                                                                    Cancelar
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
                                     )}
                                     
                                 </div>
-                                        <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">
+
+                        {/* Proceso de Verificación */}
+                        <div className="card">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                                             📋 Documentos Requeridos para Verificación (ESAL)
                                         </p>
                                         <div className="space-y-2">
