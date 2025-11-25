@@ -84,6 +84,7 @@ export default function HomePage() {
                     setIsAuthenticated(true)
                     setCurrentScreen('main')
                     setTimeoutMessage('') // Limpiar mensaje de timeout
+                    await loadFoundationData() // Cargar datos de fundación
                     console.log('✅ Estado restaurado correctamente')
                 }
             } else {
@@ -270,6 +271,7 @@ export default function HomePage() {
                         setCurrentUser(user)
                         setIsAuthenticated(true)
                         setCurrentScreen('main')
+                        await loadFoundationData() // Cargar datos de fundación
                         console.log('✅ Estado actualizado: isAuthenticated=true, currentUser=', user.name)
                         
                         // Verificar si es administrador y redirigir
@@ -572,8 +574,12 @@ export default function HomePage() {
             const supabase = getSupabaseClient()
             const { data: { session } } = await supabase.auth.getSession()
             
-            if (!session?.access_token) return
+            if (!session?.access_token) {
+                console.log('⚠️ No hay sesión para cargar datos de fundación')
+                return
+            }
 
+            console.log('🔄 Cargando datos de fundación...')
             const response = await fetch('/api/foundation/register', {
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`
@@ -583,20 +589,29 @@ export default function HomePage() {
             if (response.ok) {
                 const data = await response.json()
                 setFoundationData(data.foundation)
+                if (data.foundation?.es_fundacion) {
+                    console.log('✅ Datos de fundación cargados:', data.foundation.nombre_fundacion)
+                    console.log('🏛️ Es fundación:', data.foundation.es_fundacion)
+                    console.log('✔️ Verificada:', data.foundation.fundacion_verificada)
+                } else {
+                    console.log('ℹ️ Usuario no es fundación')
+                }
+            } else {
+                console.log('⚠️ No se encontraron datos de fundación para este usuario')
             }
         } catch (error) {
-            console.error('Error cargando datos de fundación:', error)
+            console.error('❌ Error cargando datos de fundación:', error)
         }
     }
 
-    const handleLogin = (userData: any) => {
+    const handleLogin = async (userData: any) => {
         setCurrentUser(userData)
         setIsAuthenticated(true)
         setCurrentScreen('main')
         localStorage.setItem('ecoswap_user', JSON.stringify(userData))
         
-        // Cargar datos de fundación si aplica
-        loadFoundationData()
+        // Cargar datos de fundación si aplica (esperar a que termine)
+        await loadFoundationData()
         
         // Verificar si hay returnUrl para redirigir después del login
         const params = new URLSearchParams(window.location.search)
@@ -626,18 +641,24 @@ export default function HomePage() {
     )
 
     const renderModule = () => {
+        console.log('🎯 renderModule - currentModule:', currentModule)
+        console.log('🏛️ isFoundation:', isFoundation)
+        console.log('📦 foundationData:', foundationData)
+        
         switch (currentModule) {
             case 'home':
                 return <CoreModule currentUser={currentUser} onLogout={handleLogout} />
             case 'products':
                 // Si es fundación, mostrar panel de donaciones
                 if (isFoundation) {
+                    console.log('✅ Mostrando DonationsPanel para fundación')
                     return (
                         <Suspense fallback={<LoadingFallback />}>
                             <DonationsPanel currentUser={currentUser} />
                         </Suspense>
                     )
                 }
+                console.log('📦 Mostrando ProductsModule para usuario normal')
                 return <ProductsModule currentUser={currentUser} />
             case 'interactions':
                 if (isLoading) {

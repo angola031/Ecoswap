@@ -291,6 +291,8 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
 
               if (foundationResponse.ok) {
                 console.log('✅ Fundación registrada exitosamente')
+                // Dar tiempo para que se guarden los datos en la BD
+                await new Promise(resolve => setTimeout(resolve, 1000))
               } else {
                 const errorData = await foundationResponse.json()
                 console.error('Error registrando fundación:', errorData)
@@ -307,6 +309,12 @@ export default function AuthModule({ onLogin }: AuthModuleProps) {
         setSuccess(registerForm.esFundacion 
           ? '¡Cuenta y fundación creadas exitosamente! Tu fundación será verificada por un administrador.' 
           : '¡Cuenta creada exitosamente!')
+        
+        // Si es fundación, esperar un poco más para asegurar que los datos estén guardados
+        if (registerForm.esFundacion) {
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
+        
         onLogin(user)
       }
     } catch (error) {
