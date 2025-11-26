@@ -37,8 +37,13 @@ export default function FundacionesPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'verified'>('pending')
   const [searchTerm, setSearchTerm] = useState('')
 
+  // Verificar que el usuario sea admin solo una vez al montar
   useEffect(() => {
     checkAdmin()
+  }, [])
+
+  // Cargar fundaciones cada vez que cambia el filtro
+  useEffect(() => {
     loadFoundations()
   }, [filter])
 

@@ -1082,10 +1082,20 @@ export default function HomePage() {
                                 <BellIcon className={`w-6 h-6 ${unreadCount > 0 ? 'animate-bounce' : ''}`} />
                                 <span className="text-xs">Avisos</span>
                                 {unreadCount > 0 && (
-                                    <span className="absolute top-0 right-0 bg-green-500 dark:bg-green-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg animate-pulse">
+                                    <span className="absolute top-0 right-0 bg-green-500 dark:bg-green-600 text-white text-[0.65rem] rounded-full h-4 w-4 flex items-center justify-center font-bold shadow-lg">
                                         {unreadCount > 9 ? '9+' : unreadCount}
                                     </span>
                                 )}
+                            </button>
+
+                            {/* Logout móvil */}
+                            <button
+                                onClick={handleLogout}
+                                className="flex flex-col items-center space-y-1 p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                title="Cerrar sesión"
+                            >
+                                <ArrowRightOnRectangleIcon className="w-6 h-6" />
+                                <span className="text-[0.65rem]">Salir</span>
                             </button>
                         </>
                     ) : (

@@ -209,15 +209,31 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 throw new Error('No hay sesión activa')
             }
 
-            // Crear nombre único para el archivo
+            // Crear nombre predeterminado para el archivo
             const fileExt = documentFile.name.split('.').pop()
-            const fileName = `${currentUser.id}_fundacion_${Date.now()}.${fileExt}`
-            const filePath = `fundaciones/${fileName}`
+            const docType = documentType || 'documento_completo'
+            
+            // Obtener user_id (integer) de la base de datos usando el email
+            const { data: userData } = await supabase
+                .from('usuario')
+                .select('user_id')
+                .eq('email', currentUser.email)
+                .single()
+            
+            if (!userData?.user_id) {
+                throw new Error('No se pudo obtener el ID de usuario')
+            }
+            
+            const userId = userData.user_id
+            const fileName = `${userId}_${docType}.${fileExt}`
+            const filePath = `fundaciones/${userId}/${fileName}`
 
-            // Subir archivo a Supabase Storage (bucket Ecoswap)
+            // Subir archivo a Supabase Storage (bucket Ecoswap, reemplazar si existe)
             const { data: uploadData, error: uploadError } = await supabase.storage
                 .from('Ecoswap')
-                .upload(filePath, documentFile)
+                .upload(filePath, documentFile, {
+                    upsert: true // Reemplazar si ya existe
+                })
 
             if (uploadError) {
                 throw uploadError
@@ -234,7 +250,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 const { data: currentData } = await supabase
                     .from('usuario')
                     .select('documentos_fundacion')
-                    .eq('user_id', currentUser.id)
+                    .eq('user_id', userId)
                     .single()
 
                 const currentDocs = currentData?.documentos_fundacion || {}
@@ -246,7 +262,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 const { error: updateError } = await supabase
                     .from('usuario')
                     .update({ documentos_fundacion: updatedDocs })
-                    .eq('user_id', currentUser.id)
+                    .eq('user_id', userId)
 
                 if (updateError) {
                     throw updateError
@@ -264,7 +280,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                 const { error: updateError } = await supabase
                     .from('usuario')
                     .update({ documento_fundacion: publicUrl })
-                    .eq('user_id', currentUser.id)
+                    .eq('user_id', userId)
 
                 if (updateError) {
                     throw updateError

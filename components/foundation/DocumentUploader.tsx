@@ -58,6 +58,7 @@ interface DocumentUploaderProps {
 export default function DocumentUploader({ currentUser, documentos = {}, onUpdate }: DocumentUploaderProps) {
     const [uploadingDoc, setUploadingDoc] = useState<string | null>(null)
     const [selectedFiles, setSelectedFiles] = useState<{ [key: string]: File }>({})
+    const [inputKeys, setInputKeys] = useState<{ [key: string]: number }>({})
 
     const handleFileSelect = (docType: string, file: File | null) => {
         if (file) {
@@ -71,7 +72,12 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
 
     const handleUpload = async (docType: string) => {
         const file = selectedFiles[docType]
-        if (!file || !currentUser) return
+        if (!file || !currentUser) {
+            console.log('❌ No hay archivo o usuario:', { file: !!file, currentUser: !!currentUser })
+            return
+        }
+
+        console.log(`📤 Iniciando subida de ${docType}...`)
 
         // Validar tipo
         const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
@@ -102,27 +108,43 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
 
             if (!session) throw new Error('No hay sesión activa')
 
-            // Subir archivo
+            // Subir archivo con nombre predeterminado
             const fileExt = file.name.split('.').pop()
-            const fileName = `${currentUser.id}_${docType}_${Date.now()}.${fileExt}`
-            const filePath = `fundaciones/${fileName}`
+            
+            // Obtener user_id (integer) de la base de datos usando el email
+            const { data: userData } = await supabase
+                .from('usuario')
+                .select('user_id')
+                .eq('email', currentUser.email)
+                .single()
+            
+            if (!userData?.user_id) {
+                throw new Error('No se pudo obtener el ID de usuario')
+            }
+            
+            const userId = userData.user_id
+            const fileName = `${userId}_${docType}.${fileExt}`
+            const filePath = `fundaciones/${userId}/${fileName}`
 
+            // Subir al bucket Ecoswap (reemplazar si ya existe)
             const { error: uploadError } = await supabase.storage
-                .from('documentos')
-                .upload(filePath, file)
+                .from('Ecoswap')
+                .upload(filePath, file, {
+                    upsert: true // Reemplazar si ya existe
+                })
 
             if (uploadError) throw uploadError
 
             // Obtener URL pública
             const { data: { publicUrl } } = supabase.storage
-                .from('documentos')
+                .from('Ecoswap')
                 .getPublicUrl(filePath)
 
             // Actualizar DB
             const { data: currentData } = await supabase
                 .from('usuario')
                 .select('documentos_fundacion')
-                .eq('user_id', currentUser.id)
+                .eq('user_id', userId)
                 .single()
 
             const currentDocs = currentData?.documentos_fundacion || {}
@@ -134,15 +156,34 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
             const { error: updateError } = await supabase
                 .from('usuario')
                 .update({ documentos_fundacion: updatedDocs })
-                .eq('user_id', currentUser.id)
+                .eq('user_id', userId)
 
             if (updateError) throw updateError
 
             // Actualizar UI
             onUpdate(updatedDocs)
 
-            // Limpiar selección
+            // Notificar a los administradores
+            try {
+                const notifyResponse = await fetch('/api/foundation/notify-document', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                })
+                
+                if (notifyResponse.ok) {
+                    console.log('✅ Administradores notificados sobre documento subido')
+                }
+            } catch (notifyError) {
+                console.error('Error notificando a administradores:', notifyError)
+                // No fallar si las notificaciones fallan
+            }
+
+            // Limpiar selección y resetear input
             handleFileSelect(docType, null)
+            setInputKeys(prev => ({ ...prev, [docType]: Date.now() }))
 
             await (window as any).Swal.fire({
                 icon: 'success',
@@ -152,8 +193,12 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
                 showConfirmButton: false
             })
 
+            console.log(`✅ Subida de ${docType} completada exitosamente`)
+
         } catch (error: any) {
             console.error('Error subiendo documento:', error)
+            // Resetear input también en caso de error
+            setInputKeys(prev => ({ ...prev, [docType]: Date.now() }))
             await (window as any).Swal.fire({
                 icon: 'error',
                 title: 'Error al subir',
@@ -161,6 +206,7 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
             })
         } finally {
             setUploadingDoc(null)
+            console.log(`🔄 Estado de subida limpiado para ${docType}`)
         }
     }
 
@@ -206,26 +252,34 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
 
                 {isUploaded ? (
                     <div className="space-y-2">
-                        {/* Preview miniatura */}
-                        <div className="border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
+                        {/* Preview miniatura responsiva */}
+                        <div className="border border-gray-200 dark:border-gray-700 rounded overflow-hidden bg-gray-50 dark:bg-gray-900 max-h-[60vh]">
                             {docUrl.toLowerCase().endsWith('.pdf') ? (
-                                <iframe src={docUrl} className="w-full h-32" title={docType.label} />
+                                <iframe
+                                    src={docUrl}
+                                    className="w-full h-48 sm:h-56 md:h-64 lg:h-72 border-0"
+                                    title={docType.label}
+                                />
                             ) : (
-                                <img src={docUrl} alt={docType.label} className="w-full h-32 object-contain bg-gray-50 dark:bg-gray-800" />
+                                <img
+                                    src={docUrl}
+                                    alt={docType.label}
+                                    className="w-full h-48 sm:h-56 md:h-64 lg:h-72 object-contain bg-gray-50 dark:bg-gray-800"
+                                />
                             )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                             <a
                                 href={docUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex-1 text-center px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded text-xs font-medium transition-colors"
+                                className="flex-1 text-center px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded text-xs sm:text-sm font-medium transition-colors"
                             >
                                 Ver documento
                             </a>
                             <button
                                 onClick={() => handleFileSelect(docType.key, null)}
-                                className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs font-medium transition-colors"
+                                className="px-3 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs sm:text-sm font-medium transition-colors"
                             >
                                 Reemplazar
                             </button>
@@ -234,6 +288,7 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
                 ) : (
                     <div className="space-y-2">
                         <input
+                            key={inputKeys[docType.key] || 0}
                             type="file"
                             accept=".pdf,.jpg,.jpeg,.png"
                             onChange={(e) => {
