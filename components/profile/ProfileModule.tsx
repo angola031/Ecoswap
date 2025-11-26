@@ -214,9 +214,9 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
             const fileName = `${currentUser.id}_fundacion_${Date.now()}.${fileExt}`
             const filePath = `fundaciones/${fileName}`
 
-            // Subir archivo a Supabase Storage
+            // Subir archivo a Supabase Storage (bucket Ecoswap)
             const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('documentos')
+                .from('Ecoswap')
                 .upload(filePath, documentFile)
 
             if (uploadError) {
@@ -225,7 +225,7 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
             // Obtener URL pública
             const { data: { publicUrl } } = supabase.storage
-                .from('documentos')
+                .from('Ecoswap')
                 .getPublicUrl(filePath)
 
             // Si hay tipo específico, actualizar documentos_fundacion (JSONB)
@@ -277,6 +277,26 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                         documento_fundacion: publicUrl
                     })
                 }
+            }
+
+            // Notificar a los administradores que se subieron documentos
+            try {
+                const notifyResponse = await fetch('/api/foundation/notify-document', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                })
+                
+                if (notifyResponse.ok) {
+                    console.log('✅ Notificaciones enviadas a administradores')
+                } else {
+                    console.warn('⚠️ No se pudieron enviar notificaciones a administradores')
+                }
+            } catch (notifyError) {
+                console.error('Error enviando notificaciones:', notifyError)
+                // No fallar si las notificaciones fallan
             }
 
             await (window as any).Swal.fire({

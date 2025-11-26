@@ -152,13 +152,16 @@ export async function POST(req: NextRequest) {
           tipo: 'nueva_fundacion',
           titulo: '🏛️ Nueva fundación registrada',
           mensaje: `${nombre_fundacion} se ha registrado como fundación y requiere verificación`,
-          metadata: {
+          datos_adicionales: {
             fundacion_id: user.user_id,
             nombre_fundacion,
             nit_fundacion: nit_fundacion.trim(),
-            tipo_fundacion
+            tipo_fundacion,
+            estado: 'pendiente_documentos'
           },
-          leida: false
+          leida: false,
+          es_push: true,
+          es_email: false
         }))
 
         await supabase
