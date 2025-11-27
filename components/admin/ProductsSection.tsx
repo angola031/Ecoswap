@@ -316,7 +316,7 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
     return (
         <div className="space-y-6">
             {/* Filtros y búsqueda */}
-            <div className="bg-white shadow rounded-lg p-6">
+            <div className="bg-white dark:bg-gray-900/60 shadow rounded-2xl border border-gray-200 dark:border-gray-700 p-6 transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
                     <div className="flex flex-wrap gap-2">
                         {[
@@ -328,10 +328,10 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                             <button
                                 key={key}
                                 onClick={() => setFilter(key as any)}
-                                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
                                     filter === key
-                                        ? 'bg-blue-100 text-blue-800'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-200'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
                                 }`}
                             >
                                 {label} ({count})
@@ -344,32 +344,32 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                             placeholder="Buscar productos..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="input-field text-sm"
                         />
                     </div>
                 </div>
             </div>
 
             {/* Lista de productos */}
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">
+            <div className="bg-white dark:bg-gray-900/60 shadow rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                         Productos ({filteredProducts.length})
                     </h3>
                 </div>
-                <div className="divide-y divide-gray-200">
+                <div className="divide-y divide-gray-200 dark:divide-gray-800">
                     {filteredProducts.map((product) => (
-                        <div key={product.producto_id} className="px-4 sm:px-6 py-4 hover:bg-gray-50">
+                        <div key={product.producto_id} className="px-4 sm:px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/70 transition-colors">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div className="flex items-start sm:items-center space-x-3 sm:space-x-4">
                                     <div className="flex-shrink-0">
-                                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gray-300 rounded flex items-center justify-center">
-                                            <span className="text-gray-500 text-sm">📦</span>
+                                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gray-300 dark:bg-gray-700 rounded flex items-center justify-center">
+                                            <span className="text-gray-500 dark:text-gray-300 text-sm">📦</span>
                                         </div>
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center space-x-2 flex-wrap">
-                                            <h4 className="text-sm font-medium text-gray-900">
+                                            <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                                                 {product.titulo}
                                             </h4>
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -382,38 +382,38 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                                                 {product.estado_validacion === 'approved' ? 'Aprobado' : 
                                                  product.estado_validacion === 'pending' ? 'Pendiente' : 'Rechazado'}
                                             </span>
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-200">
                                                 {product.tipo_transaccion === 'venta' ? 'Venta' :
                                                  product.tipo_transaccion === 'intercambio' ? 'Intercambio' :
                                                  product.tipo_transaccion === 'donacion' ? 'Donación' : 'Mixto'}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-gray-500 line-clamp-2 mt-1">
+                                        <p className="text-sm text-gray-500 dark:text-gray-300 line-clamp-2 mt-1">
                                             {product.descripcion}
                                         </p>
                                         <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-2">
                                             {product.precio && (
-                                                <p className="text-sm text-gray-600">
-                                                    <span className="font-medium">${product.precio.toLocaleString()}</span>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">
+                                                    <span className="font-medium text-gray-900 dark:text-white">${product.precio.toLocaleString()}</span>
                                                 </p>
                                             )}
-                                            <p className="text-sm text-gray-600">
-                                                <span className="font-medium">Categoría:</span> {product.categoria_nombre}
+                                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                                                <span className="font-medium text-gray-900 dark:text-white">Categoría:</span> {product.categoria_nombre}
                                             </p>
-                                            <p className="text-sm text-gray-600">
-                                                <span className="font-medium">Por:</span> {product.usuario_nombre} {product.usuario_apellido}
+                                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                                                <span className="font-medium text-gray-900 dark:text-white">Por:</span> {product.usuario_nombre} {product.usuario_apellido}
                                             </p>
                                         </div>
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            Creado: {new Date(product.fecha_creacion).toLocaleDateString()}
+                                        <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">
+                                            Creado: {new Date(product.fecha_creacion).toLocaleDateString('es-CO')}
                                             {product.fecha_validacion && (
                                                 <span className="ml-2">
-                                                    • Validado: {new Date(product.fecha_validacion).toLocaleDateString()}
+                                                    • Validado: {new Date(product.fecha_validacion).toLocaleDateString('es-CO')}
                                                 </span>
                                             )}
                                         </p>
                                         {product.comentarios_validacion && (
-                                            <p className="text-xs text-gray-500 mt-1 italic">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
                                                 Comentarios: {product.comentarios_validacion}
                                             </p>
                                         )}
@@ -422,14 +422,14 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                                 <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:space-x-2 w-full sm:w-auto">
                                     <button
                                         onClick={() => openPreviewModal(product)}
-                                        className="px-3 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium hover:bg-purple-200 flex items-center"
+                                        className="px-3 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium hover:bg-purple-200 dark:bg-purple-500/20 dark:text-purple-200 dark:hover:bg-purple-500/30 flex items-center"
                                         title="Ver preview de la publicación"
                                     >
                                         👁️ Preview
                                     </button>
                                     <button
                                         onClick={() => openImageModal(product)}
-                                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium hover:bg-blue-200 flex items-center"
+                                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium hover:bg-blue-200 dark:bg-blue-500/20 dark:text-blue-200 dark:hover:bg-blue-500/30 flex items-center"
                                         title="Ver imágenes del producto"
                                     >
                                         📷 Ver Fotos ({product.imagenes?.length || 0})
@@ -692,7 +692,7 @@ export default function ProductsSection({ user }: ProductsSectionProps) {
                                     id="reject-reason"
                                     value={rejectReason}
                                     onChange={(e) => setRejectReason(e.target.value)}
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                    className="input-field text-sm"
                                     rows={4}
                                     placeholder="Explica detalladamente por qué se rechaza este producto. Esta información será enviada al usuario para que pueda hacer las correcciones necesarias..."
                                     required
