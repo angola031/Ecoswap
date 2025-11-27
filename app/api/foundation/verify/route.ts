@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase-client'
+import { REQUIRED_FOUNDATION_DOCUMENT_KEYS } from '@/types/foundation'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,6 +61,7 @@ export async function GET(req: NextRequest) {
         descripcion_fundacion,
         pagina_web_fundacion,
         documento_fundacion,
+        documentos_fundacion,
         fundacion_verificada,
         fecha_verificacion_fundacion,
         fecha_registro
@@ -101,7 +103,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { fundacion_id, user_id, accion, motivo } = body
+    const { fundacion_id, user_id, accion, motivo, document_key, document_action, comentario } = body
 
     const targetFoundationId = fundacion_id ?? user_id
 
@@ -109,9 +111,17 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'fundacion_id es requerido' }, { status: 400 })
     }
 
-    if (!accion || !['verificar', 'rechazar'].includes(accion)) {
-      return NextResponse.json({ 
-        error: 'Acción inválida. Debe ser "verificar" o "rechazar"' 
+    const isDocumentAction = document_key && document_action
+
+    if (!isDocumentAction && (!accion || !['verificar', 'rechazar'].includes(accion))) {
+      return NextResponse.json({
+        error: 'Acción inválida. Debe ser "verificar" o "rechazar"'
+      }, { status: 400 })
+    }
+
+    if (isDocumentAction && !['aprobar', 'rechazar'].includes(document_action)) {
+      return NextResponse.json({
+        error: 'document_action inválida. Debe ser "aprobar" o "rechazar"'
       }, { status: 400 })
     }
 
@@ -135,7 +145,97 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Este usuario no es una fundación' }, { status: 400 })
     }
 
-    // Actualizar estado de verificación
+    if (isDocumentAction) {
+      const docKey = document_key as string
+
+      const { data: currentDocsData, error: docsError } = await supabase
+        .from('usuario')
+        .select('documentos_fundacion, nombre_fundacion')
+        .eq('user_id', targetFoundationId)
+        .single()
+
+      if (docsError) {
+        return NextResponse.json({ error: docsError.message }, { status: 400 })
+      }
+
+      const currentDocs = currentDocsData?.documentos_fundacion || {}
+
+      if (!currentDocs[docKey] || (typeof currentDocs[docKey] === 'object' && !currentDocs[docKey].url)) {
+        return NextResponse.json({ error: 'Documento no encontrado o sin archivo' }, { status: 404 })
+      }
+
+      const currentEntry = currentDocs[docKey]
+      const updatedEntry = typeof currentEntry === 'string'
+        ? { url: currentEntry }
+        : currentEntry
+
+      if (document_action === 'rechazar' && !comentario) {
+        return NextResponse.json({ error: 'Debes proporcionar un comentario al rechazar un documento' }, { status: 400 })
+      }
+
+      const newEntry = {
+        ...updatedEntry,
+        estado: document_action === 'aprobar' ? 'aprobado' : 'rechazado',
+        comentario_admin: document_action === 'rechazar' ? comentario : null,
+        revisado_por: user.user_id,
+        fecha_revision: new Date().toISOString(),
+        fecha_actualizacion: new Date().toISOString()
+      }
+
+      const updatedDocs = {
+        ...currentDocs,
+        [docKey]: newEntry
+      }
+
+      const { error: updateError } = await supabase
+        .from('usuario')
+        .update({ documentos_fundacion: updatedDocs })
+        .eq('user_id', targetFoundationId)
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 400 })
+      }
+
+      const allRequiredApproved = REQUIRED_FOUNDATION_DOCUMENT_KEYS.every(requiredKey => {
+        const doc = updatedDocs[requiredKey]
+        if (!doc) return false
+        const normalized = typeof doc === 'string' ? { url: doc, estado: 'pendiente' } : doc
+        return normalized.estado === 'aprobado'
+      })
+
+      if (allRequiredApproved) {
+        const { error: verifyError } = await supabase
+          .from('usuario')
+          .update({
+            fundacion_verificada: true,
+            fecha_verificacion_fundacion: new Date().toISOString()
+          })
+          .eq('user_id', targetFoundationId)
+
+        if (!verifyError) {
+          await supabase
+            .from('notificacion')
+            .insert({
+              usuario_id: targetFoundationId,
+              tipo: 'fundacion_verificada',
+              titulo: '🎉 ¡Fundación verificada!',
+              mensaje: 'Tus documentos obligatorios fueron aprobados. Tu fundación ya es verificada.',
+              datos_adicionales: {
+                verificada_automaticamente: true,
+                motivo: 'Documentos requeridos aprobados'
+              }
+            })
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        documentos_fundacion: updatedDocs,
+        auto_verificada: allRequiredApproved
+      })
+    }
+
+    // Actualizar estado de verificación completa
     const updateData: any = {}
     
     if (accion === 'verificar') {

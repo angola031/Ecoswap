@@ -32,6 +32,7 @@ import Avatar from '@/components/ui/Avatar'
 import FoundationBadge, { FoundationBadgeTooltip } from '@/components/foundation/FoundationBadge'
 import EventsManager from '@/components/foundation/EventsManager'
 import DocumentUploader from '@/components/foundation/DocumentUploader'
+import { FoundationDocuments } from '@/types/foundation'
 
 interface BadgeDetail {
     nombre: string
@@ -81,13 +82,7 @@ interface ProfileData {
     descripcion_fundacion?: string
     pagina_web_fundacion?: string
     documento_fundacion?: string
-    documentos_fundacion?: {
-        acta_constitucion?: string
-        estatutos?: string
-        pre_rut?: string
-        cartas_aceptacion?: string
-        formulario_rues?: string
-    }
+    documentos_fundacion?: FoundationDocuments
 }
 
 interface UserProduct {
@@ -128,6 +123,23 @@ interface UserActivity {
     icon: string
     imagen_producto?: string
 }
+
+const normalizeDocumentEntry = (value: any) => {
+    if (!value) return null
+    if (typeof value === 'string') {
+        return { url: value }
+    }
+    return value
+}
+
+const buildPendingDocumentEntry = (url: string) => ({
+    url,
+    estado: 'pendiente' as const,
+    comentario_admin: null,
+    revisado_por: null,
+    fecha_revision: null,
+    fecha_actualizacion: new Date().toISOString()
+})
 
 export default function ProfileModule({ currentUser }: ProfileModuleProps) {
     const router = useRouter()
@@ -246,7 +258,6 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
 
             // Si hay tipo específico, actualizar documentos_fundacion (JSONB)
             if (documentType) {
-                // Obtener documentos actuales
                 const { data: currentData } = await supabase
                     .from('usuario')
                     .select('documentos_fundacion')
@@ -254,9 +265,9 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     .single()
 
                 const currentDocs = currentData?.documentos_fundacion || {}
-                const updatedDocs = {
+                const updatedDocs: FoundationDocuments = {
                     ...currentDocs,
-                    [documentType]: publicUrl
+                    [documentType]: buildPendingDocumentEntry(publicUrl)
                 }
 
                 const { error: updateError } = await supabase
@@ -268,7 +279,6 @@ export default function ProfileModule({ currentUser }: ProfileModuleProps) {
                     throw updateError
                 }
 
-                // Actualizar estado local
                 if (profileData) {
                     setProfileData({
                         ...profileData,

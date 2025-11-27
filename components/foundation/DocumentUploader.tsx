@@ -2,63 +2,70 @@
 
 import { useState } from 'react'
 import { getSupabaseClient } from '@/lib/supabase-client'
+import {
+    FoundationDocuments,
+    FoundationDocumentEntry,
+    FoundationDocumentStatus,
+    FOUNDATION_DOCUMENT_DEFINITIONS
+} from '@/types/foundation'
 
-interface DocumentType {
-    key: string
-    label: string
-    required: boolean
-    description: string
-}
-
-const DOCUMENT_TYPES: DocumentType[] = [
-    {
-        key: 'acta_constitucion',
-        label: 'Acta de Constitución',
-        required: true,
-        description: 'Documento privado o escritura pública con lista de asociados'
-    },
-    {
-        key: 'estatutos',
-        label: 'Estatutos',
-        required: true,
-        description: 'Estatutos aprobados de la fundación'
-    },
-    {
-        key: 'pre_rut',
-        label: 'PRE-RUT',
-        required: true,
-        description: 'Expedido por la DIAN'
-    },
-    {
-        key: 'cartas_aceptacion',
-        label: 'Cartas de Aceptación',
-        required: false,
-        description: 'De cargos en Junta Directiva y Revisor Fiscal'
-    },
-    {
-        key: 'formulario_rues',
-        label: 'Formulario RUES',
-        required: false,
-        description: 'Registro Único Empresarial y Social'
-    }
-]
+type DocumentKey = typeof FOUNDATION_DOCUMENT_DEFINITIONS[number]['key']
 
 interface DocumentUploaderProps {
     currentUser: any
-    documentos?: {
-        acta_constitucion?: string
-        estatutos?: string
-        pre_rut?: string
-        cartas_aceptacion?: string
-        formulario_rues?: string
+    documentos?: FoundationDocuments
+    onUpdate: (documentos: FoundationDocuments) => void
+}
+
+interface NormalizedDocumentEntry extends FoundationDocumentEntry {
+    url: string | null
+    estado: FoundationDocumentStatus
+}
+
+const DOCUMENT_TYPES = FOUNDATION_DOCUMENT_DEFINITIONS
+
+const statusLabels: Record<'sin_subir' | FoundationDocumentStatus, string> = {
+    sin_subir: 'Sin subir',
+    pendiente: 'En revisión',
+    aprobado: 'Aprobado',
+    rechazado: 'Rechazado'
+}
+
+const statusClasses: Record<'sin_subir' | FoundationDocumentStatus, string> = {
+    sin_subir: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
+    pendiente: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200',
+    aprobado: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200',
+    rechazado: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
+}
+
+const normalizeDocumentEntry = (value: FoundationDocumentEntry | string | null | undefined): NormalizedDocumentEntry | null => {
+    if (!value) return null
+
+    if (typeof value === 'string') {
+        return {
+            url: value,
+            estado: value ? 'pendiente' : 'pendiente',
+            comentario_admin: null,
+            revisado_por: null,
+            fecha_revision: null,
+            fecha_actualizacion: null
+        }
     }
-    onUpdate: (documentos: any) => void
+
+    return {
+        url: value.url ?? null,
+        estado: value.estado ?? (value.url ? 'pendiente' : 'pendiente'),
+        comentario_admin: value.comentario_admin ?? null,
+        revisado_por: value.revisado_por ?? null,
+        fecha_revision: value.fecha_revision ?? null,
+        fecha_actualizacion: value.fecha_actualizacion ?? null
+    }
 }
 
 export default function DocumentUploader({ currentUser, documentos = {}, onUpdate }: DocumentUploaderProps) {
     const [uploadingDoc, setUploadingDoc] = useState<string | null>(null)
-    const [selectedFiles, setSelectedFiles] = useState<{ [key: string]: File }>({})
-    const [inputKeys, setInputKeys] = useState<{ [key: string]: number }>({})
+    const [selectedFiles, setSelectedFiles] = useState<Record<string, File>>({})
+    const [inputKeys, setInputKeys] = useState<Record<string, number>>({})
 
     const handleFileSelect = (docType: string, file: File | null) => {
         if (file) {
@@ -70,7 +77,7 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
         }
     }
 
-    const handleUpload = async (docType: string) => {
+    const handleUpload = async (docType: DocumentKey) => {
         const file = selectedFiles[docType]
         if (!file || !currentUser) {
             console.log('❌ No hay archivo o usuario:', { file: !!file, currentUser: !!currentUser })
@@ -148,9 +155,17 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
                 .single()
 
             const currentDocs = currentData?.documentos_fundacion || {}
-            const updatedDocs = {
+            const normalized = normalizeDocumentEntry(currentDocs[docType])
+            const updatedDocs: FoundationDocuments = {
                 ...currentDocs,
-                [docType]: publicUrl
+                [docType]: {
+                    url: publicUrl,
+                    estado: 'pendiente',
+                    comentario_admin: null,
+                    revisado_por: null,
+                    fecha_revision: null,
+                    fecha_actualizacion: new Date().toISOString()
+                }
             }
 
             const { error: updateError } = await supabase
@@ -210,9 +225,14 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
         }
     }
 
-    const renderDocumentCard = (docType: DocumentType) => {
-        const docUrl = documentos[docType.key as keyof typeof documentos]
+    const renderDocumentCard = (docType: typeof DOCUMENT_TYPES[number]) => {
+        const rawValue = documentos?.[docType.key as keyof FoundationDocuments] ?? null
+        const normalized = normalizeDocumentEntry(rawValue)
+        const docUrl = normalized?.url || (typeof rawValue === 'string' ? rawValue : null)
         const isUploaded = !!docUrl
+        const statusKey: FoundationDocumentStatus | 'sin_subir' = isUploaded
+            ? (normalized?.estado ?? 'pendiente')
+            : 'sin_subir'
         const selectedFile = selectedFiles[docType.key]
         const isUploading = uploadingDoc === docType.key
 
@@ -237,32 +257,32 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {docType.description}
                         </p>
+                        {normalized?.comentario_admin && statusKey === 'rechazado' && (
+                            <div className="mt-2 text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/40 rounded p-2">
+                                <p className="font-semibold mb-1">Motivo del rechazo:</p>
+                                <p>{normalized.comentario_admin}</p>
+                            </div>
+                        )}
                     </div>
-                    {isUploaded && (
-                        <div className="flex-shrink-0 ml-3">
-                            <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded text-xs font-medium">
-                                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                                </svg>
-                                Subido
-                            </span>
-                        </div>
-                    )}
+                    <div className="flex-shrink-0 ml-3">
+                        <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${statusClasses[statusKey]}`}>
+                            {statusLabels[statusKey]}
+                        </span>
+                    </div>
                 </div>
 
                 {isUploaded ? (
                     <div className="space-y-2">
-                        {/* Preview miniatura responsiva */}
                         <div className="border border-gray-200 dark:border-gray-700 rounded overflow-hidden bg-gray-50 dark:bg-gray-900 max-h-[60vh]">
-                            {docUrl.toLowerCase().endsWith('.pdf') ? (
+                            {docUrl!.toLowerCase().endsWith('.pdf') ? (
                                 <iframe
-                                    src={docUrl}
+                                    src={docUrl!}
                                     className="w-full h-48 sm:h-56 md:h-64 lg:h-72 border-0"
                                     title={docType.label}
                                 />
                             ) : (
                                 <img
-                                    src={docUrl}
+                                    src={docUrl!}
                                     alt={docType.label}
                                     className="w-full h-48 sm:h-56 md:h-64 lg:h-72 object-contain bg-gray-50 dark:bg-gray-800"
                                 />
@@ -270,7 +290,7 @@ export default function DocumentUploader({ currentUser, documentos = {}, onUpdat
                         </div>
                         <div className="flex flex-col sm:flex-row gap-2">
                             <a
-                                href={docUrl}
+                                href={docUrl!}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex-1 text-center px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded text-xs sm:text-sm font-medium transition-colors"
