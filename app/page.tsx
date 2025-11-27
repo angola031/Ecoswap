@@ -16,8 +16,7 @@ import {
     ShoppingBagIcon,
     ArrowsRightLeftIcon,
     ArrowRightOnRectangleIcon,
-    DocumentTextIcon,
-    GiftIcon
+    DocumentTextIcon
 } from '@heroicons/react/24/outline'
 
 // Componentes - Lazy loading para componentes pesados
@@ -28,8 +27,6 @@ const ChatModule = lazy(() => import('@/components/chat/ChatModule'))
 const ProfileModule = lazy(() => import('@/components/profile/ProfileModule'))
 const InteractionsModule = lazy(() => import('@/components/interactions/InteractionsModule'))
 const ProposalsModule = lazy(() => import('@/components/proposals/ProposalsModule').then(module => ({ default: module.ProposalsModule })))
-const DonationsPanel = lazy(() => import('@/components/foundation/DonationsPanel'))
-import FoundationBadge from '@/components/foundation/FoundationBadge'
 import NotificationToast from '@/components/NotificationToast'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -675,16 +672,8 @@ export default function HomePage() {
             case 'home':
                 return <CoreModule currentUser={currentUser} onLogout={handleLogout} />
             case 'products':
-                // Si es fundación, mostrar panel de donaciones
-                if (isFoundation) {
-                    console.log('✅ Mostrando DonationsPanel para fundación')
-                    return (
-                        <Suspense fallback={<LoadingFallback />}>
-                            <DonationsPanel currentUser={currentUser} />
-                        </Suspense>
-                    )
-                }
-                console.log('📦 Mostrando ProductsModule para usuario normal')
+                // Todas las fundaciones ven productos normales
+                console.log('📦 Mostrando ProductsModule')
                 return <ProductsModule currentUser={currentUser} />
             case 'interactions':
                 if (isLoading) {
@@ -809,17 +798,8 @@ export default function HomePage() {
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
                             >
-                                {isFoundation ? (
-                                    <>
-                                        <GiftIcon className="w-5 h-5" />
-                                        <span>Donaciones</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <ShoppingBagIcon className="w-5 h-5" />
-                                        <span>Productos</span>
-                                    </>
-                                )}
+                                <ShoppingBagIcon className="w-5 h-5" />
+                                <span>Productos</span>
                             </button>
 
                             {isAuthenticated && (
@@ -958,11 +938,6 @@ export default function HomePage() {
                                         <span className="hidden sm:inline">Perfil</span>
                                     </button>
                                     
-                                    {isVerifiedFoundation && (
-                                        <div className="flex items-center">
-                                            <FoundationBadge size="sm" showText={false} />
-                                        </div>
-                                    )}
                                 </div>
                             ) : (
                                 <div className="flex space-x-2">
@@ -1030,17 +1005,8 @@ export default function HomePage() {
                         className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'products' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                             }`}
                     >
-                        {isFoundation ? (
-                            <>
-                                <GiftIcon className="w-6 h-6" />
-                                <span className="text-xs">Donaciones</span>
-                            </>
-                        ) : (
-                            <>
-                                <ShoppingBagIcon className="w-6 h-6" />
-                                <span className="text-xs">Productos</span>
-                            </>
-                        )}
+                        <ShoppingBagIcon className="w-6 h-6" />
+                        <span className="text-xs">Productos</span>
                     </button>
 
                     {isAuthenticated ? (
