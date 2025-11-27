@@ -27,7 +27,8 @@ import ProductsModule from '@/components/products/ProductsModule'
 const ChatModule = lazy(() => import('@/components/chat/ChatModule'))
 const ProfileModule = lazy(() => import('@/components/profile/ProfileModule'))
 const InteractionsModule = lazy(() => import('@/components/interactions/InteractionsModule'))
-const ProposalsModule = lazy(() => import('@/components/proposals/ProposalsModule').then(module => ({ default: module.ProposalsModule })))
+// Usar la misma interfaz completa de la página de propuestas, pero embebida como módulo
+const ProposalsModule = lazy(() => import('@/app/propuestas/page').then(module => ({ default: module.default })))
 const DonationsPanel = lazy(() => import('@/components/foundation/DonationsPanel'))
 import NotificationToast from '@/components/NotificationToast'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -73,22 +74,18 @@ export default function HomePage() {
     // Función para verificar sesión después de actividad
     const checkSessionAfterActivity = async () => {
         try {
-            const supabase = getSupabaseClient()
-            if (!supabase) return
-
-            const { data: { session } } = await supabase.auth.getSession()
-            if (session) {
-                console.log('✅ Sesión válida detectada después de actividad')
-                const user = await getCurrentUser()
-                if (user) {
-                    setCurrentUser(user)
-                    setIsAuthenticated(true)
-                    setCurrentScreen('main')
-                    setTimeoutMessage('') // Limpiar mensaje de timeout
-                    // Nota: no recargamos datos de fundación aquí para evitar sobrecargar la página.
-                    //       La restauración inicial ya los carga mediante checkAuth().
-                    console.log('✅ Estado restaurado correctamente (sin recargar datos de fundación)')
-                }
+            console.log('🔄 Verificando sesión después de actividad...')
+            
+            // Usar ensureValidSession para refrescar si es necesario
+            const isValid = await ensureValidSession()
+            
+            if (isValid) {
+                console.log('✅ Sesión válida después de actividad')
+                setCurrentScreen('main')
+                setTimeoutMessage('') // Limpiar mensaje de timeout
+                // Nota: no recargamos datos de fundación aquí para evitar sobrecargar la página.
+                //       La restauración inicial ya los carga mediante checkAuth().
+                console.log('✅ Estado restaurado correctamente (sin recargar datos de fundación)')
             } else {
                 console.log('⚠️ No hay sesión válida después de actividad')
                 setIsAuthenticated(false)
@@ -97,6 +94,63 @@ export default function HomePage() {
             }
         } catch (error) {
             console.error('Error verificando sesión después de actividad:', error)
+            setIsAuthenticated(false)
+            setCurrentUser(null)
+        }
+    }
+
+    // Función para refrescar la sesión si es necesario
+    const ensureValidSession = async (): Promise<boolean> => {
+        try {
+            const supabase = getSupabaseClient()
+            if (!supabase) return false
+
+            let { data: { session }, error } = await supabase.auth.getSession()
+            
+            if (error || !session) {
+                console.log('⚠️ No hay sesión válida')
+                return false
+            }
+
+            // Verificar si el token está próximo a expirar o ya expiró
+            const now = Math.floor(Date.now() / 1000)
+            const expiresAt = session.expires_at || 0
+            const timeUntilExpiry = expiresAt - now
+
+            // Si el token expira en menos de 5 minutos o ya expiró, refrescarlo
+            if (timeUntilExpiry < 300) {
+                console.log('🔄 Token expirado o próximo a expirar, refrescando...')
+                const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+                
+                if (refreshError || !refreshedSession) {
+                    console.error('❌ Error refrescando sesión:', refreshError)
+                    return false
+                }
+
+                console.log('✅ Sesión refrescada exitosamente')
+                session = refreshedSession
+            }
+
+            // Actualizar usuario si no está cargado
+            if (!currentUser && session) {
+                console.log('🔄 Cargando datos del usuario después de refresh...')
+                try {
+                    const user = await getCurrentUser()
+                    if (user) {
+                        setCurrentUser(user)
+                        setIsAuthenticated(true)
+                        console.log('✅ Usuario cargado exitosamente')
+                    }
+                } catch (error) {
+                    console.error('❌ Error cargando usuario:', error)
+                    return false
+                }
+            }
+
+            return true
+        } catch (error) {
+            console.error('❌ Error en ensureValidSession:', error)
+            return false
         }
     }
 
@@ -112,7 +166,7 @@ export default function HomePage() {
         localStorage.setItem('ecoswap_current_module', module)
         
         try {
-            // Si el módulo requiere autenticación, verificar en segundo plano
+            // Si el módulo requiere autenticación, verificar y refrescar sesión
             const protectedModules = ['interactions', 'chat', 'profile', 'notifications']
             if (protectedModules.includes(module)) {
                 console.log(`🔐 [navigateToModule] Módulo protegido: ${module}`)
@@ -125,40 +179,23 @@ export default function HomePage() {
                     return
                 }
 
-                // Verificar sesión de forma no bloqueante
-                const { data: { session } } = await supabase.auth.getSession()
+                // Asegurar que la sesión esté válida y refrescada
+                const isValid = await ensureValidSession()
                 
-                if (!session) {
-                    console.log('⚠️ No hay sesión válida, redirigiendo a login')
+                if (!isValid) {
+                    console.log('⚠️ Sesión no válida después de intentar refrescar, redirigiendo a login')
                     setCurrentScreen('auth')
-                    setCurrentModule('products') // Volver a productos si no hay sesión
+                    setCurrentModule('products')
+                    setIsAuthenticated(false)
+                    setCurrentUser(null)
                     setIsNavigating(false)
                     return
                 }
-
-                // Si no hay usuario cargado, intentar cargarlo
-                if (!currentUser) {
-                    console.log('🔄 Cargando datos del usuario...')
-                    try {
-                        const user = await getCurrentUser()
-                        if (user) {
-                            setCurrentUser(user)
-                            setIsAuthenticated(true)
-                            console.log('✅ Usuario cargado exitosamente')
-                        } else {
-                            console.error('❌ No se pudo cargar el usuario')
-                            setCurrentScreen('auth')
-                            setCurrentModule('products')
-                            setIsNavigating(false)
-                            return
-                        }
-                    } catch (error) {
-                        console.error('❌ Error cargando usuario:', error)
-                        setCurrentScreen('auth')
-                        setCurrentModule('products')
-                        setIsNavigating(false)
-                        return
-                    }
+            } else {
+                // Para módulos no protegidos, también asegurar sesión válida si hay una sesión activa
+                // Esto ayuda a mantener los datos actualizados
+                if (isAuthenticated) {
+                    await ensureValidSession()
                 }
             }
         } catch (error) {
@@ -168,6 +205,8 @@ export default function HomePage() {
             if (protectedModules.includes(module)) {
                 setCurrentScreen('auth')
                 setCurrentModule('products')
+                setIsAuthenticated(false)
+                setCurrentUser(null)
             }
         } finally {
             // Esperar un poco antes de permitir que checkAuth vuelva a ejecutarse
@@ -346,13 +385,14 @@ export default function HomePage() {
                     return
                 }
 
-                // Verificar si el token está próximo a expirar (menos de 5 minutos)
+                // Verificar si el token está próximo a expirar (menos de 10 minutos)
+                // Refrescamos más temprano para evitar problemas después de inactividad
                 const now = Math.floor(Date.now() / 1000)
                 const expiresAt = session.expires_at || 0
                 const timeUntilExpiry = expiresAt - now
 
-                // Si el token expira en menos de 5 minutos, refrescarlo
-                if (timeUntilExpiry < 300 && timeUntilExpiry > 0) {
+                // Si el token expira en menos de 10 minutos, refrescarlo preventivamente
+                if (timeUntilExpiry < 600 && timeUntilExpiry > 0) {
                     console.log('🔄 Token próximo a expirar, refrescando automáticamente...')
                     const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
                     
@@ -374,10 +414,22 @@ export default function HomePage() {
                         }
                     }
                 } else if (timeUntilExpiry <= 0) {
-                    // Token ya expiró
-                    console.warn('⚠️ Token expirado, limpiando sesión')
-                    setIsAuthenticated(false)
-                    setCurrentUser(null)
+                    // Token ya expiró, intentar refrescar antes de limpiar
+                    console.warn('⚠️ Token expirado, intentando refrescar...')
+                    const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+                    
+                    if (refreshError || !refreshedSession) {
+                        console.error('❌ No se pudo refrescar token expirado, limpiando sesión')
+                        setIsAuthenticated(false)
+                        setCurrentUser(null)
+                    } else {
+                        console.log('✅ Token expirado refrescado exitosamente')
+                        const user = await getCurrentUser()
+                        if (user) {
+                            setCurrentUser(user)
+                            setIsAuthenticated(true)
+                        }
+                    }
                 } else if (isAuthenticated && !currentUser) {
                     // Hay sesión pero no hay usuario en estado, restaurarlo
                     const user = await getCurrentUser()
@@ -855,13 +907,16 @@ export default function HomePage() {
                                         <span>Trueque</span>
                                     </button>
 
-                                    <Link
-                                        href="/propuestas"
-                                        className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                                    <button
+                                        onClick={() => navigateToModule('proposals')}
+                                        className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentModule === 'proposals'
+                                            ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                                            : 'text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
+                                        }`}
                                     >
                                         <DocumentTextIcon className="w-5 h-5" />
                                         <span>Propuestas</span>
-                                    </Link>
+                                    </button>
 
                                     <button
                                         onClick={() => navigateToModule('chat')}
@@ -1063,13 +1118,14 @@ export default function HomePage() {
                                 <span className="text-xs">Trueque</span>
                             </button>
 
-                            <Link
-                                href="/propuestas"
-                                className="flex flex-col items-center space-y-1 p-2 text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 transition-colors"
+                            <button
+                                onClick={() => navigateToModule('proposals')}
+                                className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'proposals' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400'
+                                    }`}
                             >
                                 <DocumentTextIcon className="w-6 h-6" />
                                 <span className="text-xs">Propuestas</span>
-                            </Link>
+                            </button>
 
                             <button
                                 onClick={() => navigateToModule('chat')}

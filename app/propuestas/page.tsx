@@ -8,7 +8,6 @@ import {
   XCircleIcon,
   ClockIcon,
   TagIcon,
-  ArrowLeftIcon,
   GiftIcon,
   MapPinIcon,
   CalendarIcon
@@ -234,15 +233,6 @@ export default function PropuestasPage() {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
         {/* Header */}
         <div className="mb-4 sm:mb-8 space-y-3 sm:space-y-4">
-          <div className="flex items-center">
-            <button
-              onClick={() => router.back()}
-              className="inline-flex items-center text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors p-2 -ml-2"
-            >
-              <ArrowLeftIcon className="w-5 h-5 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Volver</span>
-            </button>
-          </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Propuestas</h1>
             <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">Gestiona todas tus propuestas de intercambio</p>
