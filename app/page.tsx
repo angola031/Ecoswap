@@ -84,8 +84,9 @@ export default function HomePage() {
                     setIsAuthenticated(true)
                     setCurrentScreen('main')
                     setTimeoutMessage('') // Limpiar mensaje de timeout
-                    await loadFoundationData() // Cargar datos de fundación
-                    console.log('✅ Estado restaurado correctamente')
+                    // Nota: no recargamos datos de fundación aquí para evitar sobrecargar la página.
+                    //       La restauración inicial ya los carga mediante checkAuth().
+                    console.log('✅ Estado restaurado correctamente (sin recargar datos de fundación)')
                 }
             } else {
                 console.log('⚠️ No hay sesión válida después de actividad')
@@ -271,7 +272,9 @@ export default function HomePage() {
                         setCurrentUser(user)
                         setIsAuthenticated(true)
                         setCurrentScreen('main')
-                        await loadFoundationData() // Cargar datos de fundación
+                        setTimeoutMessage('') // Limpiar mensaje de timeout
+                        // No llamamos aquí a loadFoundationData para evitar múltiples cargas simultáneas.
+                        // handleLogin/checkAuth se encargan de cargar datos de fundación cuando corresponde.
                         console.log('✅ Estado actualizado: isAuthenticated=true, currentUser=', user.name)
                         
                         // Verificar si es administrador y redirigir
@@ -577,6 +580,12 @@ export default function HomePage() {
     // Cargar datos de fundación con timeout
     const loadFoundationData = async () => {
         try {
+            // Evitar recargas innecesarias si ya tenemos datos en memoria
+            if (foundationData !== null) {
+                console.log('ℹ️ Datos de fundación ya cargados en memoria, omitiendo nueva petición')
+                return
+            }
+
             const supabase = getSupabaseClient()
             const { data: { session } } = await supabase.auth.getSession()
             
@@ -629,10 +638,7 @@ export default function HomePage() {
         setIsAuthenticated(true)
         setCurrentScreen('main')
         localStorage.setItem('ecoswap_user', JSON.stringify(userData))
-        
-        // Cargar datos de fundación si aplica (esperar a que termine)
-        await loadFoundationData()
-        
+
         // Verificar si hay returnUrl para redirigir después del login
         const params = new URLSearchParams(window.location.search)
         const returnUrl = params.get('returnUrl')

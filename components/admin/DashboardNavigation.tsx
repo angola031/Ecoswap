@@ -13,7 +13,8 @@ export default function DashboardNavigation({ activeSection, onSectionChange }: 
         { id: 'overview', name: 'Resumen', icon: '📊', description: 'Estadísticas generales' },
         { id: 'users', name: 'Usuarios', icon: '👥', description: 'Gestión de usuarios' },
         { id: 'products', name: 'Productos', icon: '📦', description: 'Verificación de productos' },
-        { id: 'foundations', name: 'Fundaciones', icon: '🏛️', description: 'Gestión de fundaciones', href: '/admin/fundaciones' },
+        // Fundaciones funciona ahora como pestaña interna, sin navegar a otra página
+        { id: 'foundations', name: 'Fundaciones', icon: '🏛️', description: 'Gestión de fundaciones' },
         { id: 'messages', name: 'Mensajes', icon: '💬', description: 'Mensajes de clientes' },
         { id: 'complaints', name: 'Quejas', icon: '⚠️', description: 'Reportes y quejas' },
         { id: 'admins', name: 'Administradores', icon: '👨‍💼', description: 'Gestión de admins' }
@@ -42,15 +43,7 @@ export default function DashboardNavigation({ activeSection, onSectionChange }: 
                             </>
                         )
                         
-                        return (section as any).href ? (
-                            <Link
-                                key={section.id}
-                                href={(section as any).href}
-                                className={className}
-                            >
-                                {content}
-                            </Link>
-                        ) : (
+                        return (
                             <button
                                 key={section.id}
                                 onClick={() => onSectionChange(section.id)}

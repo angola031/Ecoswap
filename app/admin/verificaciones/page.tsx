@@ -14,6 +14,7 @@ import NotificationsSection from '@/components/admin/NotificationsSection'
 import IdentityVerificationSection from '@/components/admin/IdentityVerificationSection'
 import VerificationSummary from '@/components/admin/VerificationSummary'
 import DashboardOverview from '@/components/admin/DashboardOverview'
+import FoundationsSection from '@/components/admin/FoundationsSection'
 
 export default function VerificacionesPage() {
     const router = useRouter()
@@ -287,6 +288,8 @@ export default function VerificacionesPage() {
                 return <UsersSection />
             case 'products':
                 return <ProductsSection user={user} />
+            case 'foundations':
+                return <FoundationsSection />
             case 'identity-verification':
                 return <IdentityVerificationSection currentUserId={user?.id} />
             case 'messages':
@@ -318,29 +321,31 @@ export default function VerificacionesPage() {
             {/* Header */}
             <header className="bg-white shadow">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center py-6">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 py-4 sm:py-6">
                         <div className="flex items-center">
-                            <h1 className="text-3xl font-bold text-gray-900">EcoSwap - Dashboard</h1>
+                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
+                                EcoSwap - Dashboard
+                            </h1>
                         </div>
-                        <div className="flex items-center space-x-4">
-                            <span className="text-sm text-gray-700">
+                        <div className="flex flex-col xs:flex-row items-start xs:items-center xs:space-x-3 gap-2 w-full sm:w-auto justify-end">
+                            <span className="text-xs sm:text-sm text-gray-700 truncate max-w-full">
                                 Bienvenido, {user?.email}
                             </span>
                             <button
                                 onClick={handleLogout}
                                 disabled={logoutLoading}
-                                className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2"
+                                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-md text-xs sm:text-sm font-medium flex items-center justify-center space-x-2"
                             >
                                 {logoutLoading ? (
                                     <>
                                         <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                        <span>Cerrando...</span>
+                                        </svg>
+                                        <span className="hidden xs:inline">Cerrando...</span>
                                     </>
                                 ) : (
-                                    'Cerrar Sesión'
+                                    <span className="truncate">Cerrar Sesión</span>
                                 )}
                             </button>
                         </div>
