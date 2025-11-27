@@ -79,7 +79,11 @@ interface Donation {
   negotiable: boolean | null
 }
 
-export default function PropuestasPage() {
+interface PropuestasPageProps {
+  currentUser?: any
+}
+
+export default function PropuestasPage({ currentUser: propCurrentUser }: PropuestasPageProps = {}) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'todas' | 'pendiente' | 'aceptada' | 'rechazada'>('todas')
   const [proposalsByProduct, setProposalsByProduct] = useState<ProposalGroup[]>([])
