@@ -83,7 +83,8 @@ interface PropuestasPageProps {
   currentUser?: any
 }
 
-export default function PropuestasPage({ currentUser: propCurrentUser }: PropuestasPageProps = {}) {
+export default function PropuestasPage(props?: PropuestasPageProps) {
+  const { currentUser: propCurrentUser } = props || {}
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'todas' | 'pendiente' | 'aceptada' | 'rechazada'>('todas')
   const [proposalsByProduct, setProposalsByProduct] = useState<ProposalGroup[]>([])
