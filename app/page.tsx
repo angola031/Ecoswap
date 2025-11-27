@@ -16,7 +16,8 @@ import {
     ShoppingBagIcon,
     ArrowsRightLeftIcon,
     ArrowRightOnRectangleIcon,
-    DocumentTextIcon
+    DocumentTextIcon,
+    GiftIcon
 } from '@heroicons/react/24/outline'
 
 // Componentes - Lazy loading para componentes pesados
@@ -27,6 +28,7 @@ const ChatModule = lazy(() => import('@/components/chat/ChatModule'))
 const ProfileModule = lazy(() => import('@/components/profile/ProfileModule'))
 const InteractionsModule = lazy(() => import('@/components/interactions/InteractionsModule'))
 const ProposalsModule = lazy(() => import('@/components/proposals/ProposalsModule').then(module => ({ default: module.ProposalsModule })))
+const DonationsPanel = lazy(() => import('@/components/foundation/DonationsPanel'))
 import NotificationToast from '@/components/NotificationToast'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -55,6 +57,8 @@ export default function HomePage() {
     const [isLoading, setIsLoading] = useState(true)
     const [timeoutMessage, setTimeoutMessage] = useState<string>('')
     const [foundationData, setFoundationData] = useState<any>(null)
+    const [isNavigating, setIsNavigating] = useState(false) // Bandera para evitar que checkAuth interfiera
+    const [hasInitialized, setHasInitialized] = useState(false) // Bandera para saber si ya se inicializó
     
     // Hook para notificaciones
     const { unreadCount, loading: notificationsLoading } = useNotifications()
@@ -99,72 +103,75 @@ export default function HomePage() {
     // Función para navegar a un módulo con validación
     const navigateToModule = async (module: string) => {
         console.log(`🔍 [navigateToModule] Intentando navegar a: ${module}`)
+        
+        // Marcar que estamos navegando para evitar que checkAuth interfiera
+        setIsNavigating(true)
+        
+        // Cambiar el módulo inmediatamente para mejor UX
+        setCurrentModule(module)
+        localStorage.setItem('ecoswap_current_module', module)
+        
         try {
-            // Verificar y refrescar sesión antes de navegar
-            const supabase = getSupabaseClient()
-            if (supabase) {
-                const { data: { session } } = await supabase.auth.getSession()
-                if (session) {
-                    // Verificar si el token está próximo a expirar
-                    const now = Math.floor(Date.now() / 1000)
-                    const expiresAt = session.expires_at || 0
-                    const timeUntilExpiry = expiresAt - now
-
-                    // Si el token expira en menos de 5 minutos, refrescarlo
-                    if (timeUntilExpiry < 300 && timeUntilExpiry > 0) {
-                        console.log('🔄 Refrescando sesión antes de navegar...')
-                        await supabase.auth.refreshSession()
-                    }
-                }
-            }
-
-            // Si el módulo requiere autenticación, verificar sesión
+            // Si el módulo requiere autenticación, verificar en segundo plano
             const protectedModules = ['interactions', 'chat', 'profile', 'notifications']
             if (protectedModules.includes(module)) {
                 console.log(`🔐 [navigateToModule] Módulo protegido: ${module}`)
                 
+                const supabase = getSupabaseClient()
                 if (!supabase) {
                     console.error('❌ Supabase no está configurado')
+                    setCurrentScreen('auth')
+                    setIsNavigating(false)
                     return
                 }
 
-                console.log('🔍 [navigateToModule] Verificando sesión...')
+                // Verificar sesión de forma no bloqueante
                 const { data: { session } } = await supabase.auth.getSession()
-                console.log('🔍 [navigateToModule] Sesión:', session ? 'Válida' : 'No válida')
                 
                 if (!session) {
                     console.log('⚠️ No hay sesión válida, redirigiendo a login')
                     setCurrentScreen('auth')
+                    setCurrentModule('products') // Volver a productos si no hay sesión
+                    setIsNavigating(false)
                     return
                 }
 
-                // Verificar que el usuario esté cargado
-                console.log('🔍 [navigateToModule] Usuario actual:', currentUser ? 'Cargado' : 'No cargado')
+                // Si no hay usuario cargado, intentar cargarlo
                 if (!currentUser) {
                     console.log('🔄 Cargando datos del usuario...')
-                    const user = await getCurrentUser()
-                    if (user) {
-                        setCurrentUser(user)
-                        setIsAuthenticated(true)
-                        console.log('✅ Usuario cargado exitosamente')
-                    } else {
-                        console.error('❌ No se pudo cargar el usuario')
+                    try {
+                        const user = await getCurrentUser()
+                        if (user) {
+                            setCurrentUser(user)
+                            setIsAuthenticated(true)
+                            console.log('✅ Usuario cargado exitosamente')
+                        } else {
+                            console.error('❌ No se pudo cargar el usuario')
+                            setCurrentScreen('auth')
+                            setCurrentModule('products')
+                            setIsNavigating(false)
+                            return
+                        }
+                    } catch (error) {
+                        console.error('❌ Error cargando usuario:', error)
                         setCurrentScreen('auth')
+                        setCurrentModule('products')
+                        setIsNavigating(false)
                         return
                     }
                 }
             }
-
-            // Cambiar al módulo solicitado
-            console.log(`✅ [navigateToModule] Cambiando a módulo: ${module}`)
-            setCurrentModule(module)
-            // Guardar módulo actual en localStorage para persistir después de recargar
-            localStorage.setItem('ecoswap_current_module', module)
-            console.log(`✅ Navegando a módulo: ${module}`)
-            console.log(`💾 [navigateToModule] Módulo guardado en localStorage: ${module}`)
         } catch (error) {
-            console.error('❌ [navigateToModule] Error navegando a módulo:', error)
-            console.error('❌ [navigateToModule] Stack trace:', error.stack)
+            console.error('❌ [navigateToModule] Error verificando navegación:', error)
+            // Si hay error pero el módulo no es protegido, permitir la navegación de todos modos
+            const protectedModules = ['interactions', 'chat', 'profile', 'notifications']
+            if (protectedModules.includes(module)) {
+                setCurrentScreen('auth')
+                setCurrentModule('products')
+            }
+        } finally {
+            // Esperar un poco antes de permitir que checkAuth vuelva a ejecutarse
+            setTimeout(() => setIsNavigating(false), 500)
         }
     }
 
@@ -404,8 +411,14 @@ export default function HomePage() {
 
         const checkAuth = async () => {
             try {
+                // Si ya se inicializó y el usuario está navegando activamente, no interferir
+                if (hasInitialized && isNavigating) {
+                    console.log('⏸️ Navegación activa, omitiendo checkAuth')
+                    return
+                }
+                
                 // Solo mostrar loading en la carga inicial, no en cada cambio de módulo
-                const isInitialLoad = !currentUser
+                const isInitialLoad = !hasInitialized && !currentUser
                 if (isInitialLoad) {
                     setIsLoading(true)
                 }
@@ -470,56 +483,61 @@ export default function HomePage() {
                     setCurrentScreen('main')
                     console.log('✅ Estado configurado: isAuthenticated=true, currentUser=', user.name)
                     
-                    // Restaurar módulo desde localStorage o leer query ?m= o usar por defecto
-                    // Como hay sesión activa, podemos restaurar cualquier módulo (protegido o no)
-                    const savedModule = localStorage.getItem('ecoswap_current_module')
-                    const params = new URLSearchParams(window.location.search)
-                    const m = params.get('m')
-                    
-                    console.log('🔄 [Restauración] Módulo guardado en localStorage:', savedModule)
-                    console.log('🔄 [Restauración] Query param m:', m)
-                    console.log('🔄 [Restauración] Módulo actual en estado:', currentModule)
-                    
-                    // Si el módulo actual en estado es diferente de 'products', significa que se inicializó correctamente desde localStorage
-                    // En ese caso, mantenerlo y no sobrescribirlo con el query param (a menos que sea explícito)
-                    let moduleToSet = currentModule
-                    
-                    // Si el módulo actual es 'products' (valor por defecto) y hay un módulo guardado, usar el guardado
-                    if (currentModule === 'products' && savedModule && savedModule !== 'products') {
-                        moduleToSet = savedModule
-                        console.log('📦 [Restauración] Usando módulo guardado (no products):', savedModule)
-                    }
-                    // Si hay query param y es diferente de 'products', usarlo (navegación explícita)
-                    else if (m && m !== 'products') {
-                        moduleToSet = m
-                        console.log('🔗 [Restauración] Usando query param explícito:', m)
-                    }
-                    // Si el módulo actual ya es diferente de 'products', mantenerlo
-                    else if (currentModule !== 'products') {
-                        moduleToSet = currentModule
-                        console.log('✅ [Restauración] Manteniendo módulo actual:', currentModule)
-                    }
-                    // Si no hay nada, usar 'products' por defecto
-                    else {
-                        moduleToSet = 'products'
-                        console.log('🏠 [Restauración] Usando módulo por defecto: products')
-                    }
-                    
-                    console.log('✅ [Restauración] Módulo final a establecer:', moduleToSet)
-                    
-                    // Solo actualizar si es diferente al actual para evitar re-renders innecesarios
-                    if (moduleToSet !== currentModule) {
-                        setCurrentModule(moduleToSet)
-                    }
-                    
-                    // Guardar en localStorage el módulo final (excepto si es 'products' y no había nada guardado)
-                    if (moduleToSet && moduleToSet !== 'products') {
-                        localStorage.setItem('ecoswap_current_module', moduleToSet)
-                        console.log('💾 [Restauración] Módulo guardado en localStorage:', moduleToSet)
-                    } else if (moduleToSet === 'products' && savedModule && savedModule !== 'products') {
-                        // Si el módulo guardado no es 'products' pero estamos estableciendo 'products', 
-                        // mantener el guardado (no sobrescribir)
-                        console.log('⚠️ [Restauración] No sobrescribiendo módulo guardado:', savedModule)
+                    // Solo restaurar módulo si no se ha inicializado antes y no estamos navegando activamente
+                    if (!hasInitialized && !isNavigating) {
+                        // Restaurar módulo desde localStorage o leer query ?m= o usar por defecto
+                        // Como hay sesión activa, podemos restaurar cualquier módulo (protegido o no)
+                        const savedModule = localStorage.getItem('ecoswap_current_module')
+                        const params = new URLSearchParams(window.location.search)
+                        const m = params.get('m')
+                        
+                        console.log('🔄 [Restauración] Módulo guardado en localStorage:', savedModule)
+                        console.log('🔄 [Restauración] Query param m:', m)
+                        console.log('🔄 [Restauración] Módulo actual en estado:', currentModule)
+                        
+                        // Si el módulo actual en estado es diferente de 'products', significa que se inicializó correctamente desde localStorage
+                        // En ese caso, mantenerlo y no sobrescribirlo con el query param (a menos que sea explícito)
+                        let moduleToSet = currentModule
+                        
+                        // Si el módulo actual es 'products' (valor por defecto) y hay un módulo guardado, usar el guardado
+                        if (currentModule === 'products' && savedModule && savedModule !== 'products') {
+                            moduleToSet = savedModule
+                            console.log('📦 [Restauración] Usando módulo guardado (no products):', savedModule)
+                        }
+                        // Si hay query param y es diferente de 'products', usarlo (navegación explícita)
+                        else if (m && m !== 'products') {
+                            moduleToSet = m
+                            console.log('🔗 [Restauración] Usando query param explícito:', m)
+                        }
+                        // Si el módulo actual ya es diferente de 'products', mantenerlo
+                        else if (currentModule !== 'products') {
+                            moduleToSet = currentModule
+                            console.log('✅ [Restauración] Manteniendo módulo actual:', currentModule)
+                        }
+                        // Si no hay nada, usar 'products' por defecto
+                        else {
+                            moduleToSet = 'products'
+                            console.log('🏠 [Restauración] Usando módulo por defecto: products')
+                        }
+                        
+                        console.log('✅ [Restauración] Módulo final a establecer:', moduleToSet)
+                        
+                        // Solo actualizar si es diferente al actual para evitar re-renders innecesarios
+                        if (moduleToSet !== currentModule) {
+                            setCurrentModule(moduleToSet)
+                        }
+                        
+                        // Guardar en localStorage el módulo final (excepto si es 'products' y no había nada guardado)
+                        if (moduleToSet && moduleToSet !== 'products') {
+                            localStorage.setItem('ecoswap_current_module', moduleToSet)
+                            console.log('💾 [Restauración] Módulo guardado en localStorage:', moduleToSet)
+                        } else if (moduleToSet === 'products' && savedModule && savedModule !== 'products') {
+                            // Si el módulo guardado no es 'products' pero estamos estableciendo 'products', 
+                            // mantener el guardado (no sobrescribir)
+                            console.log('⚠️ [Restauración] No sobrescribiendo módulo guardado:', savedModule)
+                        }
+                    } else {
+                        console.log('⏸️ [Restauración] Omitiendo restauración de módulo (ya inicializado o navegando)')
                     }
                 } else {
                     console.log('❌ No se encontró usuario, configurando estado no autenticado')
@@ -568,11 +586,16 @@ export default function HomePage() {
                 setCurrentModule(moduleToSet)
             } finally {
                 setIsLoading(false)
+                setHasInitialized(true)
             }
         }
 
-        checkAuth()
-    }, [searchParams])
+        // Solo ejecutar checkAuth una vez al inicio o si cambia el parámetro de autenticación
+        const authParam = searchParams?.get('auth')
+        if (!hasInitialized || authParam === 'true') {
+            checkAuth()
+        }
+    }, []) // Solo ejecutar una vez al montar el componente
 
     // Cargar datos de fundación con timeout
     const loadFoundationData = async () => {
@@ -672,8 +695,16 @@ export default function HomePage() {
             case 'home':
                 return <CoreModule currentUser={currentUser} onLogout={handleLogout} />
             case 'products':
-                // Todas las fundaciones ven productos normales
-                console.log('📦 Mostrando ProductsModule')
+                // Si es fundación, mostrar panel de donaciones
+                if (isFoundation) {
+                    console.log('✅ Mostrando DonationsPanel para fundación')
+                    return (
+                        <Suspense fallback={<LoadingFallback />}>
+                            <DonationsPanel currentUser={currentUser} />
+                        </Suspense>
+                    )
+                }
+                console.log('📦 Mostrando ProductsModule para usuario normal')
                 return <ProductsModule currentUser={currentUser} />
             case 'interactions':
                 if (isLoading) {
@@ -798,8 +829,17 @@ export default function HomePage() {
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
                             >
-                                <ShoppingBagIcon className="w-5 h-5" />
-                                <span>Productos</span>
+                                {isFoundation ? (
+                                    <>
+                                        <GiftIcon className="w-5 h-5" />
+                                        <span>Donaciones</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <ShoppingBagIcon className="w-5 h-5" />
+                                        <span>Productos</span>
+                                    </>
+                                )}
                             </button>
 
                             {isAuthenticated && (
@@ -986,10 +1026,7 @@ export default function HomePage() {
             <div className="md:hidden fixed bottom-0 left-0 right-0 w-screen overflow-hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 pb-[env(safe-area-inset-bottom)] z-50 transition-colors">
                 <div className="flex justify-around">
                     <button
-                        onClick={() => {
-                          setCurrentModule('home')
-                          localStorage.setItem('ecoswap_current_module', 'home')
-                        }}
+                        onClick={() => navigateToModule('home')}
                         className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'home' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                             }`}
                     >
@@ -998,24 +1035,27 @@ export default function HomePage() {
                     </button>
 
                     <button
-                        onClick={() => {
-                          setCurrentModule('products')
-                          localStorage.setItem('ecoswap_current_module', 'products')
-                        }}
+                        onClick={() => navigateToModule('products')}
                         className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'products' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                             }`}
                     >
-                        <ShoppingBagIcon className="w-6 h-6" />
-                        <span className="text-xs">Productos</span>
+                        {isFoundation ? (
+                            <>
+                                <GiftIcon className="w-6 h-6" />
+                                <span className="text-xs">Donaciones</span>
+                            </>
+                        ) : (
+                            <>
+                                <ShoppingBagIcon className="w-6 h-6" />
+                                <span className="text-xs">Productos</span>
+                            </>
+                        )}
                     </button>
 
                     {isAuthenticated ? (
                         <>
                             <button
-                                onClick={() => {
-                                  setCurrentModule('interactions')
-                                  localStorage.setItem('ecoswap_current_module', 'interactions')
-                                }}
+                                onClick={() => navigateToModule('interactions')}
                                 className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'interactions' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                                     }`}
                             >
@@ -1032,10 +1072,7 @@ export default function HomePage() {
                             </Link>
 
                             <button
-                                onClick={() => {
-                                  setCurrentModule('chat')
-                                  localStorage.setItem('ecoswap_current_module', 'chat')
-                                }}
+                                onClick={() => navigateToModule('chat')}
                                 className={`flex flex-col items-center space-y-1 p-2 transition-colors ${currentModule === 'chat' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'
                                     }`}
                             >

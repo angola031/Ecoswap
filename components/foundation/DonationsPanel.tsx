@@ -43,6 +43,30 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
     setIsLoading(true)
     try {
       const supabase = getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        console.error('No hay sesión activa')
+        setIsLoading(false)
+        return
+      }
+
+      // Obtener el user_id del usuario actual desde la base de datos
+      const { data: userData, error: userError } = await supabase
+        .from('usuario')
+        .select('user_id')
+        .eq('email', session.user.email)
+        .single()
+
+      if (userError || !userData) {
+        console.error('Error obteniendo user_id:', userError)
+        setIsLoading(false)
+        return
+      }
+
+      const currentUserId = userData.user_id
+
+      console.log('🔍 Cargando donaciones disponibles para fundación, user_id:', currentUserId)
       
       // Obtener productos tipo donación que no sean del usuario actual
       const { data, error } = await supabase
@@ -61,7 +85,8 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
         `)
         .eq('tipo_transaccion', 'donacion')
         .eq('estado_publicacion', 'activo')
-        .neq('user_id', currentUser?.id || 0)
+        .eq('estado_validacion', 'approved')
+        .neq('user_id', currentUserId)
         .order('fecha_publicacion', { ascending: false })
         .limit(20)
 
@@ -70,6 +95,7 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
         return
       }
 
+      console.log('✅ Donaciones encontradas:', data?.length || 0, data)
       setAvailableDonations(data || [])
     } catch (error) {
       console.error('Error:', error)
@@ -84,7 +110,22 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
       const supabase = getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       
-      if (!session?.access_token) return
+      if (!session?.access_token) {
+        setIsLoading(false)
+        return
+      }
+
+      // Obtener el user_id del usuario actual
+      const { data: userData } = await supabase
+        .from('usuario')
+        .select('user_id')
+        .eq('email', session.user.email)
+        .single()
+
+      if (!userData) {
+        setIsLoading(false)
+        return
+      }
 
       const response = await fetch('/api/donations/my-requests', {
         headers: {
@@ -107,7 +148,25 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
     setIsLoading(true)
     try {
       const supabase = getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
       
+      if (!session) {
+        setIsLoading(false)
+        return
+      }
+
+      // Obtener el user_id del usuario actual
+      const { data: userData } = await supabase
+        .from('usuario')
+        .select('user_id')
+        .eq('email', session.user.email)
+        .single()
+
+      if (!userData) {
+        setIsLoading(false)
+        return
+      }
+
       // Obtener propuestas aceptadas
       const { data, error } = await supabase
         .from('propuesta')
@@ -131,7 +190,7 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
           ),
           usuario_recibe:usuario_recibe_id(nombre, apellido, foto_perfil)
         `)
-        .eq('usuario_propone_id', currentUser?.id || 0)
+        .eq('usuario_propone_id', userData.user_id)
         .eq('estado', 'aceptada')
         .like('descripcion', 'Solicitud de donación:%')
         .order('fecha_respuesta', { ascending: false })
@@ -153,12 +212,30 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
     setIsLoading(true)
     try {
       const supabase = getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        setIsLoading(false)
+        return
+      }
+
+      // Obtener el user_id del usuario actual
+      const { data: userData } = await supabase
+        .from('usuario')
+        .select('user_id')
+        .eq('email', session.user.email)
+        .single()
+
+      if (!userData) {
+        setIsLoading(false)
+        return
+      }
       
       // Estadísticas de propuestas
       const { data: propuestas } = await supabase
         .from('propuesta')
         .select('estado, chat:chat_id(intercambio:intercambio_id(producto_solicitado:producto_solicitado_id(precio)))')
-        .eq('usuario_propone_id', currentUser?.id || 0)
+        .eq('usuario_propone_id', userData.user_id)
         .like('descripcion', 'Solicitud de donación:%')
 
       const totalRequested = propuestas?.length || 0
@@ -235,6 +312,17 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
               const supabase = getSupabaseClient()
               const { data: { session } } = await supabase.auth.getSession()
               
+              // Obtener el user_id del usuario actual
+              const { data: userData } = await supabase
+                .from('usuario')
+                .select('user_id')
+                .eq('email', session.user.email)
+                .single()
+
+              if (!userData) {
+                throw new Error('No se pudo obtener el ID del usuario')
+              }
+
               const response = await fetch('/api/donations/request', {
                 method: 'POST',
                 headers: {
