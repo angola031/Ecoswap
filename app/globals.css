@@ -26,6 +26,54 @@
   .card {
     @apply bg-white dark:bg-product-dark rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors;
   }
+
+  .admin-dark {
+    @apply bg-gray-900 text-gray-100;
+  }
+
+  .admin-dark .bg-white {
+    @apply bg-gray-800 text-gray-100;
+  }
+
+  .admin-dark .text-gray-900 {
+    @apply text-gray-100;
+  }
+
+  .admin-dark .text-gray-800 {
+    @apply text-gray-100;
+  }
+
+  .admin-dark .text-gray-700 {
+    @apply text-gray-200;
+  }
+
+  .admin-dark .text-gray-600 {
+    @apply text-gray-300;
+  }
+
+  .admin-dark .text-gray-500 {
+    @apply text-gray-400;
+  }
+
+  .admin-dark .border-gray-200 {
+    @apply border-gray-700;
+  }
+
+  .admin-dark .shadow {
+    @apply shadow-none;
+  }
+
+  .admin-dark .input-field {
+    @apply bg-gray-800 text-gray-100 border-gray-600;
+  }
+
+  .admin-dark .btn-primary {
+    @apply hover:bg-primary-700;
+  }
+
+  .admin-dark .btn-secondary {
+    @apply text-gray-200 hover:bg-gray-600;
+  }
   
   .input-field {
     @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-input-dark text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors;

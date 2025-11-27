@@ -141,7 +141,7 @@ export default function UsersSection() {
     return (
         <div className="space-y-6">
             {/* Filtros y búsqueda */}
-            <div className="bg-white shadow rounded-lg p-6">
+            <div className="bg-white dark:bg-gray-900/60 shadow rounded-2xl border border-gray-200 dark:border-gray-700 p-6 transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
                     <div className="flex flex-wrap gap-2">
                         {[
@@ -154,10 +154,10 @@ export default function UsersSection() {
                             <button
                                 key={key}
                                 onClick={() => setFilter(key as any)}
-                                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
                                     filter === key
-                                        ? 'bg-blue-100 text-blue-800'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-200'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
                                 }`}
                             >
                                 {label} ({count})
@@ -170,27 +170,27 @@ export default function UsersSection() {
                             placeholder="Buscar usuarios..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="input-field text-sm"
                         />
                     </div>
                 </div>
             </div>
 
             {/* Lista de usuarios */}
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">
+            <div className="bg-white dark:bg-gray-900/60 shadow rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                         Usuarios ({filteredUsers.length})
                     </h3>
                 </div>
-                <div className="divide-y divide-gray-200">
+                <div className="divide-y divide-gray-200 dark:divide-gray-800">
                     {filteredUsers.map((user) => (
-                        <div key={user.user_id} className="px-6 py-4 hover:bg-gray-50">
+                        <div key={user.user_id} className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/70 transition-colors">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-4">
                                     <div className="flex-shrink-0">
-                                        <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                                            <span className="text-gray-600 font-medium">
+                                        <div className="w-10 h-10 bg-gray-300 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                                            <span className="text-gray-600 dark:text-gray-200 font-medium">
                                                 {user.nombre.charAt(0)}{user.apellido.charAt(0)}
                                             </span>
                                         </div>
@@ -200,44 +200,44 @@ export default function UsersSection() {
                                             <p className="text-sm font-medium text-gray-900">
                                                 {user.nombre} {user.apellido}
                                             </p>
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${
                                                 user.verificado 
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-yellow-100 text-yellow-800'
+                                                    ? 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-200'
+                                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-200'
                                             }`}>
                                                 {user.verificado ? 'Verificado' : 'Sin verificar'}
                                             </span>
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${
                                                 user.activo 
-                                                    ? 'bg-blue-100 text-blue-800'
-                                                    : 'bg-red-100 text-red-800'
+                                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-200'
+                                                    : 'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-200'
                                             }`}>
                                                 {user.activo ? 'Activo' : 'Inactivo'}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-gray-500">{user.email}</p>
-                                        <p className="text-xs text-gray-400">
-                                            Registrado: {new Date(user.fecha_registro).toLocaleDateString()}
+                                        <p className="text-sm text-gray-500 dark:text-gray-300">{user.email}</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-400">
+                                            Registrado: {new Date(user.fecha_registro).toLocaleDateString('es-CO')}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <button
                                         onClick={() => toggleUserVerification(user.user_id, user.verificado)}
-                                        className={`px-3 py-1 rounded text-xs font-medium ${
+                                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                                             user.verificado
-                                                ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                                                : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-500/20 dark:text-yellow-200 dark:hover:bg-yellow-500/30'
+                                                : 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-500/20 dark:text-green-200 dark:hover:bg-green-500/30'
                                         }`}
                                     >
                                         {user.verificado ? 'Desverificar' : 'Verificar'}
                                     </button>
                                     <button
                                         onClick={() => toggleUserStatus(user.user_id, user.activo)}
-                                        className={`px-3 py-1 rounded text-xs font-medium ${
+                                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                                             user.activo
-                                                ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                                                : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                ? 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-500/20 dark:text-red-200 dark:hover:bg-red-500/30'
+                                                : 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-500/20 dark:text-green-200 dark:hover:bg-green-500/30'
                                         }`}
                                     >
                                         {user.activo ? 'Desactivar' : 'Activar'}

@@ -26,6 +26,7 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [unreadCount, setUnreadCount] = useState(0)
+    const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
 
     useEffect(() => {
         fetchNotifications()
@@ -226,6 +227,12 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
         })
     }
 
+    const filteredNotifications = notifications.filter(notification => {
+        if (filter === 'unread') return !notification.leida
+        if (filter === 'read') return notification.leida
+        return true
+    })
+
     if (loading) {
         return (
             <div className="bg-white rounded-lg shadow p-6">
@@ -250,58 +257,65 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
     }
 
     return (
-        <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-gray-900">Notificaciones</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notificaciones</h3>
                     {unreadCount > 0 && (
                         <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
                             {unreadCount}
                         </span>
                     )}
                 </div>
-                {unreadCount > 0 && (
+                <div className="flex items-center gap-2">
+                    <select
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value as 'all' | 'unread' | 'read')}
+                        className="input-field text-sm py-1"
+                    >
+                        <option value="all">Todas</option>
+                        <option value="unread">No leídas</option>
+                        <option value="read">Leídas</option>
+                    </select>
                     <button
                         onClick={markAllAsRead}
-                        className="text-sm text-blue-600 hover:text-blue-700"
+                        className="text-sm text-blue-600 dark:text-blue-300 hover:underline"
                     >
                         Marcar todas como leídas
                     </button>
-                )}
+                </div>
             </div>
 
             {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg text-red-700 dark:text-red-200 text-sm">
                     {error}
                 </div>
             )}
 
             {notifications.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                    <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <svg className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 10-15 0v5" />
                     </svg>
                     <p>No hay notificaciones</p>
                 </div>
             ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {notifications.map((notification) => (
+                <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
+                    {filteredNotifications.map((notification) => (
                         <div
                             key={notification.notificacion_id}
-                            className={`p-3 rounded-lg border transition-colors cursor-pointer ${
+                            className={`p-3 rounded-xl border transition-colors cursor-pointer ${
                                 notification.leida 
-                                    ? 'bg-gray-50 border-gray-200' 
-                                    : 'bg-blue-50 border-blue-200'
+                                    ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700' 
+                                    : 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30'
                             }`}
                             onClick={() => {
                                 if (!notification.leida) {
                                     markAsRead(notification.notificacion_id)
                                 }
                                 
-                                // Verificar si hay una URL de acción específica
                                 const urlAccion = notification.datos_adicionales?.url_accion
                                 if (urlAccion) {
-                                    // Redirigir a la URL específica
                                     window.location.href = urlAccion
                                 }
                             }}
@@ -311,20 +325,20 @@ export default function NotificationsSection({ userId }: NotificationsSectionPro
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between">
                                         <h4 className={`text-sm font-medium ${
-                                            notification.leida ? 'text-gray-700' : 'text-gray-900'
+                                            notification.leida ? 'text-gray-700 dark:text-gray-300' : 'text-gray-900 dark:text-white'
                                         }`}>
                                             {notification.titulo}
                                         </h4>
                                         {!notification.leida && (
-                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                            <div className="w-2 h-2 bg-blue-500 dark:bg-blue-300 rounded-full"></div>
                                         )}
                                     </div>
                                     <p className={`text-sm mt-1 ${
-                                        notification.leida ? 'text-gray-600' : 'text-gray-700'
+                                        notification.leida ? 'text-gray-600 dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'
                                     }`}>
                                         {notification.mensaje}
                                     </p>
-                                    <p className="text-xs text-gray-500 mt-2">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                                         {formatDate(notification.fecha_creacion)}
                                     </p>
                                 </div>

@@ -15,6 +15,7 @@ import IdentityVerificationSection from '@/components/admin/IdentityVerification
 import VerificationSummary from '@/components/admin/VerificationSummary'
 import DashboardOverview from '@/components/admin/DashboardOverview'
 import FoundationsSection from '@/components/admin/FoundationsSection'
+import { SunIcon, MoonIcon } from '@heroicons/react/24/outline'
 
 export default function VerificacionesPage() {
     const router = useRouter()
@@ -23,6 +24,7 @@ export default function VerificacionesPage() {
     const [showAdminModule, setShowAdminModule] = useState(false)
     const [logoutLoading, setLogoutLoading] = useState(false)
     const [activeSection, setActiveSection] = useState('overview')
+    const [isDarkMode, setIsDarkMode] = useState(false)
 
     useEffect(() => {
         const getUser = async () => {
@@ -73,8 +75,45 @@ export default function VerificacionesPage() {
             }
             setLoading(false)
         }
+        // Inicializar modo oscuro desde localStorage
+        if (typeof window !== 'undefined') {
+            const storedTheme = localStorage.getItem('admin_dark_mode')
+            if (storedTheme === 'true') {
+                setIsDarkMode(true)
+            } else if (storedTheme === null) {
+                // Usar preferencia del sistema si no hay valor almacenado
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                if (prefersDark) {
+                    setIsDarkMode(true)
+                }
+            }
+        }
+
         getUser()
     }, [router])
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('admin_dark_mode', String(isDarkMode))
+        }
+
+        if (typeof document !== 'undefined') {
+            const root = document.documentElement
+            if (isDarkMode) {
+                root.classList.add('dark')
+            } else {
+                root.classList.remove('dark')
+            }
+
+            return () => {
+                root.classList.remove('dark')
+            }
+        }
+    }, [isDarkMode])
+
+    const toggleDarkMode = () => {
+        setIsDarkMode(prev => !prev)
+    }
 
     const handleLogout = async () => {
         setLogoutLoading(true)
@@ -187,95 +226,95 @@ export default function VerificacionesPage() {
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className="bg-white shadow rounded-lg p-6">
-                                <h3 className="text-lg font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
+                            <div className="bg-white dark:bg-gray-900/60 shadow rounded-2xl border border-gray-200 dark:border-gray-700 p-6 transition-colors">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Acciones Rápidas</h3>
                                 <div className="space-y-3">
                         <button
                                         onClick={() => setActiveSection('users')}
-                                        className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                        className="w-full text-left p-3 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-xl transition-colors"
                                     >
                                         <div className="flex items-center space-x-3">
                                             <span className="text-2xl">👥</span>
                                             <div>
-                                                <p className="font-medium text-gray-900">Gestionar Usuarios</p>
-                                                <p className="text-sm text-gray-600">Ver y administrar usuarios registrados</p>
+                                                <p className="font-medium text-gray-900 dark:text-white">Gestionar Usuarios</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">Ver y administrar usuarios registrados</p>
                                             </div>
                                         </div>
                         </button>
                         <button
                                         onClick={() => setActiveSection('products')}
-                                        className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                                        className="w-full text-left p-3 bg-green-50 dark:bg-green-500/10 hover:bg-green-100 dark:hover:bg-green-500/20 rounded-xl transition-colors"
                                     >
                                         <div className="flex items-center space-x-3">
                                             <span className="text-2xl">📦</span>
                                             <div>
-                                                <p className="font-medium text-gray-900">Verificar Productos</p>
-                                                <p className="text-sm text-gray-600">Revisar productos pendientes</p>
+                                                <p className="font-medium text-gray-900 dark:text-white">Verificar Productos</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">Revisar productos pendientes</p>
                                             </div>
                                         </div>
                         </button>
                         <button
                                         onClick={() => setActiveSection('identity-verification')}
-                                        className="w-full text-left p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                                        className="w-full text-left p-3 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-xl transition-colors"
                                     >
                                         <div className="flex items-center space-x-3">
                                             <span className="text-2xl">🆔</span>
                                             <div>
-                                                <p className="font-medium text-gray-900">Validar Identidad</p>
-                                                <p className="text-sm text-gray-600">Revisar documentos de identidad</p>
+                                                <p className="font-medium text-gray-900 dark:text-white">Validar Identidad</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">Revisar documentos de identidad</p>
                                             </div>
                                         </div>
                         </button>
                         <button
                                         onClick={() => setActiveSection('messages')}
-                                        className="w-full text-left p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+                                        className="w-full text-left p-3 bg-purple-50 dark:bg-purple-500/10 hover:bg-purple-100 dark:hover:bg-purple-500/20 rounded-xl transition-colors"
                                     >
                                         <div className="flex items-center space-x-3">
                                             <span className="text-2xl">💬</span>
                                             <div>
-                                                <p className="font-medium text-gray-900">Mensajes de Clientes</p>
-                                                <p className="text-sm text-gray-600">Responder consultas y soporte</p>
+                                                <p className="font-medium text-gray-900 dark:text-white">Mensajes de Clientes</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">Responder consultas y soporte</p>
                                             </div>
                                         </div>
                         </button>
                         <button
                                         onClick={() => setActiveSection('complaints')}
-                                        className="w-full text-left p-3 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
+                                        className="w-full text-left p-3 bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100 dark:hover:bg-orange-500/20 rounded-xl transition-colors"
                                     >
                                         <div className="flex items-center space-x-3">
                                             <span className="text-2xl">⚠️</span>
                                             <div>
-                                                <p className="font-medium text-gray-900">Quejas y Reportes</p>
-                                                <p className="text-sm text-gray-600">Gestionar reportes y quejas</p>
+                                                <p className="font-medium text-gray-900 dark:text-white">Quejas y Reportes</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">Gestionar reportes y quejas</p>
                     </div>
                 </div>
                                     </button>
                                     <button
                                         onClick={() => setActiveSection('notifications')}
-                                        className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                        className="w-full text-left p-3 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-xl transition-colors"
                                     >
                                         <div className="flex items-center space-x-3">
                                             <span className="text-2xl">🔔</span>
                                             <div>
-                                                <p className="font-medium text-gray-900">Notificaciones</p>
-                                                <p className="text-sm text-gray-600">Verificaciones y alertas</p>
+                                                <p className="font-medium text-gray-900 dark:text-white">Notificaciones</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">Verificaciones y alertas</p>
                             </div>
                         </div>
                                     </button>
                     </div>
                             </div>
-                            <div className="bg-white shadow rounded-lg p-6">
-                                <h3 className="text-lg font-medium text-gray-900 mb-4">Administración</h3>
+                            <div className="bg-white dark:bg-gray-900/60 shadow rounded-2xl border border-gray-200 dark:border-gray-700 p-6 transition-colors">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Administración</h3>
                                 <div className="space-y-3">
                                     <button
                                         onClick={() => setShowAdminModule(true)}
-                                        className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full text-left p-3 bg-gray-50 dark:bg-gray-800/70 hover:bg-gray-100 dark:hover:bg-gray-700/80 rounded-xl transition-colors"
                                     >
                                         <div className="flex items-center space-x-3">
                                             <span className="text-2xl">👨‍💼</span>
                                             <div>
-                                                <p className="font-medium text-gray-900">Gestionar Administradores</p>
-                                                <p className="text-sm text-gray-600">Crear y administrar cuentas de admin</p>
+                                                <p className="font-medium text-gray-900 dark:text-white">Gestionar Administradores</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300">Crear y administrar cuentas de admin</p>
                             </div>
                         </div>
                                     </button>
@@ -317,24 +356,25 @@ export default function VerificacionesPage() {
 
     return (
         <AuthGuard>
-            <div className="min-h-screen bg-gray-50">
+            <div className={`admin-dashboard ${isDarkMode ? 'admin-dark' : ''}`}>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
             {/* Header */}
-            <header className="bg-white shadow">
+            <header className="bg-white dark:bg-gray-800 shadow transition-colors">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 py-4 sm:py-6">
                         <div className="flex items-center">
-                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
+                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white break-words">
                                 EcoSwap - Dashboard
                             </h1>
                         </div>
                         <div className="flex flex-col xs:flex-row items-start xs:items-center xs:space-x-3 gap-2 w-full sm:w-auto justify-end">
-                            <span className="text-xs sm:text-sm text-gray-700 truncate max-w-full">
+                            <span className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200 truncate max-w-full">
                                 Bienvenido, {user?.email}
                             </span>
                             <button
                                 onClick={handleLogout}
                                 disabled={logoutLoading}
-                                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-md text-xs sm:text-sm font-medium flex items-center justify-center space-x-2"
+                                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-md text-xs sm:text-sm font-medium flex items-center justify-center space-x-2 transition-colors"
                             >
                                 {logoutLoading ? (
                                     <>
@@ -346,6 +386,18 @@ export default function VerificacionesPage() {
                                     </>
                                 ) : (
                                     <span className="truncate">Cerrar Sesión</span>
+                                )}
+                            </button>
+                            <button
+                                onClick={toggleDarkMode}
+                                title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                                aria-label={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                                className="w-full sm:w-auto flex items-center justify-center px-3 py-1.5 sm:px-4 sm:py-2 rounded-md border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                {isDarkMode ? (
+                                    <SunIcon className="w-5 h-5" />
+                                ) : (
+                                    <MoonIcon className="w-5 h-5" />
                                 )}
                             </button>
                         </div>
@@ -360,8 +412,8 @@ export default function VerificacionesPage() {
             />
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-                <div className="px-4 py-6 sm:px-0">
+            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 transition-colors">
+                <div className="px-4 py-6 sm:px-0 text-gray-900 dark:text-gray-100">
                     {renderSection()}
                 </div>
             </main>
@@ -369,12 +421,12 @@ export default function VerificacionesPage() {
             {/* Admin Management Module Modal */}
             {showAdminModule && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-                        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                            <h3 className="text-lg font-semibold">Gestión de Administradores</h3>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto transition-colors">
+                        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Gestión de Administradores</h3>
                                 <button
                                 onClick={() => setShowAdminModule(false)}
-                                    className="text-gray-400 hover:text-gray-600"
+                                    className="text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100"
                                 >
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -387,6 +439,7 @@ export default function VerificacionesPage() {
                     </div>
                 </div>
             )}
+            </div>
             </div>
         </AuthGuard>
     )

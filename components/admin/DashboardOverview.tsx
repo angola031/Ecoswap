@@ -194,7 +194,7 @@ export default function DashboardOverview({
         onClick?: () => void
     }) => (
         <div 
-            className={`${color} rounded-lg p-4 text-white cursor-pointer hover:opacity-90 transition-opacity`}
+            className={`${color} rounded-lg p-4 text-white cursor-pointer hover:opacity-90 transition-opacity shadow-sm border border-transparent`}
             onClick={onClick}
         >
             <div className="flex items-center justify-between">
@@ -266,7 +266,7 @@ export default function DashboardOverview({
                     value={stats.totalClients}
                     subtitle="Usuarios registrados"
                     icon="👥"
-                    color="bg-blue-500"
+                    color="bg-blue-500 dark:bg-blue-500/80"
                     onClick={onViewUsers}
                 />
 
@@ -275,7 +275,7 @@ export default function DashboardOverview({
                     value={stats.activeClients}
                     subtitle={`${stats.totalClients > 0 ? ((stats.activeClients / stats.totalClients) * 100).toFixed(1) : 0}% del total`}
                     icon="✅"
-                    color="bg-green-500"
+                    color="bg-green-500 dark:bg-green-500/80"
                     onClick={onViewUsers}
                 />
 
@@ -284,7 +284,7 @@ export default function DashboardOverview({
                     value={stats.verifiedClients}
                     subtitle={`${stats.totalClients > 0 ? ((stats.verifiedClients / stats.totalClients) * 100).toFixed(1) : 0}% del total`}
                     icon="🆔"
-                    color="bg-purple-500"
+                    color="bg-purple-500 dark:bg-purple-500/80"
                     onClick={onViewVerifications}
                 />
 
@@ -294,7 +294,7 @@ export default function DashboardOverview({
                     value={stats.pendingVerifications}
                     subtitle="Requieren atención"
                     icon="⏳"
-                    color="bg-yellow-500"
+                    color="bg-yellow-500 dark:bg-yellow-500/80"
                     onClick={onViewVerifications}
                 />
 
@@ -304,7 +304,7 @@ export default function DashboardOverview({
                     value={stats.totalProducts}
                     subtitle="Productos en el sistema"
                     icon="📦"
-                    color="bg-indigo-500"
+                    color="bg-indigo-500 dark:bg-indigo-500/80"
                     onClick={onViewProducts}
                 />
 
@@ -313,7 +313,7 @@ export default function DashboardOverview({
                     value={stats.activeProducts}
                     subtitle={`${stats.totalProducts > 0 ? ((stats.activeProducts / stats.totalProducts) * 100).toFixed(1) : 0}% del total`}
                     icon="🟢"
-                    color="bg-emerald-500"
+                    color="bg-emerald-500 dark:bg-emerald-500/80"
                     onClick={onViewProducts}
                 />
 
@@ -323,53 +323,99 @@ export default function DashboardOverview({
                     value={stats.recentRegistrations}
                     subtitle="Últimos 7 días"
                     icon="📈"
-                    color="bg-orange-500"
+                    color="bg-orange-500 dark:bg-orange-500/80"
                     onClick={onViewUsers}
                 />
             </div>
 
-            {/* Acciones Rápidas */}
-            <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button
-                        onClick={onViewUsers}
-                        className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                            <span className="text-blue-600 text-lg">👥</span>
-                        </div>
-                        <div className="text-left">
-                            <p className="font-medium text-gray-900">Gestionar Usuarios</p>
-                            <p className="text-sm text-gray-600">Ver y administrar clientes</p>
-                        </div>
-                    </button>
+            {/* Acciones Rápidas y Administración */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                <div className="bg-white dark:bg-gray-900/60 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors lg:col-span-3 backdrop-blur">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Acciones Rápidas</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                            onClick={onViewUsers}
+                            className="flex items-center p-4 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/70 transition-colors bg-white dark:bg-gray-800/70 text-left"
+                        >
+                            <div className="w-11 h-11 bg-blue-100 dark:bg-blue-500/20 rounded-xl flex items-center justify-center mr-3">
+                                <span className="text-blue-600 dark:text-blue-200 text-xl">👥</span>
+                            </div>
+                            <div className="text-left">
+                                <p className="font-semibold text-gray-900 dark:text-white">Gestionar Usuarios</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">Ver y administrar clientes</p>
+                            </div>
+                        </button>
 
-                    <button
-                        onClick={onViewVerifications}
-                        className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                        <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
-                            <span className="text-yellow-600 text-lg">🆔</span>
-                        </div>
-                        <div className="text-left">
-                            <p className="font-medium text-gray-900">Validar Identidad</p>
-                            <p className="text-sm text-gray-600">Revisar verificaciones</p>
-                        </div>
-                    </button>
+                        <button
+                            onClick={onViewProducts}
+                            className="flex items-center p-4 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/70 transition-colors bg-white dark:bg-gray-800/70 text-left"
+                        >
+                            <div className="w-11 h-11 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl flex items-center justify-center mr-3">
+                                <span className="text-indigo-600 dark:text-indigo-200 text-xl">📦</span>
+                            </div>
+                            <div className="text-left">
+                                <p className="font-semibold text-gray-900 dark:text-white">Verificar Productos</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">Revisar productos pendientes</p>
+                            </div>
+                        </button>
 
-                    <button
-                        onClick={onViewNotifications}
-                        className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                            <span className="text-green-600 text-lg">🔔</span>
-                        </div>
-                        <div className="text-left">
-                            <p className="font-medium text-gray-900">Notificaciones</p>
-                            <p className="text-sm text-gray-600">Ver alertas del sistema</p>
-                        </div>
-                    </button>
+                        <button
+                            onClick={onViewVerifications}
+                            className="flex items-center p-4 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/70 transition-colors bg-white dark:bg-gray-800/70 text-left"
+                        >
+                            <div className="w-11 h-11 bg-yellow-100 dark:bg-yellow-500/20 rounded-xl flex items-center justify-center mr-3">
+                                <span className="text-yellow-600 dark:text-yellow-200 text-xl">🆔</span>
+                            </div>
+                            <div className="text-left">
+                                <p className="font-semibold text-gray-900 dark:text-white">Validar Identidad</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">Revisar verificaciones</p>
+                            </div>
+                        </button>
+
+                        <button
+                            onClick={onViewNotifications}
+                            className="flex items-center p-4 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/70 transition-colors bg-white dark:bg-gray-800/70 text-left"
+                        >
+                            <div className="w-11 h-11 bg-green-100 dark:bg-green-500/20 rounded-xl flex items-center justify-center mr-3">
+                                <span className="text-green-600 dark:text-green-200 text-xl">🔔</span>
+                            </div>
+                            <div className="text-left">
+                                <p className="font-semibold text-gray-900 dark:text-white">Notificaciones</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">Ver alertas del sistema</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-gray-900/60 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors lg:col-span-2 backdrop-blur">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Administración</h3>
+                    <div className="space-y-3">
+                        <button
+                            onClick={onViewUsers}
+                            className="flex items-center p-4 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/70 transition-colors bg-white dark:bg-gray-800/70 w-full text-left"
+                        >
+                            <div className="w-11 h-11 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center mr-3">
+                                <span className="text-purple-600 dark:text-purple-200 text-xl">👨‍💼</span>
+                            </div>
+                            <div className="text-left">
+                                <p className="font-semibold text-gray-900 dark:text-white">Gestionar Administradores</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">Crear y administrar cuentas de admin</p>
+                            </div>
+                        </button>
+
+                        <button
+                            onClick={onViewVerifications}
+                            className="flex items-center p-4 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/70 transition-colors bg-white dark:bg-gray-800/70 w-full text-left"
+                        >
+                            <div className="w-11 h-11 bg-orange-100 dark:bg-orange-500/20 rounded-xl flex items-center justify-center mr-3">
+                                <span className="text-orange-600 dark:text-orange-200 text-xl">⚙️</span>
+                            </div>
+                            <div className="text-left">
+                                <p className="font-semibold text-gray-900 dark:text-white">Configuraciones</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">Preferencias del sistema y roles</p>
+                            </div>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -37,7 +37,8 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const estado = searchParams.get('estado') // 'pendiente', 'verificada', 'todas'
+    // Soportar tanto ?estado= como ?filter= (usado por el dashboard)
+    const estado = searchParams.get('filter') || searchParams.get('estado') // 'pending', 'verified', 'all'
 
     const supabase = getSupabaseClient()
     if (!supabase) {
@@ -66,9 +67,9 @@ export async function GET(req: NextRequest) {
       .eq('es_fundacion', true)
       .order('fecha_registro', { ascending: false })
 
-    if (estado === 'pendiente') {
+    if (estado === 'pendiente' || estado === 'pending') {
       query = query.eq('fundacion_verificada', false)
-    } else if (estado === 'verificada') {
+    } else if (estado === 'verificada' || estado === 'verified') {
       query = query.eq('fundacion_verificada', true)
     }
 
@@ -100,9 +101,11 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { fundacion_id, accion, motivo } = body
+    const { fundacion_id, user_id, accion, motivo } = body
 
-    if (!fundacion_id) {
+    const targetFoundationId = fundacion_id ?? user_id
+
+    if (!targetFoundationId) {
       return NextResponse.json({ error: 'fundacion_id es requerido' }, { status: 400 })
     }
 
@@ -121,7 +124,7 @@ export async function PATCH(req: NextRequest) {
     const { data: fundacion, error: fundacionError } = await supabase
       .from('usuario')
       .select('user_id, nombre_fundacion, es_fundacion, fundacion_verificada')
-      .eq('user_id', fundacion_id)
+      .eq('user_id', targetFoundationId)
       .single()
 
     if (fundacionError || !fundacion) {
@@ -148,7 +151,7 @@ export async function PATCH(req: NextRequest) {
     const { data: updatedFundacion, error: updateError } = await supabase
       .from('usuario')
       .update(updateData)
-      .eq('user_id', fundacion_id)
+      .eq('user_id', targetFoundationId)
       .select()
       .single()
 
@@ -162,7 +165,7 @@ export async function PATCH(req: NextRequest) {
       await supabase
         .from('notificacion')
         .insert({
-          usuario_id: fundacion_id,
+          usuario_id: targetFoundationId,
           tipo: accion === 'verificar' ? 'fundacion_verificada' : 'fundacion_rechazada',
           titulo: accion === 'verificar' 
             ? '✅ Tu fundación ha sido verificada'
@@ -194,7 +197,7 @@ export async function PATCH(req: NextRequest) {
           accion: accion === 'verificar' ? 'VERIFICAR_FUNDACION' : 'RECHAZAR_FUNDACION',
           modulo: 'Fundaciones',
           detalles: {
-            fundacion_id,
+            fundacion_id: targetFoundationId,
             nombre_fundacion: fundacion.nombre_fundacion,
             motivo: motivo || null
           }
@@ -204,7 +207,7 @@ export async function PATCH(req: NextRequest) {
       // No fallar si el registro falla
     }
 
-    console.log(`✅ Fundación ${fundacion_id} ${accion === 'verificar' ? 'verificada' : 'rechazada'} por admin ${user.user_id}`)
+    console.log(`✅ Fundación ${targetFoundationId} ${accion === 'verificar' ? 'verificada' : 'rechazada'} por admin ${user.user_id}`)
 
     return NextResponse.json({ 
       success: true, 
