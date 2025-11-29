@@ -30,6 +30,7 @@ export default function UsersSection() {
                     .from('usuario')
                     .select('user_id, nombre, apellido, email, telefono, verificado, activo, fecha_registro, es_admin')
                     .eq('es_admin', false)
+                    .or('es_fundacion.is.null,es_fundacion.eq.false')
                     .order('fecha_registro', { ascending: false })
 
                 if (error) {
