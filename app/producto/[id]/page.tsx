@@ -21,6 +21,7 @@ import { UserIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import { useRouter, useParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
+import ImageZoomModal from '@/components/ui/ImageZoomModal'
 
 
 interface User {
@@ -98,6 +99,7 @@ export default function ProductDetailPage() {
   const [isOwner, setIsOwner] = useState(false)
   const [ownerCheckComplete, setOwnerCheckComplete] = useState(false)
   const [isInActiveExchange, setIsInActiveExchange] = useState(false)
+  const [isImageZoomOpen, setIsImageZoomOpen] = useState(false)
   const [stats, setStats] = useState({
     views: 0,
     likes: 0
@@ -271,9 +273,22 @@ export default function ProductDetailPage() {
 
   const handleDonationRequest = async () => {
     // Si no hay sesión, redirigir a la interfaz de login del AuthModule
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      await (window as any).Swal.fire({
+        title: 'Error',
+        text: 'No se pudo conectar al sistema',
+        icon: 'error',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#3B82F6'
+      })
+      return
+    }
+
+    let session
     try {
-      const supabase = getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data } = await supabase.auth.getSession()
+      session = data.session
       if (!session?.access_token) {
         router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
         return
@@ -326,6 +341,162 @@ export default function ProductDetailPage() {
       if (result.isConfirmed) {
         router.push('/verificacion-identidad')
       }
+      return
+    }
+
+    // Verificar si el usuario es una fundación y está verificada
+    try {
+      const response = await fetch('/api/foundation/register', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // La API puede retornar { foundation: {...} } o directamente los datos
+        const foundation = data.foundation || data
+
+        // Debug: Log de los datos recibidos
+        console.log('🔍 [Donation Request] Respuesta completa:', data)
+        console.log('🔍 [Donation Request] Datos de fundación recibidos:', foundation)
+        console.log('🔍 [Donation Request] es_fundacion:', foundation?.es_fundacion, typeof foundation?.es_fundacion)
+        console.log('🔍 [Donation Request] fundacion_verificada:', foundation?.fundacion_verificada, typeof foundation?.fundacion_verificada)
+        
+        // Verificar que tenemos los datos necesarios
+        if (!foundation || (foundation.es_fundacion === undefined && foundation.fundacion_verificada === undefined)) {
+          console.error('❌ [Donation Request] Estructura de datos incorrecta:', foundation)
+          await (window as any).Swal.fire({
+            title: 'Error',
+            text: 'No se pudieron obtener los datos de tu fundación correctamente.',
+            icon: 'error',
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#3B82F6'
+          })
+          return
+        }
+
+        // Si no hay datos de fundación, puede que no sea fundación o no esté registrada
+        if (!foundation) {
+          console.log('⚠️ [Donation Request] No se encontraron datos de fundación')
+          await (window as any).Swal.fire({
+            title: '🏛️ Solo Fundaciones',
+            html: `
+              <div class="text-left space-y-3">
+                <p class="text-gray-700">Solo las fundaciones verificadas pueden solicitar donaciones en EcoSwap.</p>
+                <p class="text-gray-600 text-sm">Si eres una fundación, puedes registrarte como tal en tu perfil.</p>
+              </div>
+            `,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: 'Ir a Perfil',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#7C3AED',
+            cancelButtonColor: '#6B7280'
+          }).then((result: any) => {
+            if (result.isConfirmed) {
+              router.push('/?m=profile')
+            }
+          })
+          return
+        }
+
+        // Verificar si es fundación
+        const isFoundation = Boolean(foundation.es_fundacion === true || foundation.es_fundacion === 'true' || foundation.es_fundacion === 1)
+        console.log('🔍 [Donation Request] isFoundation:', isFoundation, 'es_fundacion:', foundation.es_fundacion)
+        
+        if (isFoundation) {
+          // Verificar si la fundación está verificada
+          // Convertir a booleano explícitamente para manejar diferentes tipos
+          const fundacionVerificada = foundation.fundacion_verificada
+          const isVerified = fundacionVerificada === true || 
+                           fundacionVerificada === 'true' || 
+                           fundacionVerificada === 1
+          
+          console.log('🔍 [Donation Request] Valor raw de fundacion_verificada:', fundacionVerificada)
+          console.log('🔍 [Donation Request] Tipo de fundacion_verificada:', typeof fundacionVerificada)
+          console.log('🔍 [Donation Request] Comparación === true:', fundacionVerificada === true)
+          console.log('🔍 [Donation Request] Verificación final - isVerified:', isVerified)
+          
+          // Si NO está verificada, mostrar mensaje y detener
+          if (!isVerified) {
+            console.log('❌ [Donation Request] Fundación NO verificada, mostrando mensaje')
+            const result = await (window as any).Swal.fire({
+              title: '🏛️ Fundación No Verificada',
+              html: `
+                <div class="text-left space-y-3">
+                  <p class="text-gray-700">Tu fundación <strong>${foundation.nombre_fundacion || 'sin nombre'}</strong> aún no ha sido verificada por nuestros administradores.</p>
+                  <p class="text-gray-600 text-sm">Para solicitar donaciones, tu fundación debe estar verificada. Esto ayuda a garantizar la transparencia y confianza en el proceso de donaciones.</p>
+                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+                    <p class="text-blue-800 text-sm font-medium mb-1">📋 Estado actual:</p>
+                    <ul class="text-blue-700 text-sm space-y-1 list-disc list-inside">
+                      <li>Es fundación: ✅</li>
+                      <li>Verificada: ❌ Pendiente</li>
+                    </ul>
+                  </div>
+                </div>
+              `,
+              icon: 'info',
+              showCancelButton: true,
+              confirmButtonText: 'Ver Estado de Verificación',
+              cancelButtonText: 'Cancelar',
+              confirmButtonColor: '#7C3AED',
+              cancelButtonColor: '#6B7280'
+            })
+
+            if (result.isConfirmed) {
+              // Redirigir a la página de verificación de fundación o perfil
+              router.push('/?m=profile')
+            }
+            return
+          }
+          
+          // Si llegamos aquí, es fundación y está verificada - continuar con el proceso
+          console.log('✅ [Donation Request] Fundación verificada correctamente, continuando con solicitud de donación...')
+        } else {
+          // No es fundación o no hay datos de fundación
+          console.log('⚠️ [Donation Request] Usuario no es fundación o no hay datos')
+          await (window as any).Swal.fire({
+            title: '🏛️ Solo Fundaciones',
+            html: `
+              <div class="text-left space-y-3">
+                <p class="text-gray-700">Solo las fundaciones verificadas pueden solicitar donaciones en EcoSwap.</p>
+                <p class="text-gray-600 text-sm">Si eres una fundación, puedes registrarte como tal en tu perfil.</p>
+              </div>
+            `,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: 'Ir a Perfil',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#7C3AED',
+            cancelButtonColor: '#6B7280'
+          }).then((result: any) => {
+            if (result.isConfirmed) {
+              router.push('/?m=profile')
+            }
+          })
+          return
+        }
+      } else {
+        // Error al obtener datos de fundación
+        await (window as any).Swal.fire({
+          title: 'Error',
+          text: 'No se pudieron obtener los datos de tu fundación. Por favor, intenta nuevamente.',
+          icon: 'error',
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#3B82F6'
+        })
+        return
+      }
+    } catch (error) {
+      console.error('Error verificando fundación:', error)
+      await (window as any).Swal.fire({
+        title: 'Error',
+        text: 'Ocurrió un error al verificar tu fundación. Por favor, intenta nuevamente.',
+        icon: 'error',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#3B82F6'
+      })
       return
     }
 
@@ -860,7 +1031,8 @@ export default function ProductDetailPage() {
                 <img
                   src={product.imagenes[currentImageIndex]}
                   alt={product.titulo}
-                  className="w-full h-72 sm:h-80 md:h-96 object-cover rounded-lg"
+                  className="w-full h-72 sm:h-80 md:h-96 object-cover rounded-lg cursor-zoom-in hover:opacity-90 transition-opacity"
+                  onClick={() => setIsImageZoomOpen(true)}
                   onError={(e) => {
                     console.error('❌ Error cargando imagen:', product.imagenes[currentImageIndex])
                     e.currentTarget.src = '/default-product.png'
@@ -923,8 +1095,11 @@ export default function ProductDetailPage() {
                 {product.imagenes.map((image, index) => (
                   <button
                     key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`relative overflow-hidden rounded-lg border-2 transition-colors ${index === currentImageIndex ? 'border-blue-500 dark:border-blue-400' : 'border-gray-200 dark:border-gray-700'
+                    onClick={() => {
+                      setCurrentImageIndex(index)
+                      setIsImageZoomOpen(true)
+                    }}
+                    className={`relative overflow-hidden rounded-lg border-2 transition-colors cursor-zoom-in hover:opacity-90 ${index === currentImageIndex ? 'border-blue-500 dark:border-blue-400' : 'border-gray-200 dark:border-gray-700'
                       }`}
                   >
                     <img
@@ -1244,6 +1419,17 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de zoom de imágenes */}
+      {product.imagenes.length > 0 && (
+        <ImageZoomModal
+          images={product.imagenes}
+          initialIndex={currentImageIndex}
+          isOpen={isImageZoomOpen}
+          onClose={() => setIsImageZoomOpen(false)}
+          productTitle={product.titulo}
+        />
+      )}
     </div>
   )
 }

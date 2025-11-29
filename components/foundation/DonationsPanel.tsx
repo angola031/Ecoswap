@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { 
   GiftIcon, 
@@ -15,6 +16,7 @@ interface DonationsPanelProps {
 }
 
 export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<'available' | 'requested' | 'received' | 'impact'>('available')
   const [isLoading, setIsLoading] = useState(false)
   const [availableDonations, setAvailableDonations] = useState<any[]>([])
@@ -263,6 +265,11 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
     }
   }
 
+  const handleViewDetail = (producto: any) => {
+    // Redirigir a la página de detalle del producto
+    router.push(`/producto/${producto.producto_id}`)
+  }
+
   const handleRequestDonation = (producto: any) => {
     // Importar dinámicamente la función
     import('@/components/chat/ChatModule').then(() => {
@@ -460,13 +467,16 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
                       key={producto.producto_id}
                       className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
                     >
-                      {/* Imagen */}
-                      <div className="aspect-video bg-gray-200 dark:bg-gray-700">
+                      {/* Imagen - clickeable */}
+                      <div 
+                        className="aspect-video bg-gray-200 dark:bg-gray-700 cursor-pointer"
+                        onClick={() => handleViewDetail(producto)}
+                      >
                         {producto.imagen_producto?.[0]?.url_imagen ? (
                           <img
                             src={producto.imagen_producto[0].url_imagen}
                             alt={producto.titulo}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover hover:opacity-90 transition-opacity"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
@@ -477,7 +487,10 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
                       
                       {/* Contenido */}
                       <div className="p-4">
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                        <h3 
+                          className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                          onClick={() => handleViewDetail(producto)}
+                        >
                           {producto.titulo}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
@@ -492,11 +505,11 @@ export default function DonationsPanel({ currentUser }: DonationsPanelProps) {
                         
                         {/* Botón */}
                         <button
-                          onClick={() => handleRequestDonation(producto)}
+                          onClick={() => handleViewDetail(producto)}
                           className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md transition-colors flex items-center justify-center space-x-2"
                         >
                           <HeartIcon className="w-4 h-4" />
-                          <span>Solicitar Donación</span>
+                          <span>Ver Detalle y Solicitar</span>
                         </button>
                       </div>
                     </div>
