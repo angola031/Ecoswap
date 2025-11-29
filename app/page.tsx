@@ -62,7 +62,9 @@ export default function HomePage() {
     const [isNavigating, setIsNavigating] = useState(false) // Bandera para evitar que checkAuth interfiera
     const [hasInitialized, setHasInitialized] = useState(false) // Bandera para saber si ya se inicializó
     const [isLoggingOut, setIsLoggingOut] = useState(false) // Bandera para bloquear renderizado durante logout
+    const [userRequestedAuth, setUserRequestedAuth] = useState(false) // Bandera para saber si el usuario explícitamente solicitó auth
     const isLoadingFoundationDataRef = useRef(false) // Ref para evitar cargas simultáneas
+    const loginProcessedRef = useRef(false) // Ref para evitar que el listener procese login si handleLogin ya lo hizo
     
     // Hook para notificaciones
     const { unreadCount, loading: notificationsLoading } = useNotifications()
@@ -239,8 +241,15 @@ export default function HomePage() {
     })
 
     // Verificar sesión inicial al cargar la página
+    // Solo verificar si no hay usuario ya establecido (para evitar duplicados)
     useEffect(() => {
         const checkInitialSession = async () => {
+            // Si ya hay un usuario establecido o se está procesando login, no verificar
+            if (currentUser || loginProcessedRef.current) {
+                console.log('⏭️ Omitiendo checkInitialSession: usuario ya establecido o login en proceso')
+                return
+            }
+
             const supabase = getSupabaseClient()
             if (!supabase) {
                 console.warn('⚠️ Supabase no está configurado. Ejecutando en modo estático.')
@@ -291,7 +300,7 @@ export default function HomePage() {
         }
 
         checkInitialSession()
-    }, [])
+    }, []) // Solo ejecutar una vez al montar
 
     // Listener para cambios de sesión de Supabase
     useEffect(() => {
@@ -309,12 +318,30 @@ export default function HomePage() {
                 setCurrentUser(null)
                 localStorage.removeItem('ecoswap_user')
             } else if (event === 'SIGNED_IN' && session) {
+                // Si handleLogin ya procesó el login, no procesar de nuevo para evitar doble renderizado
+                if (loginProcessedRef.current) {
+                    console.log('⏭️ [SIGNED_IN] Login ya procesado por handleLogin, omitiendo procesamiento del listener')
+                    return
+                }
+                
+                // Si el usuario ya está establecido con el mismo email, no procesar de nuevo
+                if (currentUser && isAuthenticated && currentUser.email === session.user.email) {
+                    console.log('⏭️ [SIGNED_IN] Usuario ya establecido, omitiendo procesamiento para evitar doble renderizado')
+                    return
+                }
+                
                 try {
                     console.log('🔄 Procesando SIGNED_IN para:', session.user.email)
                     const user = await getCurrentUser()
                     console.log('👤 Usuario obtenido:', user ? `${user.name} (${user.email})` : 'null')
                     
                     if (user) {
+                        // Verificar de nuevo antes de establecer el estado
+                        if (currentUser && isAuthenticated && currentUser.email === user.email) {
+                            console.log('⏭️ [SIGNED_IN] Usuario ya establecido después de getCurrentUser, omitiendo')
+                            return
+                        }
+                        
                         setCurrentUser(user)
                         setIsAuthenticated(true)
                         setCurrentScreen('main')
@@ -468,6 +495,12 @@ export default function HomePage() {
 
         const checkAuth = async () => {
             try {
+                // Si handleLogin ya procesó el login, no verificar de nuevo para evitar doble renderizado
+                if (loginProcessedRef.current) {
+                    console.log('⏭️ [checkAuth] Login ya procesado por handleLogin, omitiendo checkAuth')
+                    return
+                }
+                
                 // Si ya se inicializó y el usuario está navegando activamente, no interferir
                 if (hasInitialized && isNavigating) {
                     console.log('⏸️ Navegación activa, omitiendo checkAuth')
@@ -513,6 +546,12 @@ export default function HomePage() {
                 }
                 
                 if (user) {
+                    // Si el usuario ya está establecido con el mismo email, no hacer nada más para evitar doble renderizado
+                    if (currentUser && isAuthenticated && currentUser.email === user.email) {
+                        console.log('⏭️ [checkAuth] Usuario ya establecido, omitiendo configuración de estado para evitar doble renderizado')
+                        return
+                    }
+                    
                     console.log('✅ Usuario encontrado, configurando estado...')
                     
                     // Cargar datos de fundación antes de continuar (bloquear para asegurar que se carguen)
@@ -658,22 +697,8 @@ export default function HomePage() {
         }
     }, []) // Solo ejecutar una vez al montar el componente
 
-    // Corregir estado si currentScreen es 'auth' pero no se solicitó explícitamente
-    // Esto evita mostrar la pantalla de login después del logout
-    // PERO solo si no hay sesión y no se está navegando activamente
-    useEffect(() => {
-        const authParam = searchParams?.get('auth')
-        // Solo corregir si:
-        // 1. currentScreen es 'auth'
-        // 2. No hay parámetro ?auth=true
-        // 3. No hay sesión activa (para permitir login cuando se necesita)
-        // 4. No se está navegando (para permitir cuando el usuario hace clic en "Iniciar Sesión")
-        if (currentScreen === 'auth' && authParam !== 'true' && !isAuthenticated && !isNavigating && hasInitialized) {
-            console.log('🔄 Corrigiendo estado: auth sin parámetro después de logout, cambiando a productos')
-            setCurrentScreen('main')
-            setCurrentModule('products')
-        }
-    }, [currentScreen, searchParams, isAuthenticated, isNavigating, hasInitialized])
+    // NO corregir automáticamente el estado de auth
+    // Si el usuario solicita auth, mostrarlo. Si viene después de logout, el renderizado condicional lo manejará
 
     // Cargar datos de fundación con timeout
     const loadFoundationData = async (): Promise<void> => {
@@ -695,14 +720,15 @@ export default function HomePage() {
             }
 
             isLoadingFoundationDataRef.current = true
-            setFoundationDataLoading(true)
-            console.log('🔄 [loadFoundationData] Iniciando carga de datos de fundación...')
+            // NO establecer foundationDataLoading para no bloquear la UI
+            // Los datos de fundación se cargarán en segundo plano sin mostrar loading
+            // Esto evita que usuarios normales vean "Cargando datos de fundación..."
+            console.log('🔄 [loadFoundationData] Iniciando carga de datos de fundación en segundo plano...')
             const supabase = getSupabaseClient()
             const { data: { session } } = await supabase.auth.getSession()
             
             if (!session?.access_token) {
                 console.log('⚠️ No hay sesión para cargar datos de fundación')
-                setFoundationDataLoading(false)
                 isLoadingFoundationDataRef.current = false
                 return
             }
@@ -748,22 +774,31 @@ export default function HomePage() {
             setFoundationData(null)
             // No bloquear la aplicación si falla la carga de datos de fundación
         } finally {
-            setFoundationDataLoading(false)
+            // No establecer foundationDataLoading ya que no bloqueamos la UI
             isLoadingFoundationDataRef.current = false
             console.log('✅ [loadFoundationData] Carga de datos de fundación completada')
         }
     }
 
     const handleLogin = async (userData: any) => {
+        // Marcar que handleLogin ya procesó el login para evitar que el listener lo procese de nuevo
+        loginProcessedRef.current = true
+        
         setCurrentUser(userData)
         setIsAuthenticated(true)
         setCurrentScreen('main')
+        setUserRequestedAuth(false) // Resetear la bandera de auth solicitada
         localStorage.setItem('ecoswap_user', JSON.stringify(userData))
 
-        // Cargar datos de fundación antes de continuar
+        // Cargar datos de fundación solo una vez desde handleLogin
         console.log('🔄 [handleLogin] Cargando datos de fundación...')
         await loadFoundationData()
         console.log('✅ [handleLogin] Datos de fundación cargados')
+
+        // Resetear la bandera después de un breve delay para permitir que el listener funcione en futuros logins
+        setTimeout(() => {
+            loginProcessedRef.current = false
+        }, 2000)
 
         // Verificar si hay returnUrl para redirigir después del login
         const params = new URLSearchParams(window.location.search)
@@ -785,7 +820,6 @@ export default function HomePage() {
             
             // Limpiar datos de fundación
             setFoundationData(null)
-            setFoundationDataLoading(false)
             
             // Limpiar estado de autenticación
             setIsAuthenticated(false)
@@ -893,30 +927,30 @@ export default function HomePage() {
         }
     }
 
-    // Mostrar loading mientras se verifica la sesión, se cargan datos de fundación, o se está cerrando sesión
-    // Esto evita que la interfaz se renderice antes de tener todos los datos necesarios
-    // Verificar esto ANTES de verificar currentScreen para evitar mostrar auth durante logout
-    if (isLoading || isLoggingOut || (isAuthenticated && foundationDataLoading && foundationData === null)) {
+    // Mostrar loading mientras se verifica la sesión o se está cerrando sesión
+    // NO bloquear la UI para cargar datos de fundación - se cargarán en segundo plano
+    // Esto evita que usuarios normales vean "Cargando datos de fundación..."
+    if (isLoading || isLoggingOut) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-dark flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
                     <p className="text-gray-600 dark:text-gray-400">
-                        {isLoggingOut ? 'Cerrando sesión...' : (isAuthenticated && foundationDataLoading ? 'Cargando datos de fundación...' : 'Cargando...')}
+                        {isLoggingOut ? 'Cerrando sesión...' : 'Cargando...'}
                     </p>
                 </div>
             </div>
         )
     }
 
-    // Mostrar pantalla de auth cuando se solicita
-    // Permitir mostrar auth si:
+    // Mostrar pantalla de auth cuando se solicita explícitamente
+    // Solo mostrar auth si:
     // 1. currentScreen es 'auth' Y hay parámetro ?auth=true, O
-    // 2. currentScreen es 'auth' Y el usuario no está autenticado (para permitir login)
+    // 2. currentScreen es 'auth' Y el usuario lo solicitó explícitamente (userRequestedAuth = true)
     const authParam = searchParams?.get('auth')
     
-    // Mostrar auth si está solicitado explícitamente o si el usuario no está autenticado y quiere iniciar sesión
-    if (currentScreen === 'auth' && (authParam === 'true' || !isAuthenticated)) {
+    // Mostrar auth SOLO si está explícitamente solicitado (parámetro o bandera del usuario)
+    if (currentScreen === 'auth' && (authParam === 'true' || userRequestedAuth)) {
         return <AuthModule onLogin={handleLogin} />
     }
 
@@ -1141,7 +1175,10 @@ export default function HomePage() {
                             ) : (
                                 <div className="flex space-x-2">
                                     <button
-                                        onClick={() => setCurrentScreen('auth')}
+                                        onClick={() => {
+                                            setUserRequestedAuth(true)
+                                            setCurrentScreen('auth')
+                                        }}
                                         className="btn-primary"
                                     >
                                         Iniciar Sesión
@@ -1259,7 +1296,10 @@ export default function HomePage() {
                         </>
                     ) : (
                         <button
-                            onClick={() => setCurrentScreen('auth')}
+                            onClick={() => {
+                                setUserRequestedAuth(true)
+                                setCurrentScreen('auth')
+                            }}
                             className="flex flex-col items-center space-y-1 p-2 text-gray-500 dark:text-gray-400 transition-colors"
                         >
                             <UserIcon className="w-6 h-6" />
