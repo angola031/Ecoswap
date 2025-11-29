@@ -61,6 +61,7 @@ export default function HomePage() {
     const [foundationDataLoading, setFoundationDataLoading] = useState(false) // Estado de carga de datos de fundación
     const [isNavigating, setIsNavigating] = useState(false) // Bandera para evitar que checkAuth interfiera
     const [hasInitialized, setHasInitialized] = useState(false) // Bandera para saber si ya se inicializó
+    const [isLoggingOut, setIsLoggingOut] = useState(false) // Bandera para bloquear renderizado durante logout
     const isLoadingFoundationDataRef = useRef(false) // Ref para evitar cargas simultáneas
     
     // Hook para notificaciones
@@ -758,10 +759,20 @@ export default function HomePage() {
         try {
             console.log('🚪 [handleLogout] Iniciando cierre de sesión...')
             
-            // Limpiar datos de fundación primero
+            // Establecer estado de logout primero para bloquear renderizado
+            setIsLoggingOut(true)
+            
+            // Limpiar datos de fundación
             setFoundationData(null)
+            setFoundationDataLoading(false)
+            
+            // Limpiar estado de autenticación
             setIsAuthenticated(false)
             setCurrentUser(null)
+            
+            // Cambiar a pantalla de auth para evitar renderizar módulos
+            setCurrentScreen('auth')
+            setCurrentModule('home')
             
             // Cerrar sesión en Supabase
             await logoutUser()
@@ -790,6 +801,18 @@ export default function HomePage() {
     )
 
     const renderModule = () => {
+        // No renderizar nada si se está cerrando sesión
+        if (isLoggingOut) {
+            return (
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="flex flex-col items-center space-y-4">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Cerrando sesión...</p>
+                    </div>
+                </div>
+            )
+        }
+        
         console.log('🎯 renderModule - currentModule:', currentModule)
         console.log('🏛️ isFoundation:', isFoundation)
         console.log('📦 foundationData:', foundationData)
@@ -855,9 +878,9 @@ export default function HomePage() {
         return <AuthModule onLogin={handleLogin} />
     }
 
-    // Mostrar loading mientras se verifica la sesión o se cargan datos de fundación
+    // Mostrar loading mientras se verifica la sesión, se cargan datos de fundación, o se está cerrando sesión
     // Esto evita que la interfaz se renderice antes de tener todos los datos necesarios
-    if (isLoading || (isAuthenticated && foundationDataLoading && foundationData === null)) {
+    if (isLoading || isLoggingOut || (isAuthenticated && foundationDataLoading && foundationData === null)) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-dark flex items-center justify-center">
                 <div className="text-center">
