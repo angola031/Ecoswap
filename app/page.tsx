@@ -755,12 +755,31 @@ export default function HomePage() {
     }
 
     const handleLogout = async () => {
-        await logoutUser()
-        setCurrentUser(null)
-        setIsAuthenticated(false)
-        setCurrentScreen('main')
-        setCurrentModule('products') // Volver a productos después del logout
-        localStorage.setItem('ecoswap_current_module', 'products')
+        try {
+            console.log('🚪 [handleLogout] Iniciando cierre de sesión...')
+            
+            // Limpiar datos de fundación primero
+            setFoundationData(null)
+            setIsAuthenticated(false)
+            setCurrentUser(null)
+            
+            // Cerrar sesión en Supabase
+            await logoutUser()
+            
+            console.log('✅ [handleLogout] Sesión cerrada correctamente')
+            
+            // Limpiar localStorage
+            localStorage.removeItem('ecoswap_current_module')
+            localStorage.removeItem('ecoswap_foundation_data')
+            
+            // Recargar la página para limpiar completamente el estado
+            // Esto es especialmente importante para fundaciones para que no se muestren donaciones
+            window.location.replace('/')
+        } catch (error) {
+            console.error('❌ [handleLogout] Error al cerrar sesión:', error)
+            // Aun así, recargar la página para limpiar el estado
+            window.location.replace('/')
+        }
     }
 
     // Componente de carga para lazy loading
