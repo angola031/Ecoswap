@@ -481,6 +481,9 @@ export default function AgregarProductoPage() {
         formData.publicationType === 'sale' ? 'venta' :
         formData.publicationType === 'exchange' ? 'intercambio' :
         formData.publicationType === 'donation' ? 'donacion' : 'intercambio' // 'both' -> 'intercambio'
+      
+      // Determinar si es intercambio (incluye 'both' y 'exchange')
+      const isExchange = formData.publicationType === 'exchange' || formData.publicationType === 'both'
 
       const productData = {
         titulo: formData.title,
@@ -492,8 +495,8 @@ export default function AgregarProductoPage() {
         categoria_nombre: formData.category || null,
         ubicacion_id: selectedUbicacionId || null,
         precio_negociable: true,
-        condiciones_intercambio: formData.publicationType.includes('exchange') ? 'Intercambio disponible' : null,
-        que_busco_cambio: formData.publicationType.includes('exchange') ? 'Productos de interés' : null,
+        condiciones_intercambio: isExchange ? 'Intercambio disponible' : null,
+        que_busco_cambio: isExchange ? 'Productos de interés' : null,
         etiquetas: formData.tags,
         especificaciones: formData.specifications
       }
