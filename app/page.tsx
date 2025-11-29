@@ -1187,16 +1187,6 @@ export default function HomePage() {
                                     </span>
                                 )}
                             </button>
-
-                            {/* Logout móvil */}
-                            <button
-                                onClick={handleLogout}
-                                className="flex flex-col items-center space-y-1 p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                                title="Cerrar sesión"
-                            >
-                                <ArrowRightOnRectangleIcon className="w-6 h-6" />
-                                <span className="text-[0.65rem]">Salir</span>
-                            </button>
                         </>
                     ) : (
                         <button
