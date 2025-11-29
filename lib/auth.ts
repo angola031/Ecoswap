@@ -783,19 +783,60 @@ export async function isUserVerified(): Promise<boolean> {
         }
 
         // Buscar el usuario por auth_user_id en lugar de email
+        // Incluir campos de fundación para validar si es fundación verificada
         const { data: usuario, error } = await supabase
             .from('usuario')
-            .select('verificado')
+            .select('verificado, es_fundacion, fundacion_verificada')
             .eq('auth_user_id', user.id)
             .single()
 
-
         if (error || !usuario) {
+            console.log('❌ isUserVerified: Usuario no encontrado o error:', error)
             return false
         }
         
-        const isVerified = usuario.verificado === true
-        return isVerified
+        console.log('🔍 isUserVerified: Datos del usuario:', {
+            verificado: usuario.verificado,
+            es_fundacion: usuario.es_fundacion,
+            fundacion_verificada: usuario.fundacion_verificada
+        })
+        
+        // Verificar si es fundación
+        const isFoundation = usuario.es_fundacion === true || 
+                           usuario.es_fundacion === 'true' || 
+                           usuario.es_fundacion === 1
+        
+        // Si es fundación, verificar que la fundación esté verificada
+        // Para fundaciones verificadas, se considera verificado aunque el campo 'verificado' sea false
+        if (isFoundation) {
+            console.log('🔍 isUserVerified: Usuario es fundación, verificando fundacion_verificada...')
+            const isFoundationVerified = usuario.fundacion_verificada === true || 
+                                       usuario.fundacion_verificada === 'true' || 
+                                       usuario.fundacion_verificada === 1
+            
+            console.log('🔍 isUserVerified: fundacion_verificada:', usuario.fundacion_verificada, 'isVerified:', isFoundationVerified)
+            
+            if (isFoundationVerified) {
+                console.log('✅ isUserVerified: Fundación verificada correctamente')
+                return true
+            } else {
+                console.log('❌ isUserVerified: Fundación no verificada')
+                return false
+            }
+        }
+        
+        // Si no es fundación, verificar que el usuario esté verificado normalmente
+        const isUserVerified = usuario.verificado === true || 
+                              usuario.verificado === 'true' || 
+                              usuario.verificado === 1
+        
+        if (!isUserVerified) {
+            console.log('❌ isUserVerified: Usuario no verificado (verificado = false)')
+            return false
+        }
+        
+        console.log('✅ isUserVerified: Usuario verificado (no es fundación)')
+        return true
     } catch (error) {
         console.error('❌ ERROR: isUserVerified - Error verificando estado del usuario:', error)
         return false

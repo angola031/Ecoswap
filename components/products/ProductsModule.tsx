@@ -128,8 +128,8 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
         loadCategories()
     }, [])
 
-    // Cargar productos desde la API
     // Verificar si el usuario es fundación verificada y obtener su ubicación
+    // Esto debe ejecutarse ANTES de cargar productos
     useEffect(() => {
         const checkFoundationAndLocation = async () => {
             if (!currentUser) {
@@ -142,9 +142,13 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                 const supabase = (await import('@/lib/supabase-client')).getSupabaseClient()
                 const { data: { session } } = await supabase.auth.getSession()
                 
-                if (!session?.access_token) return
+                if (!session?.access_token) {
+                    setIsFoundationVerified(false)
+                    setUserLocation(null)
+                    return
+                }
 
-                // Verificar si es fundación
+                // Verificar si es fundación verificada
                 const response = await fetch('/api/foundation/register', {
                     headers: {
                         'Authorization': `Bearer ${session.access_token}`
@@ -153,10 +157,12 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
 
                 if (response.ok) {
                     const data = await response.json()
-                    setIsFoundationVerified(
-                        data.foundation?.es_fundacion === true && 
-                        data.foundation?.fundacion_verificada === true
-                    )
+                    const isVerified = data.foundation?.es_fundacion === true && 
+                                     data.foundation?.fundacion_verificada === true
+                    setIsFoundationVerified(isVerified)
+                    console.log('🔍 [ProductsModule] Fundación verificada:', isVerified, data.foundation)
+                } else {
+                    setIsFoundationVerified(false)
                 }
 
                 // Obtener ubicación del usuario
@@ -195,8 +201,19 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
             setIsLoading(true)
 
             try {
-                // Llamar a la API de productos públicos
-                const response = await fetch('/api/products/public?limit=20')
+                // Obtener token de sesión para que la API pueda verificar si es fundación
+                const supabase = (await import('@/lib/supabase-client')).getSupabaseClient()
+                const { data: { session } } = await supabase.auth.getSession()
+                
+                // Llamar a la API de productos públicos con token si está disponible
+                const headers: HeadersInit = {}
+                if (session?.access_token) {
+                    headers['Authorization'] = `Bearer ${session.access_token}`
+                }
+                
+                const response = await fetch('/api/products/public?limit=20', {
+                    headers
+                })
                 
                 if (!response.ok) {
                     throw new Error('Error al cargar productos')
@@ -204,6 +221,9 @@ export default function ProductsModule({ currentUser }: ProductsModuleProps) {
                 
                 const data = await response.json()
                 const productos = data.productos || []
+                
+                console.log('📦 [ProductsModule] Productos cargados:', productos.length)
+                console.log('📦 [ProductsModule] Productos de donación:', productos.filter((p: any) => p.tipo_transaccion === 'donacion').length)
                 
                 // Transformar los datos de la API al formato esperado
                 const transformedProducts: Product[] = productos.map((p: any) => {

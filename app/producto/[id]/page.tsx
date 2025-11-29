@@ -841,26 +841,19 @@ export default function ProductDetailPage() {
         router.push(`/?returnUrl=${encodeURIComponent(window.location.pathname)}&auth=true`)
         return
       }
-      // Verificación de identidad: si el usuario no está verificado, redirigir a verificación
-      try {
-        const { data: dbUser } = await supabase
-          .from('usuario')
-          .select('verificado')
-          .eq('email', session.user?.email)
-          .single()
-        if (!dbUser?.verificado) {
-          await (window as any).Swal.fire({
-            title: 'Verificación requerida',
-            text: 'Debes verificar tu identidad para iniciar un chat con el vendedor.',
-            icon: 'info',
-            confirmButtonText: 'Ir a Verificación',
-            confirmButtonColor: '#3B82F6'
-          })
-          router.push('/verificacion-identidad')
-          return
-        }
-      } catch (_) {
-        // Si falla la consulta, por seguridad pide verificación
+      
+      // Verificación de identidad: usar isUserVerified que maneja fundaciones
+      const { isUserVerified } = await import('@/lib/auth')
+      const isVerified = await isUserVerified()
+      
+      if (!isVerified) {
+        await (window as any).Swal.fire({
+          title: 'Verificación requerida',
+          text: 'Debes verificar tu identidad para iniciar un chat con el vendedor.',
+          icon: 'info',
+          confirmButtonText: 'Ir a Verificación',
+          confirmButtonColor: '#3B82F6'
+        })
         router.push('/verificacion-identidad')
         return
       }
