@@ -660,14 +660,20 @@ export default function HomePage() {
 
     // Corregir estado si currentScreen es 'auth' pero no se solicitó explícitamente
     // Esto evita mostrar la pantalla de login después del logout
+    // PERO solo si no hay sesión y no se está navegando activamente
     useEffect(() => {
         const authParam = searchParams?.get('auth')
-        if (currentScreen === 'auth' && authParam !== 'true') {
-            console.log('🔄 Corrigiendo estado: auth sin parámetro, cambiando a productos')
+        // Solo corregir si:
+        // 1. currentScreen es 'auth'
+        // 2. No hay parámetro ?auth=true
+        // 3. No hay sesión activa (para permitir login cuando se necesita)
+        // 4. No se está navegando (para permitir cuando el usuario hace clic en "Iniciar Sesión")
+        if (currentScreen === 'auth' && authParam !== 'true' && !isAuthenticated && !isNavigating && hasInitialized) {
+            console.log('🔄 Corrigiendo estado: auth sin parámetro después de logout, cambiando a productos')
             setCurrentScreen('main')
             setCurrentModule('products')
         }
-    }, [currentScreen, searchParams])
+    }, [currentScreen, searchParams, isAuthenticated, isNavigating, hasInitialized])
 
     // Cargar datos de fundación con timeout
     const loadFoundationData = async (): Promise<void> => {
@@ -903,14 +909,14 @@ export default function HomePage() {
         )
     }
 
-    // Solo mostrar pantalla de auth si está explícitamente solicitada (con parámetro ?auth=true)
-    // Después de logout, siempre mostrar productos, no auth
+    // Mostrar pantalla de auth cuando se solicita
+    // Permitir mostrar auth si:
+    // 1. currentScreen es 'auth' Y hay parámetro ?auth=true, O
+    // 2. currentScreen es 'auth' Y el usuario no está autenticado (para permitir login)
     const authParam = searchParams?.get('auth')
     
-    // Solo mostrar auth si está explícitamente solicitado con ?auth=true
-    // Si currentScreen es 'auth' pero no hay parámetro, el useEffect lo corregirá
-    // pero mientras tanto, no renderizar auth para evitar flash de pantalla de login
-    if (currentScreen === 'auth' && authParam === 'true') {
+    // Mostrar auth si está solicitado explícitamente o si el usuario no está autenticado y quiere iniciar sesión
+    if (currentScreen === 'auth' && (authParam === 'true' || !isAuthenticated)) {
         return <AuthModule onLogin={handleLogin} />
     }
 
