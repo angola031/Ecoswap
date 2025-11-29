@@ -81,18 +81,71 @@ export default function HomePage() {
         try {
             console.log('🔄 Verificando sesión después de actividad...')
             
-            // Usar ensureValidSession para refrescar si es necesario
-            const isValid = await ensureValidSession()
+            const supabase = getSupabaseClient()
+            if (!supabase) {
+                console.log('⚠️ Supabase no está configurado')
+                return
+            }
+
+            // Obtener sesión actual
+            let { data: { session }, error } = await supabase.auth.getSession()
             
-            if (isValid) {
-                console.log('✅ Sesión válida después de actividad')
-                setCurrentScreen('main')
-                setTimeoutMessage('') // Limpiar mensaje de timeout
-                // Nota: no recargamos datos de fundación aquí para evitar sobrecargar la página.
-                //       La restauración inicial ya los carga mediante checkAuth().
-                console.log('✅ Estado restaurado correctamente (sin recargar datos de fundación)')
-            } else {
+            if (error || !session) {
                 console.log('⚠️ No hay sesión válida después de actividad')
+                setIsAuthenticated(false)
+                setCurrentUser(null)
+                setCurrentScreen('main')
+                return
+            }
+
+            // Verificar si el token está próximo a expirar o ya expiró
+            const now = Math.floor(Date.now() / 1000)
+            const expiresAt = session.expires_at || 0
+            const timeUntilExpiry = expiresAt - now
+
+            // Si el token expira en menos de 5 minutos o ya expiró, refrescarlo
+            if (timeUntilExpiry < 300) {
+                console.log('🔄 Token expirado o próximo a expirar, refrescando...')
+                const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+                
+                if (refreshError || !refreshedSession) {
+                    console.error('❌ Error refrescando sesión:', refreshError)
+                    setIsAuthenticated(false)
+                    setCurrentUser(null)
+                    setCurrentScreen('main')
+                    return
+                }
+
+                console.log('✅ Sesión refrescada exitosamente')
+                session = refreshedSession
+            }
+
+            // SIEMPRE cargar el usuario completo para restaurar el estado
+            console.log('🔄 Cargando datos del usuario después de actividad...')
+            try {
+                const user = await getCurrentUser()
+                if (user) {
+                    setCurrentUser(user)
+                    setIsAuthenticated(true)
+                    setCurrentScreen('main')
+                    setTimeoutMessage('') // Limpiar mensaje de timeout
+                    console.log('✅ Usuario cargado exitosamente:', user.name)
+                    
+                    // Cargar datos de fundación si no están cargados
+                    if (foundationData === null && !isLoadingFoundationDataRef.current) {
+                        console.log('🔄 Cargando datos de fundación después de actividad...')
+                        await loadFoundationData()
+                    }
+                    
+                    console.log('✅ Estado restaurado correctamente después de actividad')
+                } else {
+                    console.log('⚠️ No se pudo cargar el usuario')
+                    setIsAuthenticated(false)
+                    setCurrentUser(null)
+                    setCurrentScreen('main')
+                }
+            } catch (error) {
+                console.error('❌ Error cargando usuario después de actividad:', error)
                 setIsAuthenticated(false)
                 setCurrentUser(null)
                 setCurrentScreen('main')
@@ -101,6 +154,7 @@ export default function HomePage() {
             console.error('Error verificando sesión después de actividad:', error)
             setIsAuthenticated(false)
             setCurrentUser(null)
+            setCurrentScreen('main')
         }
     }
 
@@ -136,15 +190,24 @@ export default function HomePage() {
                 session = refreshedSession
             }
 
-            // Actualizar usuario si no está cargado
-            if (!currentUser && session) {
-                console.log('🔄 Cargando datos del usuario después de refresh...')
+            // SIEMPRE verificar y cargar el usuario si la sesión es válida
+            // Esto asegura que el estado se restaure correctamente después de inactividad
+            if (session) {
+                console.log('🔄 Verificando y cargando datos del usuario...')
                 try {
                     const user = await getCurrentUser()
                     if (user) {
-                        setCurrentUser(user)
-                        setIsAuthenticated(true)
-                        console.log('✅ Usuario cargado exitosamente')
+                        // Solo actualizar si el usuario es diferente o no está cargado
+                        if (!currentUser || currentUser.email !== user.email) {
+                            setCurrentUser(user)
+                            setIsAuthenticated(true)
+                            console.log('✅ Usuario cargado/actualizado exitosamente')
+                        } else {
+                            console.log('✅ Usuario ya está cargado y es el mismo')
+                        }
+                    } else {
+                        console.log('⚠️ No se pudo obtener el usuario')
+                        return false
                     }
                 } catch (error) {
                     console.error('❌ Error cargando usuario:', error)
