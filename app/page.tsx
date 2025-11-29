@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
@@ -58,8 +58,10 @@ export default function HomePage() {
     const [isLoading, setIsLoading] = useState(true)
     const [timeoutMessage, setTimeoutMessage] = useState<string>('')
     const [foundationData, setFoundationData] = useState<any>(null)
+    const [foundationDataLoading, setFoundationDataLoading] = useState(false) // Estado de carga de datos de fundación
     const [isNavigating, setIsNavigating] = useState(false) // Bandera para evitar que checkAuth interfiera
     const [hasInitialized, setHasInitialized] = useState(false) // Bandera para saber si ya se inicializó
+    const isLoadingFoundationDataRef = useRef(false) // Ref para evitar cargas simultáneas
     
     // Hook para notificaciones
     const { unreadCount, loading: notificationsLoading } = useNotifications()
@@ -316,8 +318,10 @@ export default function HomePage() {
                         setIsAuthenticated(true)
                         setCurrentScreen('main')
                         setTimeoutMessage('') // Limpiar mensaje de timeout
-                        // No llamamos aquí a loadFoundationData para evitar múltiples cargas simultáneas.
-                        // handleLogin/checkAuth se encargan de cargar datos de fundación cuando corresponde.
+                        // Cargar datos de fundación cuando se detecta SIGNED_IN
+                        console.log('🔄 [SIGNED_IN] Cargando datos de fundación...')
+                        await loadFoundationData()
+                        console.log('✅ [SIGNED_IN] Datos de fundación cargados')
                         console.log('✅ Estado actualizado: isAuthenticated=true, currentUser=', user.name)
                         
                         // Verificar si es administrador y redirigir
@@ -510,10 +514,10 @@ export default function HomePage() {
                 if (user) {
                     console.log('✅ Usuario encontrado, configurando estado...')
                     
-                    // Cargar datos de fundación en paralelo (no bloquear)
-                    loadFoundationData().catch(err => 
-                        console.error('Error en loadFoundationData:', err)
-                    )
+                    // Cargar datos de fundación antes de continuar (bloquear para asegurar que se carguen)
+                    console.log('🔄 [checkAuth] Cargando datos de fundación...')
+                    await loadFoundationData()
+                    console.log('✅ [checkAuth] Datos de fundación cargados')
                     
                     // Verificar si es administrador usando la función isUserAdmin
                     try {
@@ -650,19 +654,34 @@ export default function HomePage() {
     }, []) // Solo ejecutar una vez al montar el componente
 
     // Cargar datos de fundación con timeout
-    const loadFoundationData = async () => {
+    const loadFoundationData = async (): Promise<void> => {
         try {
             // Evitar recargas innecesarias si ya tenemos datos en memoria
             if (foundationData !== null) {
                 console.log('ℹ️ Datos de fundación ya cargados en memoria, omitiendo nueva petición')
                 return
             }
+            
+            // Evitar cargas simultáneas
+            if (isLoadingFoundationDataRef.current || foundationDataLoading) {
+                console.log('⏳ Datos de fundación ya se están cargando, esperando...')
+                // Esperar hasta que termine la carga actual
+                while (isLoadingFoundationDataRef.current || foundationDataLoading) {
+                    await new Promise(resolve => setTimeout(resolve, 100))
+                }
+                return
+            }
 
+            isLoadingFoundationDataRef.current = true
+            setFoundationDataLoading(true)
+            console.log('🔄 [loadFoundationData] Iniciando carga de datos de fundación...')
             const supabase = getSupabaseClient()
             const { data: { session } } = await supabase.auth.getSession()
             
             if (!session?.access_token) {
                 console.log('⚠️ No hay sesión para cargar datos de fundación')
+                setFoundationDataLoading(false)
+                isLoadingFoundationDataRef.current = false
                 return
             }
 
@@ -684,16 +703,19 @@ export default function HomePage() {
 
             if (response.ok) {
                 const data = await response.json()
-                setFoundationData(data.foundation)
+                setFoundationData(data.foundation || null)
                 if (data.foundation?.es_fundacion) {
                     console.log('✅ Datos de fundación cargados:', data.foundation.nombre_fundacion)
                     console.log('🏛️ Es fundación:', data.foundation.es_fundacion)
                     console.log('✔️ Verificada:', data.foundation.fundacion_verificada)
                 } else {
                     console.log('ℹ️ Usuario no es fundación')
+                    // Asegurar que foundationData sea null si no es fundación
+                    setFoundationData(null)
                 }
             } else {
                 console.log('⚠️ No se encontraron datos de fundación para este usuario')
+                setFoundationData(null)
             }
         } catch (error: any) {
             if (error.message === 'Timeout') {
@@ -701,7 +723,12 @@ export default function HomePage() {
             } else {
                 console.error('❌ Error cargando datos de fundación:', error)
             }
+            setFoundationData(null)
             // No bloquear la aplicación si falla la carga de datos de fundación
+        } finally {
+            setFoundationDataLoading(false)
+            isLoadingFoundationDataRef.current = false
+            console.log('✅ [loadFoundationData] Carga de datos de fundación completada')
         }
     }
 
@@ -710,6 +737,11 @@ export default function HomePage() {
         setIsAuthenticated(true)
         setCurrentScreen('main')
         localStorage.setItem('ecoswap_user', JSON.stringify(userData))
+
+        // Cargar datos de fundación antes de continuar
+        console.log('🔄 [handleLogin] Cargando datos de fundación...')
+        await loadFoundationData()
+        console.log('✅ [handleLogin] Datos de fundación cargados')
 
         // Verificar si hay returnUrl para redirigir después del login
         const params = new URLSearchParams(window.location.search)
@@ -804,13 +836,16 @@ export default function HomePage() {
         return <AuthModule onLogin={handleLogin} />
     }
 
-    // Mostrar loading mientras se verifica la sesión para evitar mostrar login temporalmente
-    if (isLoading) {
+    // Mostrar loading mientras se verifica la sesión o se cargan datos de fundación
+    // Esto evita que la interfaz se renderice antes de tener todos los datos necesarios
+    if (isLoading || (isAuthenticated && foundationDataLoading && foundationData === null)) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-dark flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400">Cargando...</p>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        {isAuthenticated && foundationDataLoading ? 'Cargando datos de fundación...' : 'Cargando...'}
+                    </p>
                 </div>
             </div>
         )
