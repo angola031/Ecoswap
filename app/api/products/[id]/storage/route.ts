@@ -191,14 +191,13 @@ export async function POST(
     if (upErr) {
       console.error('❌ Error subiendo imagen a Storage:', {
         error: upErr.message,
-        statusCode: upErr.statusCode,
+        name: upErr.name,
         path: storagePath,
         bucket: 'Ecoswap'
       })
       return NextResponse.json({ 
         error: 'Error subiendo imagen al storage', 
-        details: upErr.message,
-        statusCode: upErr.statusCode 
+        details: upErr.message
       }, { status: 500 })
     }
 
