@@ -604,12 +604,12 @@ export default function HomePage() {
                     const auth = params.get('auth')
                     
                     if (auth === 'true') {
-                        // Mostrar interfaz de login
+                        // Mostrar interfaz de login solo si el parámetro auth=true está explícitamente presente
                         setCurrentScreen('auth')
                         setIsAuthenticated(false)
-                        console.log('🔐 Mostrando pantalla de autenticación')
+                        console.log('🔐 Mostrando pantalla de autenticación (solicitada)')
                     } else {
-                        // Mostrar productos por defecto
+                        // Si no hay sesión y no se solicita auth explícitamente, mostrar productos directamente
                         setCurrentScreen('main')
                         const savedModule = localStorage.getItem('ecoswap_current_module')
                         const m = params.get('m')
@@ -619,14 +619,18 @@ export default function HomePage() {
                         const isSavedModuleProtected = savedModule && protectedModules.includes(savedModule)
                         
                         // Solo usar módulo guardado si no es protegido (ya que no hay sesión)
+                        // Si el módulo guardado es 'products' o no existe, usar 'products'
                         let moduleToSet = m || (!isSavedModuleProtected ? savedModule : null) || 'products'
                         
-                        setCurrentModule(moduleToSet)
-                        if (m || (moduleToSet && !isSavedModuleProtected)) {
-                            localStorage.setItem('ecoswap_current_module', moduleToSet)
+                        // Asegurar que después del logout siempre se muestre productos
+                        if (!moduleToSet || protectedModules.includes(moduleToSet)) {
+                            moduleToSet = 'products'
                         }
+                        
+                        setCurrentModule(moduleToSet)
+                        localStorage.setItem('ecoswap_current_module', moduleToSet)
                         setIsAuthenticated(false)
-                        console.log('🏠 Mostrando pantalla principal sin autenticación')
+                        console.log('🏠 Mostrando productos por defecto (sin autenticación)')
                     }
                 }
             } catch (error) {
@@ -653,6 +657,17 @@ export default function HomePage() {
             checkAuth()
         }
     }, []) // Solo ejecutar una vez al montar el componente
+
+    // Corregir estado si currentScreen es 'auth' pero no se solicitó explícitamente
+    // Esto evita mostrar la pantalla de login después del logout
+    useEffect(() => {
+        const authParam = searchParams?.get('auth')
+        if (currentScreen === 'auth' && authParam !== 'true') {
+            console.log('🔄 Corrigiendo estado: auth sin parámetro, cambiando a productos')
+            setCurrentScreen('main')
+            setCurrentModule('products')
+        }
+    }, [currentScreen, searchParams])
 
     // Cargar datos de fundación con timeout
     const loadFoundationData = async (): Promise<void> => {
@@ -770,10 +785,6 @@ export default function HomePage() {
             setIsAuthenticated(false)
             setCurrentUser(null)
             
-            // Cambiar a pantalla de auth para evitar renderizar módulos
-            setCurrentScreen('auth')
-            setCurrentModule('home')
-            
             // Cerrar sesión en Supabase
             await logoutUser()
             
@@ -782,6 +793,9 @@ export default function HomePage() {
             // Limpiar localStorage
             localStorage.removeItem('ecoswap_current_module')
             localStorage.removeItem('ecoswap_foundation_data')
+            
+            // Establecer productos como módulo por defecto para después del reload
+            localStorage.setItem('ecoswap_current_module', 'products')
             
             // Recargar la página para limpiar completamente el estado
             // Esto es especialmente importante para fundaciones para que no se muestren donaciones
@@ -873,24 +887,31 @@ export default function HomePage() {
         }
     }
 
-    // Si no está autenticado y quiere acceder a módulos que requieren login
-    if (currentScreen === 'auth') {
-        return <AuthModule onLogin={handleLogin} />
-    }
-
     // Mostrar loading mientras se verifica la sesión, se cargan datos de fundación, o se está cerrando sesión
     // Esto evita que la interfaz se renderice antes de tener todos los datos necesarios
+    // Verificar esto ANTES de verificar currentScreen para evitar mostrar auth durante logout
     if (isLoading || isLoggingOut || (isAuthenticated && foundationDataLoading && foundationData === null)) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-dark flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
                     <p className="text-gray-600 dark:text-gray-400">
-                        {isAuthenticated && foundationDataLoading ? 'Cargando datos de fundación...' : 'Cargando...'}
+                        {isLoggingOut ? 'Cerrando sesión...' : (isAuthenticated && foundationDataLoading ? 'Cargando datos de fundación...' : 'Cargando...')}
                     </p>
                 </div>
             </div>
         )
+    }
+
+    // Solo mostrar pantalla de auth si está explícitamente solicitada (con parámetro ?auth=true)
+    // Después de logout, siempre mostrar productos, no auth
+    const authParam = searchParams?.get('auth')
+    
+    // Solo mostrar auth si está explícitamente solicitado con ?auth=true
+    // Si currentScreen es 'auth' pero no hay parámetro, el useEffect lo corregirá
+    // pero mientras tanto, no renderizar auth para evitar flash de pantalla de login
+    if (currentScreen === 'auth' && authParam === 'true') {
+        return <AuthModule onLogin={handleLogin} />
     }
 
     return (
