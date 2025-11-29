@@ -501,6 +501,15 @@ export default function AgregarProductoPage() {
         especificaciones: formData.specifications
       }
 
+      console.log('📦 Datos del producto a enviar:', {
+        tipo: formData.publicationType,
+        tipoTransaccionDb,
+        isExchange,
+        precio: productData.precio,
+        que_busco_cambio: productData.que_busco_cambio,
+        condiciones_intercambio: productData.condiciones_intercambio
+      })
+
       // Enviar producto a la API
       console.log('🔍 handleSubmit: Obteniendo token final para API...')
       const finalToken = await getAccessToken()
@@ -531,38 +540,133 @@ export default function AgregarProductoPage() {
 
       // Subir imágenes vía endpoint con Service Role y registrar en BD
       if (images.length > 0 && result.producto?.producto_id) {
+        console.log(`📸 Iniciando subida de ${images.length} imagen(es)...`)
         const uploadedImages = [] as Array<{ producto_id: number, url_imagen: string, es_principal: boolean, orden: number }>
+        
         for (let i = 0; i < images.length; i++) {
           const file = images[i]
+          console.log(`📤 Subiendo imagen ${i + 1}/${images.length}:`, {
+            name: file.name,
+            type: file.type,
+            size: file.size
+          })
+          
           const formDataUpload = new FormData()
           formDataUpload.append('image', file)
           formDataUpload.append('ownerUserId', String(result.producto.user_id))
           formDataUpload.append('index', String(i + 1))
-          const uploadResp = await fetch(`/api/products/${result.producto.producto_id}/storage`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${finalToken}` },
-            body: formDataUpload
-          })
-          if (!uploadResp.ok) {
-            const msg = await uploadResp.text()
-            console.error('❌ Error subiendo imagen:', msg)
-            continue
+          
+          try {
+            const uploadResp = await fetch(`/api/products/${result.producto.producto_id}/storage`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${finalToken}` },
+              body: formDataUpload
+            })
+            
+            if (!uploadResp.ok) {
+              let errorData: any = {}
+              let errorText = ''
+              try {
+                errorData = await uploadResp.json()
+              } catch {
+                errorText = await uploadResp.text()
+                errorData = { error: errorText }
+              }
+              
+              const errorMessage = errorData.error || errorData.details || errorData.message || errorText || 'Error desconocido'
+              
+              if (typeof console !== 'undefined' && console.error) {
+                console.error(`❌ Error subiendo imagen ${i + 1}:`, {
+                  status: uploadResp.status,
+                  statusText: uploadResp.statusText,
+                  error: errorData,
+                  errorMessage
+                })
+              }
+              
+              // Mostrar error específico al usuario con más detalles
+              (window as any).Swal.fire({
+                title: `Error al subir imagen ${i + 1}`,
+                html: `<p>${errorMessage}</p>${errorData.stack ? `<pre style="font-size: 10px; text-align: left; overflow: auto; max-height: 200px;">${errorData.stack}</pre>` : ''}`,
+                icon: 'error',
+                confirmButtonText: 'Continuar',
+                width: '600px'
+              })
+              continue
+            }
+            
+            const uploadResult = await uploadResp.json()
+            console.log(`✅ Imagen ${i + 1} subida exitosamente:`, uploadResult)
+            
+            if (!uploadResult.url) {
+              if (typeof console !== 'undefined' && console.error) {
+                console.error('⚠️ La respuesta no incluye URL:', uploadResult)
+              }
+              continue
+            }
+            
+            uploadedImages.push({
+              producto_id: result.producto.producto_id,
+              url_imagen: uploadResult.url,
+              es_principal: i === 0,
+              orden: uploadResult.index || i + 1
+            })
+          } catch (error) {
+            if (typeof console !== 'undefined' && console.error) {
+              console.error(`❌ Error inesperado subiendo imagen ${i + 1}:`, error)
+            }
+            (window as any).Swal.fire({
+              title: 'Error inesperado',
+              text: `Error al subir la imagen ${i + 1}: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+              icon: 'error',
+              confirmButtonText: 'Continuar'
+            })
           }
-          const { url, index } = await uploadResp.json()
-          uploadedImages.push({
-            producto_id: result.producto.producto_id,
-            url_imagen: url,
-            es_principal: i === 0,
-            orden: index
-          })
         }
+        
         if (uploadedImages.length > 0) {
+          console.log(`💾 Guardando ${uploadedImages.length} imagen(es) en la base de datos...`)
           const imagesResponse = await fetch('/api/products/images', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${finalToken}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ producto_id: result.producto.producto_id, imagenes: uploadedImages })
           })
-          console.log('📡 Formulario: Respuesta de la API de imágenes:', { status: imagesResponse.status, ok: imagesResponse.ok })
+          
+          if (!imagesResponse.ok) {
+            let errorData: any = {}
+            try {
+              errorData = await imagesResponse.json()
+            } catch {
+              const errorText = await imagesResponse.text()
+              errorData = { error: errorText }
+            }
+            
+            if (typeof console !== 'undefined' && console.error) {
+              console.error('❌ Error guardando imágenes en BD:', {
+                status: imagesResponse.status,
+                error: errorData
+              })
+            }
+            (window as any).Swal.fire({
+              title: 'Error al guardar imágenes',
+              text: `Las imágenes se subieron pero no se guardaron en la base de datos: ${errorData.error || 'Error desconocido'}`,
+              icon: 'warning',
+              confirmButtonText: 'Aceptar'
+            })
+          } else {
+            const imagesResult = await imagesResponse.json()
+            console.log('✅ Imágenes guardadas en BD:', imagesResult)
+          }
+        } else {
+          if (typeof console !== 'undefined' && console.warn) {
+            console.warn('⚠️ No se subieron imágenes exitosamente')
+          }
+          (window as any).Swal.fire({
+            title: 'Advertencia',
+            text: 'El producto se creó pero no se pudieron subir las imágenes. Puedes editarlas más tarde.',
+            icon: 'warning',
+            confirmButtonText: 'Aceptar'
+          })
         }
       }
 
@@ -577,8 +681,8 @@ export default function AgregarProductoPage() {
       // Redirigir a productos
       router.push('/')
     } catch (error) {
-      // Log error without using console.error (which gets removed in production)
-      if (process.env.NODE_ENV === 'development') {
+      // Log error
+      if (typeof console !== 'undefined' && console.error) {
         console.error('Error al enviar producto:', error)
       }
       (window as any).Swal.fire({

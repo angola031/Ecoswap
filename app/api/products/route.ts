@@ -115,14 +115,27 @@ export async function POST(req: NextRequest) {
             console.warn('⚠️ API Products: no se pudo resolver categoria:', catErr)
         }
 
-        // Para tipo 'intercambio', asegurar que que_busco_cambio tenga un valor válido si viene
-        // Si tipo es 'intercambio' y que_busco_cambio está vacío/null, usar valor por defecto
-        let queBuscoCambioFinal = que_busco_cambio
+        // Para tipo 'intercambio', asegurar que que_busco_cambio tenga un valor válido
+        // La restricción chk_intercambio_busco requiere que si tipo_transaccion='intercambio', 
+        // entonces que_busco_cambio NO debe ser null ni vacío
+        let queBuscoCambioFinal: string | null = null
         if (tipo_transaccion === 'intercambio') {
-            if (!queBuscoCambioFinal || queBuscoCambioFinal.trim() === '') {
+            // Si viene un valor, usarlo (puede venir de 'both' o 'exchange')
+            if (que_busco_cambio && typeof que_busco_cambio === 'string' && que_busco_cambio.trim() !== '') {
+                queBuscoCambioFinal = que_busco_cambio.trim()
+            } else {
+                // Si no viene o está vacío, usar valor por defecto para cumplir la restricción
                 queBuscoCambioFinal = 'Productos de interés'
             }
         }
+        
+        console.log('🔍 API Products: Configuración de intercambio:', {
+            tipo_transaccion,
+            que_busco_cambio_original: que_busco_cambio,
+            queBuscoCambioFinal,
+            precio,
+            condiciones_intercambio
+        })
 
         const payload: any = {
             user_id: u.user_id,

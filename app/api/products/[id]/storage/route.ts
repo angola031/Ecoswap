@@ -6,10 +6,35 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
   try {
-    const productoId = params.id
+    // Manejar params que puede ser Promise (Next.js 15+) o objeto directo
+    let productoId: string
+    try {
+      const resolvedParams = await Promise.resolve(params)
+      productoId = resolvedParams.id
+    } catch (paramError: any) {
+      console.error('❌ Error obteniendo params:', paramError)
+      // Intentar como objeto directo (Next.js < 15)
+      if (typeof params === 'object' && 'id' in params && !('then' in params)) {
+        productoId = (params as { id: string }).id
+      } else {
+        return NextResponse.json({ 
+          error: 'Error procesando parámetros de ruta',
+          details: paramError?.message || 'Params inválidos'
+        }, { status: 400 })
+      }
+    }
+    
+    console.log('🔍 Storage endpoint - productoId:', productoId)
+    
+    if (!productoId) {
+      return NextResponse.json({ 
+        error: 'ID de producto requerido',
+        details: `params: ${JSON.stringify(params)}`
+      }, { status: 400 })
+    }
     const supabase = getSupabaseClient()
     if (!supabase) return NextResponse.json({ error: 'Supabase no configurado' }, { status: 500 })
 
@@ -25,27 +50,102 @@ export async function POST(
     const file = form.get('image') as File | null
     const ownerUserIdStr = form.get('ownerUserId') as string | null
     const indexStr = form.get('index') as string | null
+    
+    console.log('📋 Datos recibidos del formulario:', {
+      hasFile: !!file,
+      fileType: file?.type,
+      fileSize: file?.size,
+      ownerUserIdStr,
+      indexStr,
+      productoId
+    })
+    
     if (!file || !ownerUserIdStr) {
-      return NextResponse.json({ error: 'image y ownerUserId son requeridos' }, { status: 400 })
+      console.error('❌ Faltan datos requeridos:', { hasFile: !!file, hasOwnerUserId: !!ownerUserIdStr })
+      return NextResponse.json({ 
+        error: 'image y ownerUserId son requeridos',
+        details: `file: ${!!file}, ownerUserId: ${!!ownerUserIdStr}`
+      }, { status: 400 })
     }
+    
     const ownerUserId = Number(ownerUserIdStr)
+    if (isNaN(ownerUserId)) {
+      console.error('❌ ownerUserId no es un número válido:', ownerUserIdStr)
+      return NextResponse.json({ 
+        error: 'ownerUserId debe ser un número válido',
+        details: `recibido: ${ownerUserIdStr}`
+      }, { status: 400 })
+    }
 
     // Verificar propiedad del producto
+    console.log('🔍 Verificando producto:', productoId)
     const { data: prod, error: prodErr } = await supabase
       .from('producto')
       .select('producto_id, user_id')
       .eq('producto_id', productoId)
       .single()
-    if (prodErr || !prod) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 })
-    // Opcional: verificar que el usuario es dueño por email/tabla usuario si aplica
+    
+    if (prodErr) {
+      console.error('❌ Error verificando producto:', prodErr)
+      return NextResponse.json({ 
+        error: 'Error verificando producto',
+        details: prodErr.message 
+      }, { status: 500 })
+    }
+    
+    if (!prod) {
+      console.error('❌ Producto no encontrado:', productoId)
+      return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 })
+    }
+    
+    console.log('✅ Producto encontrado:', { producto_id: prod.producto_id, user_id: prod.user_id })
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
+    
+    console.log('🔍 Verificando configuración de Supabase:', {
+      hasUrl: !!supabaseUrl,
+      hasServiceKey: !!serviceKey,
+      url: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'missing'
+    })
+    
     if (!supabaseUrl || !serviceKey) {
-      return NextResponse.json({ error: 'Variables de entorno de Supabase faltantes' }, { status: 500 })
+      console.error('❌ Variables de entorno faltantes:', {
+        NEXT_PUBLIC_SUPABASE_URL: !!supabaseUrl,
+        SUPABASE_SERVICE_ROLE_KEY: !!serviceKey
+      })
+      return NextResponse.json({ 
+        error: 'Variables de entorno de Supabase faltantes',
+        details: `URL: ${supabaseUrl ? 'OK' : 'FALTA'}, Service Key: ${serviceKey ? 'OK' : 'FALTA'}`
+      }, { status: 500 })
     }
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
+    })
+
+    // Verificar que el bucket existe y es accesible
+    const { data: buckets, error: bucketsError } = await admin.storage.listBuckets()
+    if (bucketsError) {
+      console.error('❌ Error listando buckets:', bucketsError)
+      return NextResponse.json({ 
+        error: 'Error accediendo al storage', 
+        details: bucketsError.message 
+      }, { status: 500 })
+    }
+    
+    const ecoswapBucket = buckets?.find(b => b.id === 'Ecoswap')
+    if (!ecoswapBucket) {
+      console.error('❌ Bucket Ecoswap no encontrado. Buckets disponibles:', buckets?.map(b => b.id))
+      return NextResponse.json({ 
+        error: 'Bucket Ecoswap no encontrado', 
+        details: 'El bucket de storage no existe o no es accesible' 
+      }, { status: 500 })
+    }
+    
+    console.log('✅ Bucket Ecoswap encontrado:', {
+      id: ecoswapBucket.id,
+      name: ecoswapBucket.name,
+      public: ecoswapBucket.public
     })
 
     if (file.type !== 'image/webp') {
@@ -73,22 +173,66 @@ export async function POST(
     const arrayBuffer = await file.arrayBuffer()
     const buffer = new Uint8Array(arrayBuffer)
 
-    const { error: upErr } = await admin.storage
+    console.log('📤 Subiendo imagen a Supabase Storage:', {
+      bucket: 'Ecoswap',
+      path: storagePath,
+      size: buffer.length,
+      fileName
+    })
+
+    const { data: uploadData, error: upErr } = await admin.storage
       .from('Ecoswap')
       .upload(storagePath, buffer, {
         cacheControl: '3600',
         upsert: true,
         contentType: 'image/webp',
       })
+    
     if (upErr) {
-      return NextResponse.json({ error: 'Error subiendo', details: upErr.message }, { status: 400 })
+      console.error('❌ Error subiendo imagen a Storage:', {
+        error: upErr.message,
+        statusCode: upErr.statusCode,
+        path: storagePath,
+        bucket: 'Ecoswap'
+      })
+      return NextResponse.json({ 
+        error: 'Error subiendo imagen al storage', 
+        details: upErr.message,
+        statusCode: upErr.statusCode 
+      }, { status: 500 })
     }
 
+    console.log('✅ Imagen subida exitosamente:', {
+      path: storagePath,
+      uploadData
+    })
+
     const { data: urlData } = admin.storage.from('Ecoswap').getPublicUrl(storagePath)
+    
+    console.log('🔗 URL pública generada:', urlData.publicUrl)
 
     return NextResponse.json({ ok: true, path: storagePath, url: urlData.publicUrl, index: nextIndex, name: fileName })
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Server error' }, { status: 500 })
+    console.error('❌ Error inesperado en storage endpoint:', {
+      message: e?.message,
+      stack: e?.stack,
+      name: e?.name,
+      error: e
+    })
+    
+    // En desarrollo, devolver más detalles
+    const errorDetails = process.env.NODE_ENV === 'development' 
+      ? {
+          message: e?.message,
+          name: e?.name,
+          stack: e?.stack?.split('\n').slice(0, 5).join('\n') // Solo primeras 5 líneas
+        }
+      : { message: 'Error interno del servidor' }
+    
+    return NextResponse.json({ 
+      error: 'Error interno del servidor',
+      ...errorDetails
+    }, { status: 500 })
   }
 }
 
