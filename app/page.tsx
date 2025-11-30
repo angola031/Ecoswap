@@ -37,7 +37,6 @@ import ThemeToggle from '@/components/ThemeToggle'
 import { type User } from '@/lib/types'
 import { getCurrentUser, logoutUser, isUserAdmin } from '@/lib/auth'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import { useInactivity } from '@/hooks/useInactivity'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useUserStatus } from '@/hooks/useUserStatus'
 
@@ -75,88 +74,6 @@ export default function HomePage() {
     // Verificar si es fundación
     const isFoundation = foundationData?.es_fundacion === true
     const isVerifiedFoundation = isFoundation && foundationData?.fundacion_verificada === true
-
-    // Función para verificar sesión después de actividad
-    const checkSessionAfterActivity = async () => {
-        try {
-            console.log('🔄 Verificando sesión después de actividad...')
-            
-            const supabase = getSupabaseClient()
-            if (!supabase) {
-                console.log('⚠️ Supabase no está configurado')
-                return
-            }
-
-            // Obtener sesión actual
-            let { data: { session }, error } = await supabase.auth.getSession()
-            
-            if (error || !session) {
-                console.log('⚠️ No hay sesión válida después de actividad')
-                setIsAuthenticated(false)
-                setCurrentUser(null)
-                setCurrentScreen('main')
-                return
-            }
-
-            // Verificar si el token está próximo a expirar o ya expiró
-            const now = Math.floor(Date.now() / 1000)
-            const expiresAt = session.expires_at || 0
-            const timeUntilExpiry = expiresAt - now
-
-            // Si el token expira en menos de 5 minutos o ya expiró, refrescarlo
-            if (timeUntilExpiry < 300) {
-                console.log('🔄 Token expirado o próximo a expirar, refrescando...')
-                const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
-                
-                if (refreshError || !refreshedSession) {
-                    console.error('❌ Error refrescando sesión:', refreshError)
-                    setIsAuthenticated(false)
-                    setCurrentUser(null)
-                    setCurrentScreen('main')
-                    return
-                }
-
-                console.log('✅ Sesión refrescada exitosamente')
-                session = refreshedSession
-            }
-
-            // SIEMPRE cargar el usuario completo para restaurar el estado
-            console.log('🔄 Cargando datos del usuario después de actividad...')
-            try {
-                const user = await getCurrentUser()
-                if (user) {
-                    setCurrentUser(user)
-                    setIsAuthenticated(true)
-                    setCurrentScreen('main')
-                    setTimeoutMessage('') // Limpiar mensaje de timeout
-                    console.log('✅ Usuario cargado exitosamente:', user.name)
-                    
-                    // Cargar datos de fundación si no están cargados
-                    if (foundationData === null && !isLoadingFoundationDataRef.current) {
-                        console.log('🔄 Cargando datos de fundación después de actividad...')
-                        await loadFoundationData()
-                    }
-                    
-                    console.log('✅ Estado restaurado correctamente después de actividad')
-                } else {
-                    console.log('⚠️ No se pudo cargar el usuario')
-                    setIsAuthenticated(false)
-                    setCurrentUser(null)
-                    setCurrentScreen('main')
-                }
-            } catch (error) {
-                console.error('❌ Error cargando usuario después de actividad:', error)
-                setIsAuthenticated(false)
-                setCurrentUser(null)
-                setCurrentScreen('main')
-            }
-        } catch (error) {
-            console.error('Error verificando sesión después de actividad:', error)
-            setIsAuthenticated(false)
-            setCurrentUser(null)
-            setCurrentScreen('main')
-        }
-    }
 
     // Función para refrescar la sesión si es necesario
     const ensureValidSession = async (): Promise<boolean> => {
@@ -282,26 +199,50 @@ export default function HomePage() {
         }
     }
 
-    // Hook para detectar inactividad y cerrar sesión automáticamente
-    useInactivity({
-        timeout: 30 * 60 * 1000, // 30 minutos de inactividad
-        onInactive: async () => {
-            console.log('🔄 Usuario inactivo detectado, limpiando estado...')
-            // Limpiar estado de la aplicación
-            setIsAuthenticated(false)
-            setCurrentUser(null)
-            setCurrentModule('products') // Resetear a módulo por defecto
-            localStorage.setItem('ecoswap_current_module', 'products') // Limpiar módulo protegido
-            setCurrentScreen('main')
-            setTimeoutMessage('Tu sesión ha expirado por inactividad. Por favor, inicia sesión nuevamente.')
-            // El hook ya maneja el logout automáticamente
-        },
-        onActive: () => {
-            console.log('🔄 Usuario activo detectado, verificando sesión...')
-            // Verificar sesión cuando el usuario vuelve a estar activo
-            checkSessionAfterActivity()
+    // Listener de Supabase para cambios en la sesión (igual que dashboard administrador)
+    useEffect(() => {
+        const supabase = getSupabaseClient()
+        if (!supabase) return
+
+        // Escuchar cambios en la sesión de autenticación
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('🔄 Cambio en estado de autenticación:', event)
+            
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                // Si hay sesión, cargar el usuario
+                if (session) {
+                    try {
+                        const user = await getCurrentUser()
+                        if (user) {
+                            setCurrentUser(user)
+                            setIsAuthenticated(true)
+                            setCurrentScreen('main')
+                            setTimeoutMessage('')
+                            console.log('✅ Sesión restaurada automáticamente')
+                            
+                            // Cargar datos de fundación si no están cargados
+                            if (foundationData === null && !isLoadingFoundationDataRef.current) {
+                                await loadFoundationData()
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Error cargando usuario después de cambio de sesión:', error)
+                    }
+                }
+            } else if (event === 'SIGNED_OUT') {
+                // Si se cerró sesión, limpiar estado
+                setIsAuthenticated(false)
+                setCurrentUser(null)
+                setCurrentScreen('main')
+                setCurrentModule('products')
+                localStorage.setItem('ecoswap_current_module', 'products')
+            }
+        })
+
+        return () => {
+            subscription.unsubscribe()
         }
-    })
+    }, [foundationData])
 
     // Verificar sesión inicial al cargar la página
     // Solo verificar si no hay usuario ya establecido (para evitar duplicados)
@@ -365,92 +306,57 @@ export default function HomePage() {
         checkInitialSession()
     }, []) // Solo ejecutar una vez al montar
 
-    // Listener para cambios de sesión de Supabase
+    // Listener de Supabase para cambios en la sesión (igual que dashboard administrador)
     useEffect(() => {
         const supabase = getSupabaseClient()
-        if (!supabase) {
-            console.warn('⚠️ Supabase no está configurado. Ejecutando en modo estático.')
-            return
-        }
+        if (!supabase) return
 
+        // Escuchar cambios en la sesión de autenticación
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('Auth state changed:', event, session?.user?.email)
+            console.log('🔄 Cambio en estado de autenticación:', event, session?.user?.email)
             
-            if (event === 'SIGNED_OUT') {
-                setIsAuthenticated(false)
-                setCurrentUser(null)
-                localStorage.removeItem('ecoswap_user')
-            } else if (event === 'SIGNED_IN' && session) {
-                // Si handleLogin ya procesó el login, no procesar de nuevo para evitar doble renderizado
-                if (loginProcessedRef.current) {
-                    console.log('⏭️ [SIGNED_IN] Login ya procesado por handleLogin, omitiendo procesamiento del listener')
-                    return
-                }
-                
-                // Si el usuario ya está establecido con el mismo email, no procesar de nuevo
-                if (currentUser && isAuthenticated && currentUser.email === session.user.email) {
-                    console.log('⏭️ [SIGNED_IN] Usuario ya establecido, omitiendo procesamiento para evitar doble renderizado')
-                    return
-                }
-                
-                try {
-                    console.log('🔄 Procesando SIGNED_IN para:', session.user.email)
-                    const user = await getCurrentUser()
-                    console.log('👤 Usuario obtenido:', user ? `${user.name} (${user.email})` : 'null')
-                    
-                    if (user) {
-                        // Verificar de nuevo antes de establecer el estado
-                        if (currentUser && isAuthenticated && currentUser.email === user.email) {
-                            console.log('⏭️ [SIGNED_IN] Usuario ya establecido después de getCurrentUser, omitiendo')
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                // Si hay sesión, cargar el usuario (igual que dashboard administrador)
+                if (session) {
+                    try {
+                        // Si el usuario ya está establecido con el mismo email, no procesar de nuevo
+                        if (currentUser && isAuthenticated && currentUser.email === session.user.email && event === 'TOKEN_REFRESHED') {
+                            console.log('✅ Token refrescado, usuario ya está cargado')
                             return
                         }
                         
-                        setCurrentUser(user)
-                        setIsAuthenticated(true)
-                        setCurrentScreen('main')
-                        setTimeoutMessage('') // Limpiar mensaje de timeout
-                        // Cargar datos de fundación cuando se detecta SIGNED_IN
-                        console.log('🔄 [SIGNED_IN] Cargando datos de fundación...')
-                        await loadFoundationData()
-                        console.log('✅ [SIGNED_IN] Datos de fundación cargados')
-                        console.log('✅ Estado actualizado: isAuthenticated=true, currentUser=', user.name)
-                        
-                        // Verificar si es administrador y redirigir
-                        try {
-                            const { isAdmin } = await isUserAdmin(user.email)
-                            console.log('🔐 Es admin:', isAdmin)
-                            if (isAdmin) {
-                                console.log('🚀 Redirigiendo admin a dashboard')
-                                window.location.replace('/admin/verificaciones')
-                                return
-                            }
-                        } catch (error) {
-                            console.warn('⚠️ Error verificando rol de usuario:', error)
+                        // Si handleLogin ya procesó el login, no procesar de nuevo para evitar doble renderizado
+                        if (loginProcessedRef.current && event === 'SIGNED_IN') {
+                            console.log('⏭️ [SIGNED_IN] Login ya procesado por handleLogin, omitiendo')
+                            return
                         }
-                    } else {
-                        console.log('❌ No se pudo obtener usuario, limpiando estado')
-                        setIsAuthenticated(false)
-                        setCurrentUser(null)
+                        
+                        console.log('🔄 Cargando usuario después de:', event)
+                        const user = await getCurrentUser()
+                        if (user) {
+                            setCurrentUser(user)
+                            setIsAuthenticated(true)
+                            setCurrentScreen('main')
+                            setTimeoutMessage('')
+                            console.log('✅ Sesión restaurada automáticamente:', user.name)
+                            
+                            // Cargar datos de fundación si no están cargados
+                            if (foundationData === null && !isLoadingFoundationDataRef.current) {
+                                await loadFoundationData()
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Error cargando usuario después de cambio de sesión:', error)
                     }
-                } catch (error) {
-                    console.error('❌ Error al procesar sesión:', error)
-                    setIsAuthenticated(false)
-                    setCurrentUser(null)
                 }
-            } else if (event === 'TOKEN_REFRESHED') {
-                // Token refrescado, verificar sesión actual
-                try {
-                    const user = await getCurrentUser()
-                    if (user) {
-                        setCurrentUser(user)
-                        setIsAuthenticated(true)
-                    } else {
-                        setIsAuthenticated(false)
-                        setCurrentUser(null)
-                    }
-                } catch (error) {
-                    console.error('Error al verificar sesión después del refresh:', error)
-                }
+            } else if (event === 'SIGNED_OUT') {
+                // Si se cerró sesión, limpiar estado (igual que dashboard administrador)
+                setIsAuthenticated(false)
+                setCurrentUser(null)
+                setCurrentScreen('main')
+                setCurrentModule('products')
+                localStorage.removeItem('ecoswap_user')
+                localStorage.setItem('ecoswap_current_module', 'products')
             }
         })
 
